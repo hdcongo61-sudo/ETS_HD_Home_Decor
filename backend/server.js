@@ -34,7 +34,7 @@ app.use(helmet());
 // 2. Enable CORS with secure configuration
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://ets-hd-home-decor-frontend.onrender.com'
+  process.env.FRONTEND_URL || 'https://ets-hd-home-decor-frontend.onrender.com'
 ];
 
 const corsOptions = {
@@ -53,6 +53,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
 
 
 app.set('trust proxy', 1);
