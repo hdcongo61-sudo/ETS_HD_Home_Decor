@@ -1,28 +1,25 @@
-// Based on CRA serviceWorkerRegistration.js
+// serviceWorkerRegistration.js
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
     window.location.hostname === '[::1]' ||
     window.location.hostname.match(
-      /^127(?:\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)){3}$/
+      /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
     )
 );
 
 export function register(config) {
-  if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
-    const publicUrl = new URL(process.env.PUBLIC_URL, window.location.href);
-    if (publicUrl.origin !== window.location.origin) {
-      return;
-    }
+  if ('serviceWorker' in navigator) {
+    const swUrl = '/service-worker.js';
 
     window.addEventListener('load', () => {
-      const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
-
       if (isLocalhost) {
+        // Running on localhost -> check SW
         checkValidServiceWorker(swUrl, config);
         navigator.serviceWorker.ready.then(() => {
-          console.info('Service worker ready on localhost.');
+          console.log('This app is being served cache-first by a service worker.');
         });
       } else {
+        // In production -> just register
         registerValidSW(swUrl, config);
       }
     });
@@ -33,48 +30,55 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
-      if (registration.waiting && config?.onUpdate) {
-        config.onUpdate(registration);
+      if (registration.waiting) {
+        if (config && config.onUpdate) {
+          config.onUpdate(registration);
+        }
       }
 
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
-        if (!installingWorker) {
-          return;
-        }
-        installingWorker.onstatechange = () => {
-          if (installingWorker.state === 'installed') {
-            if (navigator.serviceWorker.controller) {
-              config?.onUpdate?.(registration);
-            } else {
-              config?.onSuccess?.(registration);
+        if (installingWorker) {
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed') {
+              if (navigator.serviceWorker.controller) {
+                if (config && config.onUpdate) {
+                  config.onUpdate(registration);
+                }
+              } else {
+                if (config && config.onSuccess) {
+                  config.onSuccess(registration);
+                }
+              }
             }
-          }
-        };
+          };
+        }
       };
     })
     .catch((error) => {
-      console.error('Error during service worker registration:', error);
+      console.error('❌ Error during SW registration:', error);
     });
 }
 
 function checkValidServiceWorker(swUrl, config) {
-  fetch(swUrl, { headers: { 'Service-Worker': 'script' } })
+  fetch(swUrl)
     .then((response) => {
       const contentType = response.headers.get('content-type');
       if (
         response.status === 404 ||
-        (contentType != null && contentType.indexOf('javascript') === -1)
+        (contentType && contentType.indexOf('javascript') === -1)
       ) {
         navigator.serviceWorker.ready.then((registration) => {
-          registration.unregister().then(() => window.location.reload());
+          registration.unregister().then(() => {
+            window.location.reload();
+          });
         });
       } else {
         registerValidSW(swUrl, config);
       }
     })
     .catch(() => {
-      console.warn('No internet connection found. App is running in offline mode.');
+      console.log('No internet connection. App running in offline mode.');
     });
 }
 
