@@ -41,6 +41,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+app.set('trust proxy', 1);
+
 // 3. Rate limiting to prevent brute-force attacks
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
