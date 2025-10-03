@@ -1,13 +1,12 @@
 # Node
 node_modules/
-build/
-dist/
+
 
 # Environment
 .env
 
 # Images lourdes
-*.png
+
 *.jpg
 *.zip
 *.mp4
