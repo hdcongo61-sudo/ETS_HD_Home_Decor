@@ -10,3 +10,5 @@ node_modules/
 *.jpg
 *.zip
 *.mp4
+
+src/service-worker.js
