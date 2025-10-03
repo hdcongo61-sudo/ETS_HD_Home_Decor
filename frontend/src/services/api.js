@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://ets-hd-home-decor.onrender.com',
+  baseURL: process.env.REACT_APP_API_URL || 'https://ets-hd-home-decor.onrender.com',
 });
 
 // Intercepteur pour ajouter le token à chaque requête
