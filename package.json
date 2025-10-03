@@ -1,0 +1,23 @@
+{
+  "name": "ets_hd_home_decor",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/diallooumar29/ETS_HD_Home_Decor_Project#readme",
+  "bugs": {
+    "url": "https://github.com/diallooumar29/ETS_HD_Home_Decor_Project/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diallooumar29/ETS_HD_Home_Decor_Project.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm run server",
+    "start:frontend": "cd frontend && npm start",
+    "install:all": "concurrently \"npm --prefix backend install\" \"npm --prefix frontend install\""
+  }
+}
