@@ -32,14 +32,28 @@ const app = express();
 app.use(helmet());
 
 // 2. Enable CORS with secure configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://ets-hd-home-decor-frontend.onrender.com'
+];
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   optionsSuccessStatus: 200
 };
-app.use(cors((corsOptions) || {origin:"*"}));
+
+app.use(cors(corsOptions));
+
 
 app.set('trust proxy', 1);
 
