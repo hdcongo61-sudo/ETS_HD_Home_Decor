@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const path = require('path');
 const cookieParser = require('cookie-parser');
 
 // Load env vars
@@ -78,7 +79,12 @@ app.use(xss());
 app.use(hpp({
   whitelist: ['sort', 'page', 'limit', 'fields'] // allow these for pagination
 }));
-
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  app.get('*', (req, res) =>
+    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'))
+  );
+}
 // 9. Mount routers
 app.use('/api/products', productRoutes);
 app.use('/api/clients', clientRoutes);
