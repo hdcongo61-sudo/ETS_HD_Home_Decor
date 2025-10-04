@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
@@ -14,6 +14,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 const ProductDashboard = () => {
     const [dashboardData, setDashboardData] = useState(null);
@@ -21,6 +22,10 @@ const ProductDashboard = () => {
     const [timeRange, setTimeRange] = useState('month');
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const neverSoldTableRef = useRef(null);
+    const outOfStockTableRef = useRef(null);
+    const criticalStockTableRef = useRef(null);
+    const lowStockTableRef = useRef(null);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -39,6 +44,11 @@ const ProductDashboard = () => {
 
         fetchDashboardData();
     }, [timeRange]);
+
+    useResponsiveTable(neverSoldTableRef, [dashboardData?.neverSoldProducts?.length ?? 0]);
+    useResponsiveTable(outOfStockTableRef, [dashboardData?.outOfStockProducts?.length ?? 0]);
+    useResponsiveTable(criticalStockTableRef, [dashboardData?.criticalStockProducts?.length ?? 0]);
+    useResponsiveTable(lowStockTableRef, [dashboardData?.lowStockProducts?.length ?? 0]);
 
     // Préparer les données pour les graphiques
     const CATEGORY_ORDER = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
@@ -130,10 +140,10 @@ const ProductDashboard = () => {
 
     // Données pour les produits à stock zéro
     const outOfStockProducts = dashboardData.outOfStockProducts || [];
-    
+
     // Données pour les produits avec stock à 1
     const criticalStockProducts = dashboardData.criticalStockProducts || [];
-    
+
     // Données pour les produits les plus chers
     const mostExpensiveProducts = dashboardData.mostExpensiveProducts || [];
     
@@ -142,6 +152,7 @@ const ProductDashboard = () => {
     
     // Données pour les produits jamais vendus
     const neverSoldProducts = dashboardData.neverSoldProducts || [];
+    const lowStockProducts = dashboardData.lowStockProducts || [];
 
     return (
         <div className="bg-white rounded-2xl p-6">
@@ -371,8 +382,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {neverSoldProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={neverSoldTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -383,10 +394,10 @@ const ProductDashboard = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white md:divide-y md:divide-gray-200">
                                 {neverSoldProducts.map((product) => (
                                     <tr key={product._id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 align-top">
                                             <div className="flex items-center">
                                                 {product.image ? (
                                                     <img
@@ -401,19 +412,39 @@ const ProductDashboard = () => {
                                                         </svg>
                                                     </div>
                                                 )}
-                                                <div>
+                                                  <div>
                                                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
                                                     <div className="text-sm text-gray-500">{product.sku}</div>
                                                 </div>
                                             </div>
+                                            <div className="mt-3 space-y-1 text-xs text-gray-500 md:hidden">
+                                                <p>Catégorie: {resolveCategory(product.category)}</p>
+                                                <p>Prix: {product.price?.toLocaleString() || 0} CFA</p>
+                                                <p>Stock: {product.stock}</p>
+                                                <p>Statut: Jamais vendu</p>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2 md:hidden">
+                                                <button
+                                                    onClick={() => navigate(`/products/${product._id}`)}
+                                                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg"
+                                                >
+                                                    Voir
+                                                </button>
+                                                <button
+                                                    onClick={() => navigate(`/products/edit/${product._id}`)}
+                                                    className="px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 rounded-lg"
+                                                >
+                                                    Modifier
+                                                </button>
+                                            </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {resolveCategory(product.category)}
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {product.price?.toLocaleString()} CFA
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <span className={`text-sm font-medium ${
                                                     product.stock === 0 ? 'text-red-600' : 
@@ -423,12 +454,12 @@ const ProductDashboard = () => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                                                 Jamais vendu
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => navigate(`/products/${product._id}`)}
                                                 className="text-blue-600 hover:text-blue-900 font-medium mr-3"
@@ -476,8 +507,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {outOfStockProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={outOfStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -487,10 +518,10 @@ const ProductDashboard = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white md:divide-y md:divide-gray-200">
                                 {outOfStockProducts.map((product) => (
                                     <tr key={product._id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 align-top">
                                             <div className="flex items-center">
                                                 {product.image ? (
                                                     <img
@@ -505,24 +536,37 @@ const ProductDashboard = () => {
                                                         </svg>
                                                     </div>
                                                 )}
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                                    <div className="text-sm text-gray-500">{product.sku}</div>
-                                                </div>
+                                                 <div>
+                                                   <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                                   <div className="text-sm text-gray-500">{product.sku}</div>
+                                               </div>
+                                            </div>
+                                            <div className="mt-3 space-y-1 text-xs text-gray-500 md:hidden">
+                                                <p>Catégorie: {resolveCategory(product.category)}</p>
+                                                <p>Prix: {product.price?.toLocaleString() || 0} CFA</p>
+                                                <p>Statut: Rupture</p>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2 md:hidden">
+                                                <button
+                                                    onClick={() => navigate(`/products/edit/${product._id}`)}
+                                                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg"
+                                                >
+                                                    Réapprovisionner
+                                                </button>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {resolveCategory(product.category)}
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {product.price?.toLocaleString()} CFA
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                                 Rupture
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => navigate(`/products/edit/${product._id}`)}
                                                 className="text-blue-600 hover:text-blue-900 font-medium"
@@ -558,8 +602,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {criticalStockProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={criticalStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -569,10 +613,10 @@ const ProductDashboard = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white md:divide-y md:divide-gray-200">
                                 {criticalStockProducts.map((product) => (
                                     <tr key={product._id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 align-top">
                                             <div className="flex items-center">
                                                 {product.image ? (
                                                     <img
@@ -587,28 +631,37 @@ const ProductDashboard = () => {
                                                         </svg>
                                                     </div>
                                                 )}
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                                    <div className="text-sm text-gray-500">{product.sku}</div>
-                                                </div>
+                                                 <div>
+                                                   <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                                   <div className="text-sm text-gray-500">{product.sku}</div>
+                                               </div>
+                                            </div>
+                                            <div className="mt-3 space-y-1 text-xs text-gray-500 md:hidden">
+                                                <p>Catégorie: {resolveCategory(product.category)}</p>
+                                                <p>Stock: {product.stock}</p>
+                                                <p>Statut: Très critique</p>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2 md:hidden">
+                                                <button
+                                                    onClick={() => navigate(`/products/edit/${product._id}`)}
+                                                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg"
+                                                >
+                                                    Réapprovisionner
+                                                </button>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {resolveCategory(product.category)}
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <span className="text-sm font-medium text-red-600">
-                                                    {product.stock}
-                                                </span>
-                                            </div>
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                                            {product.stock}
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                                 Très critique
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => navigate(`/products/edit/${product._id}`)}
                                                 className="text-blue-600 hover:text-blue-900 font-medium"
@@ -643,9 +696,9 @@ const ProductDashboard = () => {
                     </button>
                 </div>
 
-                {dashboardData.lowStockProducts?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                {lowStockProducts.length > 0 ? (
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={lowStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -655,10 +708,10 @@ const ProductDashboard = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {dashboardData.lowStockProducts.map((product) => (
+                            <tbody className="bg-white md:divide-y md:divide-gray-200">
+                                {lowStockProducts.map((product) => (
                                     <tr key={product._id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 align-top">
                                             <div className="flex items-center">
                                                 {product.image ? (
                                                     <img
@@ -673,16 +726,16 @@ const ProductDashboard = () => {
                                                         </svg>
                                                     </div>
                                                 )}
-                                                <div>
+                                                  <div>
                                                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
                                                     <div className="text-sm text-gray-500">{product.sku}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {resolveCategory(product.category)}
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <span className={`text-sm font-medium ${product.stock < 5 ? 'text-red-600' : 'text-yellow-600'
                                                     }`}>
@@ -690,7 +743,7 @@ const ProductDashboard = () => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.stock < 3
                                                 ? 'bg-red-100 text-red-800'
                                                 : product.stock < 10
@@ -700,7 +753,7 @@ const ProductDashboard = () => {
                                                 {product.stock < 3 ? 'Très critique' : product.stock < 10 ? 'Critique' : 'Faible'}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => navigate(`/products/${product._id}`)}
                                                 className="text-blue-600 hover:text-blue-900 mr-3 font-medium"
