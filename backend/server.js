@@ -31,32 +31,26 @@ const app = express();
 // 1. Set security HTTP headers
 app.use(helmet());
 
-// 2. Enable CORS with secure configuration
+// ✅ Trust proxy (important for Render)
+app.set('trust proxy', 1);
+
+// ✅ CORS setup
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'https://ets-hd-home-decor-frontend.onrender.com'
+  process.env.FRONTEND_URL
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, Postman)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS: ' + origin));
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200
-};
+}));
 
-app.use(cors(corsOptions));
-
-
-
-app.set('trust proxy', 1);
 
 // 3. Rate limiting to prevent brute-force attacks
 const limiter = rateLimit({
