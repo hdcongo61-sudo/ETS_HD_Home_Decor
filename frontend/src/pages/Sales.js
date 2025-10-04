@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback, lazy, Suspense, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2';
@@ -17,6 +17,7 @@ import {
 } from 'chart.js';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 // Enregistrer les composants de Chart.js
 ChartJS.register(
@@ -201,13 +202,17 @@ const ProductPerformanceChart = ({ products }) => {
   );
 };
 
-const ClientRFMAnalysis = ({ clients, onClientSelect }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
+  const tableRef = useRef(null);
+  useResponsiveTable(tableRef, [clients]);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-visible md:overflow-hidden">
     <div className="p-6 border-b border-gray-200">
       <h3 className="text-lg font-semibold">Analyse RFM des Clients</h3>
     </div>
-    <div className="overflow-x-auto">
-      <table className="w-full">
+    <div className="overflow-visible md:overflow-x-auto">
+      <table ref={tableRef} className="w-full responsive-table">
         <thead className="bg-gray-50">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
@@ -267,8 +272,9 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => (
         </tbody>
       </table>
     </div>
-  </div>
-);
+    </div>
+  );
+};
 
 // Composant pour l'analyse des bénéfices
 const ProfitAnalysis = () => {
@@ -305,6 +311,11 @@ const ProfitAnalysis = () => {
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
+
+  const topProductsTableRef = useRef(null);
+  const categoryTableRef = useRef(null);
+  useResponsiveTable(topProductsTableRef, [profitData?.topProducts || []]);
+  useResponsiveTable(categoryTableRef, [profitData?.profitByCategory || []]);
 
   if (loading) {
     return (
@@ -546,8 +557,8 @@ const ProfitAnalysis = () => {
       {/* Tableau détaillé des produits rentables */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Détail des produits les plus rentables</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-visible md:overflow-x-auto">
+          <table ref={topProductsTableRef} className="w-full responsive-table">
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-3 text-left text-sm font-medium text-gray-600">Produit</th>
@@ -558,21 +569,21 @@ const ProfitAnalysis = () => {
                 <th className="p-3 text-right text-sm font-medium text-gray-600">Marge</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="md:divide-y md:divide-gray-100">
               {topProducts.slice(0, 10).map((product, index) => (
                 <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="p-3 text-sm font-medium text-gray-900">{product.productName}</td>
-                  <td className="p-3 text-sm text-right text-gray-700">{product.totalQuantity}</td>
-                  <td className="p-3 text-sm text-right text-gray-700">
+                  <td className="p-3 text-sm text-gray-700 md:text-right">{product.totalQuantity}</td>
+                  <td className="p-3 text-sm text-gray-700 md:text-right">
                     {(product.totalRevenue || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm text-right text-gray-700">
+                  <td className="p-3 text-sm text-gray-700 md:text-right">
                     {(product.totalCost || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm text-right font-semibold text-green-600">
+                  <td className="p-3 text-sm font-semibold text-green-600 md:text-right">
                     {(product.totalProfit || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm text-right font-semibold text-blue-600">
+                  <td className="p-3 text-sm font-semibold text-blue-600 md:text-right">
                     {(product.profitMargin || 0).toFixed(2)}%
                   </td>
                 </tr>
@@ -601,8 +612,8 @@ const ProfitAnalysis = () => {
                 }}
               />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-visible md:overflow-x-auto">
+              <table ref={categoryTableRef} className="w-full responsive-table">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium text-gray-600">Catégorie</th>
@@ -611,17 +622,17 @@ const ProfitAnalysis = () => {
                     <th className="p-3 text-right text-sm font-medium text-gray-600">Ventes</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="md:divide-y md:divide-gray-100">
                   {profitByCategory.map((category, index) => (
                     <tr key={index} className="border-b border-gray-100">
                       <td className="p-3 text-sm font-medium text-gray-900">{category._id || 'Non catégorisé'}</td>
-                      <td className="p-3 text-sm text-right text-green-600 font-semibold">
+                      <td className="p-3 text-sm font-semibold text-green-600 md:text-right">
                         {(category.totalProfit || 0).toLocaleString('fr-FR')} CFA
                       </td>
-                      <td className="p-3 text-sm text-right text-blue-600">
+                      <td className="p-3 text-sm text-blue-600 md:text-right">
                         {(category.profitMargin || 0).toFixed(2)}%
                       </td>
-                      <td className="p-3 text-sm text-right text-gray-700">{category.saleCount}</td>
+                      <td className="p-3 text-sm text-gray-700 md:text-right">{category.saleCount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1250,6 +1261,11 @@ const Sales = () => {
       }
     ]
   };
+
+  const paymentTableRef = useRef(null);
+  const statusTableRef = useRef(null);
+  useResponsiveTable(paymentTableRef, [dashboardData?.paymentMethods]);
+  useResponsiveTable(statusTableRef, [dashboardData?.statusStats]);
 
   const deliveryChartData = {
     labels: ['Livrées', 'En attente', 'Non livrées'],
@@ -1907,8 +1923,8 @@ const Sales = () => {
                               }}
                             />
                           </div>
-                          <div>
-                            <table className="w-full text-left">
+                          <div className="overflow-visible md:overflow-x-auto">
+                            <table ref={paymentTableRef} className="w-full text-left responsive-table">
                               <thead className="bg-gray-50">
                                 <tr>
                                   <th className="px-4 py-2 text-sm font-medium text-gray-600">Méthode</th>
@@ -1916,12 +1932,12 @@ const Sales = () => {
                                   <th className="px-4 py-2 text-sm font-medium text-gray-600">Montant total</th>
                                 </tr>
                               </thead>
-                              <tbody>
+                              <tbody className="md:divide-y md:divide-gray-100">
                                 {Object.entries(dashboardData.paymentMethods || {}).map(([method, percentage]) => (
-                                  <tr key={method} className="border-b border-gray-100">
+                                  <tr key={method} className="md:border-b md:border-gray-100">
                                     <td className="px-4 py-3 text-sm capitalize">{method === 'MobileMoney' ? 'Mobile Money' : method}</td>
-                                    <td className="px-4 py-3 text-sm">{percentage.toFixed(1)}%</td>
-                                    <td className="px-4 py-3 text-sm font-medium">
+                                    <td className="px-4 py-3 text-sm md:text-right">{percentage.toFixed(1)}%</td>
+                                    <td className="px-4 py-3 text-sm font-medium md:text-right">
                                       {Math.round(dashboardData.totalSales * percentage / 100).toLocaleString('fr-FR')} CFA
                                     </td>
                                   </tr>
@@ -1948,8 +1964,8 @@ const Sales = () => {
                               }}
                             />
                           </div>
-                          <div>
-                            <table className="w-full text-left">
+                          <div className="overflow-visible md:overflow-x-auto">
+                            <table ref={statusTableRef} className="w-full text-left responsive-table">
                               <thead className="bg-gray-50">
                                 <tr>
                                   <th className="px-4 py-2 text-sm font-medium text-gray-600">Statut</th>
@@ -1957,34 +1973,34 @@ const Sales = () => {
                                   <th className="px-4 py-2 text-sm font-medium text-gray-600">Montant total</th>
                                 </tr>
                               </thead>
-                              <tbody>
-                                <tr className="border-b border-gray-100">
+                              <tbody className="md:divide-y md:divide-gray-100">
+                                <tr className="md:border-b md:border-gray-100">
                                   <td className="px-4 py-3 text-sm flex items-center">
                                     <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                                     Payée
                                   </td>
-                                  <td className="px-4 py-3 text-sm">{dashboardData.statusStats?.completed?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium">
+                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.completed?.count || 0}</td>
+                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.completed?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
-                                <tr className="border-b border-gray-100">
+                                <tr className="md:border-b md:border-gray-100">
                                   <td className="px-4 py-3 text-sm flex items-center">
                                     <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
                                     Partiellement payée
                                   </td>
-                                  <td className="px-4 py-3 text-sm">{dashboardData.statusStats?.partially_paid?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium">
+                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.partially_paid?.count || 0}</td>
+                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.partially_paid?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
-                                <tr className="border-b border-gray-100">
+                                <tr className="md:border-b md:border-gray-100">
                                   <td className="px-4 py-3 text-sm flex items-center">
                                     <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
                                     En attente
                                   </td>
-                                  <td className="px-4 py-3 text-sm">{dashboardData.statusStats?.pending?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium">
+                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.pending?.count || 0}</td>
+                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.pending?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
@@ -1993,8 +2009,8 @@ const Sales = () => {
                                     <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
                                     Annulée
                                   </td>
-                                  <td className="px-4 py-3 text-sm">{dashboardData.statusStats?.cancelled?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium">
+                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.cancelled?.count || 0}</td>
+                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.cancelled?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
@@ -2225,21 +2241,24 @@ const Sales = () => {
                       const { totalPaid, balance } = calculateSaleTotals(sale);
 
                       return (
-                        <div key={sale._id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start">
+                        <div
+                          key={sale._id}
+                          className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow space-y-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <Link
                               to={`/sales/${sale._id}`}
-                              className="text-blue-600 hover:text-blue-800 font-semibold flex items-center transition-colors"
+                              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
                             >
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               Vente #{sale._id.slice(-6)}
                             </Link>
 
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-500">
-                                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
+                              <span className="text-sm text-gray-500 inline-flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 {formatDate(sale.saleDate)}
@@ -2270,8 +2289,8 @@ const Sales = () => {
                             </div>
                           </div>
 
-                          <div className="mt-3 flex items-center">
-                            <svg className="w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                             <span className="font-medium text-gray-900">
@@ -2291,17 +2310,20 @@ const Sales = () => {
                             </div>
                           )}
 
-                          <div className="mt-4 space-y-3">
+                          <div className="space-y-3">
                             {sale.products.map((item, index) => (
-                              <div key={index} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
+                              <div
+                                key={index}
+                                className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-start sm:justify-between"
+                              >
                                 <div className="flex-1">
-                                  <div className="font-medium text-gray-900 flex items-center gap-1">
+                                  <div className="font-medium text-gray-900 inline-flex items-center gap-1">
                                     <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                     </svg>
                                     {item.product?.name || "Produit supprimé"}
                                   </div>
-                                  <div className="text-sm text-gray-600 ml-5">
+                                  <div className="text-sm text-gray-600 pl-5">
                                     {item.quantity} x {item.priceAtSale?.toFixed()} CFA
                                   </div>
                                 </div>
@@ -2314,8 +2336,8 @@ const Sales = () => {
                             ))}
                           </div>
 
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="pt-4 border-t border-gray-100">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                               <div>
                                 <h4 className="font-semibold text-gray-900 mb-2">Paiements:</h4>
                                 <div className="space-y-2">
@@ -2366,12 +2388,14 @@ const Sales = () => {
                             </div>
                           </div>
 
-                          <div className="mt-4 flex flex-wrap gap-2 justify-between">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                             {sale.status === 'completed' && (
-                              <div className="flex items-center gap-2">
-                                <Suspense fallback={<span className="text-xs text-gray-400">Chargement PDF...</span>}>
-                                  <ExportSalesPdf sale={sale} />
-                                </Suspense>
+                              <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
+                                <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+                                  <Suspense fallback={<span className="text-xs text-gray-400">Chargement PDF...</span>}>
+                                    <ExportSalesPdf sale={sale} />
+                                  </Suspense>
+                                </div>
                                 <button
                                   onClick={() => {
                                     setSelectedSale(sale);
@@ -2387,7 +2411,7 @@ const Sales = () => {
                                   </svg>
                                   Statut Livraison
                                 </button>
-                                <span className={`text-sm ${
+                                <span className={`text-sm text-center sm:text-left ${
                                   sale.deliveryStatus === 'delivered' 
                                     ? 'text-green-600' 
                                     : sale.deliveryStatus === 'not_delivered'
@@ -2412,7 +2436,7 @@ const Sales = () => {
                                   setSelectedSale(sale);
                                   setShowPaymentModal(true);
                                 }}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-1 transition-colors"
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-1 transition-colors w-full sm:w-auto"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
