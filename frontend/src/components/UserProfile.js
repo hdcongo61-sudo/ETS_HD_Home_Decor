@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
 import ErrorModal from './ErrorModal';
+import api from '../services/api';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -20,23 +20,14 @@ const UserProfile = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/users/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de la récupération du profil');
-      }
-
-      const data = await response.json();
-      setUser(data);
+      const { data } = await api.get('/users/profile');
+      const profile = data?.user || data;
+      setUser(profile);
     } catch (err) {
-      setError(err.message || 'Échec du chargement du profil');
-      if (err.message.includes('401') || err.message.includes('403')) {
+      const status = err.response?.status;
+      const message = err.response?.data?.message || err.message || 'Échec du chargement du profil';
+      setError(message);
+      if (status === 401 || status === 403) {
         localStorage.removeItem('token');
         navigate('/connexion');
       }
