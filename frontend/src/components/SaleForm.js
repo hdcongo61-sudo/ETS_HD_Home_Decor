@@ -4,7 +4,7 @@ import api from '../services/api';
 
 const SaleForm = ({ clients = [], onSubmit }) => {
   const [products, setProducts] = useState([]);
-  const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: 1, price: 0 }]);
+  const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: 0, price: 0 }]);
   const [selectedClient, setSelectedClient] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [totalAmount, setTotalAmount] = useState(0);
@@ -522,3 +522,4 @@ SaleForm.propTypes = {
 
 
 export default SaleForm;
+
