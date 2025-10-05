@@ -273,7 +273,6 @@ const SaleForm = ({ clients = [], onSubmit }) => {
                 <input
                   type="number"
                   min="1"
-                  step="1"
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   value={item.quantity}
                   onChange={(e) => handleQuantityChange(index, e.target.value)}
@@ -520,5 +519,6 @@ SaleForm.propTypes = {
   ]),
   onSubmit: PropTypes.func.isRequired
 };
+
 
 export default SaleForm;
