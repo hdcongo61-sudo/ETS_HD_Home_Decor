@@ -46,30 +46,39 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
     }, [sale]);
 
     const validateForm = () => {
-        const newErrors = selectedProducts.map((item, index) => {
+        const newErrors = selectedProducts.map((item) => {
             if (!item.product) return 'Sélectionnez un produit';
 
             const product = products.find(p => p._id === item.product);
             if (!product) return 'Produit invalide';
 
             // Validation quantité
-            if (isNaN(item.quantity) || item.quantity <= 0) {
+            if (item.quantity === '' || item.quantity === null) {
+                return "Quantité requise";
+            }
+
+            const quantityValue = Number(item.quantity);
+            if (!Number.isFinite(quantityValue)) {
+                return "Quantité invalide";
+            }
+            if (quantityValue <= 0) {
                 return "Quantité doit être positive";
             }
 
             // Calcul du stock disponible (stock actuel + quantité originale)
             const availableStock = (stockInfos[item.product]?.stock || 0) + (item.originalQuantity || 0);
 
-            if (item.quantity > availableStock) {
+            if (quantityValue > availableStock) {
                 return `Stock insuffisant (max: ${availableStock})`;
             }
 
             // Validation prix
-            if (isNaN(item.price) || item.price <= 0) {
+            const priceValue = Number(item.price);
+            if (!Number.isFinite(priceValue) || priceValue <= 0) {
                 return "Prix doit être positif";
             }
 
-            if (item.price < (stockInfos[item.product]?.costPrice || 0)) {
+            if (priceValue < (stockInfos[item.product]?.costPrice || 0)) {
                 return `Prix trop bas (min: ${stockInfos[item.product]?.costPrice} CFA)`;
             }
 
@@ -86,7 +95,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
         newProducts[index] = {
             product: productId,
-            quantity: newProducts[index].quantity || 1,
+            quantity: newProducts[index]?.quantity ?? '',
             price: product?.price || newProducts[index].price || 0,
             originalQuantity: newProducts[index].originalQuantity || 0
         };
@@ -96,8 +105,16 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
     const handleQuantityChange = (index, quantity) => {
         const newProducts = [...selectedProducts];
-        const numQuantity = parseInt(quantity, 10) || 1;
-        newProducts[index].quantity = Math.max(1, numQuantity);
+        if (quantity === '') {
+            newProducts[index].quantity = '';
+        } else {
+            const numQuantity = parseInt(quantity, 10);
+            if (Number.isNaN(numQuantity)) {
+                newProducts[index].quantity = '';
+            } else {
+                newProducts[index].quantity = Math.max(1, numQuantity);
+            }
+        }
         setSelectedProducts(newProducts);
     };
 
@@ -111,7 +128,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
     const addProduct = () => {
         setSelectedProducts([
             ...selectedProducts,
-            { product: '', quantity: 1, price: 0, originalQuantity: 0 }
+            { product: '', quantity: '', price: 0, originalQuantity: 0 }
         ]);
     };
 
@@ -121,7 +138,11 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
     const calculateTotal = () => {
         return selectedProducts.reduce((total, item) => {
-            return total + (item.quantity * (item.price || 0));
+            const quantity = Number(item.quantity);
+            const price = Number(item.price);
+            const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+            const safePrice = Number.isFinite(price) ? price : 0;
+            return total + safeQuantity * safePrice;
         }, 0).toFixed(0);
     };
 
@@ -145,8 +166,8 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             await onUpdate({
                 products: selectedProducts.map(item => ({
                     product: item.product,
-                    quantity: item.quantity,
-                    price: item.price
+                    quantity: Number(item.quantity),
+                    price: Number(item.price) || 0
                 })),
                 note: modificationNote
             });
@@ -234,6 +255,8 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                 <label className="block text-sm font-medium text-gray-600">Quantité</label>
                                 <input
                                     type="number"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     min="1"
                                     step="1"
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200"
