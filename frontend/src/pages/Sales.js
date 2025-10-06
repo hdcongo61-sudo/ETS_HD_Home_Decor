@@ -220,6 +220,7 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CA Total</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commandes</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernier Paiement</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -266,6 +267,22 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {client.recency} jours
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {client.lastPaymentDate
+                  ? client.lastPaymentDate.toLocaleString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'Aucun paiement'}
+                {client.lastPaymentRecency != null && (
+                  <span className="block text-xs text-gray-400">
+                    {client.lastPaymentRecency} jours
+                  </span>
+                )}
               </td>
             </tr>
           ))}
@@ -733,25 +750,37 @@ const analyzeClientSegmentation = (salesData, clientsData) => {
     if (!sale?.client) return acc;
     const saleDate = parseDateSafely(sale.saleDate);
     if (!saleDate) return acc;
-    
+
     const clientId = sale.client._id;
     if (!acc[clientId]) {
       acc[clientId] = {
         totalSpent: 0,
         purchaseCount: 0,
         lastPurchase: saleDate,
+        lastPayment: null,
         averagePurchase: 0,
         client: sale.client
       };
     }
-    
+
     acc[clientId].totalSpent += sale.totalAmount || 0;
     acc[clientId].purchaseCount += 1;
     acc[clientId].lastPurchase = new Date(Math.max(
       acc[clientId].lastPurchase.getTime(),
       saleDate.getTime()
     ));
-    
+
+    if (Array.isArray(sale.payments)) {
+      sale.payments.forEach((payment) => {
+        const paymentDate = parseDateSafely(payment?.paymentDate || payment?.createdAt);
+        if (!paymentDate) return;
+
+        if (!acc[clientId].lastPayment || paymentDate > acc[clientId].lastPayment) {
+          acc[clientId].lastPayment = paymentDate;
+        }
+      });
+    }
+
     return acc;
   }, {});
 
@@ -761,16 +790,23 @@ const analyzeClientSegmentation = (salesData, clientsData) => {
     metrics.averagePurchase = metrics.purchaseCount > 0
       ? metrics.totalSpent / metrics.purchaseCount
       : 0;
-    
+
+    const lastPaymentTime = metrics.lastPayment?.getTime?.();
+    const lastPaymentRecency = lastPaymentTime != null
+      ? Math.floor((Date.now() - lastPaymentTime) / (1000 * 60 * 60 * 24))
+      : null;
+
     let segment = 'Nouveau';
     if (metrics.purchaseCount > 5 && metrics.totalSpent > 100000) segment = 'VIP';
     else if (metrics.purchaseCount > 2 && recency < 30) segment = 'Fidèle';
     else if (recency > 90) segment = 'Inactif';
-    
+
     return {
       ...metrics,
       segment,
-      recency
+      recency,
+      lastPaymentRecency,
+      lastPaymentDate: metrics.lastPayment
     };
   });
 
