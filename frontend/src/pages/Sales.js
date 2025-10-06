@@ -2005,48 +2005,72 @@ const Sales = () => {
                               <thead className="bg-gray-50">
                                 <tr>
                                   <th className="px-4 py-2 text-sm font-medium text-gray-600">Statut</th>
-                                  <th className="px-4 py-2 text-sm font-medium text-gray-600">Nombre</th>
-                                  <th className="px-4 py-2 text-sm font-medium text-gray-600">Montant total</th>
+                                  <th className="hidden md:table-cell px-4 py-2 text-sm font-medium text-gray-600">Nombre</th>
+                                  <th className="hidden md:table-cell px-4 py-2 text-sm font-medium text-gray-600">Montant total</th>
                                 </tr>
                               </thead>
                               <tbody className="md:divide-y md:divide-gray-100">
                                 <tr className="md:border-b md:border-gray-100">
-                                  <td className="px-4 py-3 text-sm flex items-center">
-                                    <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                                    Payée
+                                  <td className="px-4 py-3 text-sm flex flex-col md:flex-row md:items-center md:gap-2">
+                                    <span className="flex items-center">
+                                      <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                                      Payée
+                                    </span>
+                                    <div className="mt-2 space-y-1 text-xs text-gray-500 md:hidden">
+                                      <p>Nombre: {dashboardData.statusStats?.completed?.count || 0}</p>
+                                      <p>Montant: {(dashboardData.statusStats?.completed?.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.completed?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.completed?.count || 0}</td>
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.completed?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
                                 <tr className="md:border-b md:border-gray-100">
-                                  <td className="px-4 py-3 text-sm flex items-center">
-                                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                                    Partiellement payée
+                                  <td className="px-4 py-3 text-sm flex flex-col md:flex-row md:items-center md:gap-2">
+                                    <span className="flex items-center">
+                                      <span className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                                      Partiellement payée
+                                    </span>
+                                    <div className="mt-2 space-y-1 text-xs text-gray-500 md:hidden">
+                                      <p>Nombre: {dashboardData.statusStats?.partially_paid?.count || 0}</p>
+                                      <p>Montant: {(dashboardData.statusStats?.partially_paid?.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.partially_paid?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.partially_paid?.count || 0}</td>
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.partially_paid?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
                                 <tr className="md:border-b md:border-gray-100">
-                                  <td className="px-4 py-3 text-sm flex items-center">
-                                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                                    En attente
+                                  <td className="px-4 py-3 text-sm flex flex-col md:flex-row md:items-center md:gap-2">
+                                    <span className="flex items-center">
+                                      <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                                      En attente
+                                    </span>
+                                    <div className="mt-2 space-y-1 text-xs text-gray-500 md:hidden">
+                                      <p>Nombre: {dashboardData.statusStats?.pending?.count || 0}</p>
+                                      <p>Montant: {(dashboardData.statusStats?.pending?.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.pending?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.pending?.count || 0}</td>
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.pending?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
                                 <tr className="border-b border-gray-100">
-                                  <td className="px-4 py-3 text-sm flex items-center">
-                                    <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                                    Annulée
+                                  <td className="px-4 py-3 text-sm flex flex-col md:flex-row md:items-center md:gap-2">
+                                    <span className="flex items-center">
+                                      <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                                      Annulée
+                                    </span>
+                                    <div className="mt-2 space-y-1 text-xs text-gray-500 md:hidden">
+                                      <p>Nombre: {dashboardData.statusStats?.cancelled?.count || 0}</p>
+                                      <p>Montant: {(dashboardData.statusStats?.cancelled?.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.cancelled?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm font-medium md:text-right">
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">{dashboardData.statusStats?.cancelled?.count || 0}</td>
+                                  <td className="hidden md:table-cell px-4 py-3 text-sm font-medium md:text-right">
                                     {(dashboardData.statusStats?.cancelled?.totalAmount || 0).toLocaleString('fr-FR')} CFA
                                   </td>
                                 </tr>
