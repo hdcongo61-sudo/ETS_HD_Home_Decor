@@ -261,7 +261,10 @@ const SaleForm = ({ clients = [], onSubmit }) => {
           Produits
         </h3>
 
-        {selectedProducts.map((item, index) => (
+        {selectedProducts.map((item, index) => {
+          const selectedProduct = products.find((p) => p._id === item.product);
+
+          return (
           <div key={index} className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
             {/* Barre de recherche pour les produits */}
             <div className="mb-3">
@@ -344,6 +347,36 @@ const SaleForm = ({ clients = [], onSubmit }) => {
               </div>
             </div>
 
+            {selectedProduct && (
+              <div className="mt-3 bg-white border border-gray-200 rounded-xl p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-shrink-0 w-full sm:w-16">
+                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {selectedProduct.image ? (
+                        <img
+                          src={selectedProduct.image}
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 text-xs text-gray-600 space-y-1">
+                    <p className="text-sm font-semibold text-gray-800">{selectedProduct.name}</p>
+                    <p>Référence: {selectedProduct.sku || '—'}</p>
+                    <p>Stock disponible: {selectedProduct.stock}</p>
+                    {selectedProduct.price && (
+                      <p>Prix catalogue: {selectedProduct.price.toLocaleString('fr-FR')} CFA</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {errors[index] && (
               <div className="text-red-600 text-xs flex items-center gap-2 mt-2">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -353,7 +386,7 @@ const SaleForm = ({ clients = [], onSubmit }) => {
               </div>
             )}
           </div>
-        ))}
+        );})}
 
         <button
           type="button"
