@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
@@ -14,6 +14,7 @@ import {
     ArcElement
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 ChartJS.register(
     BarElement,
@@ -102,6 +103,9 @@ const DashboardAdmin = () => {
                 return total + (stat.totalAmount * 0.2);
             }, 0);
         };
+
+        const tableRef = useRef(null);
+        useResponsiveTable(tableRef, [salesStats]);
 
         const topSellersData = {
             labels: salesStats.map(stat => stat.userName),
@@ -266,8 +270,114 @@ const DashboardAdmin = () => {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                            <table className="w-full">
+                        <div className="md:hidden space-y-4">
+                            {salesStats.map((stat) => {
+                                const profit = stat.totalProfit ||
+                                    (stat.products
+                                        ? stat.products.reduce(
+                                            (sum, p) => sum + (p.priceAtSale - (p.product?.costPrice || 0)) * p.quantity,
+                                            0
+                                        )
+                                        : stat.totalAmount * 0.2);
+
+                                return (
+                                    <div key={stat.userId} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                    <span className="text-blue-600 font-semibold text-sm">
+                                                        {stat.userName.charAt(0)}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{stat.userName}</div>
+                                                    <div className="text-xs text-gray-500">{stat.userEmail}</div>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                                                {stat.clientsCount} clients
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                            <div className="rounded-xl bg-gray-50 p-3">
+                                                <div className="text-xs text-gray-500">Transactions</div>
+                                                <div className="font-semibold text-gray-900 mt-1">{stat.salesCount}</div>
+                                            </div>
+                                            <div className="rounded-xl bg-blue-50 p-3">
+                                                <div className="text-xs text-blue-600">Chiffre d'affaires</div>
+                                                <div className="font-semibold text-blue-700 mt-1">{formatCFA(stat.totalAmount)}</div>
+                                            </div>
+                                            <div className="rounded-xl bg-green-50 p-3 col-span-2">
+                                                <div className="text-xs text-green-600">Bénéfice</div>
+                                                <div className={`font-semibold mt-1 ${profit > 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                                    {formatCFA(profit)}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl bg-purple-50 p-3 col-span-2">
+                                                <div className="text-xs text-purple-600">Vente moyenne</div>
+                                                <div className="font-semibold text-purple-700 mt-1">{formatCFA(stat.averageSale)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="space-y-4 md:hidden">
+                            {salesStats.map((stat) => {
+                                const profit = stat.totalProfit ||
+                                    (stat.products
+                                        ? stat.products.reduce(
+                                            (sum, p) => sum + (p.priceAtSale - (p.product?.costPrice || 0)) * p.quantity,
+                                            0
+                                        )
+                                        : stat.totalAmount * 0.2);
+
+                                return (
+                                    <div key={stat.userId} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                                                    {stat.userName.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{stat.userName}</div>
+                                                    <div className="text-xs text-gray-500">{stat.userEmail}</div>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                                                {stat.clientsCount} clients
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                            <div className="rounded-xl bg-gray-50 p-3">
+                                                <div className="text-xs text-gray-500">Transactions</div>
+                                                <div className="font-semibold text-gray-900 mt-1">{stat.salesCount}</div>
+                                            </div>
+                                            <div className="rounded-xl bg-blue-50 p-3">
+                                                <div className="text-xs text-blue-600">Chiffre d'affaires</div>
+                                                <div className="font-semibold text-blue-700 mt-1">{formatCFA(stat.totalAmount)}</div>
+                                            </div>
+                                            <div className="rounded-xl bg-green-50 p-3 col-span-2">
+                                                <div className="text-xs text-green-600">Bénéfice</div>
+                                                <div className={`font-semibold mt-1 ${profit > 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                                    {formatCFA(profit)}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl bg-purple-50 p-3 col-span-2">
+                                                <div className="text-xs text-purple-600">Vente moyenne</div>
+                                                <div className="font-semibold text-purple-700 mt-1">{formatCFA(stat.averageSale)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hidden md:block">
+                            <table ref={tableRef} className="w-full responsive-table">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -454,14 +564,14 @@ const DashboardAdmin = () => {
             </div>
 
             <div className="border-b border-gray-200 mb-6">
-                <nav className="-mb-px flex space-x-6 overflow-x-auto">
+                <nav className="-mb-px flex flex-wrap gap-2 sm:flex-nowrap sm:space-x-6 overflow-x-auto pb-2 scrollbar-thin">
                     {['dashboard', 'salesStats', 'loginStats', 'users'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab
-                                ? 'border-blue-500 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            className={`flex-1 sm:flex-none whitespace-nowrap py-2 px-3 rounded-lg sm:rounded-none border sm:border-b-2 text-sm font-medium transition-colors ${activeTab === tab
+                                ? 'border-blue-500 bg-blue-50 text-blue-600 sm:bg-transparent'
+                                : 'border-transparent bg-white text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             {tab === 'dashboard' && 'Tableau de bord'}

@@ -216,20 +216,20 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
         <thead className="bg-gray-50">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Segment</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CA Total</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commandes</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernier Paiement</th>
+            <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Segment</th>
+            <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CA Total</th>
+            <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commandes</th>
+            <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière</th>
+            <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernier Paiement</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {clients.slice(0, 10).map((client, index) => (
             <tr key={index} className="hover:bg-gray-50 cursor-pointer"
                 onClick={() => onClientSelect(client)}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+              <td className="px-6 py-4 whitespace-nowrap align-top">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-blue-600">
                       {client.client.name.charAt(0)}
                     </span>
@@ -246,10 +246,30 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
                         Voir le profil
                       </Link>
                     )}
+                    <div className="mt-2 text-xs text-gray-500 space-y-1 md:hidden">
+                      <p>Segment: {client.segment}</p>
+                      <p>CA: {Math.round(client.totalSpent).toLocaleString('fr-FR')} CFA</p>
+                      <p>Commandes: {client.purchaseCount}</p>
+                      <p>Dernière: {client.recency} jours</p>
+                      <p>
+                        Dernier paiement: {client.lastPaymentDate
+                          ? client.lastPaymentDate.toLocaleString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'Aucun paiement'}
+                        {client.lastPaymentRecency != null && (
+                          <span className="text-gray-400"> ({client.lastPaymentRecency} jours)</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   client.segment === 'VIP' ? 'bg-purple-100 text-purple-800' :
                   client.segment === 'Fidèle' ? 'bg-green-100 text-green-800' :
@@ -259,16 +279,16 @@ const ClientRFMAnalysis = ({ clients, onClientSelect }) => {
                   {client.segment}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {Math.round(client.totalSpent).toLocaleString('fr-FR')} CFA
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {client.purchaseCount}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {client.recency} jours
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {client.lastPaymentDate
                   ? client.lastPaymentDate.toLocaleString('fr-FR', {
                       day: 'numeric',
@@ -579,28 +599,37 @@ const ProfitAnalysis = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-3 text-left text-sm font-medium text-gray-600">Produit</th>
-                <th className="p-3 text-right text-sm font-medium text-gray-600">Quantité</th>
-                <th className="p-3 text-right text-sm font-medium text-gray-600">Chiffre d'affaires</th>
-                <th className="p-3 text-right text-sm font-medium text-gray-600">Coût total</th>
-                <th className="p-3 text-right text-sm font-medium text-gray-600">Bénéfice</th>
-                <th className="p-3 text-right text-sm font-medium text-gray-600">Marge</th>
+                <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Quantité</th>
+                <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Chiffre d'affaires</th>
+                <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Coût total</th>
+                <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Bénéfice</th>
+                <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Marge</th>
               </tr>
             </thead>
             <tbody className="md:divide-y md:divide-gray-100">
               {topProducts.slice(0, 10).map((product, index) => (
                 <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="p-3 text-sm font-medium text-gray-900">{product.productName}</td>
-                  <td className="p-3 text-sm text-gray-700 md:text-right">{product.totalQuantity}</td>
-                  <td className="p-3 text-sm text-gray-700 md:text-right">
+                  <td className="p-3 text-sm font-medium text-gray-900">
+                    {product.productName}
+                    <div className="mt-2 text-xs text-gray-500 space-y-1 md:hidden">
+                      <p>Quantité: {product.totalQuantity}</p>
+                      <p>CA: {(product.totalRevenue || 0).toLocaleString('fr-FR')} CFA</p>
+                      <p>Coût: {(product.totalCost || 0).toLocaleString('fr-FR')} CFA</p>
+                      <p>Bénéfice: {(product.totalProfit || 0).toLocaleString('fr-FR')} CFA</p>
+                      <p>Marge: {(product.profitMargin || 0).toFixed(2)}%</p>
+                    </div>
+                  </td>
+                  <td className="hidden md:table-cell p-3 text-sm text-gray-700 md:text-right">{product.totalQuantity}</td>
+                  <td className="hidden md:table-cell p-3 text-sm text-gray-700 md:text-right">
                     {(product.totalRevenue || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm text-gray-700 md:text-right">
+                  <td className="hidden md:table-cell p-3 text-sm text-gray-700 md:text-right">
                     {(product.totalCost || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm font-semibold text-green-600 md:text-right">
+                  <td className="hidden md:table-cell p-3 text-sm font-semibold text-green-600 md:text-right">
                     {(product.totalProfit || 0).toLocaleString('fr-FR')} CFA
                   </td>
-                  <td className="p-3 text-sm font-semibold text-blue-600 md:text-right">
+                  <td className="hidden md:table-cell p-3 text-sm font-semibold text-blue-600 md:text-right">
                     {(product.profitMargin || 0).toFixed(2)}%
                   </td>
                 </tr>
@@ -634,22 +663,29 @@ const ProfitAnalysis = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium text-gray-600">Catégorie</th>
-                    <th className="p-3 text-right text-sm font-medium text-gray-600">Bénéfice</th>
-                    <th className="p-3 text-right text-sm font-medium text-gray-600">Marge</th>
-                    <th className="p-3 text-right text-sm font-medium text-gray-600">Ventes</th>
+                    <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Bénéfice</th>
+                    <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Marge</th>
+                    <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Ventes</th>
                   </tr>
                 </thead>
                 <tbody className="md:divide-y md:divide-gray-100">
                   {profitByCategory.map((category, index) => (
                     <tr key={index} className="border-b border-gray-100">
-                      <td className="p-3 text-sm font-medium text-gray-900">{category._id || 'Non catégorisé'}</td>
-                      <td className="p-3 text-sm font-semibold text-green-600 md:text-right">
+                      <td className="p-3 text-sm font-medium text-gray-900">
+                        {category._id || 'Non catégorisé'}
+                        <div className="mt-2 text-xs text-gray-500 space-y-1 md:hidden">
+                          <p>Bénéfice: {(category.totalProfit || 0).toLocaleString('fr-FR')} CFA</p>
+                          <p>Marge: {(category.profitMargin || 0).toFixed(2)}%</p>
+                          <p>Ventes: {category.saleCount}</p>
+                        </div>
+                      </td>
+                      <td className="hidden md:table-cell p-3 text-sm font-semibold text-green-600 md:text-right">
                         {(category.totalProfit || 0).toLocaleString('fr-FR')} CFA
                       </td>
-                      <td className="p-3 text-sm text-blue-600 md:text-right">
+                      <td className="hidden md:table-cell p-3 text-sm text-blue-600 md:text-right">
                         {(category.profitMargin || 0).toFixed(2)}%
                       </td>
-                      <td className="p-3 text-sm text-gray-700 md:text-right">{category.saleCount}</td>
+                      <td className="hidden md:table-cell p-3 text-sm text-gray-700 md:text-right">{category.saleCount}</td>
                     </tr>
                   ))}
                 </tbody>

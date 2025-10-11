@@ -2,6 +2,21 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+const statusStyles = {
+  pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
+  paid: { label: 'Payé', classes: 'bg-green-100 text-green-800' },
+  cancelled: { label: 'Annulé', classes: 'bg-red-100 text-red-800' }
+};
+
+const advanceStatusStyles = {
+  pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
+  approved: { label: 'Approuvée', classes: 'bg-green-100 text-green-800' },
+  rejected: { label: 'Rejetée', classes: 'bg-red-100 text-red-800' }
+};
+
+const formatPeriod = (month, year) =>
+  new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
 const EmployeeDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -358,63 +373,153 @@ const EmployeeDetail = () => {
               </div>
 
               {paySlips.length > 0 ? (
-                <div className="overflow-hidden border border-gray-200 rounded-2xl">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Période</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salaire net</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {paySlips.map((slip) => (
-                        <tr key={slip._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {new Date(slip.year, slip.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                <>
+                  <div className="space-y-4 md:hidden">
+                    {paySlips.map((slip) => {
+                      const status = statusStyles[slip.status] || statusStyles.pending;
+                      return (
+                        <div key={slip._id} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 capitalize">
+                                {formatPeriod(slip.month, slip.year)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Salaire net :
+                                <span className="ml-1 font-semibold text-blue-600">
+                                  {new Intl.NumberFormat('fr-FR').format(slip.netSalary)} CFA
+                                </span>
+                              </p>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Intl.NumberFormat('fr-FR').format(slip.netSalary)} CFA
-                          </td>
+                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
+                              {status.label}
+                            </span>
+                          </div>
 
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex gap-3">
-                              <Link
-                                to={`/employees/${id}/payroll`}
-                                className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </Link>
-
-                              <Link
-                                to={`/employees/${id}/payroll/${slip._id}/edit`}
-                                className="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                              </Link>
-
-                              <button
-                                onClick={() => handleDeletePaySlip(slip._id)}
-                                className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                          <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Salaire de base</p>
+                              <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {new Intl.NumberFormat('fr-FR').format(slip.baseSalary)} CFA
+                              </p>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Primes</p>
+                              <p className="mt-1 text-sm font-semibold text-green-600">
+                                + {new Intl.NumberFormat('fr-FR').format(slip.bonuses || 0)} CFA
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Déductions</p>
+                              <p className="mt-1 text-sm font-semibold text-red-500">
+                                - {new Intl.NumberFormat('fr-FR').format(slip.deductions || 0)} CFA
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Créé le</p>
+                              <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {slip.createdAt ? new Date(slip.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                            <Link
+                              to={`/employees/${id}/payroll`}
+                              className="flex-1 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-600 shadow-sm transition-colors hover:bg-blue-50"
+                            >
+                              Voir la liste
+                            </Link>
+                            <Link
+                              to={`/employees/${id}/payroll/${slip._id}/edit`}
+                              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-100"
+                            >
+                              Modifier
+                            </Link>
+                            <button
+                              onClick={() => handleDeletePaySlip(slip._id)}
+                              className="flex-1 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-50"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden md:block">
+                    <div className="overflow-hidden border border-gray-200 rounded-2xl">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Période</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salaire net</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paySlips.map((slip) => {
+                            const status = statusStyles[slip.status] || statusStyles.pending;
+                            return (
+                              <tr key={slip._id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900 capitalize">
+                                    {formatPeriod(slip.month, slip.year)}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {new Intl.NumberFormat('fr-FR').format(slip.netSalary)} CFA
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
+                                    {status.label}
+                                  </span>
+                                </td>
+
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex gap-3">
+                                    <Link
+                                      to={`/employees/${id}/payroll`}
+                                      className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
+                                      title="Voir la liste"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                    </Link>
+
+                                    <Link
+                                      to={`/employees/${id}/payroll/${slip._id}/edit`}
+                                      className="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                                      title="Modifier"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </Link>
+
+                                    <button
+                                      onClick={() => handleDeletePaySlip(slip._id)}
+                                      className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                                      title="Supprimer"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 border border-dashed border-gray-300 rounded-2xl">
                   <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,57 +558,111 @@ const EmployeeDetail = () => {
               </div>
 
               {advances.length > 0 ? (
-                <div className="overflow-hidden border border-gray-200 rounded-2xl">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raison</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {advances.map((advance) => (
-                        <tr key={advance._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">
-                              {new Date(advance.date).toLocaleDateString('fr-FR')}
+                <>
+                  <div className="space-y-4 md:hidden">
+                    {advances.map((advance) => {
+                      const status = advanceStatusStyles[advance.status] || advanceStatusStyles.pending;
+                      return (
+                        <div key={advance._id} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {new Date(advance.date).toLocaleDateString('fr-FR')}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Montant :
+                                <span className="ml-1 font-semibold text-blue-600">
+                                  {new Intl.NumberFormat('fr-FR').format(advance.amount)} CFA
+                                </span>
+                              </p>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {new Intl.NumberFormat('fr-FR').format(advance.amount)} CFA
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {advance.reason || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              advance.status === 'approved' 
-                                ? 'bg-green-100 text-green-800' 
-                                : advance.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {advance.status === 'approved' ? 'Approuvé' : advance.status === 'pending' ? 'En attente' : 'Rejeté'}
+                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
+                              {status.label}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          </div>
+
+                          <div className="mt-4 space-y-3 text-xs text-gray-600">
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Raison</p>
+                              <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {advance.reason || 'Aucune raison fournie'}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
+                              <p className="font-medium text-gray-500">Créée le</p>
+                              <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {advance.createdAt ? new Date(advance.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                             <button
                               onClick={() => handleDeleteAdvance(advance._id)}
-                              className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                              className="flex-1 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-50"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                              Supprimer
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden md:block">
+                    <div className="overflow-hidden border border-gray-200 rounded-2xl">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raison</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créée le</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {advances.map((advance) => {
+                            const status = advanceStatusStyles[advance.status] || advanceStatusStyles.pending;
+                            return (
+                              <tr key={advance._id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {new Date(advance.date).toLocaleDateString('fr-FR')}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {new Intl.NumberFormat('fr-FR').format(advance.amount)} CFA
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500">
+                                  {advance.reason || '—'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
+                                    {status.label}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {advance.createdAt ? new Date(advance.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <button
+                                    onClick={() => handleDeleteAdvance(advance._id)}
+                                    className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                                    title="Supprimer"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 border border-dashed border-gray-300 rounded-2xl">
                   <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

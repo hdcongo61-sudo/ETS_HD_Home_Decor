@@ -3,12 +3,22 @@
   "name": "ETSHD-Gestion",
   "description": "Tableau de bord ETS HD Home Decor",
   "lang": "fr",
-  "start_url": ".",
-  "scope": ".",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "fullscreen"
+  ],
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

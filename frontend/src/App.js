@@ -16,6 +16,9 @@ import PaySlipPrint from './components/PaySlipPrint';
 import PaySlipFormEdit from './components/PaySlipFormEdit';
 import { ModalProvider } from './context/ModalContext';
 import GlobalModals from './components/GlobalModals';
+import OfflineIndicator from './components/OfflineIndicator';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
+import SiteFooter from './components/SiteFooter';
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -40,10 +43,13 @@ function App() {
     <ModalProvider>
       <AuthProvider>
         <Router>
-          <Navigation />
-          <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
-            <div className="container mx-auto px-4 py-8">
-              <Routes>
+          <div className="min-h-screen flex flex-col bg-gray-50">
+            <Navigation />
+            <OfflineIndicator />
+            <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
+              <main className="flex-1">
+                <div className="container mx-auto px-4 py-8">
+                  <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/access-restricted" element={<AccessRestricted />} />
                 <Route
@@ -265,8 +271,12 @@ function App() {
                 />
               </Routes>
             </div>
-          </Suspense>
-          <GlobalModals />
+          </main>
+        </Suspense>
+        <SiteFooter />
+        <GlobalModals />
+        <PwaInstallPrompt />
+      </div>
         </Router>
       </AuthProvider>
     </ModalProvider>

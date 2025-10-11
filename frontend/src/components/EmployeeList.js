@@ -265,13 +265,13 @@ const EmployeeList = () => {
               </div>
               <div className="flex justify-between pt-4 border-t border-gray-100">
                 <Link
-                  to={`/employees/${employee._id}/payslips`}
+                  to={`/employees/${employee._id}/payroll`}
                   className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
                   </svg>
-                  Fiches de paie
+                  Fiche de paie
                 </Link>
                 <Link
                   to={`/employees/${employee._id}/advances`}

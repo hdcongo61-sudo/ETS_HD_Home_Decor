@@ -142,6 +142,14 @@ const Expenses = () => {
     other: 'bg-purple-500'
   };
 
+  const categoryBarColors = {
+    rent: '#ef4444',
+    utilities: '#3b82f6',
+    salaries: '#10b981',
+    supplies: '#f59e0b',
+    other: '#a855f7'
+  };
+
   // Labels pour les catégories
   const categoryLabels = {
     rent: 'Loyer',
@@ -180,7 +188,7 @@ const Expenses = () => {
           Tableau de Bord des Dépenses
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Carte: Total dépensé */}
           <StatCard
             title="Total dépensé"
@@ -224,7 +232,7 @@ const Expenses = () => {
             Répartition par catégorie
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Diagramme circulaire */}
             <div className="flex justify-center">
               <div className="relative w-56 h-56">
@@ -290,7 +298,7 @@ const Expenses = () => {
                             className="h-2 rounded-full"
                             style={{
                               width: `${percentage}%`,
-                              backgroundColor: categoryColors[category]?.replace('bg-', '').toLowerCase() || '#9CA3AF'
+                              backgroundColor: categoryBarColors[category] || '#9ca3af'
                             }}
                           ></div>
                         </div>
@@ -367,7 +375,7 @@ const Expenses = () => {
               </select>
               <button
                 onClick={() => setFilter({ search: '', startDate: '', endDate: '', category: '' })}
-                className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium"
+                className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium w-full"
               >
                 Réinitialiser
               </button>
@@ -398,7 +406,66 @@ const Expenses = () => {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              <div className="space-y-4 md:hidden">
+                {expenses.map((expense) => (
+                  <div key={expense._id} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{expense.description}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(expense.date).toLocaleDateString('fr-FR')} ·{' '}
+                          <span className="capitalize">{expense.paymentMethod}</span>
+                        </p>
+                      </div>
+                      <p className="text-base font-semibold text-blue-600">{expense.amount.toLocaleString('fr-FR')} CFA</p>
+                    </div>
+
+                    {(expense.createdBy || expense.updatedBy) && (
+                      <div className="mt-3 rounded-xl bg-white/70 p-3 text-xs text-gray-500">
+                        {expense.createdBy && (
+                          <div>
+                            Créé par {formatUser(expense.createdBy)}
+                            {formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}
+                          </div>
+                        )}
+                        {expense.updatedBy && (
+                          <div className="mt-1">
+                            Modifié par {formatUser(expense.updatedBy)}
+                            {formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${expense.category === 'rent' ? 'bg-red-100 text-red-800' :
+                          expense.category === 'salaries' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}
+                      >
+                        {categoryLabels[expense.category] || expense.category}
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(expense)}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-sm"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDelete(expense._id)}
+                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-600 shadow-sm"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-visible md:overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>

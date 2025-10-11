@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import UserForm from './UserForm';
 import { toast } from 'react-toastify';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 // Icônes SVG réutilisables
 const PencilIcon = ({ className }) => (
@@ -197,6 +198,9 @@ const UserDashboard = () => {
     const totalUsersCount = users.length;
     const connectedUsersCount = connectedUsers.length;
 
+    const usersTableRef = useRef(null);
+    useResponsiveTable(usersTableRef, [filteredUsers]);
+
     if (!auth.isAdmin) {
         return (
             <div className="max-w-4xl mx-auto p-6 bg-white rounded-2xl mt-10">
@@ -370,8 +374,8 @@ const UserDashboard = () => {
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                     {filteredUsers.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
+                        <div className="overflow-visible md:overflow-x-auto">
+                            <table ref={usersTableRef} className="w-full responsive-table">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>

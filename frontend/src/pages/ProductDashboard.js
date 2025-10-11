@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
@@ -14,6 +14,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 const ProductDashboard = () => {
     const [dashboardData, setDashboardData] = useState(null);
@@ -73,6 +74,55 @@ const ProductDashboard = () => {
         return 'Autre';
     };
 
+    // Données pour le graphique des niveaux de stock
+    const stockLevelData = [
+        { name: 'Stock Critique', value: dashboardData?.lowStockCount ?? 0 },
+        { name: 'Stock Moyen', value: dashboardData?.mediumStockCount ?? 0 },
+        { name: 'Stock Suffisant', value: dashboardData?.goodStockCount ?? 0 }
+    ];
+
+    const categoryDistributionMap = (dashboardData?.categoryDistribution || []).reduce((acc, entry) => {
+        const label = resolveCategory(entry.category);
+        if (!acc[label]) {
+            acc[label] = { category: label, count: 0 };
+        }
+        acc[label].count += entry.count || 0;
+        return acc;
+    }, {});
+
+    const categoryDistribution = CATEGORY_ORDER
+        .filter((label) => categoryDistributionMap[label])
+        .map((label) => categoryDistributionMap[label]);
+
+    if (categoryDistributionMap.Autre) {
+        categoryDistribution.push(categoryDistributionMap.Autre);
+    }
+
+    // Données pour les produits à stock zéro
+    const outOfStockProducts = dashboardData?.outOfStockProducts || [];
+
+    // Données pour les produits avec stock à 1
+    const criticalStockProducts = dashboardData?.criticalStockProducts || [];
+
+    // Données pour les produits les plus chers
+    const mostExpensiveProducts = dashboardData?.mostExpensiveProducts || [];
+
+    // Données pour les produits les plus vendus
+    const topSellingProducts = dashboardData?.topSellingProducts || [];
+
+    // Données pour les produits jamais vendus
+    const neverSoldProducts = dashboardData?.neverSoldProducts || [];
+
+    const neverSoldTableRef = useRef(null);
+    const outOfStockTableRef = useRef(null);
+    const criticalStockTableRef = useRef(null);
+    const lowStockTableRef = useRef(null);
+
+    useResponsiveTable(neverSoldTableRef, [neverSoldProducts]);
+    useResponsiveTable(outOfStockTableRef, [outOfStockProducts]);
+    useResponsiveTable(criticalStockTableRef, [criticalStockProducts]);
+    useResponsiveTable(lowStockTableRef, [dashboardData.lowStockProducts || []]);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -103,45 +153,6 @@ const ProductDashboard = () => {
             </div>
         );
     }
-
-    // Données pour le graphique des niveaux de stock
-    const stockLevelData = [
-        { name: 'Stock Critique', value: dashboardData.lowStockCount },
-        { name: 'Stock Moyen', value: dashboardData.mediumStockCount },
-        { name: 'Stock Suffisant', value: dashboardData.goodStockCount }
-    ];
-
-    const categoryDistributionMap = (dashboardData.categoryDistribution || []).reduce((acc, entry) => {
-        const label = resolveCategory(entry.category);
-        if (!acc[label]) {
-            acc[label] = { category: label, count: 0 };
-        }
-        acc[label].count += entry.count || 0;
-        return acc;
-    }, {});
-
-    const categoryDistribution = CATEGORY_ORDER
-        .filter((label) => categoryDistributionMap[label])
-        .map((label) => categoryDistributionMap[label]);
-
-    if (categoryDistributionMap.Autre) {
-        categoryDistribution.push(categoryDistributionMap.Autre);
-    }
-
-    // Données pour les produits à stock zéro
-    const outOfStockProducts = dashboardData.outOfStockProducts || [];
-    
-    // Données pour les produits avec stock à 1
-    const criticalStockProducts = dashboardData.criticalStockProducts || [];
-    
-    // Données pour les produits les plus chers
-    const mostExpensiveProducts = dashboardData.mostExpensiveProducts || [];
-    
-    // Données pour les produits les plus vendus
-    const topSellingProducts = dashboardData.topSellingProducts || [];
-    
-    // Données pour les produits jamais vendus
-    const neverSoldProducts = dashboardData.neverSoldProducts || [];
 
     return (
         <div className="bg-white rounded-2xl p-6">
@@ -371,8 +382,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {neverSoldProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={neverSoldTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -476,8 +487,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {outOfStockProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={outOfStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -546,6 +557,7 @@ const ProductDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-gray-100">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                     <h2 className="text-xl font-semibold mb-2 md:mb-0">Produits à Stock Très Critique (1 unité)</h2>
+                    <p className="text-sm text-red-500 font-medium">{criticalStockProducts.length} produit(s) en rupture</p>
                     <button
                         onClick={() => navigate('/products')}
                         className="text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium"
@@ -558,8 +570,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {criticalStockProducts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={criticalStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -644,8 +656,8 @@ const ProductDashboard = () => {
                 </div>
 
                 {dashboardData.lowStockProducts?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-visible md:overflow-x-auto">
+                        <table ref={lowStockTableRef} className="min-w-full divide-y divide-gray-200 responsive-table">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>

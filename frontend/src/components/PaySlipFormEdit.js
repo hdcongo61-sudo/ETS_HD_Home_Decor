@@ -47,7 +47,7 @@ const PaySlipFormEdit = () => {
                     } else {
                         setErrors({
                             general: payslipErr.response?.data?.message ||
-                                'Error loading payslip data'
+                                'Erreur de chargement du bulletin'
                         });
                     }
                 }
@@ -58,7 +58,7 @@ const PaySlipFormEdit = () => {
                 } else {
                     setErrors({
                         general: employeeErr.response?.data?.message ||
-                            'Error loading data'
+                            'Erreur de chargement des données'
                     });
                 }
             } finally {
@@ -93,7 +93,7 @@ const PaySlipFormEdit = () => {
         } catch (err) {
             setErrors({
                 general: err.response?.data?.message ||
-                    'Error updating payslip',
+                    'Erreur lors de la mise à jour du bulletin',
                 ...err.response?.data?.errors
             });
         } finally {
@@ -139,7 +139,7 @@ const PaySlipFormEdit = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h1 className="text-2xl font-semibold text-gray-900">Resource Not Found</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">Ressource introuvable</h1>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
@@ -152,11 +152,11 @@ const PaySlipFormEdit = () => {
                     </div>
 
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                        Payslip Not Found
+                        Bulletin introuvable
                     </h3>
                     <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        The payslip with ID "{payslipId.substring(0, 8)}" doesn't exist for the selected employee.
-                        It may have been deleted or you don't have the necessary permissions to access it.
+                        Le bulletin avec l'ID "{payslipId.substring(0, 8)}" n'existe pas pour l'employé sélectionné.
+                        Il a peut-être été supprimé ou vous n'avez pas les autorisations nécessaires pour y accéder.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -167,7 +167,7 @@ const PaySlipFormEdit = () => {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Go Back
+                            Retour
                         </button>
                         <button
                             onClick={() => navigate(`/employees/${id}/payroll`)}
@@ -176,7 +176,7 @@ const PaySlipFormEdit = () => {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            View Payslips
+                            Voir les bulletins
                         </button>
                     </div>
                 </div>
@@ -195,14 +195,14 @@ const PaySlipFormEdit = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h1 className="text-2xl font-semibold text-gray-900">Edit Payslip</h1>
+                <h1 className="text-2xl font-semibold text-gray-900">Modifier le bulletin</h1>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                 {/* Employee Information */}
                 {employee && (
                     <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                        <div className="text-sm font-medium text-gray-500 mb-1">Employee</div>
+                        <div className="text-sm font-medium text-gray-500 mb-1">Employé</div>
                         <div className="flex items-center gap-4 mb-3">
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
                                 <span className="text-gray-600 font-medium text-lg">
@@ -216,17 +216,17 @@ const PaySlipFormEdit = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <div className="text-xs text-gray-500">Department</div>
+                                <div className="text-xs text-gray-500">Département</div>
                                 <div className="text-sm font-medium text-gray-900">{employee.department}</div>
                             </div>
                             <div>
-                                <div className="text-xs text-gray-500">Base Salary</div>
+                                <div className="text-xs text-gray-500">Salaire de base</div>
                                 <div className="text-sm font-medium text-gray-900">
                                     {employee.salary?.toLocaleString('fr-FR')} CFA
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs text-gray-500">Payslip ID</div>
+                                <div className="text-xs text-gray-500">ID du bulletin</div>
                                 <div className="text-sm font-mono text-gray-600">{payslipId.substring(0, 8)}</div>
                             </div>
                         </div>
@@ -239,7 +239,7 @@ const PaySlipFormEdit = () => {
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                         <div className="flex-1">
-                            <div className="font-medium">Error</div>
+                            <div className="font-medium">Erreur</div>
                             <div className="text-sm">{errors.general}</div>
                         </div>
                     </div>
@@ -249,7 +249,7 @@ const PaySlipFormEdit = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
-                                Month
+                                Mois
                             </label>
                             <select
                                 name="month"
@@ -280,7 +280,7 @@ const PaySlipFormEdit = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
-                                Year
+                                Année
                             </label>
                             <input
                                 type="number"
@@ -304,7 +304,7 @@ const PaySlipFormEdit = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
-                                Deductions (CFA)
+                                Déductions (CFA)
                             </label>
                             <input
                                 type="number"
@@ -327,7 +327,7 @@ const PaySlipFormEdit = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
-                                Bonuses (CFA)
+                                Primes (CFA)
                             </label>
                             <input
                                 type="number"
@@ -359,7 +359,7 @@ const PaySlipFormEdit = () => {
                             onChange={handleChange}
                             rows="3"
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder="Add notes about this payslip..."
+                            placeholder="Ajoutez des notes sur ce bulletin de paie..."
                             disabled={isSubmitting}
                         />
                         {errors.notes && (
@@ -374,13 +374,13 @@ const PaySlipFormEdit = () => {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">
-                            Status
+                            Statut
                         </label>
                         <div className="flex space-x-4">
                             {[
-                                { value: 'pending', label: 'Pending', color: 'bg-amber-100 text-amber-800' },
-                                { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-800' },
-                                { value: 'cancelled', label: 'Cancelled', color: 'bg-red-100 text-red-800' }
+                                { value: 'pending', label: 'En attente', color: 'bg-amber-100 text-amber-800' },
+                                { value: 'paid', label: 'Payé', color: 'bg-green-100 text-green-800' },
+                                { value: 'cancelled', label: 'Annulé', color: 'bg-red-100 text-red-800' }
                             ].map((option) => (
                                 <label key={option.value} className="flex items-center">
                                     <input
@@ -404,29 +404,29 @@ const PaySlipFormEdit = () => {
 
                     {/* Net Salary Calculation */}
                     <div className="bg-gray-50 rounded-xl p-5">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Salary Calculation</h3>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Calcul du salaire</h3>
                         <div className="space-y-3">
                             <div className="flex justify-between">
-                                <span className="text-gray-600">Base Salary</span>
+                                <span className="text-gray-600">Salaire de base</span>
                                 <span className="font-medium">
                                     {employee?.salary?.toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">+ Bonuses</span>
+                                <span className="text-gray-600">+ Primes</span>
                                 <span className="text-green-600 font-medium">
                                     + {parseFloat(formData.bonuses || 0).toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">- Deductions</span>
+                                <span className="text-gray-600">- Déductions</span>
                                 <span className="text-red-600 font-medium">
                                     - {parseFloat(formData.deductions || 0).toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
                             <div className="border-t border-gray-200 pt-3 mt-2">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-800 font-semibold">Net Salary</span>
+                                    <span className="text-gray-800 font-semibold">Salaire net</span>
                                     <span className="text-xl font-bold text-blue-600">
                                         {netSalary.toLocaleString('fr-FR')} CFA
                                     </span>
@@ -443,7 +443,7 @@ const PaySlipFormEdit = () => {
                             className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            Annuler
                         </button>
                         <button
                             type="submit"
@@ -453,14 +453,14 @@ const PaySlipFormEdit = () => {
                             {isSubmitting ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    Updating...
+                                    Mise à jour...
                                 </>
                             ) : (
                                 <>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                     </svg>
-                                    Update Payslip
+                                    Mettre à jour le bulletin
                                 </>
                             )}
                         </button>
