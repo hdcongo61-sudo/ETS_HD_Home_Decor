@@ -4,6 +4,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('cash');
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Reset form when modal is opened
     useEffect(() => {
@@ -11,10 +12,11 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             setAmount('');
             setMethod('cash');
             setError('');
+            setIsSubmitting(false);
         }
     }, [show]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const paymentAmount = parseFloat(amount);
@@ -29,10 +31,21 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             return;
         }
 
-        onAddPayment({
-            amount: paymentAmount,
-            method
-        });
+        setIsSubmitting(true);
+        setError('');
+
+        try {
+            await onAddPayment({
+                amount: paymentAmount,
+                method
+            });
+        } catch (submissionError) {
+            const fallbackMessage = 'Impossible d\'ajouter le paiement. Veuillez réessayer.';
+            const apiMessage = submissionError?.response?.data?.message || submissionError?.message;
+            setError(apiMessage || fallbackMessage);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!show || !sale) return null;
@@ -190,18 +203,29 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl transition-colors"
+                                disabled={isSubmitting}
+                                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                             >
                                 Annuler
                             </button>
                             <button
                                 type="submit"
-                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-2"
+                                disabled={isSubmitting}
+                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-2 disabled:cursor-not-allowed disabled:bg-blue-400"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                                Enregistrer
+                                {isSubmitting ? (
+                                    <>
+                                        <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                                        Traitement...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Enregistrer
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>

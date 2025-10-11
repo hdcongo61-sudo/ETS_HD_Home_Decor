@@ -1151,7 +1151,7 @@ const Sales = () => {
   const handleAddPayment = async (paymentData) => {
     try {
       await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
-      fetchSales();
+      await fetchSales();
       setMessage('Paiement ajouté avec succès!');
       setShowPaymentModal(false);
 
@@ -1161,6 +1161,7 @@ const Sales = () => {
     } catch (error) {
       console.error('Payment error:', error.response?.data);
       setMessage('Erreur: ' + (error.response?.data?.message || error.message));
+      throw error;
     }
   };
 
