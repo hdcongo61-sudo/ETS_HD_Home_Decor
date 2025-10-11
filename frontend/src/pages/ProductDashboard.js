@@ -121,7 +121,7 @@ const ProductDashboard = () => {
     useResponsiveTable(neverSoldTableRef, [neverSoldProducts]);
     useResponsiveTable(outOfStockTableRef, [outOfStockProducts]);
     useResponsiveTable(criticalStockTableRef, [criticalStockProducts]);
-    useResponsiveTable(lowStockTableRef, [dashboardData.lowStockProducts || []]);
+    useResponsiveTable(lowStockTableRef, [dashboardData?.lowStockProducts || []]);
 
     if (loading) {
         return (
