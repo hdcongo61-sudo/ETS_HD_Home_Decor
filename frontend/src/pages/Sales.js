@@ -901,6 +901,7 @@ const Sales = () => {
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState('');
   const [deliveryNote, setDeliveryNote] = useState('');
+  const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
 
   useAutoClearMessage(message, setMessage);
 
@@ -1168,6 +1169,7 @@ const Sales = () => {
   const handleUpdateDelivery = async () => {
     try {
       setMessage('Mise à jour en cours...');
+      setIsUpdatingDelivery(true);
 
       const payload = {
         deliveryStatus,
@@ -1187,6 +1189,7 @@ const Sales = () => {
     } catch (error) {
       console.error('Erreur:', error);
       setMessage('❌ Erreur: ' + (error.response?.data?.message || error.message));
+      setIsUpdatingDelivery(false);
     }
   };
 
@@ -2212,15 +2215,24 @@ const Sales = () => {
                     <div className="flex justify-end gap-3 mt-6">
                       <button
                         onClick={() => setShowDeliveryModal(false)}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                        disabled={isUpdatingDelivery}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         Annuler
                       </button>
                       <button
                         onClick={handleUpdateDelivery}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                        disabled={isUpdatingDelivery}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
                       >
-                        Enregistrer
+                        {isUpdatingDelivery ? (
+                          <>
+                            <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                            Mise à jour...
+                          </>
+                        ) : (
+                          'Enregistrer'
+                        )}
                       </button>
                     </div>
                   </div>

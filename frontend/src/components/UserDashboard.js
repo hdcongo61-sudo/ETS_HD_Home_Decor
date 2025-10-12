@@ -290,10 +290,11 @@ const UserDashboard = () => {
                             setSelectedUser(null);
                             setShowForm(true);
                         }}
-                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm"
+                        disabled={stats.totalUsers >= 3}
+                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
                     >
                         <PlusIcon className="w-4 h-4 text-white" />
-                        Ajouter un utilisateur
+                        {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
                     </button>
                 </div>
             </div>
@@ -565,10 +566,11 @@ const UserDashboard = () => {
                             </p>
                             <button
                                 onClick={() => setShowForm(true)}
-                                className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm"
+                                disabled={stats.totalUsers >= 3}
+                                className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
                             >
                                 <PlusIcon className="w-4 h-4 text-white" />
-                                Ajouter un utilisateur
+                                {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
                             </button>
                         </div>
                     )}
