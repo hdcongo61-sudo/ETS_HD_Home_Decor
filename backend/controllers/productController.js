@@ -391,8 +391,16 @@ const getProductDashboard = async (req, res) => {
     });
 
     // Produits jamais vendus
-    const neverSoldProducts = products
-      .filter(product => !soldProductIds.has(product._id.toString()))
+    const neverSoldProductsAll = products.filter(
+      product => !soldProductIds.has(product._id.toString())
+    );
+
+    const neverSoldStockValue = neverSoldProductsAll.reduce(
+      (sum, product) => sum + (product.price || 0) * (product.stock || 0),
+      0
+    );
+
+    const neverSoldProducts = [...neverSoldProductsAll]
       .sort((a, b) => b.price - a.price) // Trier par prix décroissant
       .slice(0, 10); // Limiter à 10 produits pour l'affichage
 
@@ -441,7 +449,7 @@ const getProductDashboard = async (req, res) => {
     const mediumStockCount = products.filter(p => (p.stock || 0) >= 10 && (p.stock || 0) < 20).length;
     const goodStockCount = products.filter(p => (p.stock || 0) >= 20).length;
     const zeroStockCount = products.filter(p => (p.stock || 0) === 0).length;
-    const neverSoldCount = neverSoldProducts.length;
+    const neverSoldCount = neverSoldProductsAll.length;
 
     // Calculer la marge moyenne
     const productsWithMargin = products.filter(p => p.costPrice > 0);
@@ -559,6 +567,7 @@ const getProductDashboard = async (req, res) => {
       goodStockCount,
       zeroStockCount,
       neverSoldCount,
+      neverSoldStockValue,
       
       // Métriques calculées
       averageMargin: Number(averageMargin.toFixed(2)),

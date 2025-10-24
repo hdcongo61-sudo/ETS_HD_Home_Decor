@@ -112,6 +112,8 @@ const ProductDashboard = () => {
 
     // Données pour les produits jamais vendus
     const neverSoldProducts = dashboardData?.neverSoldProducts || [];
+    const neverSoldCount = dashboardData?.neverSoldCount ?? neverSoldProducts.length;
+    const neverSoldStockValue = dashboardData?.neverSoldStockValue ?? 0;
 
     const neverSoldTableRef = useRef(null);
     const outOfStockTableRef = useRef(null);
@@ -197,7 +199,8 @@ const ProductDashboard = () => {
 
                 <StatCard
                     title="Jamais Vendus"
-                    value={neverSoldProducts.length}
+                    value={neverSoldCount}
+                    detail={`${neverSoldStockValue.toLocaleString()} CFA de stock`}
                     icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     color="purple"
                 />
@@ -367,7 +370,7 @@ const ProductDashboard = () => {
                     <h2 className="text-xl font-semibold mb-2 md:mb-0">Produits Jamais Vendus</h2>
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">
-                            {neverSoldProducts.length} produit(s) sans vente
+                            {neverSoldCount} produit(s) sans vente - {neverSoldStockValue.toLocaleString()} CFA de stock
                         </span>
                         <button
                             onClick={() => navigate('/products')}
@@ -742,7 +745,7 @@ const ProductDashboard = () => {
 };
 
 // Composant de carte statistique réutilisable
-const StatCard = ({ title, value, icon, color = 'blue' }) => {
+const StatCard = ({ title, value, icon, color = 'blue', detail }) => {
     const colorClasses = {
         blue: { bg: 'bg-blue-50', border: 'border-blue-500', text: 'text-blue-600' },
         green: { bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-600' },
@@ -757,7 +760,12 @@ const StatCard = ({ title, value, icon, color = 'blue' }) => {
         <div className={`rounded-lg p-4 border-l-4 ${colors.border} ${colors.bg}`}>
             <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
             <div className="flex justify-between items-end">
-                <p className="text-2xl font-bold">{value}</p>
+                <div>
+                    <p className="text-2xl font-bold">{value}</p>
+                    {detail ? (
+                        <p className="text-sm font-medium text-gray-500 mt-1">{detail}</p>
+                    ) : null}
+                </div>
                 <div className={`p-2 rounded-full ${colors.bg.replace('50', '100')}`}>
                     <svg className={`w-6 h-6 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
