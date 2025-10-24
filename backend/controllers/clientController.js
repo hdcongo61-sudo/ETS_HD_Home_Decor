@@ -1,4 +1,5 @@
 const Client = require('../models/clientModel');
+const Sale = require('../models/saleModel');
 
 const getClients = async (req, res) => {
   try {
@@ -16,7 +17,7 @@ const getClients = async (req, res) => {
     }
 
     let query = Client.find(searchQuery)
-      .select('name email phone address createdAt updatedAt')
+      .select('name email phone totalPurchases purchaseCount lastPurchaseDate createdAt updatedAt')
       .sort({ createdAt: -1 });
 
     if (req.user && req.user.isAdmin) {
@@ -145,10 +146,134 @@ const deleteClient = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Obtenir les statistiques clients (pour le header & le graphique)
+ * @route   GET /api/clients/stats
+ * @access  Private (admin ou sales manager)
+ */
+const getClientStats = async (req, res) => {
+  try {
+    // Total de clients
+    const totalClients = await Client.countDocuments();
+
+    // Total dépensé et moyenne par client
+    const sales = await Sale.aggregate([
+      { $group: { _id: '$client', totalSpent: { $sum: '$totalAmount' } } }
+    ]);
+
+    const totalSpent = sales.reduce((sum, s) => sum + (s.totalSpent || 0), 0);
+    const avgSpent = sales.length ? totalSpent / sales.length : 0;
+
+    // Nouveaux clients du mois
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const newThisMonth = await Client.countDocuments({
+      createdAt: { $gte: startOfMonth }
+    });
+
+    // Top 5 clients pour graphique
+    const topClients = await Sale.aggregate([
+      {
+        $group: {
+          _id: '$client',
+          totalSpent: { $sum: '$totalAmount' },
+          totalSales: { $sum: 1 }
+        }
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'clients',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'clientInfo'
+        }
+      },
+      { $unwind: '$clientInfo' },
+      {
+        $project: {
+          name: '$clientInfo.name',
+          totalSpent: 1,
+          totalSales: 1
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      totalClients,
+      totalSpent,
+      avgSpent,
+      newThisMonth,
+      topClients
+    });
+  } catch (error) {
+    console.error('Erreur statistiques clients:', error);
+    res.status(500).json({ message: 'Erreur serveur lors du calcul des statistiques' });
+  }
+};
+
+/**
+ * @desc    Obtenir les clients filtrés par date ou dépenses
+ * @route   GET /api/clients/filter
+ * @access  Private (admin ou sales manager)
+ */
+const getFilteredClients = async (req, res) => {
+  try {
+    const { startDate, endDate, minSpent, maxSpent } = req.query;
+
+    // Base du pipeline
+    const matchStage = {};
+
+    // Filtrer par date de création
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+      if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+    }
+
+    // Regrouper les dépenses par client
+    const pipeline = [
+      { $lookup: {
+          from: 'sales',
+          localField: '_id',
+          foreignField: 'client',
+          as: 'sales'
+        }
+      },
+      { $addFields: {
+          totalSpent: { $sum: '$sales.totalAmount' }
+        }
+      },
+      { $match: matchStage }
+    ];
+
+    // Filtrer par dépenses
+    if (minSpent || maxSpent) {
+      const min = parseFloat(minSpent) || 0;
+      const max = parseFloat(maxSpent) || Infinity;
+      pipeline.push({ $match: { totalSpent: { $gte: min, $lte: max } } });
+    }
+
+    pipeline.push({ $sort: { totalSpent: -1 } });
+
+    const filteredClients = await Client.aggregate(pipeline);
+
+    res.status(200).json(filteredClients);
+  } catch (error) {
+    console.error('Erreur filtre clients:', error);
+    res.status(500).json({ message: 'Erreur lors du filtrage des clients' });
+  }
+};
+
 module.exports = {
   getClients,
   getClientById,
   createClient,
   updateClient,
   deleteClient,
+  getClientStats,
+  getFilteredClients
 };

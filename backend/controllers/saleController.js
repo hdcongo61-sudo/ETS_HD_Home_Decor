@@ -1212,6 +1212,8 @@ const updateSale = asyncHandler(async (req, res) => {
       });
     }
 
+    const clientId = existingSale.client?._id || existingSale.client || null;
+
     // Sauvegarde des anciennes valeurs pour restauration des stocks
     const oldProductQuantities = existingSale.products.map(item => ({
       productId: item.product._id,
@@ -1333,24 +1335,23 @@ const updateSale = asyncHandler(async (req, res) => {
         }
       };
 
-      // 5. Mettre à jour la vente
-      const updatedSale = await Sale.findByIdAndUpdate(
-        id,
-        {
-          products: updatedProducts,
-          totalAmount: newTotalAmount,
-          status: newStatus,
-          balance: Math.max(0, balance),
-          $push: { modificationHistory: modificationEntry },
-          $inc: { __v: 1 }
-        },
-        { new: true, session, runValidators: true }
-      ).populate('products.product');
+      // 5. Mettre à jour la vente en utilisant save pour recalculer les bénéfices
+      existingSale.products = updatedProducts;
+      existingSale.totalAmount = newTotalAmount;
+      existingSale.status = newStatus;
+      if (!Array.isArray(existingSale.modificationHistory)) {
+        existingSale.modificationHistory = [];
+      }
+      existingSale.modificationHistory.push(modificationEntry);
+      existingSale.markModified('products');
+      existingSale.markModified('modificationHistory');
+
+      const updatedSaleDoc = await existingSale.save({ session });
 
       // 6. Mettre à jour le client si nécessaire
-      if (existingSale.client) {
+      if (clientId) {
         await Client.findByIdAndUpdate(
-          existingSale.client._id,
+          clientId,
           {
             $inc: {
               totalPurchases: newTotalAmount - oldTotalAmount
@@ -1363,7 +1364,27 @@ const updateSale = asyncHandler(async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
-      res.json(updatedSale);
+      const populatedSale = await Sale.findById(updatedSaleDoc._id)
+        .populate('client')
+        .populate('products.product')
+        .populate('user')
+        .populate({
+          path: 'payments.user',
+          select: 'name email role'
+        })
+        .populate({
+          path: 'modificationHistory.user',
+          select: 'name email isAdmin'
+        });
+
+      const saleObject = populatedSale.toObject();
+      const totalPaid = saleObject.payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+      const safeTotalAmount = saleObject.totalAmount || 0;
+
+      saleObject.totalPaid = totalPaid;
+      saleObject.balance = Math.max(0, safeTotalAmount - totalPaid);
+
+      res.json(saleObject);
 
     } catch (error) {
       await session.abortTransaction();

@@ -25,6 +25,8 @@ const employeeRoutes = require('./routes/employeeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
 const exportRoutes = require('./routes/exportRoutes');
+const searchRoutes = require("./routes/searchRoutes");
+const pdfRoutes = require('./routes/pdfRoutes');
 
 const app = express();
 
@@ -87,6 +89,9 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/exports', exportRoutes);
+app.use("/api/search", searchRoutes);
+app.use('/api/export', pdfRoutes);
+
 
 // 10. Error handler middleware
 app.use(errorHandler);

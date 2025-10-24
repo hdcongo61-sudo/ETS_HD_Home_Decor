@@ -19,6 +19,8 @@ const productSchema = mongoose.Schema(
       min: [0, 'Le prix ne peut pas être négatif'],
       set: v => parseFloat(v.toFixed(2)) // Arrondir à 2 décimales
     },
+    supplierName: { type: String, trim: true, default: 'Non défini' },
+    supplierPhone: { type: String, trim: true, default: '' },
     stock: {
       type: Number,
       required: true,

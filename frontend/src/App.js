@@ -19,6 +19,12 @@ import GlobalModals from './components/GlobalModals';
 import OfflineIndicator from './components/OfflineIndicator';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SiteFooter from './components/SiteFooter';
+import NeverSoldProducts from './pages/NeverSoldProducts';
+import TopSellingProducts from './pages/TopSellingProducts';
+import CriticalStockProducts from './pages/CriticalStockProducts';
+import OutOfStockProducts from './pages/OutOfStockProducts';
+import ClientDashboard from './pages/ClientDashboard';
+import PartiallyPaidPurchases from "./pages/PartiallyPaidPurchases";
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -118,6 +124,38 @@ function App() {
                   }
                 />
                 <Route
+                  path="/products/never-sold"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <NeverSoldProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/top-sellers"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <TopSellingProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                                <Route
+                  path="/products/critical"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <CriticalStockProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/out-of-stock"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <OutOfStockProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/products/:id"
                   element={
                     <ProtectedRoute adminOnly>
@@ -142,6 +180,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/sales/partially-paid"
+                  element={
+                    <ProtectedRoute>
+                      <PartiallyPaidPurchases />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/sales/:id"
                   element={
                     <ProtectedRoute>
@@ -162,6 +208,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Clients />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/clients/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <ClientDashboard />
                     </ProtectedRoute>
                   }
                 />

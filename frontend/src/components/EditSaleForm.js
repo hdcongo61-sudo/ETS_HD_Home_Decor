@@ -10,6 +10,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [stockInfos, setStockInfos] = useState({});
+    const [productSearchTerms, setProductSearchTerms] = useState([]);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -36,14 +37,24 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
         // Pré-remplir avec les produits existants
         if (sale) {
-            setSelectedProducts(sale.products.map(p => ({
+            const prefilledProducts = sale.products.map(p => ({
                 product: p.product._id,
                 quantity: p.quantity,
                 price: p.priceAtSale,
                 originalQuantity: p.quantity // Garder trace de la quantité originale
-            })));
+            }));
+            setSelectedProducts(prefilledProducts);
+            setProductSearchTerms(prefilledProducts.map(() => ''));
+            setErrors(prefilledProducts.map(() => null));
         }
     }, [sale]);
+
+    const getFilteredProducts = (searchTerm) => {
+        const safeTerm = (searchTerm || '').toLowerCase();
+        return products.filter(product =>
+            product.name.toLowerCase().includes(safeTerm)
+        );
+    };
 
     const validateForm = () => {
         const newErrors = selectedProducts.map((item) => {
@@ -101,6 +112,9 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
         };
 
         setSelectedProducts(newProducts);
+        const newSearchTerms = [...productSearchTerms];
+        newSearchTerms[index] = '';
+        setProductSearchTerms(newSearchTerms);
     };
 
     const handleQuantityChange = (index, quantity) => {
@@ -130,10 +144,14 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             ...selectedProducts,
             { product: '', quantity: '', price: 0, originalQuantity: 0 }
         ]);
+        setProductSearchTerms([...productSearchTerms, '']);
+        setErrors([...errors, null]);
     };
 
     const removeProduct = (index) => {
         setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
+        setProductSearchTerms(productSearchTerms.filter((_, i) => i !== index));
+        setErrors(errors.filter((_, i) => i !== index));
     };
 
     const calculateTotal = () => {
@@ -227,16 +245,30 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
                 {selectedProducts.map((item, index) => (
                     <div key={index} className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-600">Rechercher</label>
+                            <input
+                                type="text"
+                                placeholder="Rechercher un produit..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                value={productSearchTerms[index] || ''}
+                                onChange={(e) => {
+                                    const newTerms = [...productSearchTerms];
+                                    newTerms[index] = e.target.value;
+                                    setProductSearchTerms(newTerms);
+                                }}
+                            />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-600">Produit</label>
+                                <label className="block text-xs font-medium text-gray-600">Produit</label>
                                 <select
-                                    className={`w-full px-3 py-2 border rounded-lg ${errors[index] ? 'border-red-500' : 'border-gray-200'} focus:ring-2 focus:ring-blue-200`}
+                                    className={`w-full px-3 py-2.5 border rounded-xl ${errors[index] ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                                     value={item.product}
                                     onChange={(e) => handleProductChange(index, e.target.value)}
                                 >
                                     <option value="">Sélectionner...</option>
-                                    {products.map(product => (
+                                    {getFilteredProducts(productSearchTerms[index] || '').map(product => (
                                         <option
                                             key={product._id}
                                             value={product._id}
@@ -252,32 +284,32 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-600">Quantité</label>
+                                <label className="block text-xs font-medium text-gray-600">Quantité</label>
                                 <input
                                     type="number"
                                     inputMode="numeric"
                                     pattern="[0-9]*"
                                     min="1"
                                     step="1"
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200"
+                                    className={`w-full px-3 py-2.5 border ${errors[index] ? 'border-red-500' : 'border-gray-300'} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                                     value={item.quantity}
                                     onChange={(e) => handleQuantityChange(index, e.target.value)}
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-600">Prix unitaire</label>
+                                <label className="block text-xs font-medium text-gray-600">Prix unitaire</label>
                                 <div className="relative">
                                     <input
                                         type="number"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 pr-8"
+                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-10"
                                         value={item.price || ''}
                                         onChange={(e) => handlePriceChange(index, e.target.value)}
                                         placeholder="0.00"
                                         step="0.01"
                                         min={stockInfos[item.product]?.costPrice || 0}
                                     />
-                                    <span className="absolute right-3 top-2.5 text-gray-400 text-sm">CFA</span>
+                                    <span className="absolute right-3 top-2.5 text-gray-400 text-xs">CFA</span>
                                 </div>
                             </div>
 
