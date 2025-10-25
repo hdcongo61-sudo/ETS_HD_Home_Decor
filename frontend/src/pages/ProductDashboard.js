@@ -205,7 +205,7 @@ const ProductDashboard = () => {
         transition={{ duration: 0.6 }}
       >
         <h2 className="text-xl font-bold mb-4 text-gray-700">Top Produits Vendus</h2>
-        <div className="overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-indigo-100 text-indigo-800 uppercase text-xs">
               <tr>
@@ -229,6 +229,33 @@ const ProductDashboard = () => {
             </tbody>
           </table>
         </div>
+
+        <div className="sm:hidden space-y-3">
+          {stats.topSellingProducts.slice(0, 5).map((p) => (
+            <div key={p._id} className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/40">
+              <div className="flex justify-between items-center">
+                <p className="font-semibold text-gray-900">{p.name}</p>
+                <span className="text-xs text-gray-500">{p.category}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Quantité</p>
+                  <p className="font-semibold text-gray-900">{p.sold}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Revenu</p>
+                  <p className="font-semibold text-green-600">
+                    {p.revenue.toLocaleString()} CFA
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Marge</p>
+                  <p className="font-semibold text-indigo-600">{p.margin}%</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </motion.div>
 
       {/* 5️⃣ Statistiques Fournisseurs */}
@@ -238,17 +265,25 @@ const ProductDashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-700">Statistiques Fournisseurs</h2>
-          <button
-            onClick={exportSuppliersToExcel}
-            className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition shadow-sm"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Export Excel
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              onClick={() => navigate('/products/by-supplier')}
+              className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition shadow-sm w-full sm:w-auto text-center"
+            >
+              Vue détaillée
+            </button>
+            <button
+              onClick={exportSuppliersToExcel}
+              className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition shadow-sm w-full sm:w-auto"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Export Excel
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 h-64">
@@ -264,7 +299,7 @@ const ProductDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-purple-100 text-purple-800 uppercase text-xs">
               <tr>
@@ -297,6 +332,46 @@ const ProductDashboard = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="sm:hidden space-y-4">
+          {stats.supplierStats.slice(0, 10).map((s, index) => (
+            <div key={index} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/50">
+              <div className="flex justify-between items-center mb-2">
+                <p className="font-semibold text-gray-900">{s.supplierName}</p>
+                <span className="text-xs text-gray-500">#{index + 1}</span>
+              </div>
+              <div className="text-sm text-gray-600 mb-2">
+                Téléphone : {s.supplierPhone || '—'}
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-gray-500">Produits</p>
+                  <p className="font-semibold text-gray-900">{s.totalProducts}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock (CFA)</p>
+                  <p className="font-semibold text-gray-900">{s.totalStockValue.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Revenu</p>
+                  <p className="font-semibold text-green-600">{s.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Profit</p>
+                  <p className="font-semibold text-indigo-600">{s.totalProfit.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock critique</p>
+                  <p className="font-semibold text-yellow-600">{s.lowStockCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Ruptures</p>
+                  <p className="font-semibold text-red-600">{s.outOfStockCount}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </motion.div>
     </motion.div>

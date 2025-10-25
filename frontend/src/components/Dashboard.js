@@ -796,7 +796,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* ===== 🔹 SECTION : STATISTIQUES DES VENTES (condensé + encaissements + livraisons) ===== */}
+        {isAdmin && (
         <motion.div
           className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700"
           initial={{ opacity: 0, y: 18 }}
@@ -1097,14 +1097,16 @@ const Dashboard = () => {
             </ul>
           </div>
         </motion.div>
+        )}
 
-        {/* ===== BUSINESS ANALYTICS (produits/clients/insights…) ===== */}
-        <BusinessAnalyticsDashboard
-          sales={salesData}
-          expenses={expensesData}
-          payments={paymentsData}
-          defaultPeriod="month"
-        />
+        {isAdmin && (
+          <BusinessAnalyticsDashboard
+            sales={salesData}
+            expenses={expensesData}
+            payments={paymentsData}
+            defaultPeriod="month"
+          />
+        )}
 
         {/* ===== Admin only ===== */}
         {isAdmin && (

@@ -97,11 +97,11 @@ const CriticalStockProducts = () => {
       )}
 
       {/* Tableau */}
-      <div className="overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
+      <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              {['Produit', 'Catégorie', 'Prix (CFA)', 'Stock', 'Valeur Totale', 'Actions'].map((h) => (
+              {['Produit', 'Catégorie', 'Fournisseur', 'Prix (CFA)', 'Stock', 'Valeur Totale', 'Actions'].map((h) => (
                 <th key={h} className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider">
                   {h}
                 </th>
@@ -117,6 +117,7 @@ const CriticalStockProducts = () => {
               >
                 <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
                 <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
+                <td className="px-6 py-4 text-gray-600">{p.supplierName || '—'}</td>
                 <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4 text-red-600 font-semibold">{p.stock}</td>
                 <td className="px-6 py-4 text-gray-800 font-semibold">
@@ -124,7 +125,10 @@ const CriticalStockProducts = () => {
                 </td>
                 <td className="px-6 py-4">
                   <button
-                    onClick={() => navigate(`/products/edit/${p._id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/products/edit/${p._id}`);
+                    }}
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Réapprovisionner
@@ -134,6 +138,49 @@ const CriticalStockProducts = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Cartes mobiles */}
+      <div className="md:hidden space-y-4">
+        {products.map((p) => (
+          <div
+            key={p._id}
+            className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+            onClick={() => navigate(`/products/${p._id}`)}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{p.name}</p>
+                <p className="text-xs text-gray-500">{p.category || '—'}</p>
+              </div>
+              <span className="text-xs text-gray-500">Stock: {p.stock}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Fournisseur : <span className="text-gray-800">{p.supplierName || '—'}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Prix</p>
+                <p className="font-semibold text-gray-900">{p.price?.toLocaleString() || '—'} CFA</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Valeur</p>
+                <p className="font-semibold text-red-600">
+                  {((p.stock || 0) * (p.price || 0)).toLocaleString()} CFA
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/products/edit/${p._id}`);
+              }}
+              className="mt-3 w-full px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition"
+            >
+              Réapprovisionner
+            </button>
+          </div>
+        ))}
       </div>
     </motion.div>
   );

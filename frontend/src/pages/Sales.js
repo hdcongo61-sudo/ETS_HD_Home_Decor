@@ -11,6 +11,7 @@ import React, {
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../services/api";
+import toast, { Toaster } from "react-hot-toast";
 import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -1095,6 +1096,7 @@ const Sales = () => {
       setMessage("");
       await api.post("/sales", saleData);
       setMessage("Vente enregistrée avec succès !");
+      toast.success("Vente enregistrée avec succès !");
       const updated = await fetchSales();
       await hydrateDeliveryStats(updated);
       if (isAdmin) await fetchDashboardData(timeRange, dateFilter);
@@ -1132,7 +1134,8 @@ const Sales = () => {
       const updated = await fetchSales();
       await hydrateDeliveryStats(updated);
       setMessage("✅ Statut de livraison mis à jour avec succès !");
-      setTimeout(() => setShowDeliveryModal(false), 1200);
+      setIsUpdatingDelivery(false);
+      setShowDeliveryModal(false);
     } catch (e) {
       setMessage("❌ Erreur: " + (e.response?.data?.message || e.message));
       setIsUpdatingDelivery(false);
@@ -1333,11 +1336,336 @@ const Sales = () => {
     );
   }
 
+  // Vue simplifiée pour les utilisateurs non administrateurs
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              Gestion des ventes
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Enregistrez vos ventes et consultez l'historique en temps réel.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GlassCard>
+              <div className="p-6">
+                <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
+                  <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
+                </Suspense>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
+                  Historique des Ventes
+                </h2>
+
+                <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Statut</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Tous</option>
+                      <option value="completed">Payée</option>
+                      <option value="partially_paid">Partiellement payée</option>
+                      <option value="pending">En attente</option>
+                      <option value="cancelled">Annulée</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Client</label>
+                    <select
+                      value={clientFilter}
+                      onChange={(e) => setClientFilter(e.target.value)}
+                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Tous les clients</option>
+                      {clients.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Date</label>
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Toutes les dates</option>
+                      <option value="today">Aujourd'hui</option>
+                      <option value="week">Cette semaine</option>
+                      <option value="month">Ce mois</option>
+                      <option value="quarter">Ce trimestre</option>
+                      <option value="year">Cette année</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Livraison</label>
+                    <select
+                      value={deliveryFilter}
+                      onChange={(e) => setDeliveryFilter(e.target.value)}
+                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Tous</option>
+                      <option value="delivered">Livré</option>
+                      <option value="pending">En attente</option>
+                      <option value="not_delivered">Non livré</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700 invisible md:visible">
+                      &nbsp;
+                    </label>
+                    <button
+                      onClick={() => {
+                        setStatusFilter("");
+                        setClientFilter("");
+                        setDateFilter("");
+                        setDeliveryFilter("");
+                        setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
+                      }}
+                      className="w-full p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
+                    >
+                      Réinitialiser
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {filteredSales.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+                      Aucune vente trouvée
+                    </div>
+                  ) : (
+                    filteredSales.map((sale) => {
+                      const { totalPaid, balance } = calculateSaleTotals(sale);
+                      return (
+                        <motion.div
+                          key={sale._id}
+                          whileHover={{ scale: 1.01 }}
+                          className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <Link
+                              to={`/sales/${sale._id}`}
+                              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
+                            >
+                              <span>Vente #{sale._id.slice(-6)}</span>
+                            </Link>
+                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
+                              <span className="text-sm text-gray-500 inline-flex items-center gap-1">
+                                📅 {formatDate(sale.saleDate)}
+                              </span>
+                              <span className={`px-3 py-1 rounded-full text-xs ${getStatusClass(sale.status)}`}>
+                                {getStatusText(sale.status)}
+                              </span>
+                              {sale.status === "completed" && (
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs ${
+                                    sale.deliveryStatus === "delivered"
+                                      ? "bg-green-100 text-green-800"
+                                      : sale.deliveryStatus === "not_delivered"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-blue-100 text-blue-800"
+                                  }`}
+                                >
+                                  {sale.deliveryStatus === "delivered"
+                                    ? "Livré"
+                                    : sale.deliveryStatus === "not_delivered"
+                                    ? "Non livré"
+                                    : "En attente"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="font-medium text-gray-900">
+                              {sale.client?.name || "Client non spécifié"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4">
+                            <div>
+                              <p className="text-gray-500">Total</p>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {(sale.totalAmount || 0).toLocaleString()} CFA
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Payé</p>
+                              <p className="text-lg font-semibold text-green-600">
+                                {totalPaid.toLocaleString()} CFA
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Solde</p>
+                              <p className={`text-lg font-semibold ${balance > 0 ? "text-red-600" : "text-gray-900"}`}>
+                                {balance.toLocaleString()} CFA
+                              </p>
+                            </div>
+                          </div>
+
+                          {Array.isArray(sale.products) && sale.products.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-semibold text-gray-800 mb-1">Produits</p>
+                              <ul className="space-y-1 text-sm text-gray-600">
+                                {sale.products.map((item, idx) => (
+                                  <li key={idx} className="flex justify-between">
+                                    <span>{item.product?.name || "Produit"}</span>
+                                    <span className="text-gray-500">
+                                      x{item.quantity || 0}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <div className="mt-4 flex flex-col gap-2">
+                            {sale.status !== "completed" && sale.status !== "cancelled" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedSale(sale);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors text-sm font-medium"
+                              >
+                                Ajouter un paiement
+                              </button>
+                            )}
+                            {sale.status === "completed" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedSale(sale);
+                                  setDeliveryStatus(sale.deliveryStatus || "pending");
+                                  setDeliveryNote(sale.deliveryNote || "");
+                                  setShowDeliveryModal(true);
+                                }}
+                                className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors text-sm font-medium"
+                              >
+                                Gérer la livraison
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+
+          <Suspense fallback={null}>
+            <PaymentModal
+              show={showPaymentModal}
+              onClose={() => setShowPaymentModal(false)}
+              sale={selectedSale}
+              onAddPayment={handleAddPayment}
+            />
+          </Suspense>
+
+          {showDeliveryModal && selectedSale && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Statut de livraison</h3>
+                  <button
+                    onClick={() => setShowDeliveryModal(false)}
+                    className="text-gray-500 hover:text-gray-700 p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Statut
+                    </label>
+                    <select
+                      value={deliveryStatus || selectedSale.deliveryStatus || "pending"}
+                      onChange={(e) => setDeliveryStatus(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="pending">En attente</option>
+                      <option value="delivered">Livré</option>
+                      <option value="not_delivered">Non livré</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Note (optionnelle)
+                    </label>
+                    <textarea
+                      value={deliveryNote || selectedSale.deliveryNote || ""}
+                      onChange={(e) => setDeliveryNote(e.target.value)}
+                      placeholder="Notes sur la livraison…"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                      rows="3"
+                      maxLength="500"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {deliveryNote.length}/500 caractères
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setShowDeliveryModal(false)}
+                      disabled={isUpdatingDelivery}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-60"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleUpdateDelivery}
+                      disabled={isUpdatingDelivery}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 flex items-center gap-2 disabled:bg-blue-400"
+                    >
+                      {isUpdatingDelivery ? (
+                        <>
+                          <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          Mise à jour…
+                        </>
+                      ) : (
+                        "Enregistrer"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   /* ========= Rendu principal ========= */
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <Toaster position="top-right" />
         {/* En-tête */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
@@ -1397,24 +1725,35 @@ const Sales = () => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setViewMode("dashboard")}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
-                >
-                  Vue Standard
-                </button>
-                <button
-                  onClick={() => setViewMode("profits")}
-                  className="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
-                >
-                  Analyse Bénéfices
-                </button>
-                <button
-                  onClick={() => setViewMode("clients")}
-                  className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Analyse Clients
-                </button>
+                {isAdmin ? (
+                  <>
+                    <button
+                      onClick={() => setViewMode("dashboard")}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                    >
+                      Vue Standard
+                    </button>
+                    <button
+                      onClick={() => setViewMode("profits")}
+                      className="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                    >
+                      Analyse Bénéfices
+                    </button>
+                    <button
+                      onClick={() => setViewMode("clients")}
+                      className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Analyse Clients
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setViewMode("clients")}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                  >
+                    Voir Les Analyses Clients
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1522,27 +1861,47 @@ const Sales = () => {
         {viewMode === "clients" && (
           <GlassCard>
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Analyse Client</h2>
-                <button
-                  onClick={() => setViewMode("analytics")}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
-                >
-                  Retour aux Analytics
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => navigate("/sales/partially-paid")}
+                    className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
+                  >
+                    Consulter les ventes partiellement payées →
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setViewMode("analytics")}
+                      className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-center"
+                    >
+                      Retour aux Analytics
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Redirection rapide vers la page dédiée aux partiellement payées */}
-              <div className="mb-4">
-                <button
-                  onClick={() => navigate("/sales/partially-paid")}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50"
-                >
-                  Voir les ventes partiellement payées →
-                </button>
-              </div>
-
-              <ClientSegmentationChart segmentation={clientSegmentation} />
+              {isAdmin ? (
+                <ClientSegmentationChart segmentation={clientSegmentation} />
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-gray-700">
+                    Accédez rapidement aux ventes partiellement payées pour suivre les encaissements
+                    en attente ou à relancer.
+                  </p>
+                  <button
+                    onClick={() =>
+                      navigate({
+                        pathname: "/sales/partially-paid",
+                        search: `?status=partially_paid`,
+                      })
+                    }
+                    className="w-full sm:w-auto px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors"
+                  >
+                    Ouvrir les ventes partiellement payées
+                  </button>
+                </div>
+              )}
             </div>
           </GlassCard>
         )}
@@ -1763,15 +2122,15 @@ const Sales = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <GlassCard>
                     <div className="p-6">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">
                           Tendance des ventes
                         </h3>
                         <button
                           onClick={() => navigate("/sales/partially-paid")}
-                          className="text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50"
+                          className="text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 w-full sm:w-auto text-center"
                         >
-                          Ventes partiellement payées →
+                          Consulter les ventes partiellement payées →
                         </button>
                       </div>
                       <Line
@@ -2073,6 +2432,16 @@ const Sales = () => {
                               <span className="font-medium text-gray-900">
                                 {sale.client?.name || "Client non spécifié"}
                               </span>
+                              {Array.isArray(sale.products) && sale.products.length > 0 && (
+                                <div className="text-sm text-gray-500">
+                                  •{" "}
+                                  {sale.products
+                                    .slice(0, 2)
+                                    .map((item) => item.product?.name || "Produit")
+                                    .join(", ")}
+                                  {sale.products.length > 2 && ` +${sale.products.length - 2}`}
+                                </div>
+                              )}
                             </div>
 
                             {/* Bénéfices synthétiques */}

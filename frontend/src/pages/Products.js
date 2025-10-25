@@ -106,18 +106,20 @@ const Products = () => {
           )}
         </div>
 
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setIsFormOpen(true);
-          }}
-          className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition shadow-md"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nouveau produit
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              setEditingProduct(null);
+              setIsFormOpen(true);
+            }}
+            className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition shadow-md"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nouveau produit
+          </button>
+        )}
       </div>
 
       {/* ===== Liste des produits ===== */}
@@ -132,40 +134,42 @@ const Products = () => {
       </div>
 
       {/* ===== Modal Form ===== */}
-      <Modal
-        show={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingProduct(null);
-        }}
-        title={editingProduct ? 'Modifier le produit' : 'Nouveau produit'}
-      >
-        <ProductForm
-          product={editingProduct}
-          onSubmit={handleCreate}
-          loading={formSubmitting}
-        />
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            onClick={() => {
-              setIsFormOpen(false);
-              setEditingProduct(null);
-            }}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
-            disabled={formSubmitting}
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            form="product-form"
-            className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition"
-            disabled={formSubmitting}
-          >
-            {editingProduct ? 'Mettre à jour' : 'Créer'}
-          </button>
-        </div>
-      </Modal>
+      {isAdmin && (
+        <Modal
+          show={isFormOpen}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingProduct(null);
+          }}
+          title={editingProduct ? 'Modifier le produit' : 'Nouveau produit'}
+        >
+          <ProductForm
+            product={editingProduct}
+            onSubmit={handleCreate}
+            loading={formSubmitting}
+          />
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              onClick={() => {
+                setIsFormOpen(false);
+                setEditingProduct(null);
+              }}
+              className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
+              disabled={formSubmitting}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              form="product-form"
+              className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition"
+              disabled={formSubmitting}
+            >
+              {editingProduct ? 'Mettre à jour' : 'Créer'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -289,8 +293,39 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
       p.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (!isAdmin) {
+    return (
+      <div>
+        <div className="p-4 bg-gray-50 border-b border-gray-100">
+          <input
+            type="text"
+            placeholder="🔍 Rechercher un produit..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="divide-y divide-gray-100 bg-white">
+          {filtered.map((p) => (
+            <div key={p._id} className="p-4 flex flex-col gap-1">
+              <p className="text-base font-semibold text-gray-900">{p.name}</p>
+              <p className={`text-sm font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-700'}`}>
+                Quantité en stock : <span className="font-semibold">{p.stock}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="text-center py-10 text-gray-500">Aucun produit trouvé.</div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto">
+    <div>
       <div className="p-4 bg-gray-50 border-b border-gray-100">
         <input
           type="text"
@@ -301,65 +336,120 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         />
       </div>
 
-      <table className="min-w-full divide-y divide-gray-100 text-sm">
-        <thead className="bg-gray-50">
-          <tr>
-            {['Produit', 'Catégorie', 'Prix', 'Stock', 'Fournisseur', 'Actions'].map((h) => (
-              <th key={h} className="px-6 py-3 text-left font-medium text-gray-500 uppercase">
-                {h}
-              </th>
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-100 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              {['Produit', 'Catégorie', 'Prix', 'Stock', 'Fournisseur', 'Actions'].map((h) => (
+                <th key={h} className="px-6 py-3 text-left font-medium text-gray-500 uppercase">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {filtered.map((p) => (
+              <tr key={p._id} className="hover:bg-indigo-50 transition">
+                <td className="px-6 py-3 flex items-center gap-3 font-medium text-gray-800">
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg">📦</div>
+                  )}
+                  <Link
+                    to={`/products/${p._id}`}
+                    className="text-indigo-600 hover:underline hover:text-indigo-800 transition"
+                  >
+                    {p.name}
+                  </Link>
+                </td>
+                <td className="px-6 py-3 text-gray-600">{p.category}</td>
+                <td className="px-6 py-3 font-semibold text-gray-800">
+                  {p.price?.toLocaleString()} CFA
+                </td>
+                <td className={`px-6 py-3 font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-800'}`}>
+                  {p.stock}
+                </td>
+                <td className="px-6 py-3 text-gray-700">
+                  <div>{p.supplierName || '—'}</div>
+                  <div className="text-xs text-gray-500">{p.supplierPhone || ''}</div>
+                </td>
+                <td className="px-6 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => onEdit(p)}
+                      className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
+                    >
+                      Modifier
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(p._id)}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
             ))}
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-100">
-          {filtered.map((p) => (
-            <tr key={p._id} className="hover:bg-indigo-50 transition">
-              <td className="px-6 py-3 flex items-center gap-3 font-medium text-gray-800">
-                {p.image ? (
-                  <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
-                ) : (
-                  <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg">📦</div>
-                )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="md:hidden space-y-4 p-4">
+        {filtered.map((p) => (
+          <div key={p._id} className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white">
+            <div className="flex gap-3">
+              {p.image ? (
+                <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover" />
+              ) : (
+                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-xl">📦</div>
+              )}
+              <div className="flex-1">
                 <Link
                   to={`/products/${p._id}`}
-                  className="text-indigo-600 hover:underline hover:text-indigo-800 transition"
+                  className="text-base font-semibold text-indigo-600 hover:underline"
                 >
                   {p.name}
                 </Link>
-              </td>
-              <td className="px-6 py-3 text-gray-600">{p.category}</td>
-              <td className="px-6 py-3 font-semibold text-gray-800">
-                {p.price?.toLocaleString()} CFA
-              </td>
-              <td className={`px-6 py-3 font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-800'}`}>
-                {p.stock}
-              </td>
-              <td className="px-6 py-3 text-gray-700">
-                <div>{p.supplierName || '—'}</div>
-                <div className="text-xs text-gray-500">{p.supplierPhone || ''}</div>
-              </td>
-              <td className="px-6 py-3 text-right">
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => onEdit(p)}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
-                  >
-                    Modifier
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => onDelete(p._id)}
-                      className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                    >
-                      Supprimer
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <p className="text-sm text-gray-500">{p.category || '—'}</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">
+                  {p.price?.toLocaleString()} CFA
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mt-4">
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Stock</p>
+                <p className={`font-semibold ${p.stock < 5 ? 'text-red-600' : 'text-gray-900'}`}>{p.stock}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Fournisseur</p>
+                <p className="font-medium text-gray-900">{p.supplierName || '—'}</p>
+                {p.supplierPhone && <p className="text-xs text-gray-500">{p.supplierPhone}</p>}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => onEdit(p)}
+                className="w-full px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl hover:bg-indigo-200 transition text-sm font-medium"
+              >
+                Modifier
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(p._id)}
+                  className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 transition text-sm font-medium"
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {filtered.length === 0 && (
         <div className="text-center py-10 text-gray-500">Aucun produit trouvé.</div>
@@ -400,46 +490,55 @@ const Select = ({ label, options, ...props }) => (
 /* ===================================================== */
 /* 🪟 MODAL ANIMÉ */
 /* ===================================================== */
-const Modal = ({ show, onClose, title, children }) => (
-  <AnimatePresence>
-    {show && (
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
+const Modal = ({ show, onClose, title, children }) => {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  return (
+    <AnimatePresence>
+      {show && (
         <motion.div
-          onClick={(e) => e.stopPropagation()}
-          initial={{
-            opacity: 0,
-            scale: window.innerWidth < 768 ? 1 : 0.9,
-            y: window.innerWidth < 768 ? 40 : 0,
-          }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{
-            opacity: 0,
-            scale: window.innerWidth < 768 ? 1 : 0.9,
-            y: window.innerWidth < 768 ? 40 : 0,
-          }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
         >
-          <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition text-2xl leading-none"
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{
+              opacity: 0,
+              scale: isMobile ? 1 : 0.92,
+              y: isMobile ? 40 : 0,
+            }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{
+              opacity: 0,
+              scale: isMobile ? 1 : 0.95,
+              y: isMobile ? 40 : 0,
+            }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto my-6 sm:my-12 flex flex-col max-h-[90vh]"
+          >
+            <div className="flex justify-between items-center px-5 sm:px-6 py-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{title}</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div
+              className="p-5 sm:p-6 overflow-y-auto"
+              style={{ maxHeight: 'calc(90vh - 72px)' }}
             >
-              &times;
-            </button>
-          </div>
-          <div className="p-6">{children}</div>
+              {children}
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+      )}
+    </AnimatePresence>
+  );
+};
 
 export default Products;

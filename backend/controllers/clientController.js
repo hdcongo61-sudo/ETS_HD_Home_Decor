@@ -197,7 +197,8 @@ const getClientStats = async (req, res) => {
         $project: {
           name: '$clientInfo.name',
           totalSpent: 1,
-          totalSales: 1
+          totalSales: 1,
+          clientId: '$_id'
         }
       }
     ]);

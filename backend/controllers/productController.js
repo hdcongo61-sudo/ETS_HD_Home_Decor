@@ -446,6 +446,15 @@ const getProductDashboard = async (req, res) => {
 
     // 3️⃣ Analyse des ventes
     const productSalesMap = {};
+    const productMetaMap = products.reduce((acc, prod) => {
+      if (prod && prod._id) {
+        acc[prod._id.toString()] = {
+          supplierName: prod.supplierName || 'Inconnu',
+          supplierPhone: prod.supplierPhone || ''
+        };
+      }
+      return acc;
+    }, {});
     const salesTrendMap = {};
 
     for (const sale of sales) {
@@ -476,6 +485,8 @@ const getProductDashboard = async (req, res) => {
             sold: 0,
             revenue: 0,
             profit: 0,
+            supplierName: productMetaMap[id]?.supplierName || 'Inconnu',
+            supplierPhone: productMetaMap[id]?.supplierPhone || ''
           };
         }
 
@@ -673,6 +684,195 @@ const getNeverSoldProducts = async (req, res) => {
 
 
 
+// ==========================
+// @desc    Get products grouped by supplier with stats
+// @route   GET /api/products/by-supplier
+// @access  Private/Admin
+// ==========================
+const getProductsBySupplier = async (req, res) => {
+  try {
+    const { range = 'month' } = req.query;
+
+    const now = new Date();
+    let startDate = new Date(0);
+
+    switch (range) {
+      case 'day':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate = new Date(0);
+    }
+
+    const [products, sales] = await Promise.all([
+      Product.find({}).lean(),
+      Sale.find({
+        saleDate: { $gte: startDate },
+        status: { $ne: 'cancelled' },
+      })
+        .populate({
+          path: 'products.product',
+          select: 'name category price costPrice supplierName supplierPhone',
+        })
+        .lean(),
+    ]);
+
+    const productSalesMap = {};
+
+    for (const sale of sales) {
+      if (!sale.products) continue;
+
+      for (const item of sale.products) {
+        const populatedProduct = item.product;
+        if (!populatedProduct || !populatedProduct._id) continue;
+
+        const id = populatedProduct._id.toString();
+        const quantity = item.quantity || 0;
+        const priceAtSale = item.priceAtSale || populatedProduct.price || 0;
+        const costPrice = populatedProduct.costPrice || 0;
+
+        if (!productSalesMap[id]) {
+          productSalesMap[id] = {
+            sold: 0,
+            revenue: 0,
+            profit: 0,
+          };
+        }
+
+        productSalesMap[id].sold += quantity;
+        productSalesMap[id].revenue += priceAtSale * quantity;
+        productSalesMap[id].profit += (priceAtSale - costPrice) * quantity;
+      }
+    }
+
+    const suppliersMap = {};
+
+    for (const product of products) {
+      const supplierName = (product.supplierName && product.supplierName.trim()) || 'Inconnu';
+      const supplierPhone = product.supplierPhone || '';
+
+      if (!suppliersMap[supplierName]) {
+        suppliersMap[supplierName] = {
+          supplierName,
+          supplierPhone,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          averageMargin: 0,
+          products: [],
+        };
+      }
+
+      const supplier = suppliersMap[supplierName];
+      if (!supplier.supplierPhone && supplierPhone) {
+        supplier.supplierPhone = supplierPhone;
+      }
+
+      const productId = product._id.toString();
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      const stockValue = (product.price || 0) * (product.stock || 0);
+      const margin =
+        salesData.revenue > 0
+          ? Number(((salesData.profit / salesData.revenue) * 100).toFixed(2))
+          : 0;
+
+      supplier.totalProducts += 1;
+      supplier.totalStockValue += stockValue;
+      supplier.totalRevenue += salesData.revenue;
+      supplier.totalProfit += salesData.profit;
+      supplier.totalUnitsSold += salesData.sold;
+
+      if (product.stock === 0) supplier.outOfStockCount += 1;
+      if (product.stock > 0 && product.stock <= 5) supplier.lowStockCount += 1;
+
+      supplier.products.push({
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        sku: product.sku || '',
+        stock: product.stock,
+        price: product.price,
+        costPrice: product.costPrice || 0,
+        stockValue: Number(stockValue.toFixed(2)),
+        sold: salesData.sold,
+        revenue: Number(salesData.revenue.toFixed(2)),
+        profit: Number(salesData.profit.toFixed(2)),
+        margin,
+      });
+    }
+
+    const suppliers = Object.values(suppliersMap)
+      .map((supplier) => {
+        const revenue = supplier.totalRevenue;
+        supplier.averageMargin =
+          revenue > 0
+            ? Number(((supplier.totalProfit / revenue) * 100).toFixed(2))
+            : 0;
+
+        supplier.products.sort((a, b) => b.revenue - a.revenue);
+
+        return {
+          ...supplier,
+          totalStockValue: Number(supplier.totalStockValue.toFixed(2)),
+          totalRevenue: Number(supplier.totalRevenue.toFixed(2)),
+          totalProfit: Number(supplier.totalProfit.toFixed(2)),
+        };
+      })
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const aggregateTotals = suppliers.reduce(
+      (acc, supplier) => {
+        acc.stockValue += supplier.totalStockValue;
+        acc.revenue += supplier.totalRevenue;
+        acc.profit += supplier.totalProfit;
+        acc.unitsSold += supplier.totalUnitsSold;
+        return acc;
+      },
+      { stockValue: 0, revenue: 0, profit: 0, unitsSold: 0 }
+    );
+
+    res.json({
+      range,
+      generatedAt: new Date().toISOString(),
+      suppliers,
+      totals: {
+        supplierCount: suppliers.length,
+        productCount: products.length,
+        stockValue: Number(aggregateTotals.stockValue.toFixed(2)),
+        revenue: Number(aggregateTotals.revenue.toFixed(2)),
+        profit: Number(aggregateTotals.profit.toFixed(2)),
+        unitsSold: aggregateTotals.unitsSold,
+      },
+    });
+  } catch (error) {
+    console.error('❌ getProductsBySupplier error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 module.exports = {
   getProducts,
   getProductById,
@@ -681,5 +881,6 @@ module.exports = {
   deleteProduct,
   getProductStats,
   getProductDashboard,
-  getNeverSoldProducts
+  getNeverSoldProducts,
+  getProductsBySupplier
 };

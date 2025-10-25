@@ -295,37 +295,84 @@ const exportToPDF = async () => {
         </div>
 
         {filteredData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table ref={tableRef} className="min-w-full divide-y divide-gray-100 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['Produit', 'Catégorie', 'Prix', 'Stock', 'Actions'].map(h => (
-                    <th key={h} className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider">
-                      {h}
-                    </th>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table ref={tableRef} className="min-w-full divide-y divide-gray-100 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['Produit', 'Catégorie', 'Fournisseur', 'Prix', 'Stock', 'Actions'].map(h => (
+                      <th key={h} className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {filteredData.map((product, i) => (
+                    <motion.tr
+                      key={product._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="hover:bg-indigo-50 transition-colors"
+                    >
+                      <td className="px-6 py-3 font-medium text-gray-800">
+                        {product.name}
+                      </td>
+                      <td className="px-6 py-3 text-gray-600">
+                        {product.category || 'Non catégorisé'}
+                      </td>
+                      <td className="px-6 py-3 text-gray-600">
+                        {product.supplierName || '—'}
+                      </td>
+                      <td className="px-6 py-3 text-gray-700 font-medium">
+                        {product.price?.toLocaleString()} CFA
+                      </td>
+                      <td className="px-6 py-3 text-gray-700">{product.stock}</td>
+                      <td className="px-6 py-3 flex gap-3">
+                        <button
+                          onClick={() => navigate(`/products/${product._id}`)}
+                          className="text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                          Voir
+                        </button>
+                        <button
+                          onClick={() => navigate(`/products/edit/${product._id}`)}
+                          className="text-green-600 hover:text-green-800 font-medium"
+                        >
+                          Modifier
+                        </button>
+                      </td>
+                    </motion.tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {filteredData.map((product, i) => (
-                  <motion.tr
-                    key={product._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="hover:bg-indigo-50 transition-colors"
-                  >
-                    <td className="px-6 py-3 font-medium text-gray-800">
-                      {product.name}
-                    </td>
-                    <td className="px-6 py-3 text-gray-600">
-                      {product.category || 'Non catégorisé'}
-                    </td>
-                    <td className="px-6 py-3 text-gray-700 font-medium">
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-4">
+              {filteredData.map((product, i) => (
+                <motion.div
+                  key={product._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-base font-semibold text-gray-900">{product.name}</p>
+                      <p className="text-xs text-gray-500">{product.category || 'Non catégorisé'}</p>
+                    </div>
+                    <span className="text-xs text-gray-500">
                       {product.price?.toLocaleString()} CFA
-                    </td>
-                    <td className="px-6 py-3 text-gray-700">{product.stock}</td>
-                    <td className="px-6 py-3 flex gap-3">
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Fournisseur : <span className="text-gray-800">{product.supplierName || '—'}</span>
+                  </p>
+                  <div className="flex items-center justify-between mt-3 text-sm">
+                    <span className="text-gray-600">Stock : {product.stock}</span>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => navigate(`/products/${product._id}`)}
                         className="text-indigo-600 hover:text-indigo-800 font-medium"
@@ -338,12 +385,12 @@ const exportToPDF = async () => {
                       >
                         Modifier
                       </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">

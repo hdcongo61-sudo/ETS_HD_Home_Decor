@@ -8,7 +8,8 @@ const {
   deleteProduct,
   getProductStats,
   getNeverSoldProducts,
-  getProductDashboard // Assurez-vous d'importer cette fonction
+  getProductDashboard, // Assurez-vous d'importer cette fonction
+  getProductsBySupplier
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -16,6 +17,9 @@ router.route('/never-sold').get(protect, getNeverSoldProducts);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
 router.route('/dashboard')
   .get(protect, admin, getProductDashboard);
+
+router.route('/by-supplier')
+  .get(protect, admin, getProductsBySupplier);
 
 // Routes standard pour les produits
 router.route('/')

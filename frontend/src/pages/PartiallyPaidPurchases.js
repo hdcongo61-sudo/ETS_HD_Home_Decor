@@ -122,25 +122,27 @@ const PartiallyPaidPurchases = () => {
               Suivi précis des encaissements et relances ciblées
             </p>
           </div>
-          <div className="flex items-center gap-3 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 w-full lg:w-auto">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher client, email ou #vente…"
-              className="flex-1 lg:w-64 px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:flex-1 lg:w-64 px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
             />
-            <button
-              onClick={exportCSV}
-              className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50"
-            >
-              Export CSV
-            </button>
-            <Link
-              to="/sales"
-              className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
-            >
-              Retour
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button
+                onClick={exportCSV}
+                className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
+              >
+                Exporter CSV
+              </button>
+              <Link
+                to="/sales"
+                className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-center"
+              >
+                Retour
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -207,9 +209,9 @@ const PartiallyPaidPurchases = () => {
                   return (
                     <div
                       key={s._id}
-                      className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                      className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                     >
-                      <div>
+                      <div className="space-y-1">
                         <Link
                           to={`/sales/${s._id}`}
                           className="text-blue-600 hover:underline font-semibold"
@@ -221,23 +223,25 @@ const PartiallyPaidPurchases = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500">Total</div>
-                          <div className="font-semibold">
-                            {(s.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                      <div className="w-full md:w-auto flex flex-col gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                          <div>
+                            <div className="text-xs text-gray-500">Total</div>
+                            <div className="font-semibold">
+                              {(s.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500">Payé</div>
-                          <div className="font-semibold text-green-700">
-                            {paid.toLocaleString("fr-FR")} CFA
+                          <div>
+                            <div className="text-xs text-gray-500">Payé</div>
+                            <div className="font-semibold text-green-700">
+                              {paid.toLocaleString("fr-FR")} CFA
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-500">Solde</div>
-                          <div className="font-semibold text-red-600">
-                            {balance.toLocaleString("fr-FR")} CFA
+                          <div>
+                            <div className="text-xs text-gray-500">Solde</div>
+                            <div className="font-semibold text-red-600">
+                              {balance.toLocaleString("fr-FR")} CFA
+                            </div>
                           </div>
                         </div>
                         <button
@@ -245,9 +249,9 @@ const PartiallyPaidPurchases = () => {
                             setSelectedSale(s);
                             setShowPaymentModal(true);
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+                          className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-center"
                         >
-                          Ajouter paiement
+                          Ajouter un paiement
                         </button>
                       </div>
                     </div>

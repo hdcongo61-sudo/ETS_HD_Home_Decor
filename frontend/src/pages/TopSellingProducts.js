@@ -61,13 +61,14 @@ const TopSellingProducts = () => {
       </div>
 
       {/* Tableau principal */}
-      <div className="overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
+      <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
               {[
                 'Produit',
                 'Catégorie',
+                'Fournisseur',
                 'Prix (CFA)',
                 'Unités Vendues',
                 'Revenu Total',
@@ -92,6 +93,7 @@ const TopSellingProducts = () => {
               >
                 <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
                 <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
+                <td className="px-6 py-4 text-gray-600">{p.supplierName || '—'}</td>
                 <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4 text-gray-700">{p.sold?.toLocaleString() || 0}</td>
                 <td className="px-6 py-4 text-gray-800 font-semibold">
@@ -107,6 +109,48 @@ const TopSellingProducts = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Cartes mobiles */}
+      <div className="md:hidden space-y-4">
+        {data.map((p, index) => (
+          <div
+            key={p._id || index}
+            className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+            onClick={() => navigate(`/products/${p._id}`)}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{p.name}</p>
+                <p className="text-xs text-gray-500">{p.category || '—'}</p>
+              </div>
+              <span className="text-xs text-gray-500">#{index + 1}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Fournisseur : <span className="text-gray-800">{p.supplierName || '—'}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Unités vendues</p>
+                <p className="font-semibold text-gray-900">{p.sold?.toLocaleString() || 0}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Revenu</p>
+                <p className="font-semibold text-green-600">{p.revenue?.toLocaleString() || '—'} CFA</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Profit</p>
+                <p className="font-semibold text-emerald-600">{p.profit?.toLocaleString() || '—'} CFA</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Marge</p>
+                <p className="font-semibold text-indigo-600">
+                  {p.margin ? p.margin.toFixed(1) + '%' : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Statistiques globales */}

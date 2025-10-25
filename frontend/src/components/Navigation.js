@@ -12,7 +12,7 @@ const Navigation = () => {
   const [results, setResults] = useState([]);
   const navigate = useNavigate();
 
-  // === Gestion Déconnexion ===
+  // === Déconnexion ===
   const handleLogout = () => {
     localStorage.removeItem("token");
     try {
@@ -32,7 +32,7 @@ const Navigation = () => {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
 
-  // === Recherche Globale (produits, clients, ventes, employés) ===
+  // === Recherche Globale ===
   useEffect(() => {
     const fetchResults = async () => {
       if (query.trim().length < 2) {
@@ -71,6 +71,8 @@ const Navigation = () => {
     }
   };
 
+  const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
+
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/70 sticky top-0 z-50 supports-backdrop-blur:bg-white/60">
       <div className="container mx-auto px-4 py-2">
@@ -106,52 +108,70 @@ const Navigation = () => {
             </span>
           </Link>
 
-          {/* === Barre de Recherche === */}
-          <div className="relative flex-1 max-w-lg hidden md:block">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher produits, clients, ventes..."
-              className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-              >
-                <X size={18} />
-              </button>
-            )}
-
-            {/* === Résultats dynamiques === */}
-            <AnimatePresence>
-              {results.length > 0 && (
-                <motion.ul
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="absolute z-50 bg-white w-full mt-2 rounded-xl border border-gray-200 shadow-lg overflow-hidden"
+          {/* === Barre de recherche (Admin uniquement) === */}
+          {showSearchBar && (
+            <div className="relative flex-1 max-w-lg hidden md:block">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher produits, clients, ventes..."
+                className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
+              />
+              <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                 >
-                  {results.map((item) => (
-                    <li
-                      key={item._id}
-                      onClick={() => handleSelectResult(item)}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between"
-                    >
-                      <span className="font-medium text-gray-800">
-                        {item.name || item.clientName || item.title}
-                      </span>
-                      <span className="text-xs text-gray-500 capitalize">
-                        {item.type}
-                      </span>
-                    </li>
-                  ))}
-                </motion.ul>
+                  <X size={18} />
+                </button>
               )}
-            </AnimatePresence>
-          </div>
+
+              {/* === Résultats dynamiques === */}
+              <AnimatePresence>
+                {results.length > 0 && (
+                  <motion.ul
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="absolute z-50 bg-white w-full mt-2 rounded-xl border border-gray-200 shadow-lg overflow-hidden"
+                  >
+                    {results.map((item) => {
+                      const isProduct = item.type === "product";
+                      return (
+                        <li
+                          key={item._id}
+                          onClick={() => handleSelectResult(item)}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            {isProduct && item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-8 h-8 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 text-sm">
+                                {item.type === "client" ? "👤" : item.type === "employee" ? "👥" : "📄"}
+                              </div>
+                            )}
+                            <span className="font-medium text-gray-800">
+                              {item.name || item.clientName || item.title}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500 capitalize">
+                            {item.type}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* === Menu desktop === */}
           <div className="hidden md:flex items-center space-x-1">
@@ -214,7 +234,7 @@ const Navigation = () => {
   );
 };
 
-// === Liens dynamiques du menu (desktop + mobile) ===
+// === Liens du menu (desktop + mobile) ===
 const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) => {
   const linkClass = isMobile
     ? "flex items-center px-4 py-3 text-gray-800 hover:bg-gray-100/80 active:bg-gray-200/60 rounded-md transition-all duration-200 text-base font-medium"
@@ -263,11 +283,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
         onClick={closeMenu}
         isMobile={isMobile}
       />
-
-      {/* === Admin uniquement === */}
-      {auth.isAdmin && (
-        <>
-          <NavIcon
+      <NavIcon
             to="/products"
             icon={
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,6 +301,11 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
             isMobile={isMobile}
           />
 
+      {/* === Admin uniquement === */}
+      {auth.isAdmin && (
+        <>
+          
+
           <NavIcon
             to="/product-dashboard"
             icon={
@@ -298,24 +319,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
               </svg>
             }
             label="Dashboard Produits"
-            className={linkClass}
-            onClick={closeMenu}
-            isMobile={isMobile}
-          />
-
-          <NavIcon
-            to="/users/stats"
-            icon={
-              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.8}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            }
-            label="Dashboard Utilisateurs"
             className={linkClass}
             onClick={closeMenu}
             isMobile={isMobile}

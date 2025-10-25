@@ -58,11 +58,11 @@ const OutOfStockProducts = () => {
         />
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
+      <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              {['Produit', 'Catégorie', 'Prix (CFA)', 'Actions'].map((h) => (
+              {['Produit', 'Catégorie', 'Fournisseur', 'Prix (CFA)', 'Actions'].map((h) => (
                 <th
                   key={h}
                   className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider"
@@ -77,6 +77,7 @@ const OutOfStockProducts = () => {
               <tr key={p._id} className="hover:bg-red-50 transition">
                 <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
                 <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
+                <td className="px-6 py-4 text-gray-600">{p.supplierName || '—'}</td>
                 <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4">
                   <button
@@ -90,6 +91,38 @@ const OutOfStockProducts = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-4">
+        {products.map((p) => (
+          <div
+            key={p._id}
+            className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+            onClick={() => navigate(`/products/${p._id}`)}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{p.name}</p>
+                <p className="text-xs text-gray-500">{p.category || '—'}</p>
+              </div>
+              <span className="text-xs text-gray-500">📦 {p.price?.toLocaleString() || '—'} CFA</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Fournisseur : <span className="text-gray-800">{p.supplierName || '—'}</span>
+            </p>
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/products/edit/${p._id}`);
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition text-sm font-medium"
+              >
+                Réapprovisionner
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </motion.div>
   );
