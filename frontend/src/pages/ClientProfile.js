@@ -18,6 +18,7 @@ const ClientProfile = () => {
     totalSpent: 0,
     purchaseCount: 0,
     lastPurchaseDate: null,
+    lastPaymentDate: null,
     averagePurchase: 0,
   });
 
@@ -41,9 +42,13 @@ const ClientProfile = () => {
         const lastPurchaseDate = purchaseCount > 0
           ? new Date(Math.max(...s.map((x) => new Date(x.saleDate))))
           : null;
+        const allPayments = s.flatMap((sale) => sale.payments || []);
+        const lastPaymentDate = allPayments.length > 0
+          ? new Date(Math.max(...allPayments.map((p) => new Date(p.paymentDate))))
+          : null;
         const averagePurchase = purchaseCount ? totalSpent / purchaseCount : 0;
 
-        setStats({ totalSpent, purchaseCount, lastPurchaseDate, averagePurchase });
+        setStats({ totalSpent, purchaseCount, lastPurchaseDate, lastPaymentDate, averagePurchase });
       } catch (err) {
         console.error('Erreur client:', err);
         setError("Impossible de charger les données du client.");
@@ -273,6 +278,14 @@ const ClientProfile = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="text-emerald-600">💸</span>
+            <div>
+              <p className="font-semibold text-gray-800">Dernier paiement</p>
+              <p className="text-gray-600">{formatDate(stats.lastPaymentDate)}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             <span className="text-yellow-600">✏️</span>
             <div>
               <p className="font-semibold text-gray-800">Dernière modification</p>
@@ -331,42 +344,93 @@ const ClientProfile = () => {
               Historique des Achats
             </h2>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-separate border-spacing-y-2">
-                <thead>
-                  <tr className="text-left text-gray-600 bg-gray-50">
-                    <th className="px-4 py-2 rounded-l-lg font-medium">Date</th>
-                    <th className="px-4 py-2 font-medium">Montant total</th>
-                    <th className="px-4 py-2 font-medium">Statut</th>
-                    <th className="px-4 py-2 text-right rounded-r-lg font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {purchases.length > 0 ? (
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm border-separate border-spacing-y-2">
+                    <thead>
+                      <tr className="text-left text-gray-600 bg-gray-50">
+                        <th className="px-4 py-2 rounded-l-lg font-medium">Date</th>
+                        <th className="px-4 py-2 font-medium">Montant total</th>
+                        <th className="px-4 py-2 font-medium">Statut</th>
+                        <th className="px-4 py-2 text-right rounded-r-lg font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchases.map((p, index) => (
+                        <tr
+                          key={p._id}
+                          className={`transition-all duration-200 cursor-pointer ${
+                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          } hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md`}
+                          onClick={() => navigate(`/sales/${p._id}`)}
+                        >
+                          <td className="px-4 py-3 font-medium text-gray-700 rounded-l-lg">
+                            {formatDate(p.saleDate)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">
+                            {p.totalAmount.toLocaleString('fr-FR')} CFA
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ${
+                              p.status === 'completed'
+                                ? 'bg-green-100 text-green-800 border-green-200'
+                                : p.status === 'partially_paid'
+                                ? 'bg-indigo-100 text-indigo-800 border-indigo-200 animate-pulse'
+                                : p.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                : p.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800 border-red-200'
+                                : 'bg-gray-100 text-gray-700 border-gray-200'
+                            }`}>
+                              {p.status === 'partially_paid'
+                                ? 'Paiement partiel'
+                                : p.status === 'completed'
+                                ? 'Payé'
+                                : p.status === 'pending'
+                                ? 'En attente'
+                                : p.status === 'cancelled'
+                                ? 'Annulé'
+                                : 'Inconnu'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right rounded-r-lg">
+                            <Link
+                              to={`/sales/${p._id}`}
+                              className="text-blue-600 hover:text-indigo-700 text-sm font-medium hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Voir détails →
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="md:hidden space-y-4">
                   {purchases.map((p, index) => (
-                    <tr
+                    <div
                       key={p._id}
-                      className={`transition-all duration-200 cursor-pointer ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md`}
+                      className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white"
                       onClick={() => navigate(`/sales/${p._id}`)}
                     >
-                      <td className="px-4 py-3 font-medium text-gray-700 rounded-l-lg">
-                        {formatDate(p.saleDate)}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">
-                        {p.totalAmount.toLocaleString('fr-FR')} CFA
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ${
+                      <div className="flex justify-between items-center mb-2">
+                        <div>
+                          <p className="text-base font-semibold text-gray-900">
+                            {p.totalAmount.toLocaleString('fr-FR')} CFA
+                          </p>
+                          <p className="text-xs text-gray-500">{formatDate(p.saleDate)}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           p.status === 'completed'
-                            ? 'bg-green-100 text-green-800 border-green-200'
+                            ? 'bg-green-100 text-green-800'
                             : p.status === 'partially_paid'
-                            ? 'bg-indigo-100 text-indigo-800 border-indigo-200 animate-pulse'
+                            ? 'bg-indigo-100 text-indigo-800'
                             : p.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                            : p.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800 border-red-200'
-                            : 'bg-gray-100 text-gray-700 border-gray-200'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
                         }`}>
                           {p.status === 'partially_paid'
                             ? 'Paiement partiel'
@@ -374,25 +438,29 @@ const ClientProfile = () => {
                             ? 'Payé'
                             : p.status === 'pending'
                             ? 'En attente'
-                            : p.status === 'cancelled'
-                            ? 'Annulé'
-                            : 'Inconnu'}
+                            : 'Annulé'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-right rounded-r-lg">
-                        <Link
-                          to={`/sales/${p._id}`}
-                          className="text-blue-600 hover:text-indigo-700 text-sm font-medium hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Voir détails →
-                        </Link>
-                      </td>
-                    </tr>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/sales/${p._id}`);
+                        }}
+                        className="w-full text-blue-600 hover:text-indigo-700 text-sm font-medium mt-2"
+                      >
+                        Voir détails →
+                      </button>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">
+                  🎉 Tous les produits ont été vendus au moins une fois !
+                </p>
+              </div>
+            )}
           </div>
         </>
       )}

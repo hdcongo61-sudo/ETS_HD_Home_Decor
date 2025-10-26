@@ -54,6 +54,7 @@ const UserSalesDashboard = () => {
             totalProfit: 0,
             totalPaid: 0,
             pendingSales: 0,
+            partialSales: 0,
             completedSales: 0,
             cancelledSales: 0,
             topProducts: {},
@@ -91,6 +92,7 @@ const UserSalesDashboard = () => {
 
             // Compter par statut
             if (sale.status === 'pending') stats.pendingSales++;
+            if (sale.status === 'partially_paid') stats.partialSales++;
             if (sale.status === 'completed') stats.completedSales++;
             if (sale.status === 'cancelled') stats.cancelledSales++;
 
@@ -158,6 +160,50 @@ const UserSalesDashboard = () => {
     };
 
     const stats = sales.length > 0 ? calculateStats() : null;
+    const safeStats = {
+        totalSales: stats?.totalSales || 0,
+        totalAmount: stats?.totalAmount || 0,
+        totalProfit: stats?.totalProfit || 0,
+        totalPaid: stats?.totalPaid || 0,
+        averageTicket: stats && stats.totalSales ? stats.totalAmount / stats.totalSales : 0,
+        pendingSales: stats?.pendingSales || 0,
+        partialSales: stats?.partialSales || 0,
+        completedSales: stats?.completedSales || 0,
+        cancelledSales: stats?.cancelledSales || 0,
+    };
+    const topProductsList = stats?.topProducts || [];
+    const paymentEntries = Object.entries(stats?.paymentMethods || {});
+    const latestSales = sales.slice(0, 10);
+    const highlightCards = [
+        {
+            title: 'Ventes réalisées',
+            value: safeStats.totalSales.toLocaleString('fr-FR'),
+            footer: 'Transactions homologuées',
+            accent: 'bg-indigo-100 text-indigo-700',
+            icon: '🧾',
+        },
+        {
+            title: "Chiffre d'affaires",
+            value: formatCFA(safeStats.totalAmount),
+            footer: 'Montant cumulé',
+            accent: 'bg-emerald-100 text-emerald-700',
+            icon: '💰',
+        },
+        {
+            title: 'Bénéfice estimé',
+            value: formatCFA(safeStats.totalProfit),
+            footer: 'Avant charges variables',
+            accent: 'bg-amber-100 text-amber-700',
+            icon: '📈',
+        },
+        {
+            title: 'Ticket moyen',
+            value: formatCFA(safeStats.averageTicket || 0),
+            footer: 'Par vente',
+            accent: 'bg-purple-100 text-purple-700',
+            icon: '🧮',
+        },
+    ];
 
     useEffect(() => {
         const fetchData = async () => {
@@ -230,6 +276,7 @@ const UserSalesDashboard = () => {
     };
 
     const salesChartData = getSalesChartData();
+    const chartHasData = !!(salesChartData && salesChartData.labels && salesChartData.labels.length);
 
     // Données pour le graphique des méthodes de paiement
     const paymentChartData = stats ? {
@@ -258,21 +305,24 @@ const UserSalesDashboard = () => {
 
     // Données pour le graphique des statuts de vente
     const statusChartData = stats ? {
-        labels: ['Complétées', 'En attente', 'Annulées'],
+        labels: ['Complétées', 'Partiellement payées', 'En attente', 'Annulées'],
         datasets: [
             {
                 data: [
                     stats.completedSales,
+                    stats.partialSales,
                     stats.pendingSales,
                     stats.cancelledSales
                 ],
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.5)',
+                    'rgba(99, 102, 241, 0.5)',
                     'rgba(255, 206, 86, 0.5)',
                     'rgba(255, 99, 132, 0.5)'
                 ],
                 borderColor: [
                     'rgba(75, 192, 192, 1)',
+                    'rgba(99, 102, 241, 1)',
                     'rgba(255, 206, 86, 1)',
                     'rgba(255, 99, 132, 1)'
                 ],
@@ -280,6 +330,7 @@ const UserSalesDashboard = () => {
             }
         ]
     } : null;
+    const hasPaymentData = paymentEntries.length > 0;
 
     if (!auth.isAdmin && auth.user._id !== userId) {
         return (
@@ -543,28 +594,11 @@ const UserSalesDashboard = () => {
                             <div className="w-48 h-48">
                                 <Pie data={statusChartData} />
                             </div>
-                            <div className="mt-4 w-full">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                                        <span>Complétées</span>
-                                    </div>
-                                    <span>{stats.completedSales}</span>
-                                </div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                                        <span>En attente</span>
-                                    </div>
-                                    <span>{stats.pendingSales}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                                        <span>Annulées</span>
-                                    </div>
-                                    <span>{stats.cancelledSales}</span>
-                                </div>
+                            <div className="mt-4 w-full space-y-2">
+                                <StatusRow color="bg-green-500" label="Complétées" value={stats.completedSales} />
+                                <StatusRow color="bg-indigo-500" label="Partiellement payées" value={stats.partialSales} />
+                                <StatusRow color="bg-yellow-500" label="En attente" value={stats.pendingSales} />
+                                <StatusRow color="bg-red-500" label="Annulées" value={stats.cancelledSales} />
                             </div>
                         </div>
                     ) : (
@@ -578,7 +612,8 @@ const UserSalesDashboard = () => {
                 <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-2">
                     <h3 className="text-lg font-semibold mb-4">Produits les plus vendus</h3>
                     {stats && stats.topProducts.length > 0 ? (
-                        <div className="overflow-x-auto">
+                        <>
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
@@ -608,6 +643,31 @@ const UserSalesDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+                        <div className="md:hidden space-y-3">
+                            {stats.topProducts.map((product, index) => (
+                                <div key={index} className="border border-gray-200 rounded-2xl p-4">
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-base font-semibold text-gray-900">{product.name}</p>
+                                        <span className="text-xs text-gray-500">#{index + 1}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Quantité</p>
+                                            <p className="font-semibold text-gray-900">{product.quantity}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">CA</p>
+                                            <p className="font-semibold text-gray-900">{formatCFA(product.totalSales)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Bénéfice</p>
+                                            <p className="font-semibold text-emerald-600">{formatCFA(product.profit)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        </>
                     ) : (
                         <div className="text-center py-8 text-gray-500">
                             Aucun produit vendu
@@ -632,7 +692,8 @@ const UserSalesDashboard = () => {
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Aucune vente trouvée</h3>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -682,6 +743,39 @@ const UserSalesDashboard = () => {
                             </tbody>
                         </table>
                     </div>
+                    <div className="md:hidden space-y-4 p-4">
+                        {sales.slice(0, 10).map((sale) => (
+                            <div key={sale._id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div>
+                                        <p className="text-base font-semibold text-gray-900">
+                                            {format(new Date(sale.saleDate), 'dd/MM/yyyy', { locale: fr })}
+                                        </p>
+                                        <p className="text-sm text-gray-500">{sale.client?.name || 'Non spécifié'}</p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${sale.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                        sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                            sale.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                        {sale.status === 'completed' ? 'Complétée' :
+                                            sale.status === 'pending' ? 'En attente' :
+                                                sale.status === 'cancelled' ? 'Annulée' : sale.status}
+                                    </span>
+                                </div>
+                                <div className="text-sm text-gray-600 space-y-1">
+                                    <p>Produits : {sale.products.length}</p>
+                                    <p>Montant : {formatCFA(sale.totalAmount || 0)}</p>
+                                </div>
+                                <Link
+                                    to={`/sales/${sale._id}`}
+                                    className="mt-3 inline-block text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                >
+                                    Voir détails →
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                    </>
                 )}
             </div>
         </div>
@@ -689,3 +783,13 @@ const UserSalesDashboard = () => {
 };
 
 export default UserSalesDashboard;
+
+const StatusRow = ({ color, label, value }) => (
+  <div className="flex items-center justify-between">
+    <div className="flex items-center">
+      <div className={`w-3 h-3 rounded-full mr-2 ${color}`}></div>
+      <span>{label}</span>
+    </div>
+    <span>{value}</span>
+  </div>
+);

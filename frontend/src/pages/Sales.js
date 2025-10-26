@@ -2029,10 +2029,17 @@ const Sales = () => {
                           {Object.entries(dashboardData.paymentMethods || {}).length === 0
                             ? "Aucune donnée"
                             : Object.entries(dashboardData.paymentMethods)
-                                .map(
-                                  ([m, v]) =>
-                                    `${m === "MobileMoney" ? "Mobile Money" : m || "Non spécifié"}: ${v.toFixed(1)}%`
-                                )
+                                .map(([m, v]) => {
+                                  const pct =
+                                    typeof v === "number"
+                                      ? v
+                                      : typeof v?.percentage === "number"
+                                      ? v.percentage
+                                      : 0;
+                                  return `${
+                                    m === "MobileMoney" ? "Mobile Money" : m || "Non spécifié"
+                                  }: ${pct.toFixed(1)}%`;
+                                })
                                 .join(" • ")}
                         </div>
                       </div>

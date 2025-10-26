@@ -284,6 +284,23 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
         isMobile={isMobile}
       />
       <NavIcon
+        to="/users/stats"
+        icon={
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.8}
+              d="M3 13h8V3H3zm10 8h8V11h-8zm0-8h8V3h-8zM3 21h8v-6H3z"
+            />
+          </svg>
+        }
+        label="Dashboard Utilisateurs"
+        className={linkClass}
+        onClick={closeMenu}
+        isMobile={isMobile}
+      />
+      <NavIcon
             to="/products"
             icon={
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">

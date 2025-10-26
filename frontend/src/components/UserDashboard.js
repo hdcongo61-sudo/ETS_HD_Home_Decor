@@ -375,7 +375,8 @@ const UserDashboard = () => {
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                     {filteredUsers.length > 0 ? (
-                        <div className="overflow-visible md:overflow-x-auto">
+                        <>
+                        <div className="hidden md:block overflow-visible md:overflow-x-auto">
                             <table ref={usersTableRef} className="w-full responsive-table">
                                 <thead className="bg-gray-50">
                                     <tr>
@@ -549,6 +550,119 @@ const UserDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        <div className="md:hidden space-y-4 p-4">
+                          {filteredUsers.map((user) => {
+                            const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
+                            const disconnectDate = lastLoginDate
+                                ? new Date(lastLoginDate.getTime() + CONNECTED_THRESHOLD_MINUTES * 60 * 1000)
+                                : null;
+                            const remainingMs = disconnectDate ? disconnectDate.getTime() - Date.now() : null;
+                            const lastLoginDisplay = lastLoginDate ? formatDateTime(lastLoginDate) : null;
+                            const lastModifiedDisplay = formatDateTime(user.lastModifiedAt);
+                            const passwordModifiedDisplay = formatDateTime(user.passwordModifiedAt);
+                            const accessStartDisplay = formatDateTime(user.accessStart);
+                            const accessEndDisplay = formatDateTime(user.accessEnd);
+
+                            return (
+                              <div key={user._id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="text-base font-semibold text-gray-900">{user.name}</p>
+                                    <p className="text-sm text-gray-500">{user.email}</p>
+                                    {user.phone && <p className="text-sm text-gray-500">📞 {user.phone}</p>}
+                                  </div>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                    {user.isAdmin ? 'Admin' : 'Utilisateur'}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium text-gray-800">Créé le :</span>{' '}
+                                  {new Date(user.createdAt).toLocaleDateString('fr-FR')} • {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium text-gray-800">Dernière connexion :</span>{' '}
+                                  {lastLoginDisplay
+                                    ? `${lastLoginDisplay.date}${lastLoginDisplay.time ? ` à ${lastLoginDisplay.time}` : ''}`
+                                    : 'Jamais connecté'}
+                                  {activeTab === 'connected' && remainingMs > 0 && (
+                                    <span className="text-xs text-green-600 block">Déconnexion prévue dans {formatRemainingTime(remainingMs)}</span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-600 space-y-1">
+                                  <div>
+                                    <span className="font-medium text-gray-800">Accès :</span>{' '}
+                                    {user.accessControlEnabled ? 'Restriction active' : 'Accès libre'}
+                                  </div>
+                                  {user.accessControlEnabled && (
+                                    <>
+                                      <div>
+                                        <span className="font-medium text-gray-800">Depuis :</span>{' '}
+                                        {accessStartDisplay ? `${accessStartDisplay.date}${accessStartDisplay.time ? ` à ${accessStartDisplay.time}` : ''}` : '—'}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium text-gray-800">Jusqu'à :</span>{' '}
+                                        {accessEndDisplay ? `${accessEndDisplay.date}${accessEndDisplay.time ? ` à ${accessEndDisplay.time}` : ''}` : 'Sans limite'}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-600 space-y-1">
+                                  <div>
+                                    <span className="font-medium text-gray-800">Modifié par :</span>{' '}
+                                    {user.lastModifiedBy ? (
+                                      <span>
+                                        {user.lastModifiedBy.name || 'Utilisateur inconnu'}
+                                        {lastModifiedDisplay && (
+                                          <span className="text-gray-400">{' '}• {lastModifiedDisplay.date}{lastModifiedDisplay.time && ` à ${lastModifiedDisplay.time}`}</span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">Jamais modifié</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-800">Mot de passe :</span>{' '}
+                                    {user.passwordModifiedBy ? (
+                                      <span>
+                                        {user.passwordModifiedBy.name || 'Utilisateur inconnu'}
+                                        {passwordModifiedDisplay && (
+                                          <span className="text-gray-400">{' '}• {passwordModifiedDisplay.date}{passwordModifiedDisplay.time && ` à ${passwordModifiedDisplay.time}`}</span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">Jamais modifié</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                  <Link
+                                    to={`/sales/user/${user._id}`}
+                                    className="flex-1 min-w-[120px] text-center text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl text-sm font-medium"
+                                  >
+                                    Tableau des ventes
+                                  </Link>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setShowForm(true);
+                                    }}
+                                    className="flex-1 min-w-[120px] text-center text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl text-sm font-medium"
+                                  >
+                                    Modifier
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(user._id)}
+                                    className="flex-1 min-w-[120px] text-center text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-xl text-sm font-medium"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        </>
                     ) : (
                         <div className="text-center py-12">
                             <div className="bg-gray-100 p-4 rounded-xl inline-flex items-center justify-center mb-4 w-12 h-12">
