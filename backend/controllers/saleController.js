@@ -3,6 +3,10 @@ const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
 const User = require('../models/userModel');
+const {
+  notifySaleCreated,
+  notifyPaymentRecorded
+} = require('../utils/pushNotifications');
 
 const mongoose = require('mongoose');
 
@@ -298,16 +302,19 @@ const createSale = asyncHandler(async (req, res) => {
 
     const sale = await Sale.create(saleData);
 
-
     // Update client's purchase history
-    await Client.findByIdAndUpdate(client, {
-      $push: { purchases: sale._id },
-      $inc: {
-        totalPurchases: totalAmount,
-        purchaseCount: 1
+    const updatedClient = await Client.findByIdAndUpdate(
+      client,
+      {
+        $push: { purchases: sale._id },
+        $inc: {
+          totalPurchases: totalAmount,
+          purchaseCount: 1
+        },
+        $set: { lastPurchaseDate: new Date() }
       },
-      $set: { lastPurchaseDate: new Date() }
-    });
+      { new: true, select: 'name' }
+    );
 
     // Update product stocks
     for (const update of productUpdates) {
@@ -315,6 +322,17 @@ const createSale = asyncHandler(async (req, res) => {
         $inc: { stock: -update.quantity }
       });
     }
+
+    const clientNameForNotification = updatedClient?.name || '';
+
+    notifySaleCreated({
+      saleId: sale._id,
+      totalAmount,
+      clientName: clientNameForNotification,
+      actorId: req.user?._id
+    }).catch((error) => {
+      console.error('Push notification error (sale created):', error);
+    });
 
     res.status(201).json(sale);
 
@@ -363,6 +381,19 @@ const addPayment = asyncHandler(async (req, res) => {
         $set: { lastPurchaseDate: new Date() }
       });
     }
+
+    await sale.populate('client', 'name');
+    const remainingBalance = Math.max(sale.totalAmount - totalPaid, 0);
+
+    notifyPaymentRecorded({
+      saleId: sale._id,
+      amount,
+      clientName: sale.client?.name || '',
+      remainingBalance,
+      actorId: req.user?._id
+    }).catch((error) => {
+      console.error('Push notification error (payment recorded):', error);
+    });
 
     res.status(200).json(sale);
   } catch (error) {

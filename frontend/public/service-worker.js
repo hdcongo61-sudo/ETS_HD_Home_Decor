@@ -16,6 +16,8 @@ const APP_SHELL = [
   '/icons/icon-512.png',
   '/icons/maskable-icon.png'
 ];
+const FALLBACK_ICON = '/icons/icon-192.png';
+const FALLBACK_BADGE = '/icons/icon-192.png';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -137,4 +139,71 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    return;
+  }
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (error) {
+    payload = {
+      title: 'Notification',
+      body: event.data.text()
+    };
+  }
+
+  const title = payload.title || 'ETS HD';
+  const options = {
+    body: payload.body || '',
+    icon: payload.icon || FALLBACK_ICON,
+    badge: payload.badge || FALLBACK_BADGE,
+    data: payload.data || {},
+    vibrate: payload.vibrate || [150, 100, 150],
+    renotify: payload.renotify ?? false,
+    requireInteraction: payload.requireInteraction ?? false
+  };
+
+  if (payload.tag) {
+    options.tag = payload.tag;
+  }
+
+  if (Array.isArray(payload.actions)) {
+    options.actions = payload.actions;
+  }
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url;
+
+  if (!targetUrl) {
+    return;
+  }
+
+  const destination = new URL(targetUrl, self.location.origin).href;
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url === destination) {
+            return client.focus();
+          }
+        }
+
+        if (clients.openWindow) {
+          return clients.openWindow(destination);
+        }
+
+        return null;
+      })
+  );
 });

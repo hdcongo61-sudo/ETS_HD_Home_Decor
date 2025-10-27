@@ -19,6 +19,7 @@ import GlobalModals from './components/GlobalModals';
 import OfflineIndicator from './components/OfflineIndicator';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SiteFooter from './components/SiteFooter';
+import PushNotificationManager from './components/PushNotificationManager';
 import NeverSoldProducts from './pages/NeverSoldProducts';
 import TopSellingProducts from './pages/TopSellingProducts';
 import CriticalStockProducts from './pages/CriticalStockProducts';
@@ -338,6 +339,7 @@ function App() {
         </Suspense>
         <SiteFooter />
         <GlobalModals />
+        <PushNotificationManager />
         <PwaInstallPrompt />
       </div>
         </Router>

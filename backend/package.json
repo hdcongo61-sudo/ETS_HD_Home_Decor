@@ -28,6 +28,7 @@
     "mongoose": "^7.0.3",
     "morgan": "^1.10.0",
     "pdfkit": "^0.17.2",
+    "web-push": "^3.6.7",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {

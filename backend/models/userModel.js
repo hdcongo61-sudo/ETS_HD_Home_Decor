@@ -69,6 +69,50 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
+    pushSubscriptions: [
+      {
+        endpoint: {
+          type: String,
+          required: true,
+        },
+        expirationTime: {
+          type: Number,
+          default: null,
+        },
+        keys: {
+          p256dh: {
+            type: String,
+            required: true,
+          },
+          auth: {
+            type: String,
+            required: true,
+          },
+        },
+        device: {
+          platform: {
+            type: String,
+            default: '',
+          },
+          userAgent: {
+            type: String,
+            default: '',
+          },
+          language: {
+            type: String,
+            default: '',
+          },
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
