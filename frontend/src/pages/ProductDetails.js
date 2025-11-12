@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import QRCode from 'react-qr-code';
 import { Line } from 'react-chartjs-2';
@@ -46,11 +46,16 @@ const ProductDetails = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRCode, setShowQRCode] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
+  const [salesHistoryError, setSalesHistoryError] = useState('');
   const qrCodeRef = useRef();
   const pageRef = useRef();
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProductAndStats = async () => {
+      setLoading(true);
+      setStatsLoading(true);
       try {
         const res = await api.get(`/products/${id}`);
         setProduct(res.data);
@@ -60,9 +65,27 @@ const ProductDetails = () => {
         console.error('Error loading product details:', err);
       } finally {
         setLoading(false);
+        setStatsLoading(false);
       }
     };
-    fetchData();
+
+    const fetchSalesHistoryData = async () => {
+      setSalesHistoryLoading(true);
+      setSalesHistoryError('');
+      try {
+        const { data } = await api.get(`/products/${id}/sales-history?limit=5`);
+        setSalesHistory(data.sales || []);
+      } catch (error) {
+        console.error('Error fetching product sales history:', error);
+        setSalesHistory([]);
+        setSalesHistoryError('Impossible de charger les ventes liées');
+      } finally {
+        setSalesHistoryLoading(false);
+      }
+    };
+
+    fetchProductAndStats();
+    fetchSalesHistoryData();
   }, [id]);
 
   const profitMargin =
@@ -338,7 +361,17 @@ const getActivityIcon = (type) => {
               <div className="bg-white rounded-xl p-5 shadow-sm">
                 <h3 className="text-lg font-semibold mb-3 text-gray-800">Indicateurs clés</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <Metric label="Unités vendues" value={stats.totalUnitsSold} />
+                  <Metric
+                    label="Unités vendues"
+                    value={stats.totalUnitsSold}
+                    footer={
+                      <SalesLinks
+                        sales={salesHistory}
+                        loading={salesHistoryLoading}
+                        error={salesHistoryError}
+                      />
+                    }
+                  />
                   <Metric label="CA total" value={formatCurrency(stats.totalRevenue)} />
                   <Metric label="Bénéfice total" value={formatCurrency(stats.totalProfit)} />
                   <Metric label="Valeur du stock" value={formatCurrency(stats.stock.stockValue)} />
@@ -507,11 +540,48 @@ const Card = ({ title, children }) => (
   </div>
 );
 
-const Metric = ({ label, value }) => (
+const Metric = ({ label, value, footer = null }) => (
   <div>
     <p className="text-xs text-gray-500 mb-1">{label}</p>
     <p className="text-sm font-semibold text-gray-800">{value}</p>
+    {footer && <div className="mt-1">{footer}</div>}
   </div>
 );
+
+const SalesLinks = ({ sales, loading, error }) => {
+  if (loading) {
+    return <p className="text-xs text-gray-400">Chargement des ventes...</p>;
+  }
+
+  if (error) {
+    return <p className="text-xs text-red-500">{error}</p>;
+  }
+
+  if (!sales || sales.length === 0) {
+    return <p className="text-xs text-gray-400">Aucune vente récente</p>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {sales.slice(0, 3).map((sale) => {
+        const formattedDate = sale.saleDate
+          ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
+          : 'Date inconnue';
+        return (
+          <Link
+            key={sale.saleId}
+            to={`/sales/${sale.saleId}`}
+            className="flex items-center justify-between text-xs text-indigo-600 hover:text-indigo-700"
+          >
+            <span className="truncate pr-2">
+              {sale.clientName || 'Vente'} • {formattedDate}
+            </span>
+            <span className="text-gray-500 whitespace-nowrap">{sale.quantity} u</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+};
 
 export default ProductDetails;

@@ -10,6 +10,10 @@ const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
   const navigate = useNavigate();
 
   // === Déconnexion ===
@@ -32,6 +36,25 @@ const Navigation = () => {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const handleChange = () => setIsDesktop(media.matches);
+    handleChange();
+    if (media.addEventListener) {
+      media.addEventListener("change", handleChange);
+    } else {
+      media.addListener(handleChange);
+    }
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener("change", handleChange);
+      } else {
+        media.removeListener(handleChange);
+      }
+    };
+  }, []);
+
   // === Recherche Globale ===
   useEffect(() => {
     const fetchResults = async () => {
@@ -50,18 +73,26 @@ const Navigation = () => {
     return () => clearTimeout(delay);
   }, [query]);
 
+  const openPath = (path) => {
+    if (isDesktop && typeof window !== "undefined") {
+      window.open(path, "_blank", "noopener,noreferrer");
+    } else {
+      navigate(path);
+    }
+  };
+
   const handleSelectResult = (item) => {
     setQuery("");
     setResults([]);
     switch (item.type) {
       case "client":
-        navigate(`/clients/${item._id}`);
+        openPath(`/clients/${item._id}`);
         break;
       case "product":
-        navigate(`/products/${item._id}`);
+        openPath(`/products/${item._id}`);
         break;
       case "sale":
-        navigate(`/sales/${item._id}`);
+        openPath(`/sales/${item._id}`);
         break;
       case "employee":
         navigate(`/employees/${item._id}`);
@@ -108,69 +139,15 @@ const Navigation = () => {
             </span>
           </Link>
 
-          {/* === Barre de recherche (Admin uniquement) === */}
+          {/* === Barre de recherche desktop (Admin uniquement) === */}
           {showSearchBar && (
-            <div className="relative flex-1 max-w-lg hidden md:block">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher produits, clients, ventes..."
-                className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-              />
-              <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={18} />
-                </button>
-              )}
-
-              {/* === Résultats dynamiques === */}
-              <AnimatePresence>
-                {results.length > 0 && (
-                  <motion.ul
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="absolute z-50 bg-white w-full mt-2 rounded-xl border border-gray-200 shadow-lg overflow-hidden"
-                  >
-                    {results.map((item) => {
-                      const isProduct = item.type === "product";
-                      return (
-                        <li
-                          key={item._id}
-                          onClick={() => handleSelectResult(item)}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            {isProduct && item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-8 h-8 rounded-lg object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 text-sm">
-                                {item.type === "client" ? "👤" : item.type === "employee" ? "👥" : "📄"}
-                              </div>
-                            )}
-                            <span className="font-medium text-gray-800">
-                              {item.name || item.clientName || item.title}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-500 capitalize">
-                            {item.type}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </motion.ul>
-                )}
-              </AnimatePresence>
-            </div>
+            <GlobalSearchBar
+              query={query}
+              setQuery={setQuery}
+              results={results}
+              onSelectResult={handleSelectResult}
+              className="hidden md:block flex-1 max-w-lg"
+            />
           )}
 
           {/* === Menu desktop === */}
@@ -216,6 +193,18 @@ const Navigation = () => {
             </button>
           </div>
         </div>
+
+        {/* === Barre de recherche mobile === */}
+        {showSearchBar && (
+          <GlobalSearchBar
+            query={query}
+            setQuery={setQuery}
+            results={results}
+            onSelectResult={handleSelectResult}
+            className="md:hidden mt-3 w-full"
+            isMobile
+          />
+        )}
 
         {/* === Menu mobile === */}
         <div
@@ -263,6 +252,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
         className={linkClass}
         onClick={closeMenu}
         isMobile={isMobile}
+        openInNewTab={!isMobile}
       />
 
       {/* === Clients === */}
@@ -282,6 +272,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
         className={linkClass}
         onClick={closeMenu}
         isMobile={isMobile}
+        openInNewTab={!isMobile}
       />
       
       <NavIcon
@@ -300,6 +291,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
             className={linkClass}
             onClick={closeMenu}
             isMobile={isMobile}
+            openInNewTab={!isMobile}
           />
 
       {/* === Admin uniquement === */}
@@ -417,8 +409,15 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
 };
 
 // === Composant lien icône ===
-const NavIcon = ({ to, icon, label, className, onClick, isMobile }) => (
-  <Link to={to} className={className} onClick={onClick} aria-label={label}>
+const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab = false }) => (
+  <Link
+    to={to}
+    className={className}
+    onClick={onClick}
+    aria-label={label}
+    target={openInNewTab ? "_blank" : undefined}
+    rel={openInNewTab ? "noopener noreferrer" : undefined}
+  >
     <div className={`flex ${isMobile ? "flex-row items-center" : "flex-col items-center"}`}>
       {icon}
       {isMobile && <span className="ml-3">{label}</span>}
@@ -427,6 +426,68 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile }) => (
       )}
     </div>
   </Link>
+);
+
+const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className = "", isMobile = false }) => (
+  <div className={`relative ${className}`}>
+    <input
+      type="text"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      placeholder="Rechercher produits, clients, ventes..."
+      className={`w-full pl-10 pr-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400 ${
+        isMobile ? "py-2.5 shadow-sm" : "py-2"
+      }`}
+    />
+    <Search
+      className={`absolute left-3 ${isMobile ? "top-3" : "top-2.5"} text-gray-400 w-5 h-5`}
+    />
+    {query && (
+      <button
+        onClick={() => setQuery("")}
+        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+        aria-label="Effacer la recherche"
+      >
+        <X size={18} />
+      </button>
+    )}
+
+    <AnimatePresence>
+      {results.length > 0 && (
+        <motion.ul
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="absolute z-50 bg-white w-full mt-2 rounded-xl border border-gray-200 shadow-lg overflow-hidden max-h-72 overflow-y-auto"
+        >
+          {results.map((item) => {
+            const isProduct = item.type === "product";
+            return (
+              <li
+                key={item._id}
+                onClick={() => onSelectResult(item)}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  {isProduct && item.image ? (
+                    <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 text-sm">
+                      {item.type === "client" ? "👤" : item.type === "employee" ? "👥" : "📄"}
+                    </div>
+                  )}
+                  <span className="font-medium text-gray-800">
+                    {item.name || item.clientName || item.title}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-500 capitalize">{item.type}</span>
+              </li>
+            );
+          })}
+        </motion.ul>
+      )}
+    </AnimatePresence>
+  </div>
 );
 
 export default Navigation;

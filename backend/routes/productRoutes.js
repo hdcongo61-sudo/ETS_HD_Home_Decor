@@ -9,7 +9,8 @@ const {
   getProductStats,
   getNeverSoldProducts,
   getProductDashboard, // Assurez-vous d'importer cette fonction
-  getProductsBySupplier
+  getProductsBySupplier,
+  getProductSalesHistory
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -28,6 +29,9 @@ router.route('/')
 
 router.route('/:id/stats')
   .get(protect,getProductStats);  
+
+router.route('/:id/sales-history')
+  .get(protect, getProductSalesHistory);
 
 router.route('/:id')
   .get(protect, getProductById)

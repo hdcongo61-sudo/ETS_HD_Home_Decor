@@ -31,6 +31,10 @@ const Clients = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(min-width: 768px)').matches;
+  });
 
   // --- Fetch stats ---
   const fetchStats = useCallback(async () => {
@@ -83,6 +87,25 @@ const Clients = () => {
     return () => controller.abort();
   }, [fetchClients, fetchStats, isAdmin]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const handleChange = () => setIsDesktop(mediaQuery.matches);
+    handleChange();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
   const formatCurrency = (value) => {
     if (!value) return '0 CFA';
     return `${Number(value).toLocaleString('fr-FR')} CFA`;
@@ -123,6 +146,14 @@ const Clients = () => {
     }
   };
 
+  const openClientDetails = (clientId) => {
+    if (isDesktop && typeof window !== 'undefined') {
+      window.open(`/clients/${clientId}`, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(`/clients/${clientId}`);
+    }
+  };
+
   const renderClientList = () => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
       {loading ? (
@@ -146,7 +177,7 @@ const Clients = () => {
                   <tr key={c._id} className="hover:bg-gray-50">
                     <td
                       className="px-4 py-3 cursor-pointer text-blue-600 hover:underline"
-                      onClick={() => navigate(`/clients/${c._id}`)}
+                      onClick={() => openClientDetails(c._id)}
                     >
                       {c.name}
                     </td>
@@ -189,7 +220,7 @@ const Clients = () => {
             {clients.map((c) => (
               <div key={c._id} className="border border-gray-200 rounded-xl p-4 shadow-sm">
                 <button
-                  onClick={() => navigate(`/clients/${c._id}`)}
+                  onClick={() => openClientDetails(c._id)}
                   className="text-left text-lg font-semibold text-blue-600 hover:underline w-full"
                 >
                   {c.name}

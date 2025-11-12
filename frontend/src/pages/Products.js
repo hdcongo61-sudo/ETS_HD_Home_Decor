@@ -277,6 +277,33 @@ const ProductForm = ({ product, onSubmit, loading }) => {
 /* ===================================================== */
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(min-width: 768px)').matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const handleChange = () => setIsDesktop(mediaQuery.matches);
+    handleChange();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
+  const desktopLinkProps = isDesktop
+    ? { target: '_blank', rel: 'noopener noreferrer' }
+    : {};
 
   if (loading) {
     return (
@@ -359,6 +386,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                   <Link
                     to={`/products/${p._id}`}
                     className="text-indigo-600 hover:underline hover:text-indigo-800 transition"
+                    {...desktopLinkProps}
                   >
                     {p.name}
                   </Link>
@@ -411,6 +439,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 <Link
                   to={`/products/${p._id}`}
                   className="text-base font-semibold text-indigo-600 hover:underline"
+                  {...desktopLinkProps}
                 >
                   {p.name}
                 </Link>

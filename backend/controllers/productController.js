@@ -1,5 +1,13 @@
 const Product = require('../models/productModel');
 const Sale = require('../models/saleModel');
+
+const normaliseId = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (value._id) return value._id.toString();
+  if (value.toString) return value.toString();
+  return null;
+};
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
@@ -91,14 +99,6 @@ const getProductStats = async (req, res) => {
         startDate = new Date(0); // All time
       }
     }
-
-    const normaliseId = (value) => {
-      if (!value) return null;
-      if (typeof value === 'string') return value;
-      if (value._id) return value._id.toString();
-      if (value.toString) return value.toString();
-      return null;
-    };
 
     const selectFields = 'saleDate products profitData';
     const matchByProduct = { 'products.product': product._id };
@@ -267,6 +267,59 @@ const getProductStats = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error fetching product stats',
+      error: error.message
+    });
+  }
+};
+
+const getProductSalesHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limitParam = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 25) : 5;
+
+    const product = await Product.findById(id).select('_id name price');
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const productId = product._id.toString();
+
+    const sales = await Sale.find({ 'products.product': product._id })
+      .select('saleDate totalAmount client products')
+      .populate('client', 'name')
+      .sort({ saleDate: -1 })
+      .limit(limit)
+      .lean();
+
+    const history = sales
+      .map((sale) => {
+        const matchingItem = (sale.products || []).find(
+          (item) => normaliseId(item.product) === productId
+        );
+
+        if (!matchingItem) {
+          return null;
+        }
+
+        return {
+          saleId: sale._id,
+          saleDate: sale.saleDate,
+          clientName: sale.client?.name || 'Client inconnu',
+          quantity: Number(matchingItem.quantity) || 0,
+          priceAtSale: Number(
+            matchingItem.priceAtSale ?? matchingItem.unitPrice ?? product.price ?? 0
+          ),
+          totalAmount: Number(sale.totalAmount) || 0
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ productId, sales: history });
+  } catch (error) {
+    console.error('Error fetching product sales history:', error);
+    res.status(500).json({
+      message: 'Error fetching product sales history',
       error: error.message
     });
   }
@@ -882,5 +935,6 @@ module.exports = {
   getProductStats,
   getProductDashboard,
   getNeverSoldProducts,
-  getProductsBySupplier
+  getProductsBySupplier,
+  getProductSalesHistory
 };

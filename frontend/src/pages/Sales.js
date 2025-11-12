@@ -8,7 +8,7 @@ import React, {
   Suspense,
   useRef,
 } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
@@ -29,6 +29,18 @@ import {
 import AuthContext from "../context/AuthContext";
 import useAutoClearMessage from "../hooks/useAutoClearMessage";
 import useResponsiveTable from "../hooks/useResponsiveTable";
+import {
+  calculateSaleTotals,
+  calculateSaleProfit,
+  calculateSaleMargin,
+  deriveProfitCategoryFromMargin,
+  formatDate,
+  getStatusClass,
+  getStatusText,
+  getProfitCategoryClass,
+  getProfitCategoryText,
+  parseDateSafely,
+} from "../utils/saleUtils";
 
 // Enregistrement Chart.js
 ChartJS.register(
@@ -53,118 +65,6 @@ const PaymentModal = lazy(() => import("../components/PaymentModal"));
 /* ===============================
    Utilitaires
    =============================== */
-const calculateSaleTotals = (sale) => {
-  const totalPaid =
-    sale?.payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) ||
-    0;
-  const balance = (sale.totalAmount || 0) - totalPaid;
-  return { totalPaid, balance };
-};
-
-const parseDateSafely = (value) => {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const formatDate = (dateString) => {
-  const options = {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-  const parsedDate = parseDateSafely(dateString);
-  return parsedDate
-    ? parsedDate.toLocaleDateString("fr-FR", options)
-    : "Date indisponible";
-};
-
-const getStatusClass = (status) => {
-  switch (status) {
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "partially_paid":
-      return "bg-yellow-100 text-yellow-800";
-    case "pending":
-      return "bg-blue-100 text-blue-800";
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-const getStatusText = (status) => {
-  switch (status) {
-    case "completed":
-      return "Payée";
-    case "partially_paid":
-      return "Partiellement payée";
-    case "pending":
-      return "En attente";
-    case "cancelled":
-      return "Annulée";
-    default:
-      return status;
-  }
-};
-
-const getProfitCategoryClass = (category) => {
-  switch (category) {
-    case "excellent":
-      return "bg-purple-100 text-purple-800";
-    case "élevé":
-      return "bg-green-100 text-green-800";
-    case "moyen":
-      return "bg-blue-100 text-blue-800";
-    case "faible":
-      return "bg-yellow-100 text-yellow-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-const getProfitCategoryText = (category) => {
-  switch (category) {
-    case "excellent":
-      return "Excellent";
-    case "élevé":
-      return "Élevé";
-    case "moyen":
-      return "Moyen";
-    case "faible":
-      return "Faible";
-    default:
-      return category;
-  }
-};
-
-const calculateSaleProfit = (sale) => {
-  if (!sale?.products?.length) return 0;
-  return sale.products.reduce((total, item) => {
-    const costPrice = item.product?.costPrice || 0;
-    const sellingPrice = item.priceAtSale || 0;
-    const quantity = Number(item.quantity) || 0;
-    return total + (sellingPrice - costPrice) * quantity;
-  }, 0);
-};
-
-const calculateSaleMargin = (sale) => {
-  const totalAmount = Number(sale?.totalAmount) || 0;
-  if (totalAmount === 0) return 0;
-  const totalProfit = calculateSaleProfit(sale);
-  return (totalProfit / totalAmount) * 100;
-};
-
-const deriveProfitCategoryFromMargin = (margin) => {
-  if (margin >= 50) return "excellent";
-  if (margin >= 30) return "élevé";
-  if (margin >= 15) return "moyen";
-  return "faible";
-};
-
 const getTodayFilterValue = () => new Date().toLocaleDateString("fr-CA");
 
 /* ===============================
@@ -833,6 +733,7 @@ const calculateAdvancedKPIs = (salesData, clientsData) => {
    =============================== */
 const Sales = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
 
@@ -849,6 +750,29 @@ const Sales = () => {
   const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
   const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const handleChange = () => setIsDesktop(mediaQuery.matches);
+    handleChange();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   // Modals
   const [selectedSale, setSelectedSale] = useState(null);
@@ -879,6 +803,22 @@ const Sales = () => {
     recurring: false,
     highProfit: false,
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("status")) {
+      setStatusFilter(params.get("status") || "");
+    }
+    if (params.has("client")) {
+      setClientFilter(params.get("client") || "");
+    }
+    if (params.has("date")) {
+      setDateFilter(params.get("date") || "");
+    }
+    if (params.has("delivery")) {
+      setDeliveryFilter(params.get("delivery") || "");
+    }
+  }, [location.search]);
 
   // Données Dashboard (backend /api/sales/dashboard-sale)
   const [dashboardData, setDashboardData] = useState({
@@ -1089,6 +1029,25 @@ const Sales = () => {
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
   }, [salesWithProfit, statusFilter, clientFilter, dateFilter, deliveryFilter, quickFilters]);
+
+  const desktopLinkProps = useMemo(
+    () => (isDesktop ? { target: "_blank", rel: "noopener noreferrer" } : {}),
+    [isDesktop]
+  );
+
+  const hasActiveFilters = Boolean(statusFilter || clientFilter || dateFilter || deliveryFilter);
+
+  const historyLinkSearch = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("history", "1");
+    if (statusFilter) params.set("status", statusFilter);
+    if (clientFilter) params.set("client", clientFilter);
+    if (dateFilter) params.set("date", dateFilter);
+    if (deliveryFilter) params.set("delivery", deliveryFilter);
+    return `?${params.toString()}`;
+  }, [statusFilter, clientFilter, dateFilter, deliveryFilter]);
+
+  const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
   /* ========= Manipulations ========= */
   const handleSubmitSale = async (saleData) => {
@@ -1361,10 +1320,19 @@ const Sales = () => {
 
             <GlassCard>
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
-                  Historique des Ventes
-                </h2>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
+                    Historique des Ventes
+                  </h2>
+                    <Link
+                      to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                      {...desktopLinkProps}
+                    >
+                      {historyLinkLabel}
+                    </Link>
+                </div>
 
                 <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
                   <div className="space-y-1">
@@ -1465,6 +1433,7 @@ const Sales = () => {
                             <Link
                               to={`/sales/${sale._id}`}
                               className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
+                              {...desktopLinkProps}
                             >
                               <span>Vente #{sale._id.slice(-6)}</span>
                             </Link>
@@ -2291,10 +2260,19 @@ const Sales = () => {
 
               <GlassCard>
                 <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
-                    Historique des Ventes
-                  </h2>
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
+                      Historique des Ventes
+                    </h2>
+                    <Link
+                      to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                      {...desktopLinkProps}
+                    >
+                      {historyLinkLabel}
+                    </Link>
+                  </div>
 
                   {/* Filtres historiques */}
                   <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -2395,6 +2373,7 @@ const Sales = () => {
                               <Link
                                 to={`/sales/${sale._id}`}
                                 className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
+                                {...desktopLinkProps}
                               >
                                 <span>Vente #{sale._id.slice(-6)}</span>
                               </Link>

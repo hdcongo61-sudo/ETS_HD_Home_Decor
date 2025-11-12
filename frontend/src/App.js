@@ -30,6 +30,7 @@ import PartiallyPaidPurchases from "./pages/PartiallyPaidPurchases";
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
 const Sales = lazy(() => import('./pages/Sales'));
+const SalesArchive = lazy(() => import('./pages/SalesArchive'));
 const Clients = lazy(() => import('./pages/Clients'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const ClientProfile = lazy(() => import('./pages/ClientProfile'));
@@ -186,6 +187,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Sales />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sales/all"
+                  element={
+                    <ProtectedRoute>
+                      <SalesArchive />
                     </ProtectedRoute>
                   }
                 />
