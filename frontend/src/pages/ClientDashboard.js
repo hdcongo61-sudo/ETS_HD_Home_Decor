@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
 } from 'recharts';
 import api from '../services/api';
+import { clientPath } from '../utils/paths';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -248,7 +249,7 @@ const ClientDashboard = () => {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Link
-                            to={`/clients/${client._id}`}
+                            to={clientPath(client)}
                             className="text-blue-600 hover:text-indigo-700 font-medium hover:underline"
                           >
                             Voir Profil →
@@ -273,7 +274,7 @@ const ClientDashboard = () => {
                       </span>
                     </div>
                     <Link
-                      to={`/clients/${client._id}`}
+                      to={clientPath(client)}
                       className="mt-3 inline-flex items-center text-blue-600 font-medium hover:text-indigo-700"
                     >
                       Voir profil complet →

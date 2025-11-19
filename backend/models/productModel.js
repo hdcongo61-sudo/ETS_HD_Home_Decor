@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('../utils/slugify');
 
 const productSchema = mongoose.Schema(
   {
@@ -37,6 +38,11 @@ const productSchema = mongoose.Schema(
       type: String,
       required: [true, 'La catégorie du produit est requise'],
       trim: true
+    },
+    slug: {
+      type: String,
+      trim: true,
+      index: true
     },
     image: {
       type: String,
@@ -161,6 +167,9 @@ productSchema.pre('save', function(next) {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 5);
     this.sku = `SKU-${timestamp}-${random}`.toUpperCase();
+  }
+  if (this.isNew || this.isModified('name') || !this.slug) {
+    this.slug = slugify(this.name);
   }
   next();
 });

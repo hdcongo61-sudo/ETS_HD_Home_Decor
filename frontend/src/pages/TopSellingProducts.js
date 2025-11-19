@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion } from 'framer-motion';
+import { productPath } from '../utils/paths';
 
 const TopSellingProducts = () => {
   const [data, setData] = useState([]);
@@ -89,7 +90,7 @@ const TopSellingProducts = () => {
               <tr
                 key={p._id || index}
                 className="hover:bg-indigo-50 transition cursor-pointer"
-                onClick={() => navigate(`/products/${p._id}`)}
+                onClick={() => navigate(productPath(p))}
               >
                 <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
                 <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
@@ -117,7 +118,7 @@ const TopSellingProducts = () => {
           <div
             key={p._id || index}
             className="bg-white rounded-2xl shadow border border-gray-100 p-4"
-            onClick={() => navigate(`/products/${p._id}`)}
+            onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
               <div>

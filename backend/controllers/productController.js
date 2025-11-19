@@ -1,5 +1,7 @@
 const Product = require('../models/productModel');
 const Sale = require('../models/saleModel');
+const streamifier = require('streamifier');
+const cloudinary = require('../utils/cloudinary');
 
 const normaliseId = (value) => {
   if (!value) return null;
@@ -325,6 +327,30 @@ const getProductSalesHistory = async (req, res) => {
   }
 };
 
+const parseNumberField = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const converted = Number(value);
+  return Number.isNaN(converted) ? undefined : converted;
+};
+
+const uploadImageToCloudinary = (buffer) => new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream(
+    {
+      folder: 'products',
+      resource_type: 'image',
+      // auto convert any incoming image to WebP for better performance
+      format: 'webp',
+      quality: 'auto:best',
+    },
+    (error, result) => {
+      if (error) return reject(error);
+      return resolve(result.secure_url);
+    }
+  );
+
+  streamifier.createReadStream(buffer).pipe(stream);
+});
+
 const createProduct = async (req, res) => {
   try {
     const {
@@ -338,6 +364,14 @@ const createProduct = async (req, res) => {
       supplierName,
       supplierPhone,
     } = req.body;
+    const numericPrice = parseNumberField(price);
+    const numericCost = parseNumberField(costPrice);
+    const numericStock = parseNumberField(stock) ?? 0;
+
+    let resolvedImageUrl = image;
+    if (req.file?.buffer) {
+      resolvedImageUrl = await uploadImageToCloudinary(req.file.buffer);
+    }
 
     const userId = req.user ? req.user._id : null;
     const userName = req.user?.name || 'Utilisateur inconnu';
@@ -345,11 +379,11 @@ const createProduct = async (req, res) => {
     const product = new Product({
       name,
       description,
-      price,
-      costPrice,
-      stock,
+      price: numericPrice,
+      costPrice: numericCost,
+      stock: numericStock,
       category,
-      image,
+      image: resolvedImageUrl,
       supplierName,
       supplierPhone,
       createdBy: userId,
@@ -386,6 +420,15 @@ const updateProduct = async (req, res) => {
       supplierPhone,
     } = req.body;
 
+    let resolvedImageUrl;
+    const hasImageField = Object.prototype.hasOwnProperty.call(req.body, 'image');
+    if (req.file?.buffer) {
+      resolvedImageUrl = await uploadImageToCloudinary(req.file.buffer);
+    } else if (hasImageField) {
+      resolvedImageUrl = image;
+    }
+
+
     const userId = req.user ? req.user._id : null;
     const userName = req.user?.name || 'Utilisateur inconnu';
     const product = await Product.findById(req.params.id);
@@ -399,11 +442,11 @@ const updateProduct = async (req, res) => {
     const fieldsToCheck = {
       name,
       description,
-      price,
-      costPrice,
-      stock,
+      price: parseNumberField(price),
+      costPrice: parseNumberField(costPrice),
+      stock: parseNumberField(stock),
       category,
-      image,
+      ...(resolvedImageUrl !== undefined ? { image: resolvedImageUrl } : {}),
       supplierName,
       supplierPhone,
     };

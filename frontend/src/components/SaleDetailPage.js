@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import { clientPath } from '../utils/paths';
 import PaymentModal from '../components/PaymentModal';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
@@ -694,7 +695,7 @@ const SaleDetailPage = () => {
                                         <span className="font-medium text-sm w-20">Nom:</span>
                                         {isAdmin ? (
                                             <Link
-                                                to={`/clients/${sale.client._id}`}
+                                                to={clientPath(sale.client)}
                                                 className="text-blue-600 hover:text-blue-800 text-sm flex items-center transition-colors"
                                             >
                                                 {sale.client.name}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { employeePayrollPath } from '../utils/paths';
 
 const PaySlipForm = () => {
     const { id, payslipId } = useParams();
@@ -18,6 +19,7 @@ const PaySlipForm = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditMode, setIsEditMode] = useState(false);
+    const employeeReference = employee || { _id: id };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -65,7 +67,7 @@ const PaySlipForm = () => {
             } else {
                 await api.post(`/employees/${id}/payroll`, data);
             }
-            navigate(`/employees/${id}/payroll`);
+            navigate(employeePayrollPath(employeeReference));
         } catch (err) {
             setErrors(err.response?.data?.errors || { general: err.response?.data?.message || 'Erreur de sauvegarde' });
         } finally {
@@ -98,7 +100,7 @@ const PaySlipForm = () => {
         <div className="max-w-3xl mx-auto p-4">
             <div className="flex items-center mb-6">
                 <button
-                    onClick={() => navigate(`/employees/${id}/payroll`)}
+                    onClick={() => navigate(employeePayrollPath(employeeReference))}
                     className="p-2 rounded-full hover:bg-gray-100 mr-2 transition-colors"
                 >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,11 +344,11 @@ const PaySlipForm = () => {
 
                     {/* Action Buttons */}
                     <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-6 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/employees/${id}/payroll`)}
-                            className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
-                        >
+                    <button
+                        type="button"
+                        onClick={() => navigate(employeePayrollPath(employeeReference))}
+                        className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
+                    >
                             Annuler
                         </button>
                         <button

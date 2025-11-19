@@ -4,6 +4,7 @@ import AuthContext from "../context/AuthContext";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
+import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 
 const Navigation = () => {
   const { auth, setAuth } = useContext(AuthContext);
@@ -86,16 +87,16 @@ const Navigation = () => {
     setResults([]);
     switch (item.type) {
       case "client":
-        openPath(`/clients/${item._id}`);
+        openPath(clientPath(item));
         break;
       case "product":
-        openPath(`/products/${item._id}`);
+        openPath(productPath(item));
         break;
       case "sale":
         openPath(`/sales/${item._id}`);
         break;
       case "employee":
-        navigate(`/employees/${item._id}`);
+        navigate(employeeBasePath(item));
         break;
       default:
         navigate("/");

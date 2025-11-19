@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { productEditPath, productPath } from '../utils/paths';
 
 const CriticalStockProducts = () => {
   const [products, setProducts] = useState([]);
@@ -113,7 +114,7 @@ const CriticalStockProducts = () => {
               <tr
                 key={p._id}
                 className="hover:bg-yellow-50 transition cursor-pointer"
-                onClick={() => navigate(`/products/${p._id}`)}
+                onClick={() => navigate(productPath(p))}
               >
                 <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
                 <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
@@ -127,7 +128,7 @@ const CriticalStockProducts = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/products/edit/${p._id}`);
+                      navigate(productEditPath(p));
                     }}
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
@@ -146,7 +147,7 @@ const CriticalStockProducts = () => {
           <div
             key={p._id}
             className="bg-white rounded-2xl shadow border border-gray-100 p-4"
-            onClick={() => navigate(`/products/${p._id}`)}
+            onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -173,7 +174,7 @@ const CriticalStockProducts = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/products/edit/${p._id}`);
+                navigate(productEditPath(p));
               }}
               className="mt-3 w-full px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition"
             >

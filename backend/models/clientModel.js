@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
+const slugify = require('../utils/slugify');
 
 const clientSchema = mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      index: true
     },
     email: {
       type: String,
@@ -16,6 +22,11 @@ const clientSchema = mongoose.Schema(
     },
     address: {
       type: String,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+      default: 'other',
     },
     purchases: [
       {
@@ -65,6 +76,9 @@ clientSchema.virtual('purchaseDetails', {
 
 // Middleware to update metrics when purchases change
 clientSchema.pre('save', async function (next) {
+  if (this.isNew || this.isModified('name') || !this.slug) {
+    this.slug = slugify(this.name);
+  }
   if (this.isModified('purchases')) {
     try {
       const sales = await mongoose.model('Sale').find({

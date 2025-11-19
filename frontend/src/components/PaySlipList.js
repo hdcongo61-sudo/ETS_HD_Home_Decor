@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import {
+  employeeBasePath,
+  employeePayrollPath,
+  employeePayrollNewPath,
+  employeePayrollPayslipEditPath,
+  employeePayrollPayslipPrintPath,
+} from '../utils/paths';
 
 const PaySlipList = () => {
     const { id } = useParams();
@@ -12,6 +19,7 @@ const PaySlipList = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showSummary, setShowSummary] = useState(true);
+    const employeeReference = employee || { _id: id };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -33,7 +41,7 @@ const PaySlipList = () => {
     }, [id]);
 
     const handleEdit = (payslipId) => {
-        navigate(`/employees/${id}/payroll/${payslipId}/edit`);
+        navigate(employeePayrollPayslipEditPath(employeeReference, payslipId));
     };
 
     const handleDelete = async (payslipId) => {
@@ -48,7 +56,7 @@ const PaySlipList = () => {
     };
 
     const handlePrint = (payslipId) => {
-        navigate(`/employees/${id}/payroll/${payslipId}/print`);
+        navigate(employeePayrollPayslipPrintPath(employeeReference, payslipId));
     };
 
     const filteredPaySlips = paySlips.filter(slip =>
@@ -107,7 +115,7 @@ const PaySlipList = () => {
             {/* Header */}
             <div className="flex items-center mb-6">
                 <button
-                    onClick={() => navigate(`/employees/${id}`)}
+                    onClick={() => navigate(employeeBasePath(employeeReference))}
                     className="p-2 rounded-full hover:bg-gray-100 mr-2 transition-colors"
                 >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +156,7 @@ const PaySlipList = () => {
                             {showSummary ? 'Masquer résumé' : 'Afficher résumé'}
                         </button>
                         <Link
-                            to={`/employees/${id}/payroll/new`}
+                            to={employeePayrollNewPath(employeeReference)}
                             className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,7 +275,7 @@ const PaySlipList = () => {
                                 Aucune fiche de paie trouvée pour {new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                             </p>
                             <Link
-                                to={`/employees/${id}/payroll/new`}
+                                to={employeePayrollNewPath(employeeReference)}
                                 className="mt-4 inline-flex items-center px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-colors"
                             >
                                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

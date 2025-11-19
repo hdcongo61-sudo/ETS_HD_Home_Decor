@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { employeePayrollPath } from '../utils/paths';
 
 const PaySlipPrint = () => {
     const { id, payslipId } = useParams();
@@ -11,6 +12,7 @@ const PaySlipPrint = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const employeeReference = employee || { _id: id };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -132,7 +134,7 @@ const PaySlipPrint = () => {
             {/* Bouton Retour et actions */}
             <div className="no-print mb-6 flex flex-wrap justify-between items-center gap-4">
                 <button
-                    onClick={() => navigate(`/employees/${id}/payroll`)}
+                    onClick={() => navigate(employeePayrollPath(employeeReference))}
                     className="flex items-center text-blue-600 hover:text-blue-800 px-4 py-2 bg-blue-50 rounded-lg"
                 >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

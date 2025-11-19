@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion } from 'framer-motion';
+import { productEditPath, productPath } from '../utils/paths';
 
 const OutOfStockProducts = () => {
   const [products, setProducts] = useState([]);
@@ -81,7 +82,7 @@ const OutOfStockProducts = () => {
                 <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4">
                   <button
-                    onClick={() => navigate(`/products/edit/${p._id}`)}
+                    onClick={() => navigate(productEditPath(p))}
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Réapprovisionner
@@ -98,7 +99,7 @@ const OutOfStockProducts = () => {
           <div
             key={p._id}
             className="bg-white rounded-2xl shadow border border-gray-100 p-4"
-            onClick={() => navigate(`/products/${p._id}`)}
+            onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -114,7 +115,7 @@ const OutOfStockProducts = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/products/edit/${p._id}`);
+                  navigate(productEditPath(p));
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition text-sm font-medium"
               >

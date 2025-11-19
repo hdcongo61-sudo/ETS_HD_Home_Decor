@@ -6,6 +6,7 @@ import { Line } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import 'chart.js/auto';
+import { productEditPath, productPath } from '../utils/paths';
 
 /* ===================================================== */
 /* 🧩 UTILITAIRES DE FORMATTAGE */
@@ -95,7 +96,7 @@ const ProductDetails = () => {
   const absoluteProfit =
     product?.costPrice && product?.price ? product.price - product.costPrice : 0;
 
-  const productUrl = `${window.location.origin}/products/${id}`;
+  const productUrl = `${window.location.origin}${productPath(product || id)}`;
 
   /* ===================================================== */
   /* 📦 EXPORT PDF */
@@ -256,7 +257,7 @@ const getActivityIcon = (type) => {
               </svg>
             </button>
             <button
-      onClick={() => navigate(`/products/edit/${product._id}`)}
+      onClick={() => navigate(productEditPath(product || id))}
       className="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 flex items-center gap-2 shadow-sm"
     >
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

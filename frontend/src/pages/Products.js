@@ -6,6 +6,7 @@ import AuthContext from '../context/AuthContext';
 import LoaderOverlay from '../components/LoaderOverlay';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { productPath } from '../utils/paths';
 
 const CATEGORY_OPTIONS = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
 
@@ -40,14 +41,26 @@ const Products = () => {
     }
   };
 
-  const handleCreate = async (productData) => {
+  const handleCreate = async (productData, imageFile) => {
     try {
       setFormSubmitting(true);
-      const config = { headers: { 'Content-Type': 'application/json' } };
+      let payload = productData;
+      let config = { headers: { 'Content-Type': 'application/json' } };
+
+      if (imageFile) {
+        payload = new FormData();
+        Object.entries(productData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            payload.append(key, value);
+          }
+        });
+        payload.append('imageFile', imageFile);
+        config = {};
+      }
 
       const { data } = editingProduct
-        ? await api.put(`/products/${editingProduct._id}`, productData, config)
-        : await api.post('/products', productData, config);
+        ? await api.put(`/products/${editingProduct._id}`, payload, config)
+        : await api.post('/products', payload, config);
 
       if (data) {
         toast.success(
@@ -177,20 +190,29 @@ const Products = () => {
 /* ===================================================== */
 /* 🧾 FORMULAIRE PRODUIT */
 /* ===================================================== */
-const ProductForm = ({ product, onSubmit, loading }) => {
-  const [formData, setFormData] = useState({
-    name: product?.name || '',
-    description: product?.description || '',
-    price: product?.price || '',
-    costPrice: product?.costPrice || '',
-    stock: product?.stock || '',
-    category: product?.category || '',
-    image: product?.image || '',
-    supplierName: product?.supplierName || '',
-    supplierPhone: product?.supplierPhone || '',
-  });
+const getProductFormDefaults = (product) => ({
+  name: product?.name || '',
+  description: product?.description || '',
+  price: product?.price || '',
+  costPrice: product?.costPrice || '',
+  stock: product?.stock || '',
+  category: product?.category || '',
+  image: product?.image || '',
+  supplierName: product?.supplierName || '',
+  supplierPhone: product?.supplierPhone || '',
+});
 
+const ProductForm = ({ product, onSubmit, loading }) => {
+  const [formData, setFormData] = useState(() => getProductFormDefaults(product));
   const [profitMargin, setProfitMargin] = useState(0);
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(product?.image || '');
+
+  useEffect(() => {
+    setFormData(getProductFormDefaults(product));
+    setImageFile(null);
+    setPreviewUrl(product?.image || '');
+  }, [product]);
 
   useEffect(() => {
     if (formData.price && formData.costPrice) {
@@ -203,7 +225,29 @@ const ProductForm = ({ product, onSubmit, loading }) => {
     }
   }, [formData.price, formData.costPrice]);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  useEffect(() => {
+    if (!imageFile) {
+      setPreviewUrl(formData.image || product?.image || '');
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile, formData.image, product?.image]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'image') {
+      setImageFile(null);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -213,7 +257,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
       costPrice: parseFloat(formData.costPrice),
       stock: parseInt(formData.stock, 10),
     };
-    onSubmit(processedData);
+    onSubmit(processedData, imageFile);
   };
 
   return (
@@ -263,9 +307,22 @@ const ProductForm = ({ product, onSubmit, loading }) => {
 
       <Input label="URL de l'image" name="image" value={formData.image} onChange={handleChange} />
 
-      {formData.image && (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Importer une image</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Un téléchargement déclenchera un upload Cloudinary automatique.
+        </p>
+      </div>
+
+      {previewUrl && (
         <div className="flex justify-center mt-4">
-          <img src={formData.image} alt="Aperçu" className="w-32 h-32 rounded-xl object-cover border border-gray-200 shadow-sm" />
+          <img src={previewUrl} alt="Aperçu" className="w-32 h-32 rounded-xl object-cover border border-gray-200 shadow-sm" />
         </div>
       )}
     </form>
@@ -384,7 +441,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                     <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg">📦</div>
                   )}
                   <Link
-                    to={`/products/${p._id}`}
+                    to={productPath(p)}
                     className="text-indigo-600 hover:underline hover:text-indigo-800 transition"
                     {...desktopLinkProps}
                   >
@@ -437,7 +494,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               )}
               <div className="flex-1">
                 <Link
-                  to={`/products/${p._id}`}
+                  to={productPath(p)}
                   className="text-base font-semibold text-indigo-600 hover:underline"
                   {...desktopLinkProps}
                 >

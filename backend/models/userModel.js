@@ -1,11 +1,17 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const slugify = require('../utils/slugify');
 
 const userSchema = mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      index: true
     },
     email: {
       type: String,
@@ -132,6 +138,13 @@ userSchema.pre('save', async function (next) {
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.pre('save', function (next) {
+  if (this.isNew || this.isModified('name') || !this.slug) {
+    this.slug = slugify(this.name);
+  }
+  next();
 });
 
 const User = mongoose.model('User', userSchema);

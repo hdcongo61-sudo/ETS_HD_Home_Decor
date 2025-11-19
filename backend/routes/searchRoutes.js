@@ -14,10 +14,10 @@ router.get("/", async (req, res) => {
     const regex = new RegExp(q, "i");
 
     const [products, clients, sales, employees] = await Promise.all([
-      Product.find({ name: regex }).select("name _id image").limit(5),
-      Client.find({ name: regex }).select("name _id").limit(5),
+      Product.find({ name: regex }).select("name _id image slug").limit(5),
+      Client.find({ name: regex }).select("name _id slug").limit(5),
       Sale.find({ clientName: regex }).select("clientName totalAmount _id").limit(5),
-      Employee.find({ name: regex }).select("name _id").limit(5),
+      Employee.find({ name: regex }).select("name _id slug").limit(5),
     ]);
 
     const results = [

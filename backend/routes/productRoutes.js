@@ -13,6 +13,7 @@ const {
   getProductSalesHistory
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
+const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 router.route('/never-sold').get(protect, getNeverSoldProducts);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
@@ -25,7 +26,7 @@ router.route('/by-supplier')
 // Routes standard pour les produits
 router.route('/')
   .get(protect, getProducts)
-  .post(protect, admin, createProduct);
+  .post(protect, admin, imageUpload.single('imageFile'), createProduct);
 
 router.route('/:id/stats')
   .get(protect,getProductStats);  
@@ -35,7 +36,7 @@ router.route('/:id/sales-history')
 
 router.route('/:id')
   .get(protect, getProductById)
-  .put(protect, admin, updateProduct)
+  .put(protect, admin, imageUpload.single('imageFile'), updateProduct)
   .delete(protect, admin, deleteProduct);
 
 

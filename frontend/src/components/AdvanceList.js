@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import { employeeAdvancesNewPath, employeeBasePath } from '../utils/paths';
 
 const AdvanceList = () => {
     const { id } = useParams();
@@ -9,6 +10,7 @@ const AdvanceList = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [employee, setEmployee] = useState(null);
+    const employeeReference = employee || { _id: id };
 
     useEffect(() => {
         const fetchAdvances = async () => {
@@ -74,7 +76,7 @@ const AdvanceList = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         <Link
-                            to={`/employees/${id}`}
+                            to={employeeBasePath(employeeReference)}
                             className="bg-white text-gray-700 px-4 py-2.5 rounded-xl flex items-center gap-2 justify-center border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +85,7 @@ const AdvanceList = () => {
                             Retour au Profil
                         </Link>
                         <Link
-                            to={`/employees/${id}/advances/new`}
+                            to={employeeAdvancesNewPath(employeeReference)}
                             className="bg-blue-500 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 justify-center hover:bg-blue-600 transition-colors shadow-sm"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -7,8 +7,27 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { clientPath } from '../utils/paths';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Homme' },
+  { value: 'female', label: 'Femme' },
+  { value: 'other', label: 'Autre' }
+];
+const GENDER_LABELS = {
+  male: 'Homme',
+  female: 'Femme',
+  other: 'Autre',
+  unknown: 'Non renseigné'
+};
+const GENDER_COLORS = {
+  male: '#2563eb',
+  female: '#ec4899',
+  other: '#10b981',
+  unknown: '#94a3b8'
+};
+const GENDER_ORDER = ['male', 'female', 'other', 'unknown'];
 
 const Clients = () => {
   const { auth } = useContext(AuthContext);
@@ -30,7 +49,13 @@ const Clients = () => {
   const [filtering, setFiltering] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    gender: 'other',
+  });
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(min-width: 768px)').matches;
@@ -111,6 +136,21 @@ const Clients = () => {
     return `${Number(value).toLocaleString('fr-FR')} CFA`;
   };
 
+  const formatGender = (gender) => {
+    if (!gender) return GENDER_LABELS.unknown;
+    return GENDER_LABELS[gender] || GENDER_LABELS.other;
+  };
+
+  const getGenderColor = (gender) => GENDER_COLORS[gender] || GENDER_COLORS.other;
+
+  const getGenderOrder = (gender) => {
+    const index = GENDER_ORDER.indexOf(gender);
+    return index === -1 ? GENDER_ORDER.length : index;
+  };
+
+  const formatPercentage = (value) =>
+    typeof value === 'number' && !Number.isNaN(value) ? `${value.toFixed(1)}%` : '—';
+
   // --- Add or Edit client ---
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,7 +163,7 @@ const Clients = () => {
         toast.success('✅ Client ajouté avec succès');
       }
       setIsFormOpen(false);
-      setFormData({ name: '', email: '', phone: '', address: '' });
+      setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
       setEditingClient(null);
       fetchClients();
       fetchStats();
@@ -146,11 +186,12 @@ const Clients = () => {
     }
   };
 
-  const openClientDetails = (clientId) => {
+  const openClientDetails = (client) => {
+    const path = clientPath(client);
     if (isDesktop && typeof window !== 'undefined') {
-      window.open(`/clients/${clientId}`, '_blank', 'noopener,noreferrer');
+      window.open(path, '_blank', 'noopener,noreferrer');
     } else {
-      navigate(`/clients/${clientId}`);
+      navigate(path);
     }
   };
 
@@ -168,6 +209,7 @@ const Clients = () => {
                 <tr>
                   <th className="px-4 py-3 text-left text-gray-700 font-medium">Nom</th>
                   <th className="px-4 py-3 text-left text-gray-700 font-medium">Email</th>
+                  <th className="px-4 py-3 text-left text-gray-700 font-medium">Genre</th>
                   <th className="px-4 py-3 text-left text-gray-700 font-medium">Téléphone</th>
                   {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
                 </tr>
@@ -177,11 +219,12 @@ const Clients = () => {
                   <tr key={c._id} className="hover:bg-gray-50">
                     <td
                       className="px-4 py-3 cursor-pointer text-blue-600 hover:underline"
-                      onClick={() => openClientDetails(c._id)}
+                      onClick={() => openClientDetails(c)}
                     >
                       {c.name}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{c.email || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatGender(c.gender)}</td>
                     <td className="px-4 py-3 text-gray-600">{c.phone || '—'}</td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-right">
@@ -194,6 +237,7 @@ const Clients = () => {
                                 email: c.email,
                                 phone: c.phone,
                                 address: c.address,
+                                gender: c.gender || 'other',
                               });
                               setIsFormOpen(true);
                             }}
@@ -220,7 +264,7 @@ const Clients = () => {
             {clients.map((c) => (
               <div key={c._id} className="border border-gray-200 rounded-xl p-4 shadow-sm">
                 <button
-                  onClick={() => openClientDetails(c._id)}
+                  onClick={() => openClientDetails(c)}
                   className="text-left text-lg font-semibold text-blue-600 hover:underline w-full"
                 >
                   {c.name}
@@ -230,6 +274,9 @@ const Clients = () => {
                 </p>
                 <p className="text-sm text-gray-600">
                   Téléphone : <span className="text-gray-800">{c.phone || '—'}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Genre : <span className="text-gray-800">{formatGender(c.gender)}</span>
                 </p>
                 {isAdmin && (
                   <div className="flex flex-col sm:flex-row gap-2 mt-3">
@@ -241,6 +288,7 @@ const Clients = () => {
                           email: c.email,
                           phone: c.phone,
                           address: c.address,
+                          gender: c.gender || 'other',
                         });
                         setIsFormOpen(true);
                       }}
@@ -311,6 +359,13 @@ const Clients = () => {
     document.body.style.overflow = isFormOpen ? 'hidden' : 'auto';
   }, [isFormOpen]);
 
+  const genderStats = stats?.genderDistribution
+    ? [...stats.genderDistribution].sort(
+        (a, b) => getGenderOrder(a.gender) - getGenderOrder(b.gender)
+      )
+    : [];
+  const totalGenderClients = genderStats.reduce((acc, item) => acc + (item.count || 0), 0);
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -333,10 +388,10 @@ const Clients = () => {
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full md:w-auto">
             <button
               onClick={() => {
-                setIsFormOpen(true);
-                setEditingClient(null);
-                setFormData({ name: '', email: '', phone: '', address: '' });
-              }}
+              setIsFormOpen(true);
+              setEditingClient(null);
+              setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
+            }}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
             >
               + Nouveau Client
@@ -413,7 +468,7 @@ const Clients = () => {
                     {stats.topClients.map((client, index) => (
                       <Link
                         key={`${client.clientId || client._id || index}-link`}
-                        to={`/clients/${client.clientId || client._id}`}
+                        to={clientPath({ _id: client.clientId || client._id, slug: client.slug })}
                         className="flex items-center justify-between px-4 py-2 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition"
                       >
                         <div className="flex items-center gap-3">
@@ -436,6 +491,58 @@ const Clients = () => {
                           {client.totalSpent?.toLocaleString('fr-FR')} CFA
                         </span>
                       </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {genderStats.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500">Répartition par genre</p>
+                      <h3 className="text-2xl font-semibold text-gray-900 mt-1">
+                        {totalGenderClients} client{totalGenderClients > 1 ? 's' : ''}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {genderStats.map((entry) => formatGender(entry.gender)).join(' · ')}
+                      </p>
+                    </div>
+                    <div className="w-32 h-32 md:w-40 md:h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={genderStats}
+                            dataKey="count"
+                            nameKey="gender"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={30}
+                            outerRadius={50}
+                            paddingAngle={3}
+                          >
+                            {genderStats.map((entry) => (
+                              <Cell key={entry.gender} fill={getGenderColor(entry.gender)} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => `${value} clients`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    {genderStats.map((entry) => (
+                      <div
+                        key={entry.gender}
+                        className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"
+                      >
+                        <div>
+                          <p className="text-sm text-gray-500">{formatGender(entry.gender)}</p>
+                          <p className="text-lg font-semibold text-gray-900">{entry.count} clients</p>
+                        </div>
+                        <span className="text-sm text-gray-600">{formatPercentage(entry.percentage)}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -487,6 +594,18 @@ const Clients = () => {
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
             />
+            <select
+              value={formData.gender}
+              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+              required
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {GENDER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
 
             <div className="flex justify-end gap-3 pt-2">
               <button

@@ -167,7 +167,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/products/:id"
+                  path="/products/:id/:slug?"
                   element={
                     <ProtectedRoute adminOnly>
                       <ProductDetails />
@@ -175,7 +175,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/products/edit/:id"
+                  path="/products/edit/:id/:slug?"
                   element={
                     <ProtectedRoute adminOnly>
                       <EditProductForm />
@@ -239,7 +239,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/clients/:id"
+                  path="/clients/:id/:slug?"
                   element={
                     <ProtectedRoute>
                       <ClientProfile />
@@ -279,7 +279,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id"
+                  path="/employees/:id/:slug?"
                   element={
                     <ProtectedRoute>
                       <EmployeeDetails />
@@ -287,7 +287,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/edit"
+                  path="/employees/:id/:slug?/edit"
                   element={
                     <ProtectedRoute>
                       <EmployeeForm />
@@ -295,7 +295,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/payroll"
+                  path="/employees/:id/:slug?/payroll"
                   element={
                     <ProtectedRoute>
                       <PaySlipList />
@@ -303,7 +303,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/payroll/new"
+                  path="/employees/:id/:slug?/payroll/new"
                   element={
                     <ProtectedRoute>
                       <PaySlipForm />
@@ -311,7 +311,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/advances"
+                  path="/employees/:id/:slug?/advances"
                   element={
                     <ProtectedRoute>
                       <AdvanceList />
@@ -319,7 +319,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/advances/new"
+                  path="/employees/:id/:slug?/advances/new"
                   element={
                     <ProtectedRoute>
                       <AdvanceForm />
@@ -327,7 +327,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/payroll/:payslipId/edit"
+                  path="/employees/:id/:slug?/payroll/:payslipId/edit"
                   element={
                     <ProtectedRoute>
                       <PaySlipFormEdit />
@@ -335,7 +335,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/employees/:id/payroll/:payslipId/print"
+                  path="/employees/:id/:slug?/payroll/:payslipId/print"
                   element={
                     <ProtectedRoute>
                       <PaySlipPrint />

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { employeeAdvancesPath } from '../utils/paths';
 
 const AdvanceForm = () => {
     const { id } = useParams();
@@ -16,6 +17,7 @@ const AdvanceForm = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [maxAdvance, setMaxAdvance] = useState(0);
+    const employeeReference = employee || { _id: id };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -51,7 +53,7 @@ const AdvanceForm = () => {
             };
 
             await api.post(`/employees/${id}/advances`, data);
-            navigate(`/employees/${id}/advances`);
+            navigate(employeeAdvancesPath(employeeReference));
         } catch (err) {
             setErrors(err.response?.data?.errors || { general: err.response?.data?.message || 'Erreur de sauvegarde' });
         } finally {
@@ -79,7 +81,7 @@ const AdvanceForm = () => {
         <div className="max-w-2xl mx-auto p-4">
             <div className="flex items-center mb-6">
                 <button
-                    onClick={() => navigate(`/employees/${id}/advances`)}
+                    onClick={() => navigate(employeeAdvancesPath(employeeReference))}
                     className="p-2 rounded-full hover:bg-gray-100 mr-2 transition-colors"
                 >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +178,7 @@ const AdvanceForm = () => {
                     <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-6 border-t border-gray-100">
                         <button
                             type="button"
-                            onClick={() => navigate(`/employees/${id}/advances`)}
+                            onClick={() => navigate(employeeAdvancesPath(employeeReference))}
                             className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
                         >
                             Annuler

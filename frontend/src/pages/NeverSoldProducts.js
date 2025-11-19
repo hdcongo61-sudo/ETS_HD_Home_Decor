@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import { productEditPath, productPath } from '../utils/paths';
 
 const NeverSoldProducts = () => {
   const [data, setData] = useState([]);
@@ -331,13 +332,13 @@ const exportToPDF = async () => {
                       <td className="px-6 py-3 text-gray-700">{product.stock}</td>
                       <td className="px-6 py-3 flex gap-3">
                         <button
-                          onClick={() => navigate(`/products/${product._id}`)}
+                          onClick={() => navigate(productPath(product))}
                           className="text-indigo-600 hover:text-indigo-800 font-medium"
                         >
                           Voir
                         </button>
                         <button
-                          onClick={() => navigate(`/products/edit/${product._id}`)}
+                          onClick={() => navigate(productEditPath(product))}
                           className="text-green-600 hover:text-green-800 font-medium"
                         >
                           Modifier
@@ -351,13 +352,13 @@ const exportToPDF = async () => {
 
             <div className="md:hidden space-y-4">
               {filteredData.map((product, i) => (
-                <motion.div
-                  key={product._id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="bg-white rounded-2xl shadow border border-gray-100 p-4"
-                >
+              <motion.div
+                key={product._id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+              >
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-base font-semibold text-gray-900">{product.name}</p>
@@ -374,13 +375,13 @@ const exportToPDF = async () => {
                     <span className="text-gray-600">Stock : {product.stock}</span>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => navigate(`/products/${product._id}`)}
+                        onClick={() => navigate(productPath(product))}
                         className="text-indigo-600 hover:text-indigo-800 font-medium"
                       >
                         Voir
                       </button>
                       <button
-                        onClick={() => navigate(`/products/edit/${product._id}`)}
+                        onClick={() => navigate(productEditPath(product))}
                         className="text-green-600 hover:text-green-800 font-medium"
                       >
                         Modifier

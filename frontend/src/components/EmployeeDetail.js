@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import {
+  employeeAdvancesNewPath,
+  employeeEditPath,
+  employeePayrollNewPath,
+  employeePayrollPath,
+  employeePayrollPayslipEditPath,
+} from '../utils/paths';
 
 const statusStyles = {
   pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
@@ -31,6 +38,7 @@ const EmployeeDetail = () => {
     totalAdvances: 0,
     balance: 0
   });
+  const employeeReference = employee || { _id: id };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -362,7 +370,7 @@ const EmployeeDetail = () => {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Historique des fiches de paie</h3>
                 <Link
-                  to={`/employees/${id}/payroll/new`}
+                  to={employeePayrollNewPath(employeeReference)}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,13 +433,13 @@ const EmployeeDetail = () => {
 
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                             <Link
-                              to={`/employees/${id}/payroll`}
+                              to={employeePayrollPath(employeeReference)}
                               className="flex-1 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-600 shadow-sm transition-colors hover:bg-blue-50"
                             >
                               Voir la liste
                             </Link>
                             <Link
-                              to={`/employees/${id}/payroll/${slip._id}/edit`}
+                              to={employeePayrollPayslipEditPath(employeeReference, slip._id)}
                               className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-100"
                             >
                               Modifier
@@ -481,7 +489,7 @@ const EmployeeDetail = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <div className="flex gap-3">
                                     <Link
-                                      to={`/employees/${id}/payroll`}
+                                      to={employeePayrollPath(employeeReference)}
                                       className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
                                       title="Voir la liste"
                                     >
@@ -492,7 +500,7 @@ const EmployeeDetail = () => {
                                     </Link>
 
                                     <Link
-                                      to={`/employees/${id}/payroll/${slip._id}/edit`}
+                                      to={employeePayrollPayslipEditPath(employeeReference, slip._id)}
                                       className="text-gray-500 hover:text-gray-700 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
                                       title="Modifier"
                                     >
@@ -528,7 +536,7 @@ const EmployeeDetail = () => {
                   <h4 className="mt-4 text-gray-700 font-medium">Aucune fiche de paie</h4>
                   <p className="text-gray-500 mt-2 mb-4">Aucune fiche de paie trouvée pour cet employé</p>
                   <Link
-                    to={`/employees/${id}/payroll/new`}
+                    to={employeePayrollNewPath(employeeReference)}
                     className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-colors"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,7 +555,7 @@ const EmployeeDetail = () => {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Historique des avances</h3>
                 <Link
-                  to={`/employees/${id}/advances/new`}
+                  to={employeeAdvancesNewPath(employeeReference)}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -671,7 +679,7 @@ const EmployeeDetail = () => {
                   <h4 className="mt-4 text-gray-700 font-medium">Aucune avance</h4>
                   <p className="text-gray-500 mt-2 mb-4">Aucune avance trouvée pour cet employé</p>
                   <Link
-                    to={`/employees/${id}/advances/new`}
+                    to={employeeAdvancesNewPath(employeeReference)}
                     className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-colors"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -698,7 +706,7 @@ const EmployeeDetail = () => {
           </Link>
           <div className="flex gap-3">
             <Link
-              to={`/employees/${id}/edit`}
+              to={employeeEditPath(employeeReference)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 justify-center transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
+const slugify = require('../utils/slugify');
 
 const employeeSchema = mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      index: true
     },
     email: {
       type: String,
@@ -52,5 +58,12 @@ const employeeSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+employeeSchema.pre('save', function (next) {
+  if (this.isNew || this.isModified('name') || !this.slug) {
+    this.slug = slugify(this.name);
+  }
+  next();
+});
 
 module.exports = mongoose.model('Employee', employeeSchema);

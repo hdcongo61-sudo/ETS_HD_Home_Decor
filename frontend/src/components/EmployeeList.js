@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { employeeAdvancesPath, employeeBasePath, employeeEditPath, employeePayrollPath } from '../utils/paths';
 
 const EmployeeList = () => {
   const [employees, setEmployees] = useState([]);
@@ -156,7 +157,7 @@ const EmployeeList = () => {
                 <tr key={employee._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
-                      to={`/employees/${employee._id}`}
+                      to={employeeBasePath(employee)}
                       className="text-sm font-medium text-gray-900 hover:text-blue-600"
                     >
                       {employee.name}
@@ -170,7 +171,7 @@ const EmployeeList = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
                       <Link
-                        to={`/employees/${employee._id}`}
+                        to={employeeBasePath(employee)}
                         className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
                         title="Voir"
                       >
@@ -180,7 +181,7 @@ const EmployeeList = () => {
                         </svg>
                       </Link>
                       <Link
-                        to={`/employees/${employee._id}/edit`}
+                        to={employeeEditPath(employee)}
                         className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
                         title="Modifier"
                       >
@@ -189,7 +190,7 @@ const EmployeeList = () => {
                         </svg>
                       </Link>
                       <Link
-                        to={`/employees/${employee._id}/advances`}
+                        to={employeeAdvancesPath(employee)}
                         className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
                         title="Avances"
                       >
@@ -233,7 +234,7 @@ const EmployeeList = () => {
             <div key={employee._id} className="bg-white p-5 rounded-2xl border border-gray-200">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <Link to={`/employees/${employee._id}`} className="text-base font-semibold text-gray-900 hover:text-blue-600">
+                  <Link to={employeeBasePath(employee)} className="text-base font-semibold text-gray-900 hover:text-blue-600">
                     {employee.name}
                   </Link>
                   <div className="text-sm text-gray-600 mt-1">{employee.position}</div>
@@ -244,7 +245,7 @@ const EmployeeList = () => {
                 </div>
                 <div className="flex space-x-1">
                   <Link
-                    to={`/employees/${employee._id}/edit`}
+                    to={employeeEditPath(employee)}
                     className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
                     title="Modifier"
                   >
@@ -265,7 +266,7 @@ const EmployeeList = () => {
               </div>
               <div className="flex justify-between pt-4 border-t border-gray-100">
                 <Link
-                  to={`/employees/${employee._id}/payroll`}
+                  to={employeePayrollPath(employee)}
                   className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +275,7 @@ const EmployeeList = () => {
                   Fiche de paie
                 </Link>
                 <Link
-                  to={`/employees/${employee._id}/advances`}
+                  to={employeeAdvancesPath(employee)}
                   className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

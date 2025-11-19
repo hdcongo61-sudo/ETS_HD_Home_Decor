@@ -6,6 +6,15 @@ import {
   ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
+const PROFILE_GENDER_LABELS = {
+  male: 'Homme',
+  female: 'Femme',
+  other: 'Autre',
+  unknown: 'Non renseigné'
+};
+
+const formatGenderLabel = (gender) => PROFILE_GENDER_LABELS[gender] || PROFILE_GENDER_LABELS.unknown;
+
 const ClientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -213,6 +222,9 @@ const ClientProfile = () => {
             <div>
               <h2 className="text-xl font-semibold text-gray-900">{client.name}</h2>
               <p className="text-gray-600">{client.email || '—'}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Genre : <span className="text-gray-800">{formatGenderLabel(client.gender)}</span>
+              </p>
               {client.phone && (
                 <div className="flex items-center gap-2 mt-1 group">
                   <a

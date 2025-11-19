@@ -17,7 +17,7 @@ const getClients = async (req, res) => {
     }
 
     let query = Client.find(searchQuery)
-      .select('name email phone totalPurchases purchaseCount lastPurchaseDate createdAt updatedAt')
+      .select('name slug email phone gender totalPurchases purchaseCount lastPurchaseDate createdAt updatedAt')
       .sort({ createdAt: -1 });
 
     if (req.user && req.user.isAdmin) {
@@ -94,6 +94,7 @@ const createClient = async (req, res) => {
       email: req.body.email,
       phone: req.body.phone,
       address: req.body.address,
+      gender: req.body.gender || 'other',
       createdBy: req.user ? req.user._id : undefined,
       updatedBy: req.user ? req.user._id : undefined
     });
@@ -117,6 +118,7 @@ const updateClient = async (req, res) => {
       client.email = req.body.email || client.email;
       client.phone = req.body.phone || client.phone;
       client.address = req.body.address || client.address;
+      client.gender = req.body.gender || client.gender;
       client.updatedBy = req.user ? req.user._id : client.updatedBy;
 
       const updatedClient = await client.save();
@@ -198,17 +200,35 @@ const getClientStats = async (req, res) => {
           name: '$clientInfo.name',
           totalSpent: 1,
           totalSales: 1,
-          clientId: '$_id'
+          clientId: '$_id',
+          slug: '$clientInfo.slug'
         }
       }
     ]);
+
+    const genderAggregation = await Client.aggregate([
+      {
+        $group: {
+          _id: { $ifNull: ['$gender', 'other'] },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const genderDistribution = genderAggregation.map((item) => ({
+      gender: item._id,
+      count: item.count,
+      percentage: totalClients ? Number(((item.count / totalClients) * 100).toFixed(1)) : 0,
+    }));
 
     res.status(200).json({
       totalClients,
       totalSpent,
       avgSpent,
       newThisMonth,
-      topClients
+      topClients,
+      genderDistribution
     });
   } catch (error) {
     console.error('Erreur statistiques clients:', error);
