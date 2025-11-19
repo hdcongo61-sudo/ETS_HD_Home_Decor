@@ -38,6 +38,7 @@ const SaleDetailPage = () => {
     const [showReminderModal, setShowReminderModal] = useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [mobileHistoryTab, setMobileHistoryTab] = useState('payments');
     const [message, setMessage] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -825,120 +826,179 @@ const SaleDetailPage = () => {
                         )}
                     </div>
 
-                    {/* Liste des produits avec bénéfices */}
+                    {/* Produits vendus avec bénéfices */}
                     <div className="mb-6">
-                        <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
-                            <div className="bg-yellow-100 p-1.5 rounded-lg">
-                                <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                </svg>
-                            </div>
-                            {isAdmin ? 'Produits vendus avec bénéfices' : 'Produits vendus'}
-                        </h3>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <div className="bg-yellow-100 p-1.5 rounded-lg">
+                                    <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                </div>
+                                {isAdmin ? 'Produits vendus avec bénéfices' : 'Produits vendus'}
+                            </h3>
+                            <span className="text-sm text-gray-500">{sale.products.length} {sale.products.length > 1 ? 'lignes' : 'ligne'}</span>
+                        </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
-                                        {isAdmin && (
-                                            <>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coût unitaire</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice unit.</th>
-                                            </>
-                                        )}
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                        {isAdmin && (
-                                            <>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice total</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marge</th>
-                                            </>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {sale.products.map((item, index) => {
-                                        const profit = getProductProfit(item);
-                                        const costPrice = item.product?.costPrice || 0;
-                                        
-                                        return (
-                                            <tr key={index}>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {item.product?.name || "Produit supprimé"}
+                        <div className="space-y-4">
+                            <div className="md:hidden space-y-3">
+                                {sale.products.map((item, index) => {
+                                    const profit = getProductProfit(item);
+                                    const costPrice = item.product?.costPrice || 0;
+                                    return (
+                                        <div key={`mobile-product-${index}`} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                                            <div className="flex justify-between items-start gap-4">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900">{item.product?.name || 'Produit supprimé'}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        Prix unitaire : <span className="font-medium text-gray-900">{item.priceAtSale?.toFixed(0)} CFA</span>
+                                                    </p>
+                                                </div>
+                                                <span className="text-sm text-gray-600">{item.quantity}×</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mt-3 text-xs text-gray-500">
+                                                <div>
+                                                    <div>Profit unitaire</div>
+                                                    <div className={`font-semibold ${profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
                                                     </div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {item.priceAtSale?.toFixed(0)} CFA
-                                                </td>
+                                                </div>
+                                                <div>
+                                                    <div>Total</div>
+                                                    <div className="font-semibold text-gray-900">
+                                                        {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
+                                                    </div>
+                                                </div>
                                                 {isAdmin && (
                                                     <>
-                                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                            {costPrice > 0 ? `${costPrice?.toFixed(0)} CFA` : 'N/A'}
-                                                        </td>
-                                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                            <span className={profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                                {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
-                                                            </span>
-                                                        </td>
+                                                        <div>
+                                                            <div>Profit total</div>
+                                                            <div className={`font-semibold ${profit.total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {costPrice > 0 ? `${profit.total?.toFixed(0)} CFA` : 'N/A'}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div>Marge</div>
+                                                            <div className={`font-semibold ${profit.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {costPrice > 0 ? `${profit.margin?.toFixed(1)}%` : 'N/A'}
+                                                            </div>
+                                                        </div>
                                                     </>
                                                 )}
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                    {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
-                                                </td>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="hidden md:block">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
                                                 {isAdmin && (
                                                     <>
-                                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                            <span className={profit.total >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                                {costPrice > 0 ? `${profit.total?.toFixed(0)} CFA` : 'N/A'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                            <span className={profit.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                                {costPrice > 0 ? `${profit.margin?.toFixed(1)}%` : 'N/A'}
-                                                            </span>
-                                                        </td>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coût unitaire</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice unit.</th>
+                                                    </>
+                                                )}
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                                {isAdmin && (
+                                                    <>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice total</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marge</th>
                                                     </>
                                                 )}
                                             </tr>
-                                        );
-                                    })}
-                                </tbody>
-                                <tfoot className="bg-gray-50">
-                                    <tr>
-                                        <td colSpan={isAdmin ? 5 : 3} className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                                            Totaux:
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                                            {sale.totalAmount?.toFixed(0)} CFA
-                                        </td>
-                                        {isAdmin && (
-                                            <>
-                                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                                                    <span className={totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                        {totalProfit?.toFixed(0)} CFA
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                                                    <span className={profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                        {profitMargin?.toFixed(1)}%
-                                                    </span>
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {sale.products.map((item, index) => {
+                                                const profit = getProductProfit(item);
+                                                const costPrice = item.product?.costPrice || 0;
+                                                return (
+                                                    <tr key={index}>
+                                                        <td className="px-4 py-4 whitespace-nowrap">
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {item.product?.name || 'Produit supprimé'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {item.priceAtSale?.toFixed(0)} CFA
+                                                        </td>
+                                                        {isAdmin && (
+                                                            <>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                    {costPrice > 0 ? `${costPrice?.toFixed(0)} CFA` : 'N/A'}
+                                                                </td>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                                    <span className={profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                                        {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
+                                                                    </span>
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {item.quantity}
+                                                        </td>
+                                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                            {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
+                                                        </td>
+                                                        {isAdmin && (
+                                                            <>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                                    <span className={profit.total >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                                        {costPrice > 0 ? `${profit.total?.toFixed(0)} CFA` : 'N/A'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                                    <span className={profit.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                                        {costPrice > 0 ? `${profit.margin?.toFixed(1)}%` : 'N/A'}
+                                                                    </span>
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div className="md:hidden mb-4">
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
+                                    mobileHistoryTab === 'payments'
+                                        ? 'bg-blue-500 text-white border-blue-500'
+                                        : 'bg-white text-gray-700 border-gray-200'
+                                }`}
+                                onClick={() => setMobileHistoryTab('payments')}
+                            >
+                                Paiements
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
+                                    mobileHistoryTab === 'history'
+                                        ? 'bg-blue-500 text-white border-blue-500'
+                                        : 'bg-white text-gray-700 border-gray-200'
+                                }`}
+                                onClick={() => setMobileHistoryTab('history')}
+                            >
+                                Historique
+                            </button>
                         </div>
                     </div>
 
                     {/* Historique des paiements */}
-                    <div>
+                    <div className={`${mobileHistoryTab === 'payments' ? 'block' : 'hidden'} md:block`}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <div className="bg-green-100 p-1.5 rounded-lg">
