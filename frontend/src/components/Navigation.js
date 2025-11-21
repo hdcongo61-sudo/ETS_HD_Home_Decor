@@ -15,6 +15,7 @@ const Navigation = () => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
   });
+  const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
 
   // === Déconnexion ===
@@ -115,85 +116,79 @@ const Navigation = () => {
             className="flex items-center space-x-2"
             onClick={closeMenu}
           >
-            <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
-              <svg
-                className="w-6 h-6 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path
-                  d="M12 3L2 9l3 1.73v4.54L12 21l7-5.73v-4.54L22 9l-10-6z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 12l7-5.73M12 12V3M12 12L5 6.27M12 12l7 5.73M12 12v9"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+            <img
+              src={`${process.env.PUBLIC_URL || ''}/logo.png`}
+              alt="ETS HD Logo"
+              className="w-10 h-10 rounded-lg object-contain border border-gray-200 shadow-sm bg-white"
+            />
             <span className="text-gray-900 text-lg font-semibold hidden md:block">
               ETS HD-Gestion
             </span>
           </Link>
-
-          {/* === Barre de recherche desktop (Admin uniquement) === */}
-          {showSearchBar && (
-            <GlobalSearchBar
-              query={query}
-              setQuery={setQuery}
-              results={results}
-              onSelectResult={handleSelectResult}
-              className="hidden md:block flex-1 max-w-lg"
-            />
-          )}
 
           {/* === Menu desktop === */}
           <div className="hidden md:flex items-center space-x-1">
             {renderNavigationLinks(auth, handleLogout, closeMenu)}
           </div>
 
-          {/* === Profil & Burger === */}
-          <div className="flex items-center space-x-4">
+          {/* === Profil & Actions === */}
+          <div className="flex items-center space-x-3">
             {auth.isAuthenticated && (
-              <Link to="/profile" className="hidden md:block" onClick={closeMenu}>
-                <div className="bg-gray-100 border border-gray-200 rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-200 transition">
-                  <span className="text-gray-700 font-medium text-sm">
-                    {auth.user?.name?.charAt(0) || "U"}
-                  </span>
-                </div>
-              </Link>
+              <>
+                <Link to="/profile" className="block" onClick={closeMenu}>
+                  <div className="bg-gray-100 border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition overflow-hidden">
+                    {auth.user?.photo ? (
+                      <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-gray-700 font-medium text-sm">
+                        {userInitial}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </>
             )}
 
-            <button
-              onClick={toggleMenu}
-              className="text-gray-600 focus:outline-none hover:text-gray-900"
-              aria-label="Toggle menu"
-              aria-expanded={isMenuOpen}
-            >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              )}
-            </button>
+            {!isDesktop && (
+              <button
+                onClick={toggleMenu}
+                className="text-gray-600 focus:outline-none hover:text-gray-900"
+                aria-label="Toggle menu"
+                aria-expanded={isMenuOpen}
+              >
+                {isMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
+
+        {showSearchBar && (
+          <div className="hidden md:block mt-3">
+            <GlobalSearchBar
+              query={query}
+              setQuery={setQuery}
+              results={results}
+              onSelectResult={handleSelectResult}
+              className="w-full"
+            />
+          </div>
+        )}
 
         {/* === Barre de recherche mobile === */}
         {showSearchBar && (
@@ -216,6 +211,21 @@ const Navigation = () => {
           }`}
         >
           <div className="flex flex-col space-y-1">
+            {auth.isAuthenticated && (
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 mb-1">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
+                  {auth.user?.photo ? (
+                    <img src={auth.user.photo} alt={auth.user.name || 'Profil'} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-gray-700 font-semibold">{userInitial}</span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">{auth.user?.name}</p>
+                  <p className="text-xs text-gray-500">{auth.user?.email}</p>
+                </div>
+              </div>
+            )}
             {renderNavigationLinks(auth, handleLogout, closeMenu, true)}
           </div>
         </div>

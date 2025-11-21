@@ -3,6 +3,7 @@ const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
 const User = require('../models/userModel');
+const Expense = require('../models/expenseModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -668,6 +669,9 @@ const getDashboardData = asyncHandler(async (req, res) => {
   try {
     const { range = '30days', summaryDate } = req.query;
     let startDate = new Date();
+    const endDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
     // Calcul de la période
     switch (range) {
@@ -709,13 +713,16 @@ const getDashboardData = asyncHandler(async (req, res) => {
       salesByStatus,
       todaySales,
       todayPayments,
-      allPayments // Nouvelle requête pour tous les paiements
+      allPayments, // Nouvelle requête pour tous les paiements
+      bestSalesDay,
+      bestPaymentDay,
+      bestExpenseDay
     ] = await Promise.all([
       // Total des ventes et comptage
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
@@ -733,7 +740,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
@@ -749,7 +756,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
@@ -777,7 +784,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
@@ -903,11 +910,16 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
         { $unwind: "$payments" },
+        {
+          $match: {
+            "payments.paymentDate": { $gte: startDate, $lte: endDate }
+          }
+        },
         {
           $group: {
             _id: null,
@@ -915,8 +927,73 @@ const getDashboardData = asyncHandler(async (req, res) => {
             allPaymentsTotal: { $sum: "$payments.amount" }
           }
         }
+      ]),
+
+      // Meilleur jour de ventes
+      Sale.aggregate([
+        {
+          $match: {
+            saleDate: { $gte: startDate, $lte: endDate },
+            status: { $ne: "cancelled" }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$saleDate" } },
+            totalAmount: { $sum: "$totalAmount" },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 1 }
+      ]),
+
+      // Meilleur jour d'encaissements
+      Sale.aggregate([
+        {
+          $match: {
+            saleDate: { $gte: startDate, $lte: endDate },
+            status: { $ne: "cancelled" }
+          }
+        },
+        { $unwind: "$payments" },
+        {
+          $match: {
+            "payments.paymentDate": { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$payments.paymentDate" } },
+            totalAmount: { $sum: "$payments.amount" },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 1 }
+      ]),
+
+      // Jour de dépense le plus élevé
+      Expense.aggregate([
+        {
+          $match: {
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 1 }
       ])
     ]);
+
+    // Helpers
+    const safeFirst = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
 
     // Formatage des données du résumé journalier des ventes
     const dailySummary = todaySales[0] || {
@@ -937,6 +1014,19 @@ const getDashboardData = asyncHandler(async (req, res) => {
     const allPaymentsData = allPayments[0] || {
       allPaymentsCount: 0,
       allPaymentsTotal: 0
+    };
+
+    const bestSalesEntry = safeFirst(bestSalesDay);
+    const bestPaymentEntry = safeFirst(bestPaymentDay);
+    const bestExpenseEntry = safeFirst(bestExpenseDay);
+
+    const formatTopDay = (entry) => {
+      if (!entry) return null;
+      return {
+        date: entry._id,
+        totalAmount: entry.totalAmount,
+        count: entry.count || 0
+      };
     };
 
     // Formatage des méthodes de paiement
@@ -993,6 +1083,11 @@ const getDashboardData = asyncHandler(async (req, res) => {
       paymentsSummary: {
         paymentsCount: allPaymentsData.allPaymentsCount,
         paymentsTotal: allPaymentsData.allPaymentsTotal
+      },
+      bestDays: {
+        sales: formatTopDay(bestSalesEntry),
+        payments: formatTopDay(bestPaymentEntry),
+        expenses: formatTopDay(bestExpenseEntry)
       }
     };
 
@@ -1763,6 +1858,106 @@ const getDeliveryStats = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Best days for sales, payments and expenses
+// @route   GET /api/sales/best-days
+// @access  Private/Admin
+const getBestDays = asyncHandler(async (req, res) => {
+  const { range = '30days' } = req.query;
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  const start = new Date(end);
+
+  switch (range) {
+    case '7days':
+      start.setDate(start.getDate() - 7);
+      break;
+    case '30days':
+      start.setDate(start.getDate() - 30);
+      break;
+    case 'year':
+      start.setDate(start.getDate() - 365);
+      break;
+    default:
+      start.setTime(0);
+  }
+
+  const [bestSales, bestPayments, bestExpenses] = await Promise.all([
+    Sale.aggregate([
+      {
+        $match: {
+          saleDate: { $gte: start, $lte: end },
+          status: { $ne: 'cancelled' }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$saleDate' } },
+          totalAmount: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 1 }
+    ]),
+    Sale.aggregate([
+      {
+        $match: {
+          saleDate: { $gte: start, $lte: end },
+          status: { $ne: 'cancelled' }
+        }
+      },
+      { $unwind: '$payments' },
+      {
+        $match: {
+          'payments.paymentDate': { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$payments.paymentDate' } },
+          totalAmount: { $sum: '$payments.amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 1 }
+    ]),
+    Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 1 }
+    ])
+  ]);
+
+  const formatEntry = (entry) => {
+    if (!entry) return null;
+    return {
+      date: entry._id,
+      totalAmount: entry.totalAmount,
+      count: entry.count || 0
+    };
+  };
+
+  res.json({
+    range,
+    sales: formatEntry(bestSales[0]),
+    payments: formatEntry(bestPayments[0]),
+    expenses: formatEntry(bestExpenses[0])
+  });
+});
+
 module.exports = {
   createSale,
   addPayment,
@@ -1785,4 +1980,6 @@ module.exports = {
   deleteSale,
   updateDelivery,
   getDeliveryStats
+  ,
+  getBestDays
 };

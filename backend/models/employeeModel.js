@@ -33,6 +33,11 @@ const employeeSchema = mongoose.Schema(
       type: Date,
       required: true,
     },
+    photo: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     department: { type: String },
     advances: [
       {

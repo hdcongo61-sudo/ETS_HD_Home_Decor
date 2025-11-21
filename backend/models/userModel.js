@@ -75,6 +75,11 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
+    photo: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     pushSubscriptions: [
       {
         endpoint: {

@@ -15,14 +15,15 @@ const {
   getLoginActivity
 } = require('../controllers/userController');
 const { protect, admin } = require('../middlewares/authMiddleware');
+const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 // Route de login
 router.post('/login', loginUser);
 
 router.route('/')
-  .post(registerUser)
+  .post(imageUpload.single('photoFile'), registerUser)
   .get(protect, admin, getUsers);
-router.post('/admin', protect, admin, createUserByAdmin);
+router.post('/admin', protect, admin, imageUpload.single('photoFile'), createUserByAdmin);
 router.route('/profile')
   .get(protect, getUserProfile);
 
@@ -35,7 +36,7 @@ router.route('/:id').get(protect, getUserById);
 
 
 router.delete('/:id', protect, admin, deleteUser);
-router.put('/:id', protect, admin, updateUser);
+router.put('/:id', protect, admin, imageUpload.single('photoFile'), updateUser);
 
 
 module.exports = router;

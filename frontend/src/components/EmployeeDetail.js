@@ -38,6 +38,7 @@ const EmployeeDetail = () => {
     totalAdvances: 0,
     balance: 0
   });
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const employeeReference = employee || { _id: id };
 
   useEffect(() => {
@@ -162,6 +163,34 @@ const EmployeeDetail = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
+      {isPhotoOpen && employee.photo && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsPhotoOpen(false)}
+        >
+          <div
+            className="relative max-w-3xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsPhotoOpen(false)}
+              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full p-2 shadow-md hover:bg-gray-100"
+              aria-label="Fermer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={employee.photo}
+              alt={`Photo de ${employee.name}`}
+              className="w-full max-h-[80vh] object-contain rounded-2xl bg-white"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex items-center mb-6">
         <button
@@ -178,11 +207,24 @@ const EmployeeDetail = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Profile Header */}
         <div className="p-8 flex items-center gap-6 border-b border-gray-100">
-          <div className="bg-blue-500 p-4 rounded-2xl">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
+          <button
+            type="button"
+            onClick={() => employee.photo && setIsPhotoOpen(true)}
+            className="w-16 h-16 rounded-2xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-200"
+            aria-label="Afficher la photo en grand"
+          >
+            {employee.photo ? (
+              <img
+                src={employee.photo}
+                alt={`Photo de ${employee.name}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            )}
+          </button>
           <div>
             <h2 className="text-2xl font-semibold text-gray-900">{employee.name}</h2>
             <p className="text-gray-600 flex items-center gap-1 mt-1">

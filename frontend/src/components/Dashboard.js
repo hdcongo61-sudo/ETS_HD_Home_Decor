@@ -114,6 +114,7 @@ const Dashboard = () => {
   // ===== 🔹 STATISTIQUES DES VENTES (nouvelle section) =====
   const [salesStatsRange, setSalesStatsRange] = useState("30days"); // 7days|30days|90days|all
   const [salesStatsData, setSalesStatsData] = useState(null);
+  const [bestDaysRanges, setBestDaysRanges] = useState({});
   // 🔹 Switch lissage (persisté)
   const [smoothTrend, setSmoothTrend] = useState(
     localStorage.getItem("smoothTrend") === "true"
@@ -393,6 +394,35 @@ const Dashboard = () => {
     run();
   }, [salesStatsRange]);
 
+  useEffect(() => {
+    const ranges = [
+      { key: "7days", label: "7 jours" },
+      { key: "30days", label: "30 jours" },
+      { key: "year", label: "Année" },
+    ];
+
+    const fetchBestForRange = async () => {
+      try {
+        const results = {};
+        await Promise.all(
+          ranges.map(async (range) => {
+            const res = await api.get(`/sales/best-days?range=${range.key}`);
+            results[range.key] = {
+              label: range.label,
+              days: res.data || null,
+            };
+          })
+        );
+        setBestDaysRanges(results);
+      } catch (err) {
+        console.error("Erreur chargement meilleurs jours :", err);
+        setBestDaysRanges({});
+      }
+    };
+
+    fetchBestForRange();
+  }, []);
+
   // ===== 🔹 Lissage de la tendance (moyenne mobile 3 points) =====
   const movingAverage = (arr, windowSize = 3) => {
     if (!arr || arr.length === 0) return [];
@@ -436,6 +466,29 @@ const Dashboard = () => {
       : [];
 
   const topProducts = salesStatsData?.topProducts || [];
+
+  const bestDays = salesStatsData?.bestDays;
+  const formatBestDay = (day) => {
+    if (!day?.date) return "—";
+    const parsed = new Date(day.date);
+    if (Number.isNaN(parsed.getTime())) return day.date;
+    return new Intl.DateTimeFormat("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(parsed);
+  };
+  const formatRangeDay = (entry) => {
+    if (!entry?.date) return "—";
+    const parsed = new Date(entry.date);
+    if (Number.isNaN(parsed.getTime())) return entry.date;
+    return new Intl.DateTimeFormat("fr-FR", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    }).format(parsed);
+  };
 
   // ===== 🔹 Export des Statistiques de ventes (option B : TOUTES données) =====
   const exportSalesStatsAll = async () => {
@@ -864,6 +917,38 @@ const Dashboard = () => {
             </div>
           )}
 
+          {bestDays && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <p className="text-xs text-gray-500">Meilleur jour de ventes</p>
+                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {formatBestDay(bestDays.sales)}
+                </div>
+                <div className="text-green-700 dark:text-green-300 font-semibold">
+                  {Math.round(bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <p className="text-xs text-gray-500">Meilleur jour d'encaissements</p>
+                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {formatBestDay(bestDays.payments)}
+                </div>
+                <div className="text-blue-700 dark:text-blue-300 font-semibold">
+                  {Math.round(bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <p className="text-xs text-gray-500">Jour de dépense maximal</p>
+                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {formatBestDay(bestDays.expenses)}
+                </div>
+                <div className="text-red-700 dark:text-red-300 font-semibold">
+                  {Math.round(bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Résumé compact + Encart livraisons à droite */}
           {salesStatsData && (
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-5">
@@ -977,8 +1062,43 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Grilles condensées : Tendance | Méthodes / Statuts | Top produits */}
+          {/* Grilles condensées : Meilleurs jours + Tendance | Méthodes / Statuts | Top produits */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+            {/* Meilleurs jours */}
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
+                Meilleurs jours (période sélectionnée)
+              </h3>
+              {bestDays ? (
+                <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="text-xs text-gray-500">Ventes</div>
+                    <div className="font-semibold">{formatBestDay(bestDays.sales)}</div>
+                    <div className="text-green-600 dark:text-green-300 font-semibold">
+                      {Math.round(bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="text-xs text-gray-500">Encaissements</div>
+                    <div className="font-semibold">{formatBestDay(bestDays.payments)}</div>
+                    <div className="text-blue-600 dark:text-blue-300 font-semibold">
+                      {Math.round(bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="text-xs text-gray-500">Dépenses</div>
+                    <div className="font-semibold">{formatBestDay(bestDays.expenses)}</div>
+                    <div className="text-red-600 dark:text-red-300 font-semibold">
+                      {Math.round(bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 text-sm py-8">
+                  Aucun meilleur jour disponible sur la période
+                </div>
+              )}
+            </div>
             {/* 🔹 Tendance des ventes (+ lissage) */}
             <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
@@ -1110,10 +1230,10 @@ const Dashboard = () => {
 
         {/* ===== Admin only ===== */}
         {isAdmin && (
-          <>
-            <AnalyticsSection
-              metrics={{
-                grossProfit: profit,
+        <>
+          <AnalyticsSection
+            metrics={{
+              grossProfit: profit,
                 profitMargin: totalSales > 0 ? (profit / totalSales) * 100 : 0,
                 roi: totalExpenses > 0 ? (profit / totalExpenses) * 100 : 0,
                 operationalEfficiency:
@@ -1123,6 +1243,73 @@ const Dashboard = () => {
                 monthlyGrowth: 18,
               }}
             />
+            {Object.values(bestDaysRanges).length > 0 && (
+              <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  Meilleurs jours par plage
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {Object.values(bestDaysRanges).map((entry) => (
+                    <div key={entry.label} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{entry.label}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <StatCard
+                          title="Ventes"
+                          entry={entry.days?.sales}
+                          accent="text-green-600 dark:text-green-300"
+                        />
+                        <StatCard
+                          title="Encaissements"
+                          entry={entry.days?.payments}
+                          accent="text-blue-600 dark:text-blue-300"
+                        />
+                        <StatCard
+                          title="Dépenses"
+                          entry={entry.days?.expenses}
+                          accent="text-red-600 dark:text-red-300"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {salesStatsData?.bestDays && (
+      <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Meilleurs jours (période sélectionnée)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs text-gray-500">Ventes</p>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {formatBestDay(salesStatsData.bestDays.sales)}
+            </div>
+            <div className="text-green-600 dark:text-green-300 font-semibold">
+              {Math.round(salesStatsData.bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs text-gray-500">Encaissements</p>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {formatBestDay(salesStatsData.bestDays.payments)}
+            </div>
+            <div className="text-blue-600 dark:text-blue-300 font-semibold">
+              {Math.round(salesStatsData.bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs text-gray-500">Dépenses</p>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {formatBestDay(salesStatsData.bestDays.expenses)}
+            </div>
+            <div className="text-red-600 dark:text-red-300 font-semibold">
+              {Math.round(salesStatsData.bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
             <RemindersPanel
               overdue={overdueReminders}
               upcoming={upcomingReminders}
@@ -1169,5 +1356,17 @@ const Dashboard = () => {
     </div>
   );
 };
+
+const StatCard = ({ title, entry, accent }) => (
+  <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-[11px]">
+    <div className="text-[10px] text-gray-500">{title}</div>
+    <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+      {entry?.date ? new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(new Date(entry.date)) : "—"}
+    </div>
+    <div className={`text-sm font-bold ${accent}`}>
+      {entry?.totalAmount ? `${Math.round(entry.totalAmount).toLocaleString("fr-FR")} CFA` : "—"}
+    </div>
+  </div>
+);
 
 export default Dashboard;

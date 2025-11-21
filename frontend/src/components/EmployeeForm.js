@@ -16,12 +16,15 @@ const EmployeeForm = () => {
     city: '',
     country: '',
     postalCode: '',
-    department: ''
+    department: '',
+    photo: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(!!id);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -45,8 +48,10 @@ const EmployeeForm = () => {
             city: data.city || '',
             country: data.country || '',
             postalCode: data.postalCode || '',
-            department: data.department || ''
+            department: data.department || '',
+            photo: data.photo || ''
           });
+          setPhotoPreview(data.photo || '');
           setIsEditMode(true);
           setErrors({});
         } catch (err) {
@@ -58,6 +63,14 @@ const EmployeeForm = () => {
       fetchEmployee();
     }
   }, [id]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview && photoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -100,10 +113,24 @@ const EmployeeForm = () => {
         hireDate: new Date(formData.hireDate).toISOString()
       };
 
+      let payload = dataToSend;
+      let config = { headers: { 'Content-Type': 'application/json' } };
+
+      if (photoFile) {
+        payload = new FormData();
+        Object.entries(dataToSend).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            payload.append(key, value);
+          }
+        });
+        payload.append('photoFile', photoFile);
+        config = {};
+      }
+
       if (isEditMode) {
-        await api.put(`/employees/${id}`, dataToSend);
+        await api.put(`/employees/${id}`, payload, config);
       } else {
-        await api.post('/employees', dataToSend);
+        await api.post('/employees', payload, config);
       }
       navigate('/employees');
     } catch (err) {
@@ -131,6 +158,33 @@ const EmployeeForm = () => {
         [name]: ''
       });
     }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (photoPreview && photoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setPhotoFile(file);
+    setPhotoPreview(previewUrl);
+    setFormData((prev) => ({ ...prev, photo: '' }));
+
+    if (errors.photo) {
+      setErrors({ ...errors, photo: '' });
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    if (photoPreview && photoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoFile(null);
+    setPhotoPreview('');
+    setFormData((prev) => ({ ...prev, photo: '' }));
   };
 
   if (loading) return (
@@ -169,6 +223,60 @@ const EmployeeForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="relative">
+              {photoPreview ? (
+                <img
+                  src={photoPreview}
+                  alt={`Photo de ${formData.name || "l'employé"}`}
+                  className="w-20 h-20 rounded-2xl object-cover border border-gray-200 shadow-sm"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-dashed border-blue-200">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15.5 21h-7A2.5 2.5 0 016 18.5v0A5.5 5.5 0 0111.5 13h1A5.5 5.5 0 0118 18.5v0A2.5 2.5 0 0115.5 21z" />
+                  </svg>
+                </div>
+              )}
+              {photoPreview && (
+                <button
+                  type="button"
+                  onClick={handlePhotoRemove}
+                  className="absolute -top-2 -right-2 bg-white border border-gray-200 text-gray-500 rounded-full p-1 shadow-sm hover:bg-gray-50"
+                  aria-label="Retirer la photo"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">Photo de l'employé</p>
+              <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, WEBP (max 5 Mo).</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <label className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V8a2 2 0 00-2-2h-3l-1.447-1.894A2 2 0 0011.382 4H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium">Choisir une photo</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                </label>
+                {photoPreview && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoRemove}
+                    className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 text-sm"
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
+              {errors.photo && <div className="text-red-500 text-xs mt-2">{errors.photo}</div>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Section Informations personnelles */}
             <div className="space-y-6">

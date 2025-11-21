@@ -158,9 +158,21 @@ const EmployeeList = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       to={employeeBasePath(employee)}
-                      className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                      className="flex items-center gap-3 text-sm font-medium text-gray-900 hover:text-blue-600"
                     >
-                      {employee.name}
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                        {employee.photo ? (
+                          <img src={employee.photo} alt={employee.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <div>{employee.name}</div>
+                        <div className="text-xs text-gray-500">{employee.email}</div>
+                      </div>
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.position}</td>
@@ -233,14 +245,25 @@ const EmployeeList = () => {
           filteredEmployees.map(employee => (
             <div key={employee._id} className="bg-white p-5 rounded-2xl border border-gray-200">
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <Link to={employeeBasePath(employee)} className="text-base font-semibold text-gray-900 hover:text-blue-600">
-                    {employee.name}
-                  </Link>
-                  <div className="text-sm text-gray-600 mt-1">{employee.position}</div>
-                  <div className="text-sm text-gray-600">{employee.email}</div>
-                  <div className="mt-2 text-sm font-semibold text-gray-900">
-                    {new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA
+                <div className="flex gap-3">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                    {employee.photo ? (
+                      <img src={employee.photo} alt={employee.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <Link to={employeeBasePath(employee)} className="text-base font-semibold text-gray-900 hover:text-blue-600">
+                      {employee.name}
+                    </Link>
+                    <div className="text-sm text-gray-600 mt-1">{employee.position}</div>
+                    <div className="text-sm text-gray-600">{employee.email}</div>
+                    <div className="mt-2 text-sm font-semibold text-gray-900">
+                      {new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA
+                    </div>
                   </div>
                 </div>
                 <div className="flex space-x-1">

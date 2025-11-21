@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
 
-const ExpenseForm = ({ initialData, onSubmit, submitting }) => {
+const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
   const [formData, setFormData] = useState({
     date: '',
     description: '',
@@ -217,11 +217,6 @@ ExpenseForm.propTypes = {
   }),
   onSubmit: PropTypes.func.isRequired,
   submitting: PropTypes.bool
-};
-
-ExpenseForm.defaultProps = {
-  initialData: null,
-  submitting: false
 };
 
 export default ExpenseForm;

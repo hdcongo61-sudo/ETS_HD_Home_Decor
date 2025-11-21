@@ -138,16 +138,17 @@ const UserDashboard = () => {
         }
     };
 
-    const handleFormSubmit = async (userData) => {
+    const handleFormSubmit = async ({ payload, config }) => {
         try {
+            const requestConfig = config || { headers: { 'Content-Type': 'application/json' } };
             if (selectedUser) {
                 // Mettre à jour un utilisateur existant
-                const { data } = await api.put(`/users/${selectedUser._id}`, userData);
+                const { data } = await api.put(`/users/${selectedUser._id}`, payload, requestConfig);
                 setUsers(users.map((u) => (u._id === data._id ? data : u)));
                 toast.success('Utilisateur mis à jour avec succès');
             } else {
                 // Créer un nouvel utilisateur
-                const { data } = await api.post('/users/admin', userData);
+                const { data } = await api.post('/users/admin', payload, requestConfig);
                 setUsers([...users, data]);
                 toast.success('Utilisateur créé avec succès');
             }
@@ -337,8 +338,8 @@ const UserDashboard = () => {
             </div>
 
             {showForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md md:max-w-2xl shadow-lg">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-semibold text-gray-900">
                                 {selectedUser ? "Modifier l'utilisateur" : "Ajouter un nouvel utilisateur"}
@@ -355,14 +356,16 @@ const UserDashboard = () => {
                                 </svg>
                             </button>
                         </div>
-                        <UserForm
-                            user={selectedUser}
-                            onCancel={() => {
-                                setShowForm(false);
-                                setSelectedUser(null);
-                            }}
-                            onSubmit={handleFormSubmit}
-                        />
+                        <div className="max-h-[70vh] overflow-y-auto pr-1">
+                            <UserForm
+                                user={selectedUser}
+                                onCancel={() => {
+                                    setShowForm(false);
+                                    setSelectedUser(null);
+                                }}
+                                onSubmit={handleFormSubmit}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
@@ -406,8 +409,12 @@ const UserDashboard = () => {
                                         <tr key={user._id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="bg-blue-100 rounded-xl p-2 mr-3">
-                                                        <UserIcon className="w-5 h-5 text-blue-600" />
+                                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center mr-3">
+                                                        {user.photo ? (
+                                                            <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <UserIcon className="w-5 h-5 text-blue-600" />
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-semibold text-gray-900">{user.name}</div>
@@ -567,10 +574,19 @@ const UserDashboard = () => {
                             return (
                               <div key={user._id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm space-y-3">
                                 <div className="flex justify-between items-start">
-                                  <div>
-                                    <p className="text-base font-semibold text-gray-900">{user.name}</p>
-                                    <p className="text-sm text-gray-500">{user.email}</p>
-                                    {user.phone && <p className="text-sm text-gray-500">📞 {user.phone}</p>}
+                                  <div className="flex gap-3">
+                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                                      {user.photo ? (
+                                        <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <UserIcon className="w-6 h-6 text-blue-600" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p className="text-base font-semibold text-gray-900">{user.name}</p>
+                                      <p className="text-sm text-gray-500">{user.email}</p>
+                                      {user.phone && <p className="text-sm text-gray-500">📞 {user.phone}</p>}
+                                    </div>
                                   </div>
                                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}

@@ -1,4 +1,25 @@
 const Employee = require('../models/employeeModel');
+const streamifier = require('streamifier');
+const cloudinary = require('../utils/cloudinary');
+
+const uploadEmployeePhoto = (buffer) => new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream(
+    {
+      folder: 'employees',
+      resource_type: 'image',
+      format: 'webp',
+      quality: 'auto:good',
+    },
+    (error, result) => {
+      if (error) {
+        return reject(error);
+      }
+      return resolve(result.secure_url);
+    }
+  );
+
+  streamifier.createReadStream(buffer).pipe(stream);
+});
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -42,6 +63,11 @@ const getEmployeeById = async (req, res) => {
 // };
 const createEmployee = async (req, res) => {
   try {
+    let photoUrl = req.body.photo;
+    if (req.file?.buffer) {
+      photoUrl = await uploadEmployeePhoto(req.file.buffer);
+    }
+
     const employee = new Employee({
       name: req.body.name,
       email: req.body.email,
@@ -53,7 +79,8 @@ const createEmployee = async (req, res) => {
       city: req.body.city,
       country: req.body.country,
       postalCode: req.body.postalCode,
-      department: req.body.department || ''
+      department: req.body.department || '',
+      photo: photoUrl,
     });
 
     await employee.save();
@@ -67,8 +94,15 @@ const createEmployee = async (req, res) => {
 // @access  Private/Admin
 const updateEmployee = async (req, res) => {
   try {
-    const { name, email, phone, position, salary, hireDate, address, city, country, postalCode, department } = req.body;
     const employee = await Employee.findById(req.params.id);
+    let resolvedPhoto;
+    const hasPhotoField = Object.prototype.hasOwnProperty.call(req.body, 'photo');
+
+    if (req.file?.buffer) {
+      resolvedPhoto = await uploadEmployeePhoto(req.file.buffer);
+    } else if (hasPhotoField) {
+      resolvedPhoto = req.body.photo;
+    }
 
     if (employee) {
       employee.name = req.body.name || employee.name;
@@ -82,6 +116,9 @@ const updateEmployee = async (req, res) => {
       employee.country = req.body.country || employee.country;
       employee.postalCode = req.body.postalCode || employee.postalCode;
       employee.department = req.body.department || employee.department;
+      if (resolvedPhoto !== undefined) {
+        employee.photo = resolvedPhoto;
+      }
 
       const updatedEmployee = await employee.save();
       res.json(updatedEmployee);
@@ -275,5 +312,3 @@ module.exports = {
   getEmployeePayslips,
   getAllPayslips
 };
-
-

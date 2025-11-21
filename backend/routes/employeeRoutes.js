@@ -21,14 +21,15 @@ const {
   exportPayListPDF
 } = require('../controllers/payrollController');
 const { protect, admin } = require('../middlewares/authMiddleware');
+const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 router.route('/')
   .get(protect, admin, getEmployees)
-  .post(protect, admin, createEmployee);
+  .post(protect, admin, imageUpload.single('photoFile'), createEmployee);
 
 router.route('/:id')
   .get(protect, admin, getEmployeeById)
-  .put(protect, admin, updateEmployee)
+  .put(protect, admin, imageUpload.single('photoFile'), updateEmployee)
   .delete(protect, admin, deleteEmployee);
 
 // Routes pour la gestion des fiches de paie

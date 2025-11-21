@@ -2,6 +2,27 @@ const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
 const LoginHistory = require('../models/loginHistoryModel');
+const streamifier = require('streamifier');
+const cloudinary = require('../utils/cloudinary');
+
+const uploadUserPhoto = (buffer) => new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream(
+    {
+      folder: 'users',
+      resource_type: 'image',
+      format: 'webp',
+      quality: 'auto:good',
+    },
+    (error, result) => {
+      if (error) {
+        return reject(error);
+      }
+      return resolve(result.secure_url);
+    }
+  );
+
+  streamifier.createReadStream(buffer).pipe(stream);
+});
 
 const sanitizeUser = (userDoc) => {
   if (!userDoc) return null;
@@ -80,6 +101,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      photo: user.photo || '',
       lastLogin: user.lastLogin || null,
       createdAt: user.createdAt
     });
@@ -101,6 +123,11 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error('User already exists');
   }
 
+  let photoUrl = req.body.photo;
+  if (req.file?.buffer) {
+    photoUrl = await uploadUserPhoto(req.file.buffer);
+  }
+
   const user = await User.create({
     name,
     email,
@@ -110,6 +137,7 @@ const registerUser = asyncHandler(async (req, res) => {
     accessControlEnabled: Boolean(accessControlEnabled),
     accessStart: parseDateOrNull(accessStart),
     accessEnd: parseDateOrNull(accessEnd),
+    photo: photoUrl || '',
   });
 
   if (user) {
@@ -119,6 +147,7 @@ const registerUser = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      photo: user.photo || '',
       lastLogin: user.lastLogin,
       token: generateToken(user._id)
     });
@@ -210,6 +239,7 @@ const loginUser = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      photo: user.photo || '',
       lastLogin: user.lastLogin,
       token: generateToken(user._id)
     });
@@ -271,6 +301,7 @@ const getCurrentUser = async (req, res) => {
     res.json({
       ...safeUser,
       phone: safeUser.phone || '',
+      photo: safeUser.photo || '',
       lastLogin: safeUser.lastLogin || null,
       accessControlEnabled: Boolean(safeUser.accessControlEnabled),
       accessStart: safeUser.accessStart || null,
@@ -332,6 +363,11 @@ const createUserByAdmin = async (req, res) => {
     throw new Error('User already exists');
   }
 
+  let photoUrl = req.body.photo;
+  if (req.file?.buffer) {
+    photoUrl = await uploadUserPhoto(req.file.buffer);
+  }
+
   const user = await User.create({
     name,
     email,
@@ -341,6 +377,7 @@ const createUserByAdmin = async (req, res) => {
     accessControlEnabled: Boolean(accessControlEnabled),
     accessStart: parseDateOrNull(accessStart),
     accessEnd: parseDateOrNull(accessEnd),
+    photo: photoUrl || '',
   });
 
   const populatedUser = await User.findById(user._id)
@@ -408,7 +445,14 @@ const updateUser = async (req, res) => {
       user.password = req.body.password;
     }
 
-    const infoFields = ['name', 'email', 'phone', 'isAdmin', 'accessControlEnabled', 'accessStart', 'accessEnd'];
+    const hasPhotoField = Object.prototype.hasOwnProperty.call(req.body, 'photo');
+    if (req.file?.buffer) {
+      user.photo = await uploadUserPhoto(req.file.buffer);
+    } else if (hasPhotoField) {
+      user.photo = req.body.photo || '';
+    }
+
+    const infoFields = ['name', 'email', 'phone', 'isAdmin', 'accessControlEnabled', 'accessStart', 'accessEnd', 'photo'];
     const infoChanged = infoFields.some((field) => user.isModified(field));
     const passwordChanged = user.isModified('password');
 

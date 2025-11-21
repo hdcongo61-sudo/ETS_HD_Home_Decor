@@ -7,6 +7,11 @@ const UserProfile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [adminStats, setAdminStats] = useState(null);
+  const [statsError, setStatsError] = useState('');
+  const [salesStats, setSalesStats] = useState(null);
+  const [salesError, setSalesError] = useState('');
+  const [salesRange, setSalesRange] = useState('30days');
   const navigate = useNavigate();
 
   const fetchProfile = async () => {
@@ -23,6 +28,10 @@ const UserProfile = () => {
       const { data } = await api.get('/users/profile');
       const profile = data?.user || data;
       setUser(profile);
+      if (profile?.isAdmin) {
+        fetchAdminStats();
+        fetchSalesStats(profile._id, salesRange);
+      }
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data?.message || err.message || 'Échec du chargement du profil';
@@ -45,6 +54,35 @@ const UserProfile = () => {
     setError('');
     fetchProfile();
   };
+
+  const fetchAdminStats = async () => {
+    try {
+      const { data } = await api.get('/users/stats');
+      setAdminStats(data);
+      setStatsError('');
+    } catch (err) {
+      setStatsError(err.response?.data?.message || 'Impossible de charger les statistiques administrateur');
+    }
+  };
+
+  const fetchSalesStats = async (userId, range = '30days') => {
+    try {
+      const { data } = await api.get(`/sales/user-stats?range=${encodeURIComponent(range)}`);
+      const currentUserStats = Array.isArray(data)
+        ? data.find((entry) => entry.userId === userId) || null
+        : null;
+      setSalesStats(currentUserStats);
+      setSalesError('');
+    } catch (err) {
+      setSalesError(err.response?.data?.message || 'Impossible de charger les statistiques de ventes');
+    }
+  };
+
+  useEffect(() => {
+    if (user?.isAdmin) {
+      fetchSalesStats(user._id, salesRange);
+    }
+  }, [user?._id, user?.isAdmin, salesRange]);
 
   if (loading) {
     return (
@@ -138,11 +176,11 @@ const UserProfile = () => {
                 Membre depuis {membershipDate}
               </p>
             </div>
-          </div>
+        </div>
 
-          {/* Grille des détails du profil */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <DetailCard
+        {/* Grille des détails du profil */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <DetailCard
               title="Informations Personnelles"
               icon={
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,6 +222,71 @@ const UserProfile = () => {
             </DetailCard>
           </div>
 
+          {user?.isAdmin && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h18M3 9h18M3 15h18M3 21h18" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Statistiques administrateur</h3>
+                </div>
+                {statsError && <span className="text-sm text-red-600">{statsError}</span>}
+              </div>
+              {adminStats ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <StatBadge label="Utilisateurs" value={adminStats.totalUsers} color="text-blue-700 bg-blue-50" />
+                  <StatBadge label="Actifs (30j)" value={adminStats.activeUsers} color="text-green-700 bg-green-50" />
+                  <StatBadge label="Admins" value={adminStats.admins} color="text-purple-700 bg-purple-50" />
+                  <StatBadge label="Nouveaux (30j)" value={adminStats.recentUsers?.length || 0} color="text-amber-700 bg-amber-50" />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Chargement des statistiques...</p>
+              )}
+            </div>
+          )}
+
+          {user?.isAdmin && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11H21" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Statistiques de ventes</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500">Période</label>
+                  <select
+                    value={salesRange}
+                    onChange={(e) => setSalesRange(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-400"
+                  >
+                    <option value="today">Aujourd'hui</option>
+                    <option value="7days">7 jours</option>
+                    <option value="30days">30 jours</option>
+                    <option value="90days">90 jours</option>
+                    <option value="all">Tout</option>
+                  </select>
+                </div>
+                {salesError && <span className="text-sm text-red-600">{salesError}</span>}
+              </div>
+              {salesStats ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <StatBadge label="Chiffre d'affaires" value={`${new Intl.NumberFormat('fr-FR').format(Math.round(salesStats.totalAmount || 0))} CFA`} color="text-green-700 bg-green-50" />
+                  <StatBadge label="Profit" value={`${new Intl.NumberFormat('fr-FR').format(Math.round(salesStats.totalProfit || 0))} CFA`} color="text-emerald-700 bg-emerald-50" />
+                  <StatBadge label="Ventes" value={salesStats.salesCount || 0} color="text-blue-700 bg-blue-50" />
+                  <StatBadge label="Clients" value={salesStats.clientsCount || 0} color="text-indigo-700 bg-indigo-50" />
+                  <StatBadge label="Payé" value={`${new Intl.NumberFormat('fr-FR').format(Math.round(salesStats.totalPaid || 0))} CFA`} color="text-teal-700 bg-teal-50" />
+                  <StatBadge label="Restant" value={`${new Intl.NumberFormat('fr-FR').format(Math.round(salesStats.balance || 0))} CFA`} color="text-amber-700 bg-amber-50" />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Aucune vente sur la période.</p>
+              )}
+            </div>
+          )}
+
           {/* Boutons d'action */}
           <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 border-t border-gray-100">
             <button
@@ -212,6 +315,13 @@ const DetailCard = ({ title, icon, children }) => (
     <div className="space-y-4">
       {children}
     </div>
+  </div>
+);
+
+const StatBadge = ({ label, value, color }) => (
+  <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
+    <div className={`text-xl font-semibold mt-1 ${color}`}>{value}</div>
   </div>
 );
 

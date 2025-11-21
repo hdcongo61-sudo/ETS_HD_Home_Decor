@@ -22,7 +22,8 @@ const {
   deleteReminder,
   getDeliveryStats,
   updateDelivery,
-  getDashboardData
+  getDashboardData,
+  getBestDays
 } = require('../controllers/saleController');
 const { getProfitAnalytics, getProfitReport } = require('../controllers/profitController');
 
@@ -56,6 +57,9 @@ router.route('/user-stats')
 // Dashboard route
 router.route('/dashboard-sale')
   .get(protect, admin, getDashboardData); // GET /api/sales/dashboard
+
+router.route('/best-days')
+  .get(protect, admin, getBestDays);
 
 // Payment routes
 router.route('/:id/payments')
