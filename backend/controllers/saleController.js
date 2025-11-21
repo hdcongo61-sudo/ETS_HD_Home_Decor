@@ -1078,6 +1078,12 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
 
     // Définir la période en fonction du paramètre range
     switch (range) {
+      case 'today': {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        startDate = today;
+        break;
+      }
       case '7days':
         startDate.setDate(startDate.getDate() - 7);
         break;

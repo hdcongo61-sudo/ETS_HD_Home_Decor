@@ -111,10 +111,14 @@ const UserProfile = () => {
           {/* En-tête avec les informations utilisateur */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-8">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-4 border-white shadow-sm">
-                <svg className="w-10 h-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8Z" />
-                </svg>
+              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden">
+                {user?.photo ? (
+                  <img src={user.photo} alt={user.name || 'Profil'} className="w-full h-full object-cover" />
+                ) : (
+                  <svg className="w-10 h-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8Z" />
+                  </svg>
+                )}
               </div>
               {user?.isAdmin && (
                 <div className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-medium py-1 px-2 rounded-full">
