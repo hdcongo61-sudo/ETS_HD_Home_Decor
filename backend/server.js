@@ -40,7 +40,8 @@ app.set('trust proxy', 1);
 // ✅ CORS setup
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
+  'https://www.hdgestion.co'
 ];
 
 app.use(cors({
