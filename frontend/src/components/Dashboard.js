@@ -22,9 +22,6 @@ import {
   // Graphes section statistiques des ventes
   LineChart,
   BarChart,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 import {
   format,
@@ -65,7 +62,6 @@ import {
   Download // 🔹 export stats ventes
 } from "lucide-react";
 
-import AnalyticsSection from "../components/AnalyticsSection";
 import RemindersPanel from "../components/RemindersPanel";
 import ExportModal from "../components/ExportModal";
 import BusinessAnalyticsDashboard from "../components/BusinessAnalyticsDashboard";
@@ -75,6 +71,7 @@ const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const currentYear = new Date().getFullYear();
 
   // ===== THEME =====
   const [darkMode, setDarkMode] = useState(
@@ -88,6 +85,11 @@ const Dashboard = () => {
   // ===== RANGE + COMPARE (graphique financier) =====
   const [timeRange, setTimeRange] = useState("week"); // day|week|month|year
   const [compareMode, setCompareMode] = useState("none"); // none|prev-week|prev-month|prev-year
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const activeYear = useMemo(() => {
+    const parsed = parseInt(selectedYear, 10);
+    return Number.isNaN(parsed) ? currentYear : parsed;
+  }, [selectedYear, currentYear]);
 
   // ===== DATA (courant) =====
   const [salesData, setSalesData] = useState([]);
@@ -122,8 +124,6 @@ const Dashboard = () => {
   useEffect(() => {
     localStorage.setItem("smoothTrend", String(smoothTrend));
   }, [smoothTrend]);
-  // 🔹 Couleurs du Pie
-  const SALES_PIE_COLORS = ["#22C55E", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
   // ===== Helpers période =====
   const getDateRange = (range) => {
@@ -136,8 +136,10 @@ const Dashboard = () => {
           start: startOfWeek(now, { locale: fr }),
           end: endOfWeek(now, { locale: fr }),
         };
-      case "year":
-        return { start: startOfYear(now), end: endOfYear(now) };
+      case "year": {
+        const yearBase = new Date(activeYear, 0, 1);
+        return { start: startOfYear(yearBase), end: endOfYear(yearBase) };
+      }
       default:
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
@@ -216,7 +218,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [timeRange]);
+  }, [timeRange, activeYear]);
 
   // ===== FETCH: période comparée (manuelle) =====
   const fetchPrevData = useCallback(async () => {
@@ -251,7 +253,7 @@ const Dashboard = () => {
       console.error("Erreur chargement période comparée :", e);
       setPrevCombinedData([]);
     }
-  }, [compareMode, timeRange]);
+  }, [compareMode, timeRange, activeYear]);
 
   // ===== Reminders =====
   const fetchReminders = async () => {
@@ -444,18 +446,6 @@ const Dashboard = () => {
     ? movingAverage(trendDataRaw, 3)
     : trendDataRaw;
 
-  // 🔹 Pie: lire les méthodes du backend patché (map: method -> { totalAmount, percentage, count })
-  const paymentPieData = useMemo(() => {
-    const map = salesStatsData?.paymentMethods || {};
-    const rows = Object.entries(map).map(([name, val]) => ({
-      name: name || "Non spécifié",
-      value: Number(val?.totalAmount || 0),
-      percentage: Number(val?.percentage || 0),
-      count: Number(val?.count || 0),
-    }));
-    return rows.sort((a, b) => b.value - a.value);
-  }, [salesStatsData]);
-
   // 🔹 Bar: statuts des ventes (nom -> totalAmount)
   const statusData =
     salesStatsData?.statusStats
@@ -645,6 +635,25 @@ const Dashboard = () => {
               <option value="month">Mois</option>
               <option value="year">Année</option>
             </select>
+
+            {timeRange === "year" && (
+              <input
+                type="number"
+                inputMode="numeric"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                onBlur={() => {
+                  if (Number.isNaN(parseInt(selectedYear, 10))) {
+                    setSelectedYear(String(currentYear));
+                  }
+                }}
+                className="w-28 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500"
+                aria-label="Année"
+                placeholder="Année"
+                min="1970"
+                max={currentYear}
+              />
+            )}
 
             {/* Sélecteur de comparaison manuelle */}
             <select
@@ -1062,43 +1071,8 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Grilles condensées : Meilleurs jours + Tendance | Méthodes / Statuts | Top produits */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-            {/* Meilleurs jours */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
-                Meilleurs jours (période sélectionnée)
-              </h3>
-              {bestDays ? (
-                <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500">Ventes</div>
-                    <div className="font-semibold">{formatBestDay(bestDays.sales)}</div>
-                    <div className="text-green-600 dark:text-green-300 font-semibold">
-                      {Math.round(bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500">Encaissements</div>
-                    <div className="font-semibold">{formatBestDay(bestDays.payments)}</div>
-                    <div className="text-blue-600 dark:text-blue-300 font-semibold">
-                      {Math.round(bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500">Dépenses</div>
-                    <div className="font-semibold">{formatBestDay(bestDays.expenses)}</div>
-                    <div className="text-red-600 dark:text-red-300 font-semibold">
-                      {Math.round(bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-gray-500 text-sm py-8">
-                  Aucun meilleur jour disponible sur la période
-                </div>
-              )}
-            </div>
+          {/* Grilles condensées : Tendance | Statuts | Top produits */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* 🔹 Tendance des ventes (+ lissage) */}
             <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
@@ -1122,54 +1096,6 @@ const Dashboard = () => {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-            </div>
-
-            {/* 🔹 Méthodes de paiement corrigées */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
-                Méthodes de paiement
-              </h3>
-
-              {paymentPieData && paymentPieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie
-                      data={paymentPieData}
-                      dataKey="value"
-                      nameKey="name"
-                      outerRadius={70}
-                      label={({ name, value }) => {
-                        const sum = paymentPieData.reduce((s, r) => s + r.value, 0);
-                        return `${name}: ${
-                          sum > 0 ? ((value / sum) * 100).toFixed(1) : "0.0"
-                        }%`;
-                      }}
-                    >
-                      {paymentPieData.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={SALES_PIE_COLORS[i % SALES_PIE_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(v, n, p) => [
-                        `${Number(v).toLocaleString("fr-FR")} CFA`,
-                        p?.payload?.name || n,
-                      ]}
-                      contentStyle={{
-                        borderRadius: 10,
-                        backgroundColor: darkMode ? "#1F2937" : "#fff",
-                      }}
-                    />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center text-gray-500 text-sm py-8">
-                  Aucune méthode de paiement enregistrée
-                </div>
-              )}
             </div>
 
             {/* Statuts des ventes */}
@@ -1231,18 +1157,6 @@ const Dashboard = () => {
         {/* ===== Admin only ===== */}
         {isAdmin && (
         <>
-          <AnalyticsSection
-            metrics={{
-              grossProfit: profit,
-                profitMargin: totalSales > 0 ? (profit / totalSales) * 100 : 0,
-                roi: totalExpenses > 0 ? (profit / totalExpenses) * 100 : 0,
-                operationalEfficiency:
-                  totalSales > 0 ? (totalPaid / totalSales) * 100 : 0,
-                dailyGrowth: 12,
-                weeklyGrowth: 5,
-                monthlyGrowth: 18,
-              }}
-            />
             {Object.values(bestDaysRanges).length > 0 && (
               <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -1274,42 +1188,6 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-            {salesStatsData?.bestDays && (
-      <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Meilleurs jours (période sélectionnée)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <p className="text-xs text-gray-500">Ventes</p>
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {formatBestDay(salesStatsData.bestDays.sales)}
-            </div>
-            <div className="text-green-600 dark:text-green-300 font-semibold">
-              {Math.round(salesStatsData.bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-            </div>
-          </div>
-          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <p className="text-xs text-gray-500">Encaissements</p>
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {formatBestDay(salesStatsData.bestDays.payments)}
-            </div>
-            <div className="text-blue-600 dark:text-blue-300 font-semibold">
-              {Math.round(salesStatsData.bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-            </div>
-          </div>
-          <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <p className="text-xs text-gray-500">Dépenses</p>
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {formatBestDay(salesStatsData.bestDays.expenses)}
-            </div>
-            <div className="text-red-600 dark:text-red-300 font-semibold">
-              {Math.round(salesStatsData.bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
             <RemindersPanel
               overdue={overdueReminders}
               upcoming={upcomingReminders}
