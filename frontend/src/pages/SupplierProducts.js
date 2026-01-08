@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const rangeOptions = [
@@ -184,7 +184,14 @@ const SupplierProducts = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-800">
-                      {supplier.supplierName}
+                      <Link
+                        to={`/suppliers/${encodeURIComponent(
+                          supplier.supplierName || 'Inconnu'
+                        )}`}
+                        className="hover:underline text-indigo-700 hover:text-indigo-900"
+                      >
+                        {supplier.supplierName}
+                      </Link>
                     </h2>
                     {supplier.supplierPhone && (
                       <p className="text-sm text-gray-500 mt-1">
@@ -254,7 +261,12 @@ const SupplierProducts = () => {
                             className="border-b last:border-0 hover:bg-indigo-50/40 transition-colors"
                           >
                             <td className="py-2 px-3 font-medium text-gray-800">
-                              {product.name}
+                              <Link
+                                to={`/products/${product._id}`}
+                                className="text-indigo-700 hover:text-indigo-900 hover:underline"
+                              >
+                                {product.name}
+                              </Link>
                               {product.sku && (
                                 <span className="ml-2 text-xs text-gray-400">
                                   {product.sku}

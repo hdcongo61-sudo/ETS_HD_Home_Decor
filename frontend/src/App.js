@@ -3,29 +3,29 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
-import Login from './pages/Login';
-import UserProfile from './components/UserProfile';
-import EmployeeList from './components/EmployeeList';
-import EmployeeForm from './components/EmployeeForm';
-import EmployeeDetails from './components/EmployeeDetail';
-import PaySlipList from './components/PaySlipList';
-import PaySlipForm from './components/PaySlipForm';
-import AdvanceList from './components/AdvanceList';
-import AdvanceForm from './components/AdvanceForm';
-import PaySlipPrint from './components/PaySlipPrint';
-import PaySlipFormEdit from './components/PaySlipFormEdit';
 import { ModalProvider } from './context/ModalContext';
 import GlobalModals from './components/GlobalModals';
 import OfflineIndicator from './components/OfflineIndicator';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SiteFooter from './components/SiteFooter';
 import PushNotificationManager from './components/PushNotificationManager';
-import NeverSoldProducts from './pages/NeverSoldProducts';
-import TopSellingProducts from './pages/TopSellingProducts';
-import CriticalStockProducts from './pages/CriticalStockProducts';
-import OutOfStockProducts from './pages/OutOfStockProducts';
-import ClientDashboard from './pages/ClientDashboard';
-import PartiallyPaidPurchases from "./pages/PartiallyPaidPurchases";
+const Login = lazy(() => import('./pages/Login'));
+const UserProfile = lazy(() => import('./components/UserProfile'));
+const EmployeeList = lazy(() => import('./components/EmployeeList'));
+const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
+const EmployeeDetails = lazy(() => import('./components/EmployeeDetail'));
+const PaySlipList = lazy(() => import('./components/PaySlipList'));
+const PaySlipForm = lazy(() => import('./components/PaySlipForm'));
+const AdvanceList = lazy(() => import('./components/AdvanceList'));
+const AdvanceForm = lazy(() => import('./components/AdvanceForm'));
+const PaySlipPrint = lazy(() => import('./components/PaySlipPrint'));
+const PaySlipFormEdit = lazy(() => import('./components/PaySlipFormEdit'));
+const NeverSoldProducts = lazy(() => import('./pages/NeverSoldProducts'));
+const TopSellingProducts = lazy(() => import('./pages/TopSellingProducts'));
+const CriticalStockProducts = lazy(() => import('./pages/CriticalStockProducts'));
+const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
+const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -37,6 +37,7 @@ const ClientProfile = lazy(() => import('./pages/ClientProfile'));
 const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const ProductDashboard = lazy(() => import('./pages/ProductDashboard'));
 const SupplierProducts = lazy(() => import('./pages/SupplierProducts'));
+const SupplierProfile = lazy(() => import('./pages/SupplierProfile'));
 const EditProductForm = lazy(() => import('./components/EditProductForm'));
 const UserManagement = lazy(() => import('./components/UserManagement'));
 const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
@@ -147,6 +148,14 @@ function App() {
                   element={
                     <ProtectedRoute adminOnly>
                       <SupplierProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/suppliers/:name"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <SupplierProfile />
                     </ProtectedRoute>
                   }
                 />

@@ -536,7 +536,7 @@ const getProductDashboard = async (req, res) => {
     })
       .populate({
         path: 'products.product',
-        select: 'name category price costPrice',
+        select: 'name category price costPrice supplierName supplierPhone',
       })
       .lean();
 
@@ -546,7 +546,9 @@ const getProductDashboard = async (req, res) => {
       if (prod && prod._id) {
         acc[prod._id.toString()] = {
           supplierName: prod.supplierName || 'Inconnu',
-          supplierPhone: prod.supplierPhone || ''
+          supplierPhone: prod.supplierPhone || '',
+          price: prod.price || 0,
+          costPrice: prod.costPrice || 0,
         };
       }
       return acc;
@@ -562,27 +564,34 @@ const getProductDashboard = async (req, res) => {
 
       if (!sale.products) continue;
       for (const item of sale.products) {
-        const p = item.product;
-        if (!p || !p._id) continue;
+        const productRef = item.product;
+        const id =
+          productRef?._id?.toString?.() ||
+          productRef?.toString?.() ||
+          productRef;
+        if (!id) continue;
 
-        const id = p._id.toString();
-        const quantity = item.quantity || 0;
-        const priceAtSale = item.priceAtSale || p.price || 0;
-        const costPrice = p.costPrice || 0;
+        const productMeta = productMetaMap[id] || {};
+        const quantity = Number(item.quantity || 0) || 0;
+        const priceAtSale =
+          Number(item.priceAtSale ?? productRef?.price ?? productMeta.price ?? 0) ||
+          0;
+        const costPrice =
+          Number(productRef?.costPrice ?? productMeta.costPrice ?? 0) || 0;
 
         salesTrendMap[dateKey] += priceAtSale * quantity;
 
         if (!productSalesMap[id]) {
           productSalesMap[id] = {
             _id: id,
-            name: p.name || 'Produit inconnu',
-            category: p.category || 'Non catégorisé',
+            name: productRef?.name || 'Produit inconnu',
+            category: productRef?.category || 'Non catégorisé',
             price: priceAtSale,
             sold: 0,
             revenue: 0,
             profit: 0,
-            supplierName: productMetaMap[id]?.supplierName || 'Inconnu',
-            supplierPhone: productMetaMap[id]?.supplierPhone || ''
+            supplierName: productMeta.supplierName || 'Inconnu',
+            supplierPhone: productMeta.supplierPhone || ''
           };
         }
 
@@ -628,43 +637,42 @@ const getProductDashboard = async (req, res) => {
 // 8️⃣ Statistiques par fournisseur
 const supplierStatsMap = {};
 
-for (const p of products) {
-  const supplier = p.supplierName || 'Inconnu';
-  if (!supplierStatsMap[supplier]) {
-    supplierStatsMap[supplier] = {
-      supplierName: supplier,
-      supplierPhone: p.supplierPhone || '',
-      totalProducts: 0,
-      totalStockValue: 0,
-      totalRevenue: 0,
-      totalProfit: 0,
-      lowStockCount: 0,
-      outOfStockCount: 0,
-    };
-  }
+    for (const p of products) {
+      const supplierName =
+        (p.supplierName && p.supplierName.trim()) || 'Inconnu';
+      const supplierPhone = p.supplierPhone || '';
+      if (!supplierStatsMap[supplierName]) {
+        supplierStatsMap[supplierName] = {
+          supplierName,
+          supplierPhone,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+        };
+      } else if (!supplierStatsMap[supplierName].supplierPhone && supplierPhone) {
+        supplierStatsMap[supplierName].supplierPhone = supplierPhone;
+      }
 
-  supplierStatsMap[supplier].totalProducts += 1;
-  supplierStatsMap[supplier].totalStockValue += (p.price || 0) * (p.stock || 0);
-  if (p.stock === 0) supplierStatsMap[supplier].outOfStockCount += 1;
-  if (p.stock > 0 && p.stock <= 5) supplierStatsMap[supplier].lowStockCount += 1;
-}
+      const productId = p._id?.toString?.() || p._id;
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
 
-for (const sale of sales) {
-  if (!sale.products) continue;
-  for (const item of sale.products) {
-    const pr = item.product;
-    if (!pr) continue;
-    const supplier = pr.supplierName || 'Inconnu';
-    if (!supplierStatsMap[supplier]) continue;
+      supplierStatsMap[supplierName].totalProducts += 1;
+      supplierStatsMap[supplierName].totalStockValue +=
+        (p.price || 0) * (p.stock || 0);
+      supplierStatsMap[supplierName].totalRevenue += salesData.revenue;
+      supplierStatsMap[supplierName].totalProfit += salesData.profit;
 
-    const priceAtSale = item.priceAtSale || pr.price || 0;
-    const costPrice = pr.costPrice || 0;
-    const qty = item.quantity || 0;
-
-    supplierStatsMap[supplier].totalRevenue += priceAtSale * qty;
-    supplierStatsMap[supplier].totalProfit += (priceAtSale - costPrice) * qty;
-  }
-}
+      if (p.stock === 0) supplierStatsMap[supplierName].outOfStockCount += 1;
+      if (p.stock > 0 && p.stock <= 5)
+        supplierStatsMap[supplierName].lowStockCount += 1;
+    }
 
 const supplierStats = Object.values(supplierStatsMap).sort(
   (a, b) => b.totalRevenue - a.totalRevenue

@@ -13,6 +13,14 @@ const storeRestrictionInfo = (payload) => {
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { auth } = useContext(AuthContext);
 
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
+        Chargement...
+      </div>
+    );
+  }
+
   const restrictedPayload = useMemo(() => {
     if (!auth.user?.accessControlEnabled) {
       return null;

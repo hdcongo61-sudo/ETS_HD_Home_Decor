@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
@@ -116,6 +116,12 @@ const ProductDashboard = () => {
 
   if (error)
     return <p className="text-center text-red-600 mt-8">{error}</p>;
+
+  const supplierChartData = stats.supplierStats.slice(0, 5).map((s) => ({
+    ...s,
+    totalRevenue: Number(s.totalRevenue || 0),
+    totalProfit: Number(s.totalProfit || 0),
+  }));
 
   return (
     <motion.div
@@ -288,10 +294,10 @@ const ProductDashboard = () => {
 
         <div className="mb-6 h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.supplierStats.slice(0, 5)}>
+            <BarChart data={supplierChartData}>
               <XAxis dataKey="supplierName" tick={{ fontSize: 12 }} />
               <YAxis />
-              <Tooltip formatter={(v) => `${v.toLocaleString()} CFA`} />
+              <Tooltip formatter={(v) => `${Number(v || 0).toLocaleString()} CFA`} />
               <Legend />
               <Bar dataKey="totalRevenue" fill="#6366F1" name="Revenu" />
               <Bar dataKey="totalProfit" fill="#10B981" name="Profit" />
@@ -316,15 +322,24 @@ const ProductDashboard = () => {
             <tbody>
               {stats.supplierStats.slice(0, 10).map((s, index) => (
                 <tr key={index} className="border-b hover:bg-purple-50">
-                  <td className="py-2 px-3 font-medium">{s.supplierName}</td>
+                  <td className="py-2 px-3 font-medium">
+                    <Link
+                      to={`/suppliers/${encodeURIComponent(
+                        s.supplierName || 'Inconnu'
+                      )}`}
+                      className="text-indigo-700 hover:text-indigo-900 hover:underline"
+                    >
+                      {s.supplierName}
+                    </Link>
+                  </td>
                   <td className="py-2 px-3 text-gray-600">{s.supplierPhone || '—'}</td>
                   <td className="py-2 px-3">{s.totalProducts}</td>
                   <td className="py-2 px-3">{s.totalStockValue.toLocaleString()} CFA</td>
                   <td className="py-2 px-3 text-green-600 font-semibold">
-                    {s.totalRevenue.toLocaleString()} CFA
+                    {Number(s.totalRevenue || 0).toLocaleString()} CFA
                   </td>
                   <td className="py-2 px-3 text-indigo-600 font-semibold">
-                    {s.totalProfit.toLocaleString()} CFA
+                    {Number(s.totalProfit || 0).toLocaleString()} CFA
                   </td>
                   <td className="py-2 px-3 text-yellow-600">{s.lowStockCount}</td>
                   <td className="py-2 px-3 text-red-600">{s.outOfStockCount}</td>
@@ -338,7 +353,14 @@ const ProductDashboard = () => {
           {stats.supplierStats.slice(0, 10).map((s, index) => (
             <div key={index} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/50">
               <div className="flex justify-between items-center mb-2">
-                <p className="font-semibold text-gray-900">{s.supplierName}</p>
+                <Link
+                  to={`/suppliers/${encodeURIComponent(
+                    s.supplierName || 'Inconnu'
+                  )}`}
+                  className="font-semibold text-gray-900 hover:underline"
+                >
+                  {s.supplierName}
+                </Link>
                 <span className="text-xs text-gray-500">#{index + 1}</span>
               </div>
               <div className="text-sm text-gray-600 mb-2">
@@ -355,11 +377,15 @@ const ProductDashboard = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Revenu</p>
-                  <p className="font-semibold text-green-600">{s.totalRevenue.toLocaleString()}</p>
+                  <p className="font-semibold text-green-600">
+                    {Number(s.totalRevenue || 0).toLocaleString()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Profit</p>
-                  <p className="font-semibold text-indigo-600">{s.totalProfit.toLocaleString()}</p>
+                  <p className="font-semibold text-indigo-600">
+                    {Number(s.totalProfit || 0).toLocaleString()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Stock critique</p>
