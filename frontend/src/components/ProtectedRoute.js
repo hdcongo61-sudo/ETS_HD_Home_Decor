@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 
@@ -13,15 +13,7 @@ const storeRestrictionInfo = (payload) => {
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { auth } = useContext(AuthContext);
 
-  if (auth.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
-        Chargement...
-      </div>
-    );
-  }
-
-  const restrictedPayload = useMemo(() => {
+  const restrictedPayload = (() => {
     if (!auth.user?.accessControlEnabled) {
       return null;
     }
@@ -42,7 +34,15 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
       accessStart: start ? start.toISOString() : null,
       accessEnd: end ? end.toISOString() : null,
     };
-  }, [auth.user?.accessControlEnabled, auth.user?.accessStart, auth.user?.accessEnd]);
+  })();
+
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
+        Chargement...
+      </div>
+    );
+  }
 
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace />;
