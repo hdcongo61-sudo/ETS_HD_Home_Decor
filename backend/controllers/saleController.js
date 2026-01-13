@@ -4,6 +4,7 @@ const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
 const User = require('../models/userModel');
 const Expense = require('../models/expenseModel');
+const DeletedSale = require('../models/deletedSaleModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -1535,24 +1536,46 @@ const updateSale = asyncHandler(async (req, res) => {
 
 const deleteSale = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const reason = (req.body?.reason || '').trim();
 
   try {
-    const sale = await Sale.findById(id);
+    if (!reason) {
+      return res.status(400).json({ message: 'Une raison de suppression est requise' });
+    }
+
+    const sale = await Sale.findById(id)
+      .populate('client', 'name email')
+      .populate({
+        path: 'products.product',
+        select: 'name costPrice'
+      })
+      .populate('user', 'name email');
     if (!sale) {
       return res.status(404).json({ message: 'Vente non trouvée' });
     }
 
+    await DeletedSale.create({
+      saleId: sale._id,
+      saleSnapshot: sale.toObject(),
+      deletionReason: reason,
+      deletedBy: req.user._id,
+      deletedAt: new Date()
+    });
+
     // Annuler les effets de la vente
     // 1. Restaurer le stock des produits
     for (const item of sale.products) {
-      await Product.findByIdAndUpdate(item.product, {
+      const productId = item.product?._id || item.product;
+      if (!productId) continue;
+      await Product.findByIdAndUpdate(productId, {
         $inc: { stock: item.quantity }
       });
     }
 
     // 2. Mettre à jour le client
     if (sale.client) {
-      await Client.findByIdAndUpdate(sale.client, {
+      const clientId = sale.client?._id || sale.client;
+      await Client.findByIdAndUpdate(clientId, {
         $pull: { purchases: sale._id },
         $inc: {
           totalPurchases: -sale.totalAmount,
@@ -1561,10 +1584,7 @@ const deleteSale = asyncHandler(async (req, res) => {
       });
     }
 
-    // 3. Supprimer les paiements associés
-    await Payment.deleteMany({ sale: id });
-
-    // 4. Supprimer la vente
+    // 3. Supprimer la vente
     await Sale.deleteOne({ _id: id });
 
     res.status(200).json({ message: 'Vente supprimée avec succès' });
@@ -1574,6 +1594,18 @@ const deleteSale = asyncHandler(async (req, res) => {
       error: error.message
     });
   }
+});
+
+// @desc    Get deleted sales history
+// @route   GET /api/sales/deleted
+// @access  Private/Admin
+const getDeletedSales = asyncHandler(async (req, res) => {
+  const deletedSales = await DeletedSale.find({})
+    .populate('deletedBy', 'name email')
+    .sort({ deletedAt: -1 })
+    .lean();
+
+  res.json(deletedSales);
 });
 
 // @desc    Delete a payment
@@ -1978,6 +2010,7 @@ module.exports = {
   updateReminder,
   deleteReminder,
   deleteSale,
+  getDeletedSales,
   updateDelivery,
   getDeliveryStats
   ,

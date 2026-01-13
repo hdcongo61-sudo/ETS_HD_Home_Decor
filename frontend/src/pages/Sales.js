@@ -1325,6 +1325,7 @@ const Sales = () => {
                     <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
                     Historique des Ventes
                   </h2>
+                  <div className="flex flex-wrap items-center gap-3">
                     <Link
                       to={{ pathname: "/sales/all", search: historyLinkSearch }}
                       className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
@@ -1332,6 +1333,16 @@ const Sales = () => {
                     >
                       {historyLinkLabel}
                     </Link>
+                    {isAdmin && (
+                      <Link
+                        to="/sales/deleted"
+                        className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                        {...desktopLinkProps}
+                      >
+                        Ventes supprimées
+                      </Link>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -2265,13 +2276,24 @@ const Sales = () => {
                       <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
                       Historique des Ventes
                     </h2>
-                    <Link
-                      to={{ pathname: "/sales/all", search: historyLinkSearch }}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                      {...desktopLinkProps}
-                    >
-                      {historyLinkLabel}
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link
+                        to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                        {...desktopLinkProps}
+                      >
+                        {historyLinkLabel}
+                      </Link>
+                      {isAdmin && (
+                        <Link
+                          to="/sales/deleted"
+                          className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                          {...desktopLinkProps}
+                        >
+                          Ventes supprimées
+                        </Link>
+                      )}
+                    </div>
                   </div>
 
                   {/* Filtres historiques */}

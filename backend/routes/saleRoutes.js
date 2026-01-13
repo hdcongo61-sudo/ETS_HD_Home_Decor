@@ -13,6 +13,7 @@ const {
   getUserSalesStats,
   updateSale,
   deleteSale,
+  getDeletedSales,
   getSalesStatsByStatus,
   deletePayment,
   getPaymentsByDateRange,
@@ -38,6 +39,9 @@ router.route('/user/:userId')
 router.route('/')
   .get(protect, getSales)          // GET /api/sales (with optional query params)
   .post(protect, createSale);
+
+// Deleted sales history
+router.get('/deleted', protect, admin, getDeletedSales);
 
 // Get upcoming reminders
 router.get('/reminders/upcoming', protect,getUpcomingReminders);
