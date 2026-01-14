@@ -22,6 +22,16 @@ const productSchema = mongoose.Schema(
     },
     supplierName: { type: String, trim: true, default: 'Non défini' },
     supplierPhone: { type: String, trim: true, default: '' },
+    container: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    warehouse: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     stock: {
       type: Number,
       required: true,
@@ -140,7 +150,7 @@ const productSchema = mongoose.Schema(
 );
 
 // Index pour les recherches rapides
-productSchema.index({ name: 'text', description: 'text', category: 1 });
+productSchema.index({ name: 'text', description: 'text', category: 1, container: 1, warehouse: 1 });
 productSchema.index({ stock: 1 });
 productSchema.index({ isActive: 1 });
 

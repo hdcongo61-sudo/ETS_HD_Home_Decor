@@ -333,6 +333,27 @@ const parseNumberField = (value) => {
   return Number.isNaN(converted) ? undefined : converted;
 };
 
+const stripContainerSuffix = (name, container) => {
+  const trimmedName = (name || '').trim();
+  const trimmedContainer = (container || '').trim();
+  if (!trimmedName || !trimmedContainer) return trimmedName;
+  const suffix = ` - ${trimmedContainer}`;
+  if (trimmedName.endsWith(suffix)) {
+    return trimmedName.slice(0, -suffix.length).trim();
+  }
+  return trimmedName;
+};
+
+const buildProductNameWithContainer = (name, container) => {
+  const trimmedName = (name || '').trim();
+  const trimmedContainer = (container || '').trim();
+  if (!trimmedName) return trimmedName;
+  if (!trimmedContainer) return trimmedName;
+  const suffix = ` - ${trimmedContainer}`;
+  if (trimmedName.endsWith(suffix)) return trimmedName;
+  return `${trimmedName}${suffix}`;
+};
+
 const uploadImageToCloudinary = (buffer) => new Promise((resolve, reject) => {
   const stream = cloudinary.uploader.upload_stream(
     {
@@ -363,10 +384,16 @@ const createProduct = async (req, res) => {
       image,
       supplierName,
       supplierPhone,
+      container,
+      warehouse,
     } = req.body;
     const numericPrice = parseNumberField(price);
     const numericCost = parseNumberField(costPrice);
     const numericStock = parseNumberField(stock) ?? 0;
+    const cleanedContainer = typeof container === 'string' ? container.trim() : '';
+    const cleanedWarehouse = typeof warehouse === 'string' ? warehouse.trim() : '';
+    const cleanedName = typeof name === 'string' ? name.trim() : '';
+    const resolvedName = buildProductNameWithContainer(cleanedName, cleanedContainer);
 
     let resolvedImageUrl = image;
     if (req.file?.buffer) {
@@ -377,7 +404,7 @@ const createProduct = async (req, res) => {
     const userName = req.user?.name || 'Utilisateur inconnu';
 
     const product = new Product({
-      name,
+      name: resolvedName,
       description,
       price: numericPrice,
       costPrice: numericCost,
@@ -386,6 +413,8 @@ const createProduct = async (req, res) => {
       image: resolvedImageUrl,
       supplierName,
       supplierPhone,
+      container: cleanedContainer,
+      warehouse: cleanedWarehouse,
       createdBy: userId,
       updatedBy: userId,
       activities: [
@@ -418,6 +447,8 @@ const updateProduct = async (req, res) => {
       image,
       supplierName,
       supplierPhone,
+      container,
+      warehouse,
     } = req.body;
 
     let resolvedImageUrl;
@@ -438,9 +469,21 @@ const updateProduct = async (req, res) => {
     }
 
     // 🔍 Détection des changements
+    const incomingContainer = typeof container === 'string' ? container.trim() : undefined;
+    const incomingWarehouse = typeof warehouse === 'string' ? warehouse.trim() : undefined;
+    const incomingNameRaw = typeof name === 'string' ? name.trim() : undefined;
+    const incomingName = incomingNameRaw !== undefined && incomingNameRaw !== '' ? incomingNameRaw : undefined;
+    const previousContainer = product.container || '';
+    const containerForName =
+      incomingContainer !== undefined ? incomingContainer : previousContainer;
+    const baseName = incomingName !== undefined
+      ? incomingName
+      : stripContainerSuffix(product.name, previousContainer);
+    const resolvedName = buildProductNameWithContainer(baseName, containerForName);
+
     const changes = [];
     const fieldsToCheck = {
-      name,
+      name: resolvedName,
       description,
       price: parseNumberField(price),
       costPrice: parseNumberField(costPrice),
@@ -449,6 +492,8 @@ const updateProduct = async (req, res) => {
       ...(resolvedImageUrl !== undefined ? { image: resolvedImageUrl } : {}),
       supplierName,
       supplierPhone,
+      container: incomingContainer,
+      warehouse: incomingWarehouse,
     };
 
     for (const [key, newValue] of Object.entries(fieldsToCheck)) {
@@ -678,6 +723,88 @@ const supplierStats = Object.values(supplierStatsMap).sort(
   (a, b) => b.totalRevenue - a.totalRevenue
 );
 
+    // 9️⃣ Statistiques par conteneur
+    const containerStatsMap = {};
+
+    for (const p of products) {
+      const containerName = (p.container && p.container.trim()) || 'Non defini';
+      if (!containerStatsMap[containerName]) {
+        containerStatsMap[containerName] = {
+          containerName,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+        };
+      }
+
+      const productId = p._id?.toString?.() || p._id;
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      containerStatsMap[containerName].totalProducts += 1;
+      containerStatsMap[containerName].totalStockValue +=
+        (p.price || 0) * (p.stock || 0);
+      containerStatsMap[containerName].totalRevenue += salesData.revenue;
+      containerStatsMap[containerName].totalProfit += salesData.profit;
+      containerStatsMap[containerName].totalUnitsSold += salesData.sold;
+
+      if (p.stock === 0) containerStatsMap[containerName].outOfStockCount += 1;
+      if (p.stock > 0 && p.stock <= 5)
+        containerStatsMap[containerName].lowStockCount += 1;
+    }
+
+    const containerStats = Object.values(containerStatsMap).sort(
+      (a, b) => b.totalRevenue - a.totalRevenue
+    );
+
+    // 10️⃣ Statistiques par entrepot
+    const warehouseStatsMap = {};
+
+    for (const p of products) {
+      const warehouseName = (p.warehouse && p.warehouse.trim()) || 'Non defini';
+      if (!warehouseStatsMap[warehouseName]) {
+        warehouseStatsMap[warehouseName] = {
+          warehouseName,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+        };
+      }
+
+      const productId = p._id?.toString?.() || p._id;
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      warehouseStatsMap[warehouseName].totalProducts += 1;
+      warehouseStatsMap[warehouseName].totalStockValue +=
+        (p.price || 0) * (p.stock || 0);
+      warehouseStatsMap[warehouseName].totalRevenue += salesData.revenue;
+      warehouseStatsMap[warehouseName].totalProfit += salesData.profit;
+      warehouseStatsMap[warehouseName].totalUnitsSold += salesData.sold;
+
+      if (p.stock === 0) warehouseStatsMap[warehouseName].outOfStockCount += 1;
+      if (p.stock > 0 && p.stock <= 5)
+        warehouseStatsMap[warehouseName].lowStockCount += 1;
+    }
+
+    const warehouseStats = Object.values(warehouseStatsMap).sort(
+      (a, b) => b.totalRevenue - a.totalRevenue
+    );
+
 // ✅ Ajout au JSON final
 res.json({
   totalProducts,
@@ -690,6 +817,8 @@ res.json({
   topSellingProducts,
   salesTrend,
   supplierStats, 
+  containerStats,
+  warehouseStats,
 });
 
   } catch (error) {
@@ -976,6 +1105,370 @@ const getProductsBySupplier = async (req, res) => {
   }
 };
 
+// ==========================
+// @desc    Get products grouped by container with stats
+// @route   GET /api/products/by-container
+// @access  Private/Admin
+// ==========================
+const getProductsByContainer = async (req, res) => {
+  try {
+    const { range = 'month' } = req.query;
+
+    const now = new Date();
+    let startDate = new Date(0);
+
+    switch (range) {
+      case 'day':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate = new Date(0);
+    }
+
+    const [products, sales] = await Promise.all([
+      Product.find({}).lean(),
+      Sale.find({
+        saleDate: { $gte: startDate },
+        status: { $ne: 'cancelled' },
+      })
+        .populate({
+          path: 'products.product',
+          select: 'name category price costPrice container',
+        })
+        .lean(),
+    ]);
+
+    const productSalesMap = {};
+
+    for (const sale of sales) {
+      if (!sale.products) continue;
+
+      for (const item of sale.products) {
+        const populatedProduct = item.product;
+        if (!populatedProduct || !populatedProduct._id) continue;
+
+        const id = populatedProduct._id.toString();
+        const quantity = item.quantity || 0;
+        const priceAtSale = item.priceAtSale || populatedProduct.price || 0;
+        const costPrice = populatedProduct.costPrice || 0;
+
+        if (!productSalesMap[id]) {
+          productSalesMap[id] = {
+            sold: 0,
+            revenue: 0,
+            profit: 0,
+          };
+        }
+
+        productSalesMap[id].sold += quantity;
+        productSalesMap[id].revenue += priceAtSale * quantity;
+        productSalesMap[id].profit += (priceAtSale - costPrice) * quantity;
+      }
+    }
+
+    const containersMap = {};
+
+    for (const product of products) {
+      const containerName = (product.container && product.container.trim()) || 'Non defini';
+
+      if (!containersMap[containerName]) {
+        containersMap[containerName] = {
+          containerName,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          averageMargin: 0,
+          products: [],
+        };
+      }
+
+      const container = containersMap[containerName];
+      const productId = product._id.toString();
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      const stockValue = (product.price || 0) * (product.stock || 0);
+      const margin =
+        salesData.revenue > 0
+          ? Number(((salesData.profit / salesData.revenue) * 100).toFixed(2))
+          : 0;
+
+      container.totalProducts += 1;
+      container.totalStockValue += stockValue;
+      container.totalRevenue += salesData.revenue;
+      container.totalProfit += salesData.profit;
+      container.totalUnitsSold += salesData.sold;
+
+      if (product.stock === 0) container.outOfStockCount += 1;
+      if (product.stock > 0 && product.stock <= 5) container.lowStockCount += 1;
+
+      container.products.push({
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        sku: product.sku || '',
+        stock: product.stock,
+        price: product.price,
+        costPrice: product.costPrice || 0,
+        stockValue: Number(stockValue.toFixed(2)),
+        sold: salesData.sold,
+        revenue: Number(salesData.revenue.toFixed(2)),
+        profit: Number(salesData.profit.toFixed(2)),
+        margin,
+      });
+    }
+
+    const containers = Object.values(containersMap)
+      .map((container) => {
+        const revenue = container.totalRevenue;
+        container.averageMargin =
+          revenue > 0
+            ? Number(((container.totalProfit / revenue) * 100).toFixed(2))
+            : 0;
+
+        container.products.sort((a, b) => b.revenue - a.revenue);
+
+        return {
+          ...container,
+          totalStockValue: Number(container.totalStockValue.toFixed(2)),
+          totalRevenue: Number(container.totalRevenue.toFixed(2)),
+          totalProfit: Number(container.totalProfit.toFixed(2)),
+        };
+      })
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const aggregateTotals = containers.reduce(
+      (acc, container) => {
+        acc.stockValue += container.totalStockValue;
+        acc.revenue += container.totalRevenue;
+        acc.profit += container.totalProfit;
+        acc.unitsSold += container.totalUnitsSold;
+        return acc;
+      },
+      { stockValue: 0, revenue: 0, profit: 0, unitsSold: 0 }
+    );
+
+    res.json({
+      range,
+      generatedAt: new Date().toISOString(),
+      containers,
+      totals: {
+        containerCount: containers.length,
+        productCount: products.length,
+        stockValue: Number(aggregateTotals.stockValue.toFixed(2)),
+        revenue: Number(aggregateTotals.revenue.toFixed(2)),
+        profit: Number(aggregateTotals.profit.toFixed(2)),
+        unitsSold: aggregateTotals.unitsSold,
+      },
+    });
+  } catch (error) {
+    console.error('❌ getProductsByContainer error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ==========================
+// @desc    Get products grouped by warehouse with stats
+// @route   GET /api/products/by-warehouse
+// @access  Private/Admin
+// ==========================
+const getProductsByWarehouse = async (req, res) => {
+  try {
+    const { range = 'month' } = req.query;
+
+    const now = new Date();
+    let startDate = new Date(0);
+
+    switch (range) {
+      case 'day':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate = new Date(0);
+    }
+
+    const [products, sales] = await Promise.all([
+      Product.find({}).lean(),
+      Sale.find({
+        saleDate: { $gte: startDate },
+        status: { $ne: 'cancelled' },
+      })
+        .populate({
+          path: 'products.product',
+          select: 'name category price costPrice warehouse',
+        })
+        .lean(),
+    ]);
+
+    const productSalesMap = {};
+
+    for (const sale of sales) {
+      if (!sale.products) continue;
+
+      for (const item of sale.products) {
+        const populatedProduct = item.product;
+        if (!populatedProduct || !populatedProduct._id) continue;
+
+        const id = populatedProduct._id.toString();
+        const quantity = item.quantity || 0;
+        const priceAtSale = item.priceAtSale || populatedProduct.price || 0;
+        const costPrice = populatedProduct.costPrice || 0;
+
+        if (!productSalesMap[id]) {
+          productSalesMap[id] = {
+            sold: 0,
+            revenue: 0,
+            profit: 0,
+          };
+        }
+
+        productSalesMap[id].sold += quantity;
+        productSalesMap[id].revenue += priceAtSale * quantity;
+        productSalesMap[id].profit += (priceAtSale - costPrice) * quantity;
+      }
+    }
+
+    const warehousesMap = {};
+
+    for (const product of products) {
+      const warehouseName = (product.warehouse && product.warehouse.trim()) || 'Non defini';
+
+      if (!warehousesMap[warehouseName]) {
+        warehousesMap[warehouseName] = {
+          warehouseName,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          averageMargin: 0,
+          products: [],
+        };
+      }
+
+      const warehouse = warehousesMap[warehouseName];
+      const productId = product._id.toString();
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      const stockValue = (product.price || 0) * (product.stock || 0);
+      const margin =
+        salesData.revenue > 0
+          ? Number(((salesData.profit / salesData.revenue) * 100).toFixed(2))
+          : 0;
+
+      warehouse.totalProducts += 1;
+      warehouse.totalStockValue += stockValue;
+      warehouse.totalRevenue += salesData.revenue;
+      warehouse.totalProfit += salesData.profit;
+      warehouse.totalUnitsSold += salesData.sold;
+
+      if (product.stock === 0) warehouse.outOfStockCount += 1;
+      if (product.stock > 0 && product.stock <= 5) warehouse.lowStockCount += 1;
+
+      warehouse.products.push({
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        sku: product.sku || '',
+        stock: product.stock,
+        price: product.price,
+        costPrice: product.costPrice || 0,
+        stockValue: Number(stockValue.toFixed(2)),
+        sold: salesData.sold,
+        revenue: Number(salesData.revenue.toFixed(2)),
+        profit: Number(salesData.profit.toFixed(2)),
+        margin,
+      });
+    }
+
+    const warehouses = Object.values(warehousesMap)
+      .map((warehouse) => {
+        const revenue = warehouse.totalRevenue;
+        warehouse.averageMargin =
+          revenue > 0
+            ? Number(((warehouse.totalProfit / revenue) * 100).toFixed(2))
+            : 0;
+
+        warehouse.products.sort((a, b) => b.revenue - a.revenue);
+
+        return {
+          ...warehouse,
+          totalStockValue: Number(warehouse.totalStockValue.toFixed(2)),
+          totalRevenue: Number(warehouse.totalRevenue.toFixed(2)),
+          totalProfit: Number(warehouse.totalProfit.toFixed(2)),
+        };
+      })
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const aggregateTotals = warehouses.reduce(
+      (acc, warehouse) => {
+        acc.stockValue += warehouse.totalStockValue;
+        acc.revenue += warehouse.totalRevenue;
+        acc.profit += warehouse.totalProfit;
+        acc.unitsSold += warehouse.totalUnitsSold;
+        return acc;
+      },
+      { stockValue: 0, revenue: 0, profit: 0, unitsSold: 0 }
+    );
+
+    res.json({
+      range,
+      generatedAt: new Date().toISOString(),
+      warehouses,
+      totals: {
+        warehouseCount: warehouses.length,
+        productCount: products.length,
+        stockValue: Number(aggregateTotals.stockValue.toFixed(2)),
+        revenue: Number(aggregateTotals.revenue.toFixed(2)),
+        profit: Number(aggregateTotals.profit.toFixed(2)),
+        unitsSold: aggregateTotals.unitsSold,
+      },
+    });
+  } catch (error) {
+    console.error('❌ getProductsByWarehouse error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 module.exports = {
   getProducts,
@@ -987,5 +1480,7 @@ module.exports = {
   getProductDashboard,
   getNeverSoldProducts,
   getProductsBySupplier,
+  getProductsByContainer,
+  getProductsByWarehouse,
   getProductSalesHistory
 };

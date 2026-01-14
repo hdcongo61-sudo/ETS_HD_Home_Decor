@@ -309,6 +309,12 @@ const getActivityIcon = (type) => {
                 >
                   {product.stock} en stock
                 </span>
+                <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                  Conteneur: {product.container?.trim() || 'Non defini'}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                  Entrepot: {product.warehouse?.trim() || 'Non defini'}
+                </span>
                 {product.stock > 20 && (
                   <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
                     🏆 Top Seller

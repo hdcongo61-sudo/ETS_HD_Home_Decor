@@ -20,7 +20,9 @@ const EditProductForm = () => {
     category: '',
     image: '',
     supplierName: '',
-    supplierPhone: ''
+    supplierPhone: '',
+    container: '',
+    warehouse: ''
   });
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
@@ -43,7 +45,9 @@ const EditProductForm = () => {
           category: response.data.category || '',
           image: response.data.image || '',
           supplierName: response.data.supplierName || '',
-          supplierPhone: response.data.supplierPhone || ''
+          supplierPhone: response.data.supplierPhone || '',
+          container: response.data.container || '',
+          warehouse: response.data.warehouse || ''
         });
       } catch (err) {
         setError('Erreur lors du chargement du produit');
@@ -123,7 +127,9 @@ const EditProductForm = () => {
         category: formData.category.trim(),
         image: formData.image.trim() || null,
         supplierName: formData.supplierName.trim(),
-        supplierPhone: formData.supplierPhone.trim()
+        supplierPhone: formData.supplierPhone.trim(),
+        container: formData.container.trim(),
+        warehouse: formData.warehouse.trim()
       };
 
       await api.put(`/products/${id}`, productData);
@@ -195,7 +201,7 @@ const EditProductForm = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Nom et Catégorie */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label className="block text-gray-700 font-medium mb-2">Nom du Produit</label>
                 <input
@@ -232,6 +238,29 @@ const EditProductForm = () => {
                 {validationErrors.category && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
                 )}
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Conteneur</label>
+                <input
+                  type="text"
+                  name="container"
+                  value={formData.container}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded border-gray-300"
+                  placeholder="Ex: Conteneur A"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Entrepot</label>
+                <input
+                  type="text"
+                  name="warehouse"
+                  value={formData.warehouse}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded border-gray-300"
+                  placeholder="Ex: Depot Central"
+                  required
+                />
               </div>
             </div>
 

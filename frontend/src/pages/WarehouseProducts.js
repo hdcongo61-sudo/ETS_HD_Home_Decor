@@ -1,0 +1,318 @@
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
+
+const rangeOptions = [
+  { value: 'day', label: '24 dernieres heures' },
+  { value: 'week', label: '7 derniers jours' },
+  { value: 'month', label: '30 derniers jours' },
+  { value: 'year', label: '12 derniers mois' },
+  { value: 'all', label: 'Toutes les periodes' },
+];
+
+const defaultTotals = {
+  warehouseCount: 0,
+  productCount: 0,
+  stockValue: 0,
+  revenue: 0,
+  profit: 0,
+  unitsSold: 0,
+};
+
+const formatCurrency = (value) =>
+  `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+
+const formatNumber = (value) => Number(value || 0).toLocaleString('fr-FR');
+
+const WarehouseProducts = () => {
+  const [range, setRange] = useState('month');
+  const navigate = useNavigate();
+  const [warehouses, setWarehouses] = useState([]);
+  const [totals, setTotals] = useState(defaultTotals);
+  const [generatedAt, setGeneratedAt] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchWarehouseData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await api.get(`/products/by-warehouse?range=${range}`);
+        const { warehouses = [], totals = {}, generatedAt = '' } = res.data || {};
+
+        setWarehouses(warehouses);
+        setTotals({ ...defaultTotals, ...totals });
+        setGeneratedAt(generatedAt);
+      } catch (err) {
+        console.error('Erreur lors du chargement des produits par entrepot:', err);
+        setError("Impossible de charger les donnees entrepots pour le moment.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWarehouseData();
+  }, [range]);
+
+  const summaryCards = [
+    {
+      title: 'Entrepots actifs',
+      value: formatNumber(totals.warehouseCount),
+      accent: 'from-sky-500 to-blue-500',
+    },
+    {
+      title: 'Produits suivis',
+      value: formatNumber(totals.productCount),
+      accent: 'from-indigo-500 to-purple-500',
+    },
+    {
+      title: 'Valeur du stock',
+      value: formatCurrency(totals.stockValue),
+      accent: 'from-emerald-500 to-teal-500',
+    },
+    {
+      title: 'Revenus generes',
+      value: formatCurrency(totals.revenue),
+      accent: 'from-violet-500 to-fuchsia-500',
+    },
+    {
+      title: 'Profit total',
+      value: formatCurrency(totals.profit),
+      accent: 'from-green-500 to-emerald-500',
+    },
+    {
+      title: 'Unites vendues',
+      value: formatNumber(totals.unitsSold),
+      accent: 'from-orange-500 to-amber-500',
+    },
+  ];
+
+  const renderGeneratedAt = () => {
+    if (!generatedAt) return null;
+    try {
+      const date = new Date(generatedAt);
+      return `Actualise le ${date.toLocaleDateString('fr-FR')} a ${date
+        .toLocaleTimeString('fr-FR')
+        .slice(0, 5)}`;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Produits par Entrepot
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Analyse detaillee des performances produit par entrepot.
+          </p>
+          {renderGeneratedAt() && (
+            <p className="text-xs text-gray-400 mt-2">{renderGeneratedAt()}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/product-dashboard')}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition shadow-sm"
+          >
+            ← Retour
+          </button>
+          <label htmlFor="range" className="text-sm font-medium text-gray-600">
+            Periode
+          </label>
+          <select
+            id="range"
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+          >
+            {rangeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin h-12 w-12 border-4 border-sky-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+        <>
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {summaryCards.map((card) => (
+              <motion.div
+                key={card.title}
+                whileHover={{ scale: 1.03 }}
+                className={`bg-gradient-to-br ${card.accent} text-white p-5 rounded-2xl shadow-md`}
+              >
+                <h3 className="text-sm uppercase tracking-wide opacity-80">
+                  {card.title}
+                </h3>
+                <p className="mt-2 text-2xl font-semibold">{card.value}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <div className="space-y-6">
+            {warehouses.map((warehouse) => (
+              <motion.div
+                key={warehouse.warehouseName}
+                className="bg-white p-6 rounded-3xl shadow-md border border-gray-100"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800">
+                      {warehouse.warehouseName}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {formatNumber(warehouse.totalProducts)} produits
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Produits</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {formatNumber(warehouse.totalProducts)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Stock</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {formatCurrency(warehouse.totalStockValue)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Revenu</p>
+                      <p className="text-lg font-semibold text-sky-700">
+                        {formatCurrency(warehouse.totalRevenue)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Profit</p>
+                      <p className="text-lg font-semibold text-emerald-600">
+                        {formatCurrency(warehouse.totalProfit)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Unites vendues</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {formatNumber(warehouse.totalUnitsSold)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Marge moyenne</p>
+                      <p className="text-lg font-semibold text-gray-800">
+                        {`${Number(warehouse.averageMargin || 0).toFixed(1)} %`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-sky-50 text-sky-700 uppercase text-xs">
+                      <tr>
+                        <th className="py-2 px-3 text-left">Produit</th>
+                        <th className="py-2 px-3 text-left">Categorie</th>
+                        <th className="py-2 px-3 text-right">Stock</th>
+                        <th className="py-2 px-3 text-right">Valeur Stock</th>
+                        <th className="py-2 px-3 text-right">Ventes</th>
+                        <th className="py-2 px-3 text-right">Revenu</th>
+                        <th className="py-2 px-3 text-right">Profit</th>
+                        <th className="py-2 px-3 text-right">Marge</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {warehouse.products && warehouse.products.length > 0 ? (
+                        warehouse.products.map((product) => (
+                          <tr
+                            key={`${warehouse.warehouseName}-${product._id}`}
+                            className="border-b last:border-0 hover:bg-sky-50/40 transition-colors"
+                          >
+                            <td className="py-2 px-3 font-medium text-gray-800">
+                              <Link
+                                to={`/products/${product._id}`}
+                                className="text-sky-700 hover:text-sky-900 hover:underline"
+                              >
+                                {product.name}
+                              </Link>
+                              {product.sku && (
+                                <span className="ml-2 text-xs text-gray-400">
+                                  {product.sku}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-gray-500">
+                              {product.category || 'Non categorise'}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {formatNumber(product.stock)}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {formatCurrency(product.stockValue)}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {formatNumber(product.sold)}
+                            </td>
+                            <td className="py-2 px-3 text-right text-sky-700 font-semibold">
+                              {formatCurrency(product.revenue)}
+                            </td>
+                            <td className="py-2 px-3 text-right text-emerald-600 font-semibold">
+                              {formatCurrency(product.profit)}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {`${Number(product.margin || 0).toFixed(1)} %`}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="py-4 px-3 text-center text-gray-500"
+                          >
+                            Aucun produit enregistre pour cet entrepot.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            ))}
+
+            {warehouses.length === 0 && !error && (
+              <div className="bg-white border border-dashed border-gray-200 p-10 rounded-3xl text-center text-gray-500">
+                Aucun entrepot a afficher pour la periode selectionnee.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default WarehouseProducts;

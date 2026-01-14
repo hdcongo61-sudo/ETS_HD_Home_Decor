@@ -28,6 +28,7 @@ const exportRoutes = require('./routes/exportRoutes');
 const searchRoutes = require("./routes/searchRoutes");
 const pdfRoutes = require('./routes/pdfRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const bankRoutes = require('./routes/bankRoutes');
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use('/api/exports', exportRoutes);
 app.use("/api/search", searchRoutes);
 app.use('/api/export', pdfRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/bank', bankRoutes);
 
 
 // 10. Error handler middleware

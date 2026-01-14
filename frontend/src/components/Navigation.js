@@ -266,6 +266,25 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false) 
         openInNewTab={!isMobile}
       />
 
+      <NavIcon
+        to="/bank"
+        icon={
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.8}
+              d="M3 10h18M5 10V7l7-4 7 4v3M5 10v8m4-8v8m4-8v8m4-8v8M3 18h18"
+            />
+          </svg>
+        }
+        label="Caisse"
+        className={linkClass}
+        onClick={closeMenu}
+        isMobile={isMobile}
+        openInNewTab={!isMobile}
+      />
+
       {/* === Clients === */}
       <NavIcon
         to="/clients"

@@ -26,6 +26,7 @@ const CriticalStockProducts = lazy(() => import('./pages/CriticalStockProducts')
 const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
+const Bank = lazy(() => import('./pages/Bank'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -38,6 +39,8 @@ const ClientProfile = lazy(() => import('./pages/ClientProfile'));
 const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const ProductDashboard = lazy(() => import('./pages/ProductDashboard'));
 const SupplierProducts = lazy(() => import('./pages/SupplierProducts'));
+const ContainerProducts = lazy(() => import('./pages/ContainerProducts'));
+const WarehouseProducts = lazy(() => import('./pages/WarehouseProducts'));
 const SupplierProfile = lazy(() => import('./pages/SupplierProfile'));
 const EditProductForm = lazy(() => import('./components/EditProductForm'));
 const UserManagement = lazy(() => import('./components/UserManagement'));
@@ -153,6 +156,22 @@ function App() {
                   }
                 />
                 <Route
+                  path="/products/by-container"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <ContainerProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/by-warehouse"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <WarehouseProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/suppliers/:name"
                   element={
                     <ProtectedRoute adminOnly>
@@ -197,6 +216,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Sales />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/bank"
+                  element={
+                    <ProtectedRoute>
+                      <Bank />
                     </ProtectedRoute>
                   }
                 />

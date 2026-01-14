@@ -1434,6 +1434,8 @@ const Sales = () => {
                   ) : (
                     filteredSales.map((sale) => {
                       const { totalPaid, balance } = calculateSaleTotals(sale);
+                      const isModified =
+                        Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
                       return (
                         <motion.div
                           key={sale._id}
@@ -1455,6 +1457,11 @@ const Sales = () => {
                               <span className={`px-3 py-1 rounded-full text-xs ${getStatusClass(sale.status)}`}>
                                 {getStatusText(sale.status)}
                               </span>
+                              {isModified && (
+                                <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                                  Modifiée
+                                </span>
+                              )}
                               {sale.status === "completed" && (
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs ${
@@ -2384,6 +2391,8 @@ const Sales = () => {
                         const profitCategory =
                           sale?.computedProfitCategory ?? deriveProfitCategoryFromMargin(saleMargin);
                         const showProfitInfo = isAdmin && sale.products?.length > 0;
+                        const isModified =
+                          Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
 
                         return (
                           <motion.div
@@ -2407,6 +2416,11 @@ const Sales = () => {
                                 <span className={`px-3 py-1 rounded-full text-xs ${getStatusClass(sale.status)}`}>
                                   {getStatusText(sale.status)}
                                 </span>
+                                {isModified && (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                                    Modifiée
+                                  </span>
+                                )}
                                 {sale.status === "completed" && (
                                   <span
                                     className={`px-2 py-1 rounded-full text-xs ${

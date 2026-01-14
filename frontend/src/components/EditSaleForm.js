@@ -51,9 +51,13 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
 
     const getFilteredProducts = (searchTerm) => {
         const safeTerm = (searchTerm || '').toLowerCase();
-        return products.filter(product =>
-            product.name.toLowerCase().includes(safeTerm)
-        );
+        return products.filter((product) => {
+            const containerValue = (product.container || '').toLowerCase();
+            return (
+                product.name.toLowerCase().includes(safeTerm) ||
+                containerValue.includes(safeTerm)
+            );
+        });
     };
 
     const validateForm = () => {
@@ -243,7 +247,10 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     Produits
                 </h3>
 
-                {selectedProducts.map((item, index) => (
+                {selectedProducts.map((item, index) => {
+                    const selectedProduct = products.find((p) => p._id === item.product);
+                    const containerLabel = selectedProduct?.container?.trim() || 'Non defini';
+                    return (
                     <div key={index} className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
                         <div className="mb-4">
                             <label className="block text-xs font-medium text-gray-600">Rechercher</label>
@@ -274,13 +281,15 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                             value={product._id}
                                             className={product.stock < 1 ? 'text-red-500' : ''}
                                         >
-                                            {product.name}
-                                            <span className="text-gray-500 ml-1">
-                                                (Stock: {product.stock} | Revient: {product.costPrice} CFA)
-                                            </span>
+                                            {product.name} - {product.container?.trim() || 'Non defini'} (Stock: {product.stock} | Revient: {product.costPrice} CFA)
                                         </option>
                                     ))}
                                 </select>
+                                {selectedProduct && (
+                                    <span className="mt-2 inline-flex w-fit items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                                        {containerLabel}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="space-y-1">
@@ -335,7 +344,8 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                             </div>
                         )}
                     </div>
-                ))}
+                );
+                })}
 
                 <button
                     type="button"

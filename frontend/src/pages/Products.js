@@ -200,6 +200,8 @@ const getProductFormDefaults = (product) => ({
   image: product?.image || '',
   supplierName: product?.supplierName || '',
   supplierPhone: product?.supplierPhone || '',
+  container: product?.container || '',
+  warehouse: product?.warehouse || '',
 });
 
 const ProductForm = ({ product, onSubmit, loading }) => {
@@ -262,7 +264,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
 
   return (
     <form id="product-form" onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} />
         <Select
           label="Catégorie"
@@ -271,6 +273,8 @@ const ProductForm = ({ product, onSubmit, loading }) => {
           onChange={handleChange}
           options={CATEGORY_OPTIONS}
         />
+        <Input label="Conteneur" name="container" value={formData.container} onChange={handleChange} />
+        <Input label="Entrepot" name="warehouse" value={formData.warehouse} onChange={handleChange} required />
       </div>
 
       <Textarea
@@ -374,7 +378,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const filtered = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category?.toLowerCase().includes(searchTerm.toLowerCase())
+      p.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.container || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.warehouse || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (!isAdmin) {
@@ -394,6 +400,14 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           {filtered.map((p) => (
             <div key={p._id} className="p-4 flex flex-col gap-1">
               <p className="text-base font-semibold text-gray-900">{p.name}</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex w-fit items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                  {p.container?.trim() || 'Non defini'}
+                </span>
+                <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                  {p.warehouse?.trim() || 'Non defini'}
+                </span>
+              </div>
               <p className={`text-sm font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-700'}`}>
                 Quantité en stock : <span className="font-semibold">{p.stock}</span>
               </p>
@@ -424,7 +438,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         <table className="min-w-full divide-y divide-gray-100 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              {['Produit', 'Catégorie', 'Prix', 'Stock', 'Fournisseur', 'Actions'].map((h) => (
+              {['Produit', 'Catégorie', 'Conteneur', 'Entrepot', 'Prix', 'Stock', 'Fournisseur', 'Actions'].map((h) => (
                 <th key={h} className="px-6 py-3 text-left font-medium text-gray-500 uppercase">
                   {h}
                 </th>
@@ -449,6 +463,16 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                   </Link>
                 </td>
                 <td className="px-6 py-3 text-gray-600">{p.category}</td>
+                <td className="px-6 py-3">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                    {p.container?.trim() || 'Non defini'}
+                  </span>
+                </td>
+                <td className="px-6 py-3">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                    {p.warehouse?.trim() || 'Non defini'}
+                  </span>
+                </td>
                 <td className="px-6 py-3 font-semibold text-gray-800">
                   {p.price?.toLocaleString()} CFA
                 </td>
@@ -501,6 +525,14 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                   {p.name}
                 </Link>
                 <p className="text-sm text-gray-500">{p.category || '—'}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <span className="inline-flex w-fit items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                    {p.container?.trim() || 'Non defini'}
+                  </span>
+                  <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                    {p.warehouse?.trim() || 'Non defini'}
+                  </span>
+                </div>
                 <p className="text-sm font-semibold text-gray-900 mt-1">
                   {p.price?.toLocaleString()} CFA
                 </p>

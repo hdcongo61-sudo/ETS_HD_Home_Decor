@@ -455,6 +455,11 @@ const SaleDetailPage = () => {
                                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
                                     {getStatusText(sale.status)}
                                 </span>
+                                {Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0 && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                        Modifiée
+                                    </span>
+                                )}
                                 {sale.status === 'completed' && (
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDeliveryStatusClass(sale.deliveryStatus)}`}>
                                         {getDeliveryStatusText(sale.deliveryStatus)}

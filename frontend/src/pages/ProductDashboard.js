@@ -32,7 +32,9 @@ const ProductDashboard = () => {
     lowStockProducts: [],
     outOfStockProducts: [],
     salesTrend: [],
-    supplierStats: []
+    supplierStats: [],
+    containerStats: [],
+    warehouseStats: []
   });
 
   useEffect(() => {
@@ -49,7 +51,9 @@ const ProductDashboard = () => {
           lowStockProducts: res.data.lowStockProducts || [],
           outOfStockProducts: res.data.outOfStockProducts || [],
           salesTrend: res.data.salesTrend || [],
-          supplierStats: res.data.supplierStats || []
+          supplierStats: res.data.supplierStats || [],
+          containerStats: res.data.containerStats || [],
+          warehouseStats: res.data.warehouseStats || []
         });
 
         if (res.data.outOfStockProducts?.length > 0) {
@@ -121,6 +125,22 @@ const ProductDashboard = () => {
     ...s,
     totalRevenue: Number(s.totalRevenue || 0),
     totalProfit: Number(s.totalProfit || 0),
+    lowStockCount: Number(s.lowStockCount || 0),
+    outOfStockCount: Number(s.outOfStockCount || 0),
+  }));
+  const containerChartData = stats.containerStats.slice(0, 5).map((c) => ({
+    ...c,
+    totalRevenue: Number(c.totalRevenue || 0),
+    totalProfit: Number(c.totalProfit || 0),
+    lowStockCount: Number(c.lowStockCount || 0),
+    outOfStockCount: Number(c.outOfStockCount || 0),
+  }));
+  const warehouseChartData = stats.warehouseStats.slice(0, 5).map((w) => ({
+    ...w,
+    totalRevenue: Number(w.totalRevenue || 0),
+    totalProfit: Number(w.totalProfit || 0),
+    lowStockCount: Number(w.lowStockCount || 0),
+    outOfStockCount: Number(w.outOfStockCount || 0),
   }));
 
   return (
@@ -296,13 +316,39 @@ const ProductDashboard = () => {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={supplierChartData}>
               <XAxis dataKey="supplierName" tick={{ fontSize: 12 }} />
-              <YAxis />
-              <Tooltip formatter={(v) => `${Number(v || 0).toLocaleString()} CFA`} />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  const numeric = Number(value || 0);
+                  if (name === 'Stock critique' || name === 'Ruptures') {
+                    return numeric.toLocaleString('fr-FR');
+                  }
+                  return `${numeric.toLocaleString('fr-FR')} CFA`;
+                }}
+              />
               <Legend />
-              <Bar dataKey="totalRevenue" fill="#6366F1" name="Revenu" />
-              <Bar dataKey="totalProfit" fill="#10B981" name="Profit" />
+              <Bar yAxisId="left" dataKey="totalRevenue" fill="#6366F1" name="Revenu" />
+              <Bar yAxisId="left" dataKey="totalProfit" fill="#10B981" name="Profit" />
+              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
+              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="bg-purple-50 rounded-2xl p-4">
+            <p className="text-gray-500">Stock critique</p>
+            <p className="text-lg font-semibold text-yellow-600">
+              {stats.supplierStats.reduce((sum, s) => sum + (s.lowStockCount || 0), 0)}
+            </p>
+          </div>
+          <div className="bg-purple-50 rounded-2xl p-4">
+            <p className="text-gray-500">Ruptures</p>
+            <p className="text-lg font-semibold text-red-600">
+              {stats.supplierStats.reduce((sum, s) => sum + (s.outOfStockCount || 0), 0)}
+            </p>
+          </div>
         </div>
 
         <div className="hidden sm:block overflow-x-auto">
@@ -341,8 +387,12 @@ const ProductDashboard = () => {
                   <td className="py-2 px-3 text-indigo-600 font-semibold">
                     {Number(s.totalProfit || 0).toLocaleString()} CFA
                   </td>
-                  <td className="py-2 px-3 text-yellow-600">{s.lowStockCount}</td>
-                  <td className="py-2 px-3 text-red-600">{s.outOfStockCount}</td>
+                  <td className="py-2 px-3 text-yellow-600">
+                    {Number(s.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2 px-3 text-red-600">
+                    {Number(s.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -389,11 +439,297 @@ const ProductDashboard = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Stock critique</p>
-                  <p className="font-semibold text-yellow-600">{s.lowStockCount}</p>
+                  <p className="font-semibold text-yellow-600">
+                    {Number(s.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Ruptures</p>
-                  <p className="font-semibold text-red-600">{s.outOfStockCount}</p>
+                  <p className="font-semibold text-red-600">
+                    {Number(s.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* 6️⃣ Statistiques Conteneurs */}
+      <motion.div
+        className="bg-white p-6 rounded-3xl shadow-md mt-10"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-700">Statistiques Conteneurs</h2>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              onClick={() => navigate('/products/by-container')}
+              className="px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-50 transition shadow-sm w-full sm:w-auto text-center"
+            >
+              Vue détaillée
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={containerChartData}>
+              <XAxis dataKey="containerName" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
+              <Tooltip formatter={(v) => `${Number(v || 0).toLocaleString()} CFA`} />
+              <Legend />
+              <Bar yAxisId="left" dataKey="totalRevenue" fill="#0EA5E9" name="Revenu" />
+              <Bar yAxisId="left" dataKey="totalProfit" fill="#10B981" name="Profit" />
+              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
+              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="bg-emerald-50 rounded-2xl p-4">
+            <p className="text-gray-500">Stock critique</p>
+            <p className="text-lg font-semibold text-yellow-600">
+              {stats.containerStats.reduce((sum, c) => sum + (c.lowStockCount || 0), 0)}
+            </p>
+          </div>
+          <div className="bg-emerald-50 rounded-2xl p-4">
+            <p className="text-gray-500">Ruptures</p>
+            <p className="text-lg font-semibold text-red-600">
+              {stats.containerStats.reduce((sum, c) => sum + (c.outOfStockCount || 0), 0)}
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-emerald-100 text-emerald-800 uppercase text-xs">
+              <tr>
+                <th className="py-2 px-3">Conteneur</th>
+                <th className="py-2 px-3">Produits</th>
+                <th className="py-2 px-3">Stock Total (CFA)</th>
+                <th className="py-2 px-3">Revenu Total (CFA)</th>
+                <th className="py-2 px-3">Profit Total (CFA)</th>
+                <th className="py-2 px-3">Stock Critique</th>
+                <th className="py-2 px-3">Ruptures</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.containerStats.slice(0, 10).map((c, index) => (
+                <tr key={index} className="border-b hover:bg-emerald-50">
+                  <td className="py-2 px-3 font-medium text-gray-900">
+                    {c.containerName}
+                  </td>
+                  <td className="py-2 px-3">{c.totalProducts}</td>
+                  <td className="py-2 px-3">{Number(c.totalStockValue || 0).toLocaleString()} CFA</td>
+                  <td className="py-2 px-3 text-emerald-700 font-semibold">
+                    {Number(c.totalRevenue || 0).toLocaleString()} CFA
+                  </td>
+                  <td className="py-2 px-3 text-indigo-600 font-semibold">
+                    {Number(c.totalProfit || 0).toLocaleString()} CFA
+                  </td>
+                  <td className="py-2 px-3 text-yellow-600">
+                    {Number(c.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2 px-3 text-red-600">
+                    {Number(c.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="sm:hidden space-y-4">
+          {stats.containerStats.slice(0, 10).map((c, index) => (
+            <div key={index} className="border border-emerald-100 rounded-2xl p-4 bg-emerald-50/50">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold text-gray-900">{c.containerName}</span>
+                <span className="text-xs text-gray-500">#{index + 1}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-gray-500">Produits</p>
+                  <p className="font-semibold text-gray-900">{c.totalProducts}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock (CFA)</p>
+                  <p className="font-semibold text-gray-900">
+                    {Number(c.totalStockValue || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Revenu</p>
+                  <p className="font-semibold text-emerald-700">
+                    {Number(c.totalRevenue || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Profit</p>
+                  <p className="font-semibold text-indigo-600">
+                    {Number(c.totalProfit || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock critique</p>
+                  <p className="font-semibold text-yellow-600">
+                    {Number(c.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Ruptures</p>
+                  <p className="font-semibold text-red-600">
+                    {Number(c.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* 7️⃣ Statistiques Entrepots */}
+      <motion.div
+        className="bg-white p-6 rounded-3xl shadow-md mt-10"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-700">Statistiques Entrepots</h2>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              onClick={() => navigate('/products/by-warehouse')}
+              className="px-4 py-2 bg-white border border-sky-200 text-sky-700 rounded-xl hover:bg-sky-50 transition shadow-sm w-full sm:w-auto text-center"
+            >
+              Vue detaillee
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={warehouseChartData}>
+              <XAxis dataKey="warehouseName" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  const numeric = Number(value || 0);
+                  if (name === 'Stock critique' || name === 'Ruptures') {
+                    return numeric.toLocaleString('fr-FR');
+                  }
+                  return `${numeric.toLocaleString('fr-FR')} CFA`;
+                }}
+              />
+              <Legend />
+              <Bar yAxisId="left" dataKey="totalRevenue" fill="#38BDF8" name="Revenu" />
+              <Bar yAxisId="left" dataKey="totalProfit" fill="#22C55E" name="Profit" />
+              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
+              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="bg-sky-50 rounded-2xl p-4">
+            <p className="text-gray-500">Stock critique</p>
+            <p className="text-lg font-semibold text-yellow-600">
+              {stats.warehouseStats.reduce((sum, w) => sum + (w.lowStockCount || 0), 0)}
+            </p>
+          </div>
+          <div className="bg-sky-50 rounded-2xl p-4">
+            <p className="text-gray-500">Ruptures</p>
+            <p className="text-lg font-semibold text-red-600">
+              {stats.warehouseStats.reduce((sum, w) => sum + (w.outOfStockCount || 0), 0)}
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-sky-100 text-sky-800 uppercase text-xs">
+              <tr>
+                <th className="py-2 px-3">Entrepot</th>
+                <th className="py-2 px-3">Produits</th>
+                <th className="py-2 px-3">Stock Total (CFA)</th>
+                <th className="py-2 px-3">Revenu Total (CFA)</th>
+                <th className="py-2 px-3">Profit Total (CFA)</th>
+                <th className="py-2 px-3">Stock Critique</th>
+                <th className="py-2 px-3">Ruptures</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.warehouseStats.slice(0, 10).map((w, index) => (
+                <tr key={index} className="border-b hover:bg-sky-50">
+                  <td className="py-2 px-3 font-medium text-gray-900">
+                    {w.warehouseName}
+                  </td>
+                  <td className="py-2 px-3">{w.totalProducts}</td>
+                  <td className="py-2 px-3">{Number(w.totalStockValue || 0).toLocaleString()} CFA</td>
+                  <td className="py-2 px-3 text-sky-700 font-semibold">
+                    {Number(w.totalRevenue || 0).toLocaleString()} CFA
+                  </td>
+                  <td className="py-2 px-3 text-emerald-700 font-semibold">
+                    {Number(w.totalProfit || 0).toLocaleString()} CFA
+                  </td>
+                  <td className="py-2 px-3 text-yellow-600">
+                    {Number(w.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2 px-3 text-red-600">
+                    {Number(w.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="sm:hidden space-y-4">
+          {stats.warehouseStats.slice(0, 10).map((w, index) => (
+            <div key={index} className="border border-sky-100 rounded-2xl p-4 bg-sky-50/50">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold text-gray-900">{w.warehouseName}</span>
+                <span className="text-xs text-gray-500">#{index + 1}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-gray-500">Produits</p>
+                  <p className="font-semibold text-gray-900">{w.totalProducts}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock (CFA)</p>
+                  <p className="font-semibold text-gray-900">
+                    {Number(w.totalStockValue || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Revenu</p>
+                  <p className="font-semibold text-sky-700">
+                    {Number(w.totalRevenue || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Profit</p>
+                  <p className="font-semibold text-emerald-700">
+                    {Number(w.totalProfit || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Stock critique</p>
+                  <p className="font-semibold text-yellow-600">
+                    {Number(w.lowStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Ruptures</p>
+                  <p className="font-semibold text-red-600">
+                    {Number(w.outOfStockCount || 0).toLocaleString('fr-FR')}
+                  </p>
                 </div>
               </div>
             </div>

@@ -10,6 +10,8 @@ const {
   getNeverSoldProducts,
   getProductDashboard, // Assurez-vous d'importer cette fonction
   getProductsBySupplier,
+  getProductsByContainer,
+  getProductsByWarehouse,
   getProductSalesHistory
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
@@ -22,6 +24,12 @@ router.route('/dashboard')
 
 router.route('/by-supplier')
   .get(protect, admin, getProductsBySupplier);
+
+router.route('/by-container')
+  .get(protect, admin, getProductsByContainer);
+
+router.route('/by-warehouse')
+  .get(protect, admin, getProductsByWarehouse);
 
 // Routes standard pour les produits
 router.route('/')
