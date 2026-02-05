@@ -1,0 +1,31 @@
+{
+  "name": "ETS HD Gestion",
+  "shortName": "ETS HD",
+  "version": "1.0.0",
+  "description": "Solution SaaS de gestion des ventes, clients, produits et employés pour ETS HD Home Decor.",
+  "vendor": "ETS HD Tech Filiale",
+  "locale": "fr",
+  "theme": {
+    "primary": "#4338ca",
+    "primaryLight": "#4f46e5",
+    "primaryDark": "#3730a3",
+    "themeColor": "#2563eb",
+    "backgroundColor": "#0f172a"
+  },
+  "pwa": {
+    "display": "standalone",
+    "orientation": "portrait",
+    "categories": ["business", "productivity"]
+  },
+  "capabilities": {
+    "offline": true,
+    "notifications": true,
+    "installPrompt": true,
+    "multiTab": false
+  },
+  "urls": {
+    "support": null,
+    "privacy": null,
+    "terms": null
+  }
+}

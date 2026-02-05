@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
 } from 'recharts';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const ClientDashboard = () => {
+  const tableRef = useRef(null);
   const [clients, setClients] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,8 @@ const ClientDashboard = () => {
 
     return { inactiveClients, loyalClients, avgPurchaseFreq, retentionRate, monthlySignups };
   }, [clients]);
+
+  useResponsiveTable(tableRef, [stats?.topClients]);
 
   if (loading) {
     return (
@@ -225,64 +229,40 @@ const ClientDashboard = () => {
             🥇 Top Clients par Dépenses
           </h2>
           {topClients.length > 0 ? (
-            <>
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm border-separate border-spacing-y-2 min-w-[640px]">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-gray-700">
-                      <th className="px-4 py-2 rounded-l-lg">#</th>
-                      <th className="px-4 py-2">Nom</th>
-                      <th className="px-4 py-2">Total Dépensé</th>
-                      <th className="px-4 py-2 text-right rounded-r-lg">Profil</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topClients.map((client, index) => (
-                      <tr
-                        key={client._id}
-                        className="transition hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer"
-                      >
-                        <td className="px-4 py-3 font-semibold text-blue-600">{index + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
-                        <td className="px-4 py-3 text-gray-700 font-semibold">
-                          {formatCurrency(client.totalSpent)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            to={clientPath(client)}
-                            className="text-blue-600 hover:text-indigo-700 font-medium hover:underline"
-                          >
-                            Voir Profil →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="sm:hidden space-y-4">
-                {topClients.map((client, index) => (
-                  <div key={client._id} className="border border-gray-100 rounded-2xl p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
-                        <span className="text-base font-semibold text-gray-900">{client.name}</span>
-                      </div>
-                      <span className="text-sm font-medium text-gray-600">
-                        {formatCurrency(client.totalSpent)}
-                      </span>
-                    </div>
-                    <Link
-                      to={clientPath(client)}
-                      className="mt-3 inline-flex items-center text-blue-600 font-medium hover:text-indigo-700"
+            <div className="overflow-x-auto">
+              <table ref={tableRef} className="responsive-table w-full text-sm border-separate border-spacing-y-2 min-w-[640px]">
+                <thead className="bg-gray-50">
+                  <tr className="text-left text-gray-700">
+                    <th className="px-4 py-2 rounded-l-lg">#</th>
+                    <th className="px-4 py-2">Nom</th>
+                    <th className="px-4 py-2">Total Dépensé</th>
+                    <th className="px-4 py-2 text-right rounded-r-lg">Profil</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topClients.map((client, index) => (
+                    <tr
+                      key={client._id}
+                      className="transition hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer"
                     >
-                      Voir profil complet →
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </>
+                      <td className="px-4 py-3 font-semibold text-blue-600">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
+                      <td className="px-4 py-3 text-gray-700 font-semibold">
+                        {formatCurrency(client.totalSpent)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          to={clientPath(client)}
+                          className="text-blue-600 hover:text-indigo-700 font-medium hover:underline"
+                        >
+                          Voir Profil →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="text-gray-500 text-center py-8">Pas encore assez de données clients.</p>
           )}

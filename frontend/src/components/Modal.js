@@ -12,15 +12,15 @@ const Modal = ({ isOpen, onClose, children, title, size = 'md' }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex min-h-screen items-end justify-center px-0 pt-4 pb-0 text-center sm:block sm:px-4 sm:pt-4 sm:pb-20 sm:items-center">
         {/* Background overlay */}
         <div 
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
           onClick={onClose}
         ></div>
 
-        {/* Modal panel */}
-        <div className={`inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl`}>
+        {/* Modal panel: drawer on mobile, centered on desktop */}
+        <div className={`inline-block w-full ${sizeClasses[size]} p-6 my-0 sm:my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-t-2xl sm:rounded-2xl modal-mobile-drawer overflow-y-auto`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">{title}</h3>
@@ -35,7 +35,7 @@ const Modal = ({ isOpen, onClose, children, title, size = 'md' }) => {
           </div>
 
           {/* Content */}
-          <div className="max-h-[70vh] overflow-y-auto">
+          <div className="max-h-[60vh] sm:max-h-[70vh] overflow-y-auto overscroll-contain">
             {children}
           </div>
         </div>

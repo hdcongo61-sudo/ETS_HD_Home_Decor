@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import UserManagement from '../components/UserDashboard';
@@ -15,6 +16,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import { Users, BarChart3, LogIn, UserCog, RefreshCw, ChevronLeft } from 'lucide-react';
 
 ChartJS.register(
     BarElement,
@@ -64,6 +66,7 @@ const DashboardAdmin = () => {
 
         useEffect(() => {
             fetchSalesStats();
+            // eslint-disable-next-line react-hooks/exhaustive-deps -- intended run on timeRange only
         }, [timeRange]);
 
         const fetchSalesStats = async () => {
@@ -138,77 +141,53 @@ const DashboardAdmin = () => {
         };
 
         return (
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-gray-900">
+            <div className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white sm:text-xl">
                         Statistiques des ventes par utilisateur
                     </h2>
-
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <select
                             value={timeRange}
                             onChange={(e) => setTimeRange(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className="min-h-[44px] px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500 text-sm"
+                            aria-label="Période"
                         >
                             <option value="7days">7 derniers jours</option>
                             <option value="30days">30 derniers jours</option>
                             <option value="90days">90 derniers jours</option>
                             <option value="all">Toutes périodes</option>
                         </select>
-
                         <button
+                            type="button"
                             onClick={fetchSalesStats}
-                            className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm"
+                            className="flex items-center gap-2 min-h-[44px] px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-sm font-medium"
                         >
-                            <svg
-                                className="w-4 h-4 mr-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                            </svg>
-                            Actualiser
+                            <RefreshCw className="w-4 h-4" /> Actualiser
                         </button>
                     </div>
                 </div>
 
                 {salesError && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center border border-red-100">
-                        <svg
-                            className="w-5 h-5 mr-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                        </svg>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-3 border border-red-200 dark:border-red-800 text-sm">
+                        <UserCog className="w-5 h-5 shrink-0" />
                         {salesError}
                     </div>
                 )}
 
                 {salesLoading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Chargement des stats…</p>
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                            <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+                            <section className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
                                     Performance des vendeurs
                                 </h3>
-                                <div className="h-80">
+                                <div className="h-64 sm:h-80">
                                     <Bar
                                         data={topSellersData}
                                         options={{
@@ -236,40 +215,31 @@ const DashboardAdmin = () => {
                                         }}
                                     />
                                 </div>
-                            </div>
+                            </section>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-                                    <div className="text-2xl font-semibold text-blue-800 mb-2">
-                                        {formatCFA(
-                                            salesStats.reduce((sum, stat) => sum + stat.totalAmount, 0)
-                                        )}
+                            <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 sm:p-5 rounded-2xl border border-blue-100 dark:border-blue-800">
+                                    <div className="text-xl sm:text-2xl font-bold text-blue-800 dark:text-blue-300 tabular-nums">
+                                        {formatCFA(salesStats.reduce((sum, stat) => sum + stat.totalAmount, 0))}
                                     </div>
-                                    <div className="text-sm text-blue-600">
-                                        Chiffre d'affaires total
-                                    </div>
+                                    <div className="text-sm text-blue-600 dark:text-blue-400 mt-0.5">Chiffre d'affaires total</div>
                                 </div>
-
-                                <div className="bg-green-50 p-5 rounded-2xl border border-green-100">
-                                    <div className="text-2xl font-semibold text-green-800 mb-2">
+                                <div className="bg-green-50 dark:bg-green-900/20 p-4 sm:p-5 rounded-2xl border border-green-100 dark:border-green-800">
+                                    <div className="text-xl sm:text-2xl font-bold text-green-800 dark:text-green-300 tabular-nums">
                                         {formatCFA(calculateTotalProfit())}
                                     </div>
-                                    <div className="text-sm text-green-600">
-                                        Bénéfice total généré
-                                    </div>
+                                    <div className="text-sm text-green-600 dark:text-green-400 mt-0.5">Bénéfice total généré</div>
                                 </div>
-
-                                <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100">
-                                    <div className="text-2xl font-semibold text-purple-800 mb-2">
+                                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 sm:p-5 rounded-2xl border border-purple-100 dark:border-purple-800">
+                                    <div className="text-xl sm:text-2xl font-bold text-purple-800 dark:text-purple-300 tabular-nums">
                                         {salesStats.reduce((sum, stat) => sum + stat.salesCount, 0)}
                                     </div>
-                                    <div className="text-sm text-purple-600">
-                                        Transactions totales
-                                    </div>
+                                    <div className="text-sm text-purple-600 dark:text-purple-400 mt-0.5">Transactions totales</div>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Mobile: user cards */}
                         <div className="md:hidden space-y-4">
                             {salesStats.map((stat) => {
                                 const profit = stat.totalProfit ||
@@ -279,104 +249,53 @@ const DashboardAdmin = () => {
                                             0
                                         )
                                         : stat.totalAmount * 0.2);
-
                                 return (
-                                    <div key={stat.userId} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <Link
+                                        key={stat.userId}
+                                        to={`/sales/user/${stat.userId}`}
+                                        className="block rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-shadow"
+                                    >
                                         <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                    <span className="text-blue-600 font-semibold text-sm">
-                                                        {stat.userName.charAt(0)}
-                                                    </span>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                                                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{stat.userName.charAt(0)}</span>
                                                 </div>
-                                                <div>
-                                                    <div className="font-semibold text-gray-900">{stat.userName}</div>
-                                                    <div className="text-xs text-gray-500">{stat.userEmail}</div>
+                                                <div className="min-w-0">
+                                                    <div className="font-semibold text-gray-900 dark:text-white truncate">{stat.userName}</div>
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.userEmail}</div>
                                                 </div>
                                             </div>
-                                            <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                                            <span className="text-xs rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-gray-600 dark:text-gray-400 shrink-0">
                                                 {stat.clientsCount} clients
                                             </span>
                                         </div>
-
-                                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                            <div className="rounded-xl bg-gray-50 p-3">
-                                                <div className="text-xs text-gray-500">Transactions</div>
-                                                <div className="font-semibold text-gray-900 mt-1">{stat.salesCount}</div>
+                                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                            <div className="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400">Transactions</div>
+                                                <div className="font-semibold text-gray-900 dark:text-white mt-0.5">{stat.salesCount}</div>
                                             </div>
-                                            <div className="rounded-xl bg-blue-50 p-3">
-                                                <div className="text-xs text-blue-600">Chiffre d'affaires</div>
-                                                <div className="font-semibold text-blue-700 mt-1">{formatCFA(stat.totalAmount)}</div>
+                                            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-3">
+                                                <div className="text-xs text-blue-600 dark:text-blue-400">Chiffre d'affaires</div>
+                                                <div className="font-semibold text-blue-700 dark:text-blue-300 mt-0.5">{formatCFA(stat.totalAmount)}</div>
                                             </div>
-                                            <div className="rounded-xl bg-green-50 p-3 col-span-2">
-                                                <div className="text-xs text-green-600">Bénéfice</div>
-                                                <div className={`font-semibold mt-1 ${profit > 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                            <div className="rounded-xl bg-green-50 dark:bg-green-900/20 p-3 col-span-2">
+                                                <div className="text-xs text-green-600 dark:text-green-400">Bénéfice</div>
+                                                <div className={`font-semibold mt-0.5 ${profit >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-400'}`}>
                                                     {formatCFA(profit)}
                                                 </div>
                                             </div>
-                                            <div className="rounded-xl bg-purple-50 p-3 col-span-2">
-                                                <div className="text-xs text-purple-600">Vente moyenne</div>
-                                                <div className="font-semibold text-purple-700 mt-1">{formatCFA(stat.averageSale)}</div>
+                                            <div className="rounded-xl bg-purple-50 dark:bg-purple-900/20 p-3 col-span-2">
+                                                <div className="text-xs text-purple-600 dark:text-purple-400">Vente moyenne</div>
+                                                <div className="font-semibold text-purple-700 dark:text-purple-300 mt-0.5">{formatCFA(stat.averageSale)}</div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>
 
-                        <div className="space-y-4 md:hidden">
-                            {salesStats.map((stat) => {
-                                const profit = stat.totalProfit ||
-                                    (stat.products
-                                        ? stat.products.reduce(
-                                            (sum, p) => sum + (p.priceAtSale - (p.product?.costPrice || 0)) * p.quantity,
-                                            0
-                                        )
-                                        : stat.totalAmount * 0.2);
-
-                                return (
-                                    <div key={stat.userId} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                                                    {stat.userName.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-semibold text-gray-900">{stat.userName}</div>
-                                                    <div className="text-xs text-gray-500">{stat.userEmail}</div>
-                                                </div>
-                                            </div>
-                                            <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
-                                                {stat.clientsCount} clients
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                            <div className="rounded-xl bg-gray-50 p-3">
-                                                <div className="text-xs text-gray-500">Transactions</div>
-                                                <div className="font-semibold text-gray-900 mt-1">{stat.salesCount}</div>
-                                            </div>
-                                            <div className="rounded-xl bg-blue-50 p-3">
-                                                <div className="text-xs text-blue-600">Chiffre d'affaires</div>
-                                                <div className="font-semibold text-blue-700 mt-1">{formatCFA(stat.totalAmount)}</div>
-                                            </div>
-                                            <div className="rounded-xl bg-green-50 p-3 col-span-2">
-                                                <div className="text-xs text-green-600">Bénéfice</div>
-                                                <div className={`font-semibold mt-1 ${profit > 0 ? 'text-green-700' : 'text-red-600'}`}>
-                                                    {formatCFA(profit)}
-                                                </div>
-                                            </div>
-                                            <div className="rounded-xl bg-purple-50 p-3 col-span-2">
-                                                <div className="text-xs text-purple-600">Vente moyenne</div>
-                                                <div className="font-semibold text-purple-700 mt-1">{formatCFA(stat.averageSale)}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hidden md:block">
+                        {/* Desktop: table */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hidden md:block">
                             <table ref={tableRef} className="w-full responsive-table">
                                 <thead className="bg-gray-50">
                                     <tr>
@@ -461,34 +380,22 @@ const DashboardAdmin = () => {
 
     if (!auth.isAdmin) {
         return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-2xl mt-10">
-                <div className="text-center py-12">
-                    <div className="bg-red-100 p-4 rounded-full inline-flex items-center justify-center mb-4 w-16 h-16">
-                        <svg
-                            className="w-8 h-8 text-red-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                        </svg>
+            <div className="min-h-full flex items-center justify-center p-4 sm:p-6">
+                <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg p-6 sm:p-8 text-center">
+                    <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-2xl inline-flex justify-center mb-4 w-16 h-16">
+                        <UserCog className="w-8 h-8 text-red-600 dark:text-red-400" />
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                         Accès administrateur requis
                     </h2>
-                    <p className="text-gray-600 mb-6">
-                        Vous n'avez pas la permission d'accéder à cette page
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Vous n'avez pas la permission d'accéder à cette page.
                     </p>
                     <Link
                         to="/"
-                        className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium text-sm"
                     >
-                        Retour à l'accueil
+                        <ChevronLeft size={18} /> Retour à l'accueil
                     </Link>
                 </div>
             </div>
@@ -525,234 +432,203 @@ const DashboardAdmin = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                    <div className="bg-blue-600 p-2 rounded-xl">
-                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Tableau de bord administrateur</h1>
-                </div>
-                <div className="flex items-center space-x-3">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Mode Admin
-                    </span>
-                    <button
-                        onClick={() => {
-                            if (activeTab === 'dashboard') fetchStats();
-                        }}
-                        className="flex items-center text-gray-500 hover:text-gray-700 text-sm"
-                    >
-                        <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+        <div className="min-h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+            <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+                {/* Header — mobile/desktop */}
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                        <Link
+                            to="/"
+                            className="flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+                            aria-label="Retour à l'accueil"
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                        </svg>
-                        Actualiser
-                    </button>
-                </div>
-            </div>
-
-            <div className="border-b border-gray-200 mb-6">
-                <nav className="-mb-px flex flex-wrap gap-2 sm:flex-nowrap sm:space-x-6 overflow-x-auto pb-2 scrollbar-thin">
-                    {['dashboard', 'salesStats', 'loginStats', 'users'].map((tab) => (
+                            <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        </Link>
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0">
+                                <Users className="w-6 h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate sm:text-2xl">
+                                    Dashboard administrateur
+                                </h1>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                                    Utilisateurs, ventes et connexions
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+                            Mode Admin
+                        </span>
                         <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`flex-1 sm:flex-none whitespace-nowrap py-2 px-3 rounded-lg sm:rounded-none border sm:border-b-2 text-sm font-medium transition-colors ${activeTab === tab
-                                ? 'border-blue-500 bg-blue-50 text-blue-600 sm:bg-transparent'
-                                : 'border-transparent bg-white text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            type="button"
+                            onClick={() => {
+                                if (activeTab === 'dashboard') fetchStats();
+                            }}
+                            className="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" /> <span className="hidden sm:inline">Actualiser</span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* Tabs — scrollable on mobile */}
+                <nav
+                    className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin sm:flex-wrap sm:overflow-visible sm:border-b sm:border-gray-200 dark:sm:border-gray-700"
+                    aria-label="Sections du tableau de bord"
+                >
+                    {[
+                        { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
+                        { id: 'salesStats', label: 'Stats ventes', icon: BarChart3 },
+                        { id: 'loginStats', label: 'Connexions', icon: LogIn },
+                        { id: 'users', label: 'Utilisateurs', icon: UserCog },
+                    ].map(({ id, label, icon: Icon }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => setActiveTab(id)}
+                            className={`flex items-center gap-2 shrink-0 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === id
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                                 }`}
                         >
-                            {tab === 'dashboard' && 'Tableau de bord'}
-                            {tab === 'salesStats' && 'Statistiques des ventes'}
-                            {tab === 'loginStats' && 'Résumé des connexions'}
-                            {tab === 'users' && 'Gestion des utilisateurs'}
+                            <Icon className="w-4 h-4" />
+                            {label}
                         </button>
                     ))}
                 </nav>
-            </div>
 
             {error && (
-                <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-center border border-red-100">
-                    <svg
-                        className="w-5 h-5 mr-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                    </svg>
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-sm flex items-center gap-3">
+                    <UserCog className="w-5 h-5 shrink-0" />
                     {error}
                 </div>
             )}
 
             {loading && activeTab === 'dashboard' ? (
-                <div className="flex justify-center py-20">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="flex flex-col items-center justify-center py-16 sm:py-20">
+                    <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Chargement du tableau de bord…</p>
                 </div>
             ) : activeTab === 'dashboard' ? (
                 <div className="space-y-6">
-                    {/* Cartes de statistiques */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <StatCard
-                            title="Utilisateurs totaux"
-                            value={stats.totalUsers}
-                            icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            color="blue"
-                        />
+                    {/* KPI cards */}
+                    <motion.section
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        aria-label="Indicateurs utilisateurs"
+                    >
+                        <StatCard title="Utilisateurs totaux" value={stats.totalUsers} color="blue" />
+                        <StatCard title="Utilisateurs actifs" value={stats.activeUsers} color="green" />
+                        <StatCard title="Administrateurs" value={stats.admins} color="purple" />
+                        <StatCard title="Inscriptions récentes" value={stats.recentUsers.length} color="orange" />
+                    </motion.section>
 
-                        <StatCard
-                            title="Utilisateurs actifs"
-                            value={stats.activeUsers}
-                            icon="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                            color="green"
-                        />
-
-                        <StatCard
-                            title="Administrateurs"
-                            value={stats.admins}
-                            icon="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            color="purple"
-                        />
-
-                        <StatCard
-                            title="Inscriptions récentes"
-                            value={stats.recentUsers.length}
-                            icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            color="orange"
-                        />
-                    </div>
-
-                    {/* Graphiques */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    {/* Charts */}
+                    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+                        <section className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
                                 Répartition des rôles
                             </h3>
-                            <div className="h-64">
-                                <Pie data={userRoleData} />
+                            <div className="h-56 sm:h-64">
+                                <Pie data={userRoleData} options={{ responsive: true, maintainAspectRatio: false }} />
                             </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        </section>
+                        <section className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
                                 Activité récente
                             </h3>
-                            <div className="h-64">
+                            <div className="h-56 sm:h-64">
                                 <Bar
                                     data={recentActivityData}
                                     options={{
                                         responsive: true,
                                         maintainAspectRatio: false,
                                         scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                title: {
-                                                    display: true,
-                                                    text: "Score d'activité",
-                                                },
-                                            },
-                                            x: {
-                                                title: {
-                                                    display: true,
-                                                    text: 'Utilisateurs',
-                                                },
-                                            },
+                                            y: { beginAtZero: true },
+                                            x: {},
                                         },
                                     }}
                                 />
                             </div>
-                        </div>
+                        </section>
                     </div>
 
-                    {/* Tableau des utilisateurs récents */}
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">
+                    {/* Recent users — card on mobile, table on desktop */}
+                    <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                                 Utilisateurs récemment inscrits
                             </h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Utilisateurs ayant rejoint dans les 30 derniers jours
+                            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                Inscrits dans les 30 derniers jours
                             </p>
                         </div>
-                        <div className="overflow-x-auto">
+                        {/* Mobile: cards */}
+                        <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                            {stats.recentUsers.length === 0 ? (
+                                <p className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">Aucun utilisateur récent</p>
+                            ) : (
+                                stats.recentUsers.map((user) => (
+                                    <div key={user._id} className="px-4 py-4 flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                                            <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                                        </div>
+                                        <span className={`shrink-0 px-2 py-0.5 text-xs font-medium rounded-full ${user.isAdmin ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'}`}>
+                                            {user.isAdmin ? 'Admin' : 'User'}
+                                        </span>
+                                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                                            {new Date(user.createdAt).toLocaleDateString('fr-FR')}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        {/* Desktop: table */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-gray-50 dark:bg-gray-700/50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Nom
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Email
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Rôle
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Inscrit le
-                                        </th>
+                                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nom</th>
+                                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rôle</th>
+                                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Inscrit le</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                     {stats.recentUsers.map((user) => (
-                                        <tr key={user._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <div className="flex-shrink-0 h-9 w-9">
-                                                        <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center">
-                                                            <span className="text-blue-600 font-medium text-sm">
-                                                                {user.name.charAt(0).toUpperCase()}
-                                                            </span>
-                                                        </div>
+                                        <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                            <td className="px-4 sm:px-6 py-3 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                                                        <span className="text-indigo-600 dark:text-indigo-400 font-medium text-sm">{user.name.charAt(0).toUpperCase()}</span>
                                                     </div>
-                                                    <div className="ml-3">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {user.name}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            ID: {user._id.substring(0, 8)}...
-                                                        </div>
-                                                    </div>
+                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {user.email}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span
-                                                    className={`px-2 py-1 text-xs font-medium rounded-full ${user.isAdmin
-                                                        ? 'bg-purple-100 text-purple-800'
-                                                        : 'bg-green-100 text-green-800'
-                                                        }`}
-                                                >
+                                            <td className="px-4 sm:px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{user.email}</td>
+                                            <td className="px-4 sm:px-6 py-3">
+                                                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${user.isAdmin ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'}`}>
                                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {new Date(user.createdAt).toLocaleDateString('fr-FR')}
-                                            </td>
+                                            <td className="px-4 sm:px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{new Date(user.createdAt).toLocaleDateString('fr-FR')}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 </div>
 
             ) : activeTab === 'salesStats' ? (
@@ -762,35 +638,34 @@ const DashboardAdmin = () => {
             ) : (
                 <UserManagement />
             )}
+            </div>
         </div>
     );
 };
 
-// StatCard Component with Apple Design
-const StatCard = ({ title, value, icon, color = 'blue' }) => {
+// StatCard — KPI card with icon by color (mobile/desktop)
+const StatCard = ({ title, value, color = 'blue' }) => {
     const colorClasses = {
-        blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
-        green: { bg: 'bg-green-100', text: 'text-green-600' },
-        purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
-        orange: { bg: 'bg-orange-100', text: 'text-orange-600' },
+        blue: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', icon: Users },
+        green: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', icon: BarChart3 },
+        purple: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', icon: UserCog },
+        orange: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400', icon: Users },
     };
-
-    const colors = colorClasses[color] || colorClasses.blue;
+    const style = colorClasses[color] || colorClasses.blue;
+    const Icon = style.icon;
 
     return (
-        <div className="bg-white p-5 rounded-2xl border border-gray-200">
-            <div className="flex items-center">
-                <div className={`p-3 rounded-xl ${colors.bg} mr-4`}>
-                    <svg className={`w-5 h-5 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-                    </svg>
+        <article className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`p-2.5 sm:p-3 rounded-xl shrink-0 ${style.bg}`}>
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${style.text}`} />
                 </div>
-                <div>
-                    <p className="text-sm text-gray-600">{title}</p>
-                    <p className="text-xl font-semibold text-gray-900">{value}</p>
+                <div className="min-w-0">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</p>
                 </div>
             </div>
-        </div>
+        </article>
     );
 };
 

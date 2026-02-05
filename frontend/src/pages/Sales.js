@@ -41,6 +41,7 @@ import {
   getProfitCategoryText,
   parseDateSafely,
 } from "../utils/saleUtils";
+import { SalesFiltersBar, SaleCard } from "./sales-shared";
 
 // Enregistrement Chart.js
 ChartJS.register(
@@ -83,16 +84,17 @@ const GlassCard = ({ children, className = "" }) => (
 
 const StatCard = ({ title, value, icon, color }) => (
   <GlassCard>
-    <div className="p-5 flex items-center">
+    <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-h-0">
       <div
-        className={`p-3 rounded-xl mr-4 text-white shadow-inner ${color}`}
-        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.2)" }}
+        className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl text-white ${color}`}
+        style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,.15)" }}
+        aria-hidden
       >
-        {icon}
+        <span className="text-lg sm:text-xl leading-none">{icon}</span>
       </div>
-      <div>
-        <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
-        <p className="text-xl font-semibold text-gray-900">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">{title}</p>
+        <p className="text-base sm:text-xl font-semibold text-gray-900 truncate mt-0.5 tabular-nums">{value}</p>
       </div>
     </div>
   </GlassCard>
@@ -252,8 +254,9 @@ const ProfitAnalysis = () => {
       </GlassCard>
     );
 
-  const { periodAnalytics, topProducts, generalStats, profitByCategory } =
-    profitData;
+  // generalStats reserved for future use
+  // eslint-disable-next-line no-unused-vars
+  const { periodAnalytics, topProducts, generalStats, profitByCategory } = profitData;
 
   const profitTrendChart = {
     labels: periodAnalytics.map((item) =>
@@ -750,6 +753,7 @@ const Sales = () => {
   const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
   const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [historyFiltersOpen, setHistoryFiltersOpen] = useState(false); // collapsed on mobile by default
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
@@ -819,6 +823,17 @@ const Sales = () => {
       setDeliveryFilter(params.get("delivery") || "");
     }
   }, [location.search]);
+
+  // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
+  useEffect(() => {
+    if (location.pathname === "/sales" && location.hash === "#sale-form") {
+      const t = setTimeout(() => {
+        const el = document.getElementById("sale-form");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [location.pathname, location.hash]);
 
   // Données Dashboard (backend /api/sales/dashboard-sale)
   const [dashboardData, setDashboardData] = useState({
@@ -1134,25 +1149,6 @@ const Sales = () => {
     ],
   };
 
-  const paymentMethodsChart = {
-    labels: Object.keys(dashboardData.paymentMethods || {}).map((m) =>
-      m === "MobileMoney" ? "Mobile Money" : m || "Non spécifié"
-    ),
-    datasets: [
-      {
-        label: "Répartition %",
-        data: Object.values(dashboardData.paymentMethods || {}),
-        backgroundColor: [
-          "rgba(59,130,246,.9)",
-          "rgba(34,197,94,.9)",
-          "rgba(234,179,8,.9)",
-          "rgba(239,68,68,.9)",
-          "rgba(168,85,247,.9)",
-        ],
-      },
-    ],
-  };
-
   const statusChart = {
     labels: ["Payée", "Partiellement payée", "En attente", "Annulée"],
     datasets: [
@@ -1210,9 +1206,7 @@ const Sales = () => {
     ],
   };
 
-  const paymentTableRef = useRef(null);
   const statusTableRef = useRef(null);
-  useResponsiveTable(paymentTableRef, [dashboardData?.paymentMethods]);
   useResponsiveTable(statusTableRef, [dashboardData?.statusStats]);
 
   /* ========= Barre de filtres rapides ========= */
@@ -1310,25 +1304,29 @@ const Sales = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GlassCard>
-              <div className="p-6">
-                <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
-                  <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
-                </Suspense>
-              </div>
-            </GlassCard>
+            <div id="sale-form">
+              <GlassCard>
+                <div className="p-6">
+                  <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
+                    <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
+                  </Suspense>
+                </div>
+              </GlassCard>
+            </div>
 
             <GlassCard>
-              <div className="p-6">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
+              <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
+                  <h2 id="history-heading-main" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
+                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
+                      📚
+                    </span>
                     Historique des Ventes
                   </h2>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Actions historique">
                     <Link
                       to={{ pathname: "/sales/all", search: historyLinkSearch }}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                      className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                       {...desktopLinkProps}
                     >
                       {historyLinkLabel}
@@ -1336,93 +1334,68 @@ const Sales = () => {
                     {isAdmin && (
                       <Link
                         to="/sales/deleted"
-                        className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                        className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
                         {...desktopLinkProps}
                       >
                         Ventes supprimées
                       </Link>
                     )}
-                  </div>
-                </div>
+                  </nav>
+                </header>
 
-                <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Statut</label>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                {/* Filtres — collapsible on mobile, always visible on sm+ */}
+                <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 overflow-hidden mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryFiltersOpen((o) => !o)}
+                    className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                    aria-expanded={historyFiltersOpen}
+                    aria-controls="history-filters-main"
+                    id="history-filters-toggle-main"
+                  >
+                    <span className="font-medium text-gray-900">Filtres</span>
+                    {hasActiveFilters && (
+                      <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
+                        Actifs
+                      </span>
+                    )}
+                    <svg
+                      className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
-                      <option value="">Tous</option>
-                      <option value="completed">Payée</option>
-                      <option value="partially_paid">Partiellement payée</option>
-                      <option value="pending">En attente</option>
-                      <option value="cancelled">Annulée</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Client</label>
-                    <select
-                      value={clientFilter}
-                      onChange={(e) => setClientFilter(e.target.value)}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Tous les clients</option>
-                      {clients.map((c) => (
-                        <option key={c._id} value={c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Date</label>
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Toutes les dates</option>
-                      <option value="today">Aujourd'hui</option>
-                      <option value="week">Cette semaine</option>
-                      <option value="month">Ce mois</option>
-                      <option value="quarter">Ce trimestre</option>
-                      <option value="year">Cette année</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Livraison</label>
-                    <select
-                      value={deliveryFilter}
-                      onChange={(e) => setDeliveryFilter(e.target.value)}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Tous</option>
-                      <option value="delivered">Livré</option>
-                      <option value="pending">En attente</option>
-                      <option value="not_delivered">Non livré</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700 invisible md:visible">
-                      &nbsp;
-                    </label>
-                    <button
-                      onClick={() => {
-                        setStatusFilter("");
-                        setClientFilter("");
-                        setDateFilter("");
-                        setDeliveryFilter("");
-                        setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
-                      }}
-                      className="w-full p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-                    >
-                      Réinitialiser
-                    </button>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div
+                    id="history-filters-main"
+                    role="region"
+                    aria-labelledby="history-filters-toggle-main"
+                    className={`${historyFiltersOpen ? "block" : "hidden"} sm:block border-t border-gray-200/80 sm:border-t-0`}
+                  >
+                    <div className="p-4 sm:p-5 pt-0 sm:pt-5">
+                      <SalesFiltersBar
+                        statusFilter={statusFilter}
+                        clientFilter={clientFilter}
+                        dateFilter={dateFilter}
+                        deliveryFilter={deliveryFilter}
+                        clients={clients}
+                        onStatusChange={setStatusFilter}
+                        onClientChange={setClientFilter}
+                        onDateChange={setDateFilter}
+                        onDeliveryChange={setDeliveryFilter}
+                        onReset={() => {
+                          setStatusFilter("");
+                          setClientFilter("");
+                          setDateFilter("");
+                          setDeliveryFilter("");
+                          setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
+                        }}
+                        variant="main"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1437,126 +1410,50 @@ const Sales = () => {
                       const isModified =
                         Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
                       return (
-                        <motion.div
+                        <SaleCard
                           key={sale._id}
-                          whileHover={{ scale: 1.01 }}
-                          className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
-                        >
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <Link
-                              to={`/sales/${sale._id}`}
-                              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
-                              {...desktopLinkProps}
-                            >
-                              <span>Vente #{sale._id.slice(-6)}</span>
-                            </Link>
-                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
-                              <span className="text-sm text-gray-500 inline-flex items-center gap-1">
-                                📅 {formatDate(sale.saleDate)}
-                              </span>
-                              <span className={`px-3 py-1 rounded-full text-xs ${getStatusClass(sale.status)}`}>
-                                {getStatusText(sale.status)}
-                              </span>
-                              {isModified && (
-                                <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
-                                  Modifiée
-                                </span>
+                          sale={sale}
+                          totalPaid={totalPaid}
+                          balance={balance}
+                          formatDate={formatDate}
+                          getStatusClass={getStatusClass}
+                          getStatusText={getStatusText}
+                          isModified={isModified}
+                          desktopLinkProps={desktopLinkProps}
+                          actions={
+                            <>
+                              {sale.status !== "completed" && sale.status !== "cancelled" && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedSale(sale);
+                                    setShowPaymentModal(true);
+                                  }}
+                                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors text-sm font-medium"
+                                >
+                                  Ajouter un paiement
+                                </button>
                               )}
                               {sale.status === "completed" && (
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs ${
-                                    sale.deliveryStatus === "delivered"
-                                      ? "bg-green-100 text-green-800"
-                                      : sale.deliveryStatus === "not_delivered"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-blue-100 text-blue-800"
-                                  }`}
+                                <button
+                                  onClick={() => {
+                                    setSelectedSale(sale);
+                                    setDeliveryStatus(sale.deliveryStatus || "pending");
+                                    setDeliveryNote(sale.deliveryNote || "");
+                                    setShowDeliveryModal(true);
+                                  }}
+                                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors text-sm font-medium"
                                 >
-                                  {sale.deliveryStatus === "delivered"
-                                    ? "Livré"
-                                    : sale.deliveryStatus === "not_delivered"
-                                    ? "Non livré"
-                                    : "En attente"}
-                                </span>
+                                  Gérer la livraison
+                                </button>
                               )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="font-medium text-gray-900">
-                              {sale.client?.name || "Client non spécifié"}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4">
-                            <div>
-                              <p className="text-gray-500">Total</p>
-                              <p className="text-lg font-semibold text-gray-900">
-                                {(sale.totalAmount || 0).toLocaleString()} CFA
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Payé</p>
-                              <p className="text-lg font-semibold text-green-600">
-                                {totalPaid.toLocaleString()} CFA
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Solde</p>
-                              <p className={`text-lg font-semibold ${balance > 0 ? "text-red-600" : "text-gray-900"}`}>
-                                {balance.toLocaleString()} CFA
-                              </p>
-                            </div>
-                          </div>
-
-                          {Array.isArray(sale.products) && sale.products.length > 0 && (
-                            <div className="mt-4">
-                              <p className="text-sm font-semibold text-gray-800 mb-1">Produits</p>
-                              <ul className="space-y-1 text-sm text-gray-600">
-                                {sale.products.map((item, idx) => (
-                                  <li key={idx} className="flex justify-between">
-                                    <span>{item.product?.name || "Produit"}</span>
-                                    <span className="text-gray-500">
-                                      x{item.quantity || 0}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          <div className="mt-4 flex flex-col gap-2">
-                            {sale.status !== "completed" && sale.status !== "cancelled" && (
-                              <button
-                                onClick={() => {
-                                  setSelectedSale(sale);
-                                  setShowPaymentModal(true);
-                                }}
-                                className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors text-sm font-medium"
-                              >
-                                Ajouter un paiement
-                              </button>
-                            )}
-                            {sale.status === "completed" && (
-                              <button
-                                onClick={() => {
-                                  setSelectedSale(sale);
-                                  setDeliveryStatus(sale.deliveryStatus || "pending");
-                                  setDeliveryNote(sale.deliveryNote || "");
-                                  setShowDeliveryModal(true);
-                                }}
-                                className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors text-sm font-medium"
-                              >
-                                Gérer la livraison
-                              </button>
-                            )}
-                          </div>
-                        </motion.div>
+                            </>
+                          }
+                        />
                       );
                     })
                   )}
                 </div>
-              </div>
+              </section>
             </GlassCard>
           </div>
 
@@ -1570,74 +1467,90 @@ const Sales = () => {
           </Suspense>
 
           {showDeliveryModal && selectedSale && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Statut de livraison</h3>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+              onClick={() => setShowDeliveryModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl w-full max-w-md border border-gray-200 shadow-xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-green-100 text-green-600">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2M5 8a2 2 0 011-2h12a2 2 0 011 2m-2 6h.01M17 16h.01" />
+                      </svg>
+                    </span>
+                    Statut de livraison
+                  </h3>
                   <button
+                    type="button"
                     onClick={() => setShowDeliveryModal(false)}
-                    className="text-gray-500 hover:text-gray-700 p-1"
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    aria-label="Fermer"
                   >
-                    ✕
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
-
-                <div className="space-y-4">
+                <div className="p-5 sm:p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="delivery-status-nonadmin" className="block text-sm font-medium text-gray-700 mb-2">
                       Statut
                     </label>
                     <select
+                      id="delivery-status-nonadmin"
                       value={deliveryStatus || selectedSale.deliveryStatus || "pending"}
                       onChange={(e) => setDeliveryStatus(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                      className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="pending">En attente</option>
                       <option value="delivered">Livré</option>
                       <option value="not_delivered">Non livré</option>
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="delivery-note-nonadmin" className="block text-sm font-medium text-gray-700 mb-2">
                       Note (optionnelle)
                     </label>
                     <textarea
+                      id="delivery-note-nonadmin"
                       value={deliveryNote || selectedSale.deliveryNote || ""}
                       onChange={(e) => setDeliveryNote(e.target.value)}
                       placeholder="Notes sur la livraison…"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      rows="3"
-                      maxLength="500"
+                      className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+                      rows={3}
+                      maxLength={500}
                     />
-                    <div className="text-xs text-gray-500 mt-1">
-                      {deliveryNote.length}/500 caractères
-                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{deliveryNote.length}/500 caractères</p>
                   </div>
-
-                  <div className="flex justify-end gap-3 mt-6">
-                    <button
-                      onClick={() => setShowDeliveryModal(false)}
-                      disabled={isUpdatingDelivery}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-60"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      onClick={handleUpdateDelivery}
-                      disabled={isUpdatingDelivery}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 flex items-center gap-2 disabled:bg-blue-400"
-                    >
-                      {isUpdatingDelivery ? (
-                        <>
-                          <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                          Mise à jour…
-                        </>
-                      ) : (
-                        "Enregistrer"
-                      )}
-                    </button>
-                  </div>
+                </div>
+                <div className="flex justify-end gap-3 px-5 py-4 sm:px-6 border-t border-gray-100 bg-gray-50/30">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeliveryModal(false)}
+                    disabled={isUpdatingDelivery}
+                    className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpdateDelivery}
+                    disabled={isUpdatingDelivery}
+                    className="min-h-[44px] px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  >
+                    {isUpdatingDelivery ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Mise à jour…
+                      </>
+                    ) : (
+                      "Enregistrer"
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1935,45 +1848,45 @@ const Sales = () => {
               </div>
             ) : (
               <>
-                {/* KPIs (incluant Encaissements) */}
-                <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+                {/* KPIs (incluant Encaissements) — 2 cols mobile, 3 sm, 6 lg */}
+                <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4" aria-label="Indicateurs clés">
                   <StatCard
                     title="Chiffre d'affaires"
                     value={`${dashboardData.totalSales.toLocaleString("fr-FR")} CFA`}
-                    icon={<span className="inline-block">💶</span>}
+                    icon="💶"
                     color="bg-blue-500"
                   />
                   <StatCard
                     title="Nombre de ventes"
                     value={dashboardData.salesCount}
-                    icon={<span className="inline-block">🧾</span>}
+                    icon="🧾"
                     color="bg-green-500"
                   />
                   <StatCard
                     title="Vente moyenne"
                     value={`${dashboardData.averageSale.toLocaleString("fr-FR")} CFA`}
-                    icon={<span className="inline-block">📏</span>}
+                    icon="📏"
                     color="bg-purple-500"
                   />
                   <StatCard
                     title="Produits vendus"
                     value={dashboardData.totalProducts}
-                    icon={<span className="inline-block">📦</span>}
-                    color="bg-yellow-500"
+                    icon="📦"
+                    color="bg-amber-500"
                   />
                   <StatCard
                     title="Paiements (nb)"
                     value={dashboardData.paymentsSummary.paymentsCount}
-                    icon={<span className="inline-block">💳</span>}
+                    icon="💳"
                     color="bg-indigo-500"
                   />
                   <StatCard
                     title="Total payé"
                     value={`${dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA`}
-                    icon={<span className="inline-block">✅</span>}
-                    color="bg-pink-500"
+                    icon="✅"
+                    color="bg-emerald-500"
                   />
-                </div>
+                </section>
 
                 {/* ↘︎ Sous-bloc Encaissements (lisible et compact) */}
                 <GlassCard>
@@ -1988,7 +1901,7 @@ const Sales = () => {
                       </span>
                       .
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 p-4">
                         <div className="text-sm text-gray-600">Aujourd’hui</div>
                         <div className="text-xl font-semibold">
@@ -2009,26 +1922,6 @@ const Sales = () => {
                           CFA
                         </div>
                         <div className="text-xs text-gray-500">Sur {dashboardData.salesCount} ventes</div>
-                      </div>
-                      <div className="rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 p-4">
-                        <div className="text-sm text-gray-600">Méthodes de paiement</div>
-                        <div className="text-xs text-gray-700 mt-1">
-                          {Object.entries(dashboardData.paymentMethods || {}).length === 0
-                            ? "Aucune donnée"
-                            : Object.entries(dashboardData.paymentMethods)
-                                .map(([m, v]) => {
-                                  const pct =
-                                    typeof v === "number"
-                                      ? v
-                                      : typeof v?.percentage === "number"
-                                      ? v.percentage
-                                      : 0;
-                                  return `${
-                                    m === "MobileMoney" ? "Mobile Money" : m || "Non spécifié"
-                                  }: ${pct.toFixed(1)}%`;
-                                })
-                                .join(" • ")}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2160,107 +2053,82 @@ const Sales = () => {
                     </div>
                   </GlassCard>
 
-                  {/* Répartition des méthodes de paiement */}
-                  <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Méthodes de paiement
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="h-56">
-                          <Pie
-                            data={paymentMethodsChart}
-                            options={{
-                              responsive: true,
-                              plugins: { legend: { position: "bottom" } },
-                            }}
-                          />
-                        </div>
-                        <div className="overflow-visible md:overflow-x-auto">
-                          <table ref={paymentTableRef} className="w-full text-left">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-sm font-medium text-gray-600">
-                                  Méthode
-                                </th>
-                                <th className="hidden md:table-cell px-4 py-2 text-sm font-medium text-gray-600">
-                                  Part
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="md:divide-y md:divide-gray-100">
-                              {Object.entries(dashboardData.paymentMethods || {}).map(
-                                ([method, value]) => (
-                                  <tr key={method} className="border-b border-gray-100">
-                                    <td className="px-4 py-3 text-sm">
-                                      {method === "MobileMoney" ? "Mobile Money" : method || "Non spécifié"}
-                                    </td>
-                                    <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">
-                                      {value.toFixed(1)}%
-                                    </td>
-                                  </tr>
-                                )
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </GlassCard>
-
                   {/* Statut des ventes */}
                   <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <section className="p-5 sm:p-6" aria-labelledby="status-sales-heading">
+                      <h3 id="status-sales-heading" className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </span>
                         Statut des ventes
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <Pie
-                            data={statusChart}
-                            options={{
-                              responsive: true,
-                              plugins: { legend: { position: "top" } },
-                            }}
-                          />
+                        <div className="flex justify-center md:justify-start">
+                          <div className="w-full max-w-[260px] h-[220px] sm:h-[260px] mx-auto md:max-w-none md:w-full md:h-[200px]">
+                            <Pie
+                              data={statusChart}
+                              options={{
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                plugins: { legend: { position: "top" } },
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="overflow-visible md:overflow-x-auto">
+                        {/* Desktop: table */}
+                        <div className="hidden md:block overflow-visible">
                           <table ref={statusTableRef} className="w-full text-left">
                             <thead className="bg-gray-50">
                               <tr>
-                                <th className="px-4 py-2 text-sm font-medium text-gray-600">
-                                  Statut
-                                </th>
-                                <th className="hidden md:table-cell px-4 py-2 text-sm font-medium text-gray-600">
-                                  Nombre
-                                </th>
-                                <th className="hidden md:table-cell px-4 py-2 text-sm font-medium text-gray-600">
-                                  Montant
-                                </th>
+                                <th className="px-4 py-2 text-sm font-medium text-gray-600 rounded-tl-xl">Statut</th>
+                                <th className="px-4 py-2 text-sm font-medium text-gray-600 text-right">Nombre</th>
+                                <th className="px-4 py-2 text-sm font-medium text-gray-600 text-right rounded-tr-xl">Montant</th>
                               </tr>
                             </thead>
-                            <tbody className="md:divide-y md:divide-gray-100">
+                            <tbody className="divide-y divide-gray-100">
                               {[
                                 ["Payée", "completed"],
                                 ["Partiellement payée", "partially_paid"],
                                 ["En attente", "pending"],
                                 ["Annulée", "cancelled"],
                               ].map(([label, key]) => (
-                                <tr key={key} className="border-b border-gray-100">
-                                  <td className="px-4 py-3 text-sm">{label}</td>
-                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">
-                                    {dashboardData.statusStats?.[key]?.count || 0}
-                                  </td>
-                                  <td className="hidden md:table-cell px-4 py-3 text-sm md:text-right">
-                                    {(dashboardData.statusStats?.[key]?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                                  </td>
+                                <tr key={key}>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{label}</td>
+                                  <td className="px-4 py-3 text-sm text-right tabular-nums">{dashboardData.statusStats?.[key]?.count || 0}</td>
+                                  <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-600">{(dashboardData.statusStats?.[key]?.totalAmount || 0).toLocaleString("fr-FR")} CFA</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
+                        {/* Mobile: status cards list */}
+                        <div className="md:hidden space-y-3">
+                          {[
+                            ["Payée", "completed", "bg-green-50 border-green-200/80", "text-green-800"],
+                            ["Partiellement payée", "partially_paid", "bg-amber-50 border-amber-200/80", "text-amber-800"],
+                            ["En attente", "pending", "bg-blue-50 border-blue-200/80", "text-blue-800"],
+                            ["Annulée", "cancelled", "bg-gray-100 border-gray-200/80", "text-gray-700"],
+                          ].map(([label, key, cardClass, textClass]) => {
+                            const count = dashboardData.statusStats?.[key]?.count || 0;
+                            const amount = dashboardData.statusStats?.[key]?.totalAmount || 0;
+                            return (
+                              <div
+                                key={key}
+                                className={`rounded-xl border p-4 ${cardClass}`}
+                              >
+                                <p className={`text-sm font-semibold ${textClass}`}>{label}</p>
+                                <div className="mt-2 flex items-baseline justify-between gap-2 text-sm text-gray-600">
+                                  <span>{count} vente{count !== 1 ? "s" : ""}</span>
+                                  <span className="tabular-nums font-medium text-gray-900">{amount.toLocaleString("fr-FR")} CFA</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    </section>
                   </GlassCard>
                 </div>
               </>
@@ -2268,25 +2136,29 @@ const Sales = () => {
 
             {/* Formulaire & Historique */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <GlassCard>
-                <div className="p-6">
-                  <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
-                    <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
-                  </Suspense>
-                </div>
-              </GlassCard>
+              <div id="sale-form">
+                <GlassCard>
+                  <div className="p-6">
+                    <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
+                      <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
+                    </Suspense>
+                  </div>
+                </GlassCard>
+              </div>
 
               <GlassCard>
-                <div className="p-6">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                      <span className="bg-purple-500 p-1.5 rounded-lg text-white">📚</span>
+                <section className="p-5 sm:p-6" aria-labelledby="history-heading-admin">
+                  <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
+                    <h2 id="history-heading-admin" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
+                        📚
+                      </span>
                       Historique des Ventes
                     </h2>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Actions historique">
                       <Link
                         to={{ pathname: "/sales/all", search: historyLinkSearch }}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                        className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                         {...desktopLinkProps}
                       >
                         {historyLinkLabel}
@@ -2294,91 +2166,73 @@ const Sales = () => {
                       {isAdmin && (
                         <Link
                           to="/sales/deleted"
-                          className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                          className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
                           {...desktopLinkProps}
                         >
                           Ventes supprimées
                         </Link>
                       )}
+                    </nav>
+                  </header>
+
+                  {/* Filtres — collapsible on mobile, always visible on sm+ */}
+                  <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 overflow-hidden mb-5">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFiltersOpen((o) => !o)}
+                      className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                      aria-expanded={historyFiltersOpen}
+                      aria-controls="history-filters-admin"
+                      id="history-filters-toggle-admin"
+                    >
+                      <span className="font-medium text-gray-900">Filtres</span>
+                      {hasActiveFilters && (
+                        <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
+                          Actifs
+                        </span>
+                      )}
+                      <svg
+                        className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <div
+                      id="history-filters-admin"
+                      role="region"
+                      aria-labelledby="history-filters-toggle-admin"
+                      className={`${historyFiltersOpen ? "block" : "hidden"} sm:block border-t border-gray-200/80 sm:border-t-0`}
+                    >
+                      <div className="p-4 sm:p-5 pt-0 sm:pt-5">
+                        <SalesFiltersBar
+                          statusFilter={statusFilter}
+                          clientFilter={clientFilter}
+                          dateFilter={dateFilter}
+                          deliveryFilter={deliveryFilter}
+                          clients={clients}
+                          onStatusChange={setStatusFilter}
+                          onClientChange={setClientFilter}
+                          onDateChange={setDateFilter}
+                          onDeliveryChange={setDeliveryFilter}
+                          onReset={() => {
+                            setStatusFilter("");
+                            setClientFilter("");
+                            setDateFilter("");
+                            setDeliveryFilter("");
+                            setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
+                          }}
+                          variant="archive"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Filtres historiques */}
-                  <div className="mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Statut</label>
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Tous</option>
-                        <option value="completed">Payée</option>
-                        <option value="partially_paid">Partiellement payée</option>
-                        <option value="pending">En attente</option>
-                        <option value="cancelled">Annulée</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Client</label>
-                      <select
-                        value={clientFilter}
-                        onChange={(e) => setClientFilter(e.target.value)}
-                        className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Tous les clients</option>
-                        {clients.map((c) => (
-                          <option key={c._id} value={c._id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Date</label>
-                      <input
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Livraison</label>
-                      <select
-                        value={deliveryFilter}
-                        onChange={(e) => setDeliveryFilter(e.target.value)}
-                        className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Tous</option>
-                        <option value="all_completed">Toutes complétées</option>
-                        <option value="delivered">Livrées</option>
-                        <option value="pending">En attente</option>
-                        <option value="not_delivered">Non livrées</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => {
-                          setStatusFilter("");
-                          setClientFilter("");
-                          setDateFilter("");
-                          setDeliveryFilter("");
-                          setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
-                        }}
-                        className="w-full p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-                      >
-                        Réinitialiser
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Liste des ventes */}
-                  <div className="space-y-4">
+                  {/* Liste des ventes — une carte par ligne (mobile et desktop) */}
+                  <div className="grid grid-cols-1 gap-4">
                     {filteredSales.length === 0 ? (
                       <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
                         Aucune vente trouvée
@@ -2386,7 +2240,6 @@ const Sales = () => {
                     ) : (
                       filteredSales.map((sale) => {
                         const { totalPaid, balance } = calculateSaleTotals(sale);
-                        const saleProfit = sale?.computedProfit ?? calculateSaleProfit(sale);
                         const saleMargin = sale?.computedMargin ?? calculateSaleMargin(sale);
                         const profitCategory =
                           sale?.computedProfitCategory ?? deriveProfitCategoryFromMargin(saleMargin);
@@ -2395,251 +2248,98 @@ const Sales = () => {
                           Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
 
                         return (
-                          <motion.div
+                          <SaleCard
                             key={sale._id}
-                            whileHover={{ scale: 1.01 }}
-                            className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
-                          >
-                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                              <Link
-                                to={`/sales/${sale._id}`}
-                                className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
-                                {...desktopLinkProps}
-                              >
-                                <span>Vente #{sale._id.slice(-6)}</span>
-                              </Link>
-
-                              <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
-                                <span className="text-sm text-gray-500 inline-flex items-center gap-1">
-                                  📅 {formatDate(sale.saleDate)}
-                                </span>
-                                <span className={`px-3 py-1 rounded-full text-xs ${getStatusClass(sale.status)}`}>
-                                  {getStatusText(sale.status)}
-                                </span>
-                                {isModified && (
-                                  <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
-                                    Modifiée
-                                  </span>
-                                )}
+                            sale={sale}
+                            totalPaid={totalPaid}
+                            balance={balance}
+                            formatDate={formatDate}
+                            getStatusClass={getStatusClass}
+                            getStatusText={getStatusText}
+                            getProfitCategoryClass={getProfitCategoryClass}
+                            getProfitCategoryText={getProfitCategoryText}
+                            showProfitBadge={showProfitInfo}
+                            profitCategory={profitCategory}
+                            isModified={isModified}
+                            desktopLinkProps={desktopLinkProps}
+                            actions={
+                              <>
                                 {sale.status === "completed" && (
-                                  <span
-                                    className={`px-2 py-1 rounded-full text-xs ${
-                                      sale.deliveryStatus === "delivered"
-                                        ? "bg-green-100 text-green-800"
-                                        : sale.deliveryStatus === "not_delivered"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-blue-100 text-blue-800"
-                                    }`}
-                                  >
-                                    {sale.deliveryStatus === "delivered"
-                                      ? "Livré"
-                                      : sale.deliveryStatus === "not_delivered"
-                                      ? "Non livré"
-                                      : "En attente"}
-                                  </span>
-                                )}
-                                {showProfitInfo && (
-                                  <span
-                                    className={`px-2 py-1 rounded-full text-xs ${getProfitCategoryClass(
-                                      profitCategory
-                                    )}`}
-                                  >
-                                    {getProfitCategoryText(profitCategory)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="font-medium text-gray-900">
-                                {sale.client?.name || "Client non spécifié"}
-                              </span>
-                              {Array.isArray(sale.products) && sale.products.length > 0 && (
-                                <div className="text-sm text-gray-500">
-                                  •{" "}
-                                  {sale.products
-                                    .slice(0, 2)
-                                    .map((item) => item.product?.name || "Produit")
-                                    .join(", ")}
-                                  {sale.products.length > 2 && ` +${sale.products.length - 2}`}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Bénéfices synthétiques */}
-                            {showProfitInfo && Number.isFinite(saleProfit) && Number.isFinite(saleMargin) && (
-                              <div className="mt-2 flex items-center gap-4 text-sm">
-                                <span
-                                  className={`font-medium ${
-                                    saleProfit >= 0 ? "text-green-600" : "text-red-600"
-                                  }`}
-                                >
-                                  💰 Bénéfice: {Math.round(saleProfit).toLocaleString("fr-FR")} CFA
-                                </span>
-                                <span className={saleMargin >= 0 ? "text-blue-600" : "text-red-600"}>
-                                  📊 Marge: {saleMargin.toFixed(2)}%
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Produits */}
-                            <div className="space-y-3 mt-3">
-                              {sale.products.map((item, idx) => {
-                                const qty = Number(item.quantity) || 0;
-                                const price = Number(item.priceAtSale) || 0;
-                                const cost = Number(item.product?.costPrice) || 0;
-                                const revenue = qty * price;
-                                const profit = revenue - qty * cost;
-                                const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-start sm:justify-between"
-                                  >
-                                    <div className="flex-1">
-                                      <div className="font-medium text-gray-900">{item.product?.name || "Produit"}</div>
-                                      <div className="text-sm text-gray-600">
-                                        {qty} × {price.toFixed(0)} CFA
-                                      </div>
-                                      {showProfitInfo && (
-                                        <div className="text-xs text-gray-500 mt-1 space-y-1">
-                                          <div className={profit >= 0 ? "text-green-600" : "text-red-600"}>
-                                            Profit produit: {Math.round(profit).toLocaleString("fr-FR")} CFA
-                                          </div>
-                                          <div className={margin >= 0 ? "text-blue-600" : "text-red-600"}>
-                                            Marge produit: {margin.toFixed(2)}%
-                                          </div>
-                                        </div>
-                                      )}
+                                  <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
+                                    <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+                                      <Suspense fallback={<span className="text-xs text-gray-400">PDF…</span>}>
+                                        <ExportSalesPdf sale={sale} />
+                                      </Suspense>
                                     </div>
-                                    <div className="text-right">
-                                      <div className="font-medium text-gray-900">
-                                        {(qty * price).toFixed(0)} CFA
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Paiements & Totaux */}
-                            <div className="pt-4 border-t border-gray-100 mt-3">
-                              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-2">Paiements:</h4>
-                                  <div className="space-y-2">
-                                    {(sale.payments || []).map((p, i) => {
-                                      const pd = parseDateSafely(p?.paymentDate);
-                                      return (
-                                        <div key={i} className="flex justify-between text-sm">
-                                          <div>
-                                            <span className="font-medium text-gray-700">
-                                              {p.method === "MobileMoney" ? "Mobile Money" : p.method}
-                                            </span>
-                                            <span className="text-gray-500 ml-2">
-                                              {pd ? pd.toLocaleDateString("fr-FR") : "Date indisponible"}
-                                            </span>
-                                          </div>
-                                          <div className="font-medium text-gray-900">
-                                            {(p.amount || 0).toFixed(0)} CFA
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between">
-                                    <span className="font-semibold text-gray-700">Total:</span>
-                                    <span className="font-bold text-gray-900">
-                                      {(sale.totalAmount || 0).toFixed(0)} CFA
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Payé:</span>
-                                    <span className="text-gray-700">{totalPaid.toFixed(0)} CFA</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="font-semibold text-gray-700">Solde:</span>
-                                    <span
-                                      className={`font-bold ${
-                                        balance > 0 ? "text-red-600" : "text-green-600"
-                                      }`}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSale(sale);
+                                        setDeliveryStatus(sale.deliveryStatus || "pending");
+                                        setDeliveryNote(sale.deliveryNote || "");
+                                        setShowDeliveryModal(true);
+                                      }}
+                                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
                                     >
-                                      {balance.toFixed(0)} CFA
-                                    </span>
+                                      Gérer livraison
+                                    </button>
                                   </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                              {sale.status === "completed" && (
-                                <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
-                                  <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
-                                    <Suspense fallback={<span className="text-xs text-gray-400">PDF…</span>}>
-                                      <ExportSalesPdf sale={sale} />
-                                    </Suspense>
-                                  </div>
+                                )}
+                                {sale.status !== "completed" && sale.status !== "cancelled" && (
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       setSelectedSale(sale);
-                                      setDeliveryStatus(sale.deliveryStatus || "pending");
-                                      setDeliveryNote(sale.deliveryNote || "");
-                                      setShowDeliveryModal(true);
+                                      setShowPaymentModal(true);
                                     }}
-                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition-colors w-full sm:w-auto"
                                   >
-                                    Gérer livraison
+                                    Ajouter Paiement
                                   </button>
-                                </div>
-                              )}
-
-                              {sale.status !== "completed" && sale.status !== "cancelled" && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedSale(sale);
-                                    setShowPaymentModal(true);
-                                  }}
-                                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition-colors w-full sm:w-auto"
-                                >
-                                  Ajouter Paiement
-                                </button>
-                              )}
-                            </div>
-                          </motion.div>
+                                )}
+                              </>
+                            }
+                          />
                         );
                       })
                     )}
                   </div>
-                </div>
+                </section>
               </GlassCard>
             </div>
 
             {/* Modal Export */}
             {isAdmin && showExportModal && (
               <div
-                className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
                 onClick={() => setShowExportModal(false)}
               >
                 <div
-                  className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200"
+                  className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl font-semibold text-gray-900">
-                        Exporter les ventes
-                      </h2>
-                      <button
-                        onClick={() => setShowExportModal(false)}
-                        className="text-gray-500 hover:bg-gray-100 p-2 rounded-full"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <Suspense fallback={<div className="text-sm text-gray-500">Préparation…</div>}>
+                  <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </span>
+                      Exporter les ventes
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowExportModal(false)}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      aria-label="Fermer"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                    <Suspense fallback={<div className="text-sm text-gray-500 py-4">Préparation…</div>}>
                       <ExportSales />
                     </Suspense>
                   </div>
@@ -2649,74 +2349,90 @@ const Sales = () => {
 
             {/* Modal Livraison */}
             {showDeliveryModal && selectedSale && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Statut de livraison</h3>
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                onClick={() => setShowDeliveryModal(false)}
+              >
+                <div
+                  className="bg-white rounded-2xl w-full max-w-md border border-gray-200 shadow-xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-green-100 text-green-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2M5 8a2 2 0 011-2h12a2 2 0 011 2m-2 6h.01M17 16h.01" />
+                        </svg>
+                      </span>
+                      Statut de livraison
+                    </h3>
                     <button
+                      type="button"
                       onClick={() => setShowDeliveryModal(false)}
-                      className="text-gray-500 hover:text-gray-700 p-1"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      aria-label="Fermer"
                     >
-                      ✕
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
-
-                  <div className="space-y-4">
+                  <div className="p-5 sm:p-6 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="delivery-status-admin" className="block text-sm font-medium text-gray-700 mb-2">
                         Statut
                       </label>
                       <select
+                        id="delivery-status-admin"
                         value={deliveryStatus || selectedSale.deliveryStatus || "pending"}
                         onChange={(e) => setDeliveryStatus(e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       >
                         <option value="pending">En attente</option>
                         <option value="delivered">Livré</option>
                         <option value="not_delivered">Non livré</option>
                       </select>
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="delivery-note-admin" className="block text-sm font-medium text-gray-700 mb-2">
                         Note (optionnelle)
                       </label>
                       <textarea
+                        id="delivery-note-admin"
                         value={deliveryNote || selectedSale.deliveryNote || ""}
                         onChange={(e) => setDeliveryNote(e.target.value)}
                         placeholder="Notes sur la livraison…"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                        rows="3"
-                        maxLength="500"
+                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+                        rows={3}
+                        maxLength={500}
                       />
-                      <div className="text-xs text-gray-500 mt-1">
-                        {deliveryNote.length}/500 caractères
-                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{deliveryNote.length}/500 caractères</p>
                     </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                      <button
-                        onClick={() => setShowDeliveryModal(false)}
-                        disabled={isUpdatingDelivery}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-60"
-                      >
-                        Annuler
-                      </button>
-                      <button
-                        onClick={handleUpdateDelivery}
-                        disabled={isUpdatingDelivery}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 flex items-center gap-2 disabled:bg-blue-400"
-                      >
-                        {isUpdatingDelivery ? (
-                          <>
-                            <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                            Mise à jour…
-                          </>
-                        ) : (
-                          "Enregistrer"
-                        )}
-                      </button>
-                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 px-5 py-4 sm:px-6 border-t border-gray-100 bg-gray-50/30">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeliveryModal(false)}
+                      disabled={isUpdatingDelivery}
+                      className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUpdateDelivery}
+                      disabled={isUpdatingDelivery}
+                      className="min-h-[44px] px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    >
+                      {isUpdatingDelivery ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Mise à jour…
+                        </>
+                      ) : (
+                        "Enregistrer"
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

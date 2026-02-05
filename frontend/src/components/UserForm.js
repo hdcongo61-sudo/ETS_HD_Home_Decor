@@ -210,7 +210,7 @@ const UserForm = ({ user, onSubmit, onCancel }) => {
                             {photoPreview ? (
                                 <img
                                     src={photoPreview}
-                                    alt={`Photo de ${formData.name || "l'utilisateur"}`}
+                                    alt={formData.name || "Utilisateur"}
                                     className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm"
                                 />
                             ) : (

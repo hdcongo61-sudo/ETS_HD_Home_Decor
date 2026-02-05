@@ -184,7 +184,7 @@ const EmployeeDetail = () => {
             </button>
             <img
               src={employee.photo}
-              alt={`Photo de ${employee.name}`}
+              alt={employee.name}
               className="w-full max-h-[80vh] object-contain rounded-2xl bg-white"
             />
           </div>
@@ -216,7 +216,7 @@ const EmployeeDetail = () => {
             {employee.photo ? (
               <img
                 src={employee.photo}
-                alt={`Photo de ${employee.name}`}
+                alt={employee.name}
                 className="w-full h-full object-cover"
               />
             ) : (

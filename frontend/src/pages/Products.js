@@ -1,6 +1,6 @@
 // src/pages/Products.jsx
 import React, { useState, useEffect, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import LoaderOverlay from '../components/LoaderOverlay';
@@ -18,8 +18,6 @@ const Products = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formSubmitting, setFormSubmitting] = useState(false);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
@@ -100,50 +98,58 @@ const Products = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8 relative">
-      <Toaster position="top-right" />
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 relative">
+        <Toaster position="top-right" />
 
-      <LoaderOverlay
-        show={formSubmitting}
-        text={editingProduct ? 'Mise à jour du produit...' : 'Création du produit...'}
-      />
-
-      {/* ===== Header ===== */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-        <div className="flex items-center">
-          <h1 className="text-3xl font-semibold text-gray-900">Produits</h1>
-          {!loading && products.length > 0 && (
-            <span className="ml-3 bg-gray-100 text-gray-600 text-sm font-medium px-2.5 py-0.5 rounded-full">
-              {products.length}
-            </span>
-          )}
-        </div>
-
-        {isAdmin && (
-          <button
-            onClick={() => {
-              setEditingProduct(null);
-              setIsFormOpen(true);
-            }}
-            className="mt-4 md:mt-0 flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition shadow-md"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nouveau produit
-          </button>
-        )}
-      </div>
-
-      {/* ===== Liste des produits ===== */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <ProductList
-          products={products}
-          loading={loading}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-          isAdmin={isAdmin}
+        <LoaderOverlay
+          show={formSubmitting}
+          text={editingProduct ? 'Mise à jour du produit...' : 'Création du produit...'}
         />
+
+        {/* ===== Header (desktop-optimized) ===== */}
+        <header className="mb-8 lg:mb-10">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl lg:text-4xl tracking-tight">
+                Produits
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 lg:text-base">
+                Gérez votre catalogue et vos stocks
+              </p>
+              {!loading && products.length > 0 && (
+                <p className="mt-2 text-sm text-gray-600">
+                  <span className="font-medium text-gray-900">{products.length}</span> produit{products.length > 1 ? 's' : ''} au catalogue
+                </p>
+              )}
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsFormOpen(true);
+                }}
+                className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:opacity-95 active:opacity-90 transition shadow-lg shadow-indigo-500/25 lg:px-6 lg:py-3 lg:text-base lg:rounded-2xl"
+              >
+                <svg className="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Nouveau produit
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* ===== Liste des produits ===== */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden lg:shadow-md lg:rounded-3xl">
+          <ProductList
+            products={products}
+            loading={loading}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+            isAdmin={isAdmin}
+          />
+        </div>
       </div>
 
       {/* ===== Modal Form ===== */}
@@ -386,37 +392,48 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   if (!isAdmin) {
     return (
       <div>
-        <div className="p-4 bg-gray-50 border-b border-gray-100">
-          <input
-            type="text"
-            placeholder="🔍 Rechercher un produit..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
-          />
+        <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100">
+          <div className="max-w-xl">
+            <label htmlFor="search-products" className="sr-only">Rechercher un produit</label>
+            <input
+              id="search-products"
+              type="text"
+              placeholder="Rechercher par nom, catégorie, conteneur ou entrepôt..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+            />
+          </div>
         </div>
 
-        <div className="divide-y divide-gray-100 bg-white">
+        <div className="divide-y divide-gray-100 bg-white lg:divide-y-0 lg:p-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6">
           {filtered.map((p) => (
-            <div key={p._id} className="p-4 flex flex-col gap-1">
-              <p className="text-base font-semibold text-gray-900">{p.name}</p>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex w-fit items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                  {p.container?.trim() || 'Non defini'}
+            <Link
+              key={p._id}
+              to={productPath(p)}
+              {...desktopLinkProps}
+              className="block p-4 flex flex-col gap-1 hover:bg-gray-50 transition-colors lg:p-5 lg:rounded-2xl lg:border lg:border-gray-200 lg:shadow-sm lg:hover:shadow-md lg:hover:border-indigo-200"
+            >
+              <p className="text-base font-semibold text-gray-900 lg:text-lg">{p.name}</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                  {p.container?.trim() || 'Non défini'}
                 </span>
-                <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                  {p.warehouse?.trim() || 'Non defini'}
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                  {p.warehouse?.trim() || 'Non défini'}
                 </span>
               </div>
-              <p className={`text-sm font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-700'}`}>
-                Quantité en stock : <span className="font-semibold">{p.stock}</span>
+              <p className={`text-sm font-medium mt-2 ${p.stock < 5 ? 'text-red-600' : 'text-gray-700'}`}>
+                Stock : <span className="font-semibold">{p.stock}</span>
               </p>
-            </div>
+            </Link>
           ))}
         </div>
 
         {filtered.length === 0 && (
-          <div className="text-center py-10 text-gray-500">Aucun produit trouvé.</div>
+          <div className="text-center py-12 lg:py-16 text-gray-500">
+            <p className="text-base lg:text-lg">Aucun produit trouvé.</p>
+          </div>
         )}
       </div>
     );
@@ -424,77 +441,102 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   return (
     <div>
-      <div className="p-4 bg-gray-50 border-b border-gray-100">
+      {/* Search bar — desktop: full width, larger */}
+      <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100">
+        <label htmlFor="admin-product-search" className="sr-only">Rechercher un produit</label>
         <input
+          id="admin-product-search"
           type="text"
-          placeholder="🔍 Rechercher un produit..."
+          placeholder="Rechercher par nom, catégorie, conteneur ou entrepôt..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+          className="w-full max-w-2xl px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
         />
       </div>
 
+      {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-100 text-sm">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 text-sm lg:text-base">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
-              {['Produit', 'Catégorie', 'Conteneur', 'Entrepot', 'Prix', 'Stock', 'Fournisseur', 'Actions'].map((h) => (
-                <th key={h} className="px-6 py-3 text-left font-medium text-gray-500 uppercase">
-                  {h}
-                </th>
-              ))}
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Produit
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Catégorie
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Conteneur
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Entrepôt
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Prix
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Stock
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Fournisseur
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="bg-white divide-y divide-gray-200">
             {filtered.map((p) => (
-              <tr key={p._id} className="hover:bg-indigo-50 transition">
-                <td className="px-6 py-3 flex items-center gap-3 font-medium text-gray-800">
-                  {p.image ? (
-                    <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg">📦</div>
-                  )}
-                  <Link
-                    to={productPath(p)}
-                    className="text-indigo-600 hover:underline hover:text-indigo-800 transition"
-                    {...desktopLinkProps}
-                  >
-                    {p.name}
-                  </Link>
+              <tr key={p._id} className="hover:bg-indigo-50/50 transition-colors">
+                <td className="px-4 py-3 lg:px-6 lg:py-4">
+                  <div className="flex items-center gap-3">
+                    {p.image ? (
+                      <img src={p.image} alt={p.name} className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gray-100 flex items-center justify-center rounded-xl shrink-0 text-lg">📦</div>
+                    )}
+                    <Link
+                      to={productPath(p)}
+                      className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition"
+                      {...desktopLinkProps}
+                    >
+                      {p.name}
+                    </Link>
+                  </div>
                 </td>
-                <td className="px-6 py-3 text-gray-600">{p.category}</td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                    {p.container?.trim() || 'Non defini'}
+                <td className="px-4 py-3 lg:px-6 lg:py-4 text-gray-600">{p.category}</td>
+                <td className="px-4 py-3 lg:px-6 lg:py-4">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                    {p.container?.trim() || 'Non défini'}
                   </span>
                 </td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                    {p.warehouse?.trim() || 'Non defini'}
+                <td className="px-4 py-3 lg:px-6 lg:py-4">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {p.warehouse?.trim() || 'Non défini'}
                   </span>
                 </td>
-                <td className="px-6 py-3 font-semibold text-gray-800">
-                  {p.price?.toLocaleString()} CFA
+                <td className="px-4 py-3 lg:px-6 lg:py-4 text-right font-semibold text-gray-900 tabular-nums">
+                  {p.price?.toLocaleString('fr-FR')} CFA
                 </td>
-                <td className={`px-6 py-3 font-medium ${p.stock < 5 ? 'text-red-600' : 'text-gray-800'}`}>
+                <td className={`px-4 py-3 lg:px-6 lg:py-4 text-right font-medium tabular-nums ${p.stock < 5 ? 'text-red-600' : 'text-gray-800'}`}>
                   {p.stock}
                 </td>
-                <td className="px-6 py-3 text-gray-700">
-                  <div>{p.supplierName || '—'}</div>
-                  <div className="text-xs text-gray-500">{p.supplierPhone || ''}</div>
+                <td className="px-4 py-3 lg:px-6 lg:py-4 text-gray-700">
+                  <div className="font-medium">{p.supplierName || '—'}</div>
+                  {p.supplierPhone && <div className="text-xs text-gray-500 mt-0.5">{p.supplierPhone}</div>}
                 </td>
-                <td className="px-6 py-3 text-right">
+                <td className="px-4 py-3 lg:px-6 lg:py-4 text-right">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => onEdit(p)}
-                      className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
+                      className="px-3 py-2 lg:px-4 lg:py-2 text-sm font-medium bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition"
                     >
                       Modifier
                     </button>
                     {isAdmin && (
                       <button
                         onClick={() => onDelete(p._id)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                        className="px-3 py-2 lg:px-4 lg:py-2 text-sm font-medium bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition"
                       >
                         Supprimer
                       </button>
@@ -507,16 +549,17 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         </table>
       </div>
 
+      {/* Mobile cards (admin) */}
       <div className="md:hidden space-y-4 p-4">
         {filtered.map((p) => (
           <div key={p._id} className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white">
             <div className="flex gap-3">
               {p.image ? (
-                <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover" />
+                <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
               ) : (
-                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-xl">📦</div>
+                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-xl shrink-0">📦</div>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <Link
                   to={productPath(p)}
                   className="text-base font-semibold text-indigo-600 hover:underline"
@@ -526,15 +569,15 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 </Link>
                 <p className="text-sm text-gray-500">{p.category || '—'}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  <span className="inline-flex w-fit items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                    {p.container?.trim() || 'Non defini'}
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                    {p.container?.trim() || 'Non défini'}
                   </span>
-                  <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                    {p.warehouse?.trim() || 'Non defini'}
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                    {p.warehouse?.trim() || 'Non défini'}
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-gray-900 mt-1">
-                  {p.price?.toLocaleString()} CFA
+                  {p.price?.toLocaleString('fr-FR')} CFA
                 </p>
               </div>
             </div>
@@ -570,7 +613,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-10 text-gray-500">Aucun produit trouvé.</div>
+        <div className="text-center py-12 lg:py-16 text-gray-500">
+          <p className="text-base lg:text-lg">Aucun produit trouvé.</p>
+        </div>
       )}
     </div>
   );

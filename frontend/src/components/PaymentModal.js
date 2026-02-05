@@ -58,53 +58,44 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={onClose}
         >
           <motion.div
             key="modal"
-            initial={{ scale: 0.8, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-            className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+            <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
                 Ajouter un paiement
               </h2>
               <button
+                type="button"
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-gray-100"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                aria-label="Fermer"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-6">
+            <div className="p-5 sm:p-6 space-y-6">
               {/* Summary */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
                   <span className="text-gray-500">Client</span>
                   <span className="font-medium text-gray-900">
@@ -195,7 +186,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                       }}
                       placeholder="0.00"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-10"
+                      className="w-full min-h-[44px] px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-12"
                     />
                     <span className="absolute right-3 top-3 text-gray-500 text-sm">
                       CFA
@@ -215,10 +206,10 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setMethod(opt)}
-                        className={`p-3 rounded-xl border text-sm transition-all ${
+                        className={`p-3 rounded-xl border-2 text-sm transition-all ${
                           method === opt
-                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                            : 'border-gray-300 bg-white hover:border-gray-400'
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
                         <div className="flex flex-col items-center gap-1">
@@ -274,19 +265,19 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                     type="button"
                     onClick={onClose}
                     disabled={isSubmitting}
-                    className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-70"
+                    className="min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                   >
                     Annuler
                   </button>
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96 }}
-                    className={`px-5 py-2.5 rounded-xl flex items-center gap-2 text-white transition-all ${
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`min-h-[44px] px-5 py-2.5 rounded-xl flex items-center gap-2 text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
                       isSubmitting
-                        ? 'bg-blue-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                        ? 'bg-indigo-400 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                   >
                     {isSubmitting ? (

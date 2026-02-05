@@ -2,9 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Styles personnalisés */
+/* === SaaS / Mobile-friendly base === */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   @apply bg-gray-50;
+  /* Safe area for notched devices (iOS/Android) */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Touch-friendly tap targets (min 44px) */
+@media (pointer: coarse) {
+  button:not([class*="p-"]):not([class*="px-"]):not([class*="py-"]),
+  a[role="button"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Optional: safe-area utility for fixed/sticky elements */
+.safe-area-padding {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
 
 .btn-primary {
@@ -65,4 +91,114 @@ input:focus {
 }
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
+}
+
+/* === Responsive table: mobile-first (cards by default, table from md up) === */
+/* Prevent table from forcing horizontal scroll on mobile */
+.responsive-table {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Mobile: card layout (useResponsiveTable adds data-title to cells) */
+.responsive-table thead {
+  display: none;
+}
+.responsive-table tbody tr {
+  display: block;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.responsive-table tbody tr:active {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+.responsive-table tbody td {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border: none;
+  min-height: 2.5rem;
+}
+.responsive-table tbody td::before {
+  content: attr(data-title);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  flex-shrink: 0;
+  min-width: 5rem;
+}
+.responsive-table tbody td:last-child {
+  border-top: 1px solid #f3f4f6;
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.responsive-table tbody td:last-child::before {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+/* Desktop: table layout from 768px */
+@media (min-width: 768px) {
+  .responsive-table {
+    min-width: 640px;
+    table-layout: auto;
+  }
+  .responsive-table thead {
+    display: table-header-group;
+  }
+  .responsive-table tbody tr {
+    display: table-row;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 0;
+    background: transparent;
+    box-shadow: none;
+    transition: background-color 0.15s ease;
+  }
+  .responsive-table tbody tr:active {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .responsive-table tbody td {
+    display: table-cell;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+    min-height: 0;
+  }
+  .responsive-table tbody td::before {
+    content: none;
+    min-width: 0;
+  }
+  .responsive-table tbody td:last-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0.75rem;
+    flex-wrap: nowrap;
+  }
+  .responsive-table tbody td:last-child::before {
+    width: auto;
+    margin-bottom: 0;
+  }
+}
+
+/* === Modal: drawer on mobile (parent uses flex items-end) === */
+.modal-mobile-drawer {
+  max-height: 90vh;
+}
+@media (min-width: 640px) {
+  .modal-mobile-drawer {
+    max-height: 70vh;
+  }
 }

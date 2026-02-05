@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
+import { FormActionsSticky } from './FormLayout';
 
 const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
   const [formData, setFormData] = useState({
@@ -171,11 +172,11 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 mt-6">
+      <FormActionsSticky>
         {initialData && (
           <button
             type="button"
-            onClick={() => onSubmit(null)} // Annuler l'édition
+            onClick={() => onSubmit(null)}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
             Annuler
@@ -184,8 +185,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
         <button
           type="submit"
           disabled={submitting}
-          className={`px-4 py-2 text-white rounded-lg transition-colors ${submitting ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'
-            }`}
+          className={`px-4 py-2 text-white rounded-lg transition-colors ${submitting ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'}`}
         >
           {submitting ? (
             <span className="flex items-center gap-2">
@@ -201,7 +201,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
             'Ajouter Dépense'
           )}
         </button>
-      </div>
+      </FormActionsSticky>
     </form>
   );
 };

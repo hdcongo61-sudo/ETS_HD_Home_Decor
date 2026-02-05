@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 const Bank = () => {
+  const tableRef = useRef(null);
   const [transactions, setTransactions] = useState([]);
   const [formData, setFormData] = useState({
     type: 'deposit',
@@ -34,6 +36,7 @@ const Bank = () => {
 
   useEffect(() => {
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch on filters change only
   }, [filters]);
 
   const stats = useMemo(() => {
@@ -93,8 +96,10 @@ const Bank = () => {
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('fr-FR');
   };
 
+  useResponsiveTable(tableRef, [transactions]);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-center gap-3">
         <div className="bg-emerald-500 p-2 rounded-xl">
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +221,7 @@ const Bank = () => {
           <div className="text-center text-gray-500 py-10">Aucun mouvement enregistre.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table ref={tableRef} className="responsive-table min-w-full text-sm">
               <thead className="bg-emerald-50 text-emerald-700 uppercase text-xs">
                 <tr>
                   <th className="py-2 px-3 text-left">Date</th>

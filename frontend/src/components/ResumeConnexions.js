@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 
 const ResumeConnexions = () => {
+    const tableRef = useRef(null);
     const [loginStats, setLoginStats] = useState({
         totalLogins: 0,
         successfulLogins: 0,
@@ -52,6 +54,8 @@ const ResumeConnexions = () => {
             return 'Date invalide';
         }
     };
+
+    useResponsiveTable(tableRef, [loginStats.recentLogins]);
 
     return (
         <div className="space-y-6">
@@ -143,8 +147,8 @@ const ResumeConnexions = () => {
                                 Les 10 dernières tentatives de connexion
                             </p>
                         </div>
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
+                        <div className="overflow-x-auto">
+                            <table ref={tableRef} className="responsive-table min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -214,40 +218,6 @@ const ResumeConnexions = () => {
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-
-                        <div className="md:hidden space-y-4 p-4">
-                            {loginStats.recentLogins.map((login) => (
-                                <div
-                                    key={login._id}
-                                    className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm"
-                                    onClick={() => navigate(`/users/login-activity/${login._id}`)}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-base font-semibold text-gray-900">
-                                                {login.user?.name || 'N/A'}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {login.attemptedEmail || login.user?.email || 'N/A'}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`px-2 py-1 rounded-full text-xs font-semibold ${login.success
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
-                                                }`}
-                                        >
-                                            {login.success ? 'Réussi' : 'Échoué'}
-                                        </span>
-                                    </div>
-                                    <div className="mt-2 text-sm text-gray-600 space-y-1">
-                                        <p>IP : {login.ipAddress || 'N/A'}</p>
-                                        <p>Appareil : {login.device || 'Inconnu'}</p>
-                                        <p>Date : {formatDate(login.createdAt)}</p>
-                                    </div>
-                                </div>
-                            ))}
                         </div>
                     </div>
                 </>

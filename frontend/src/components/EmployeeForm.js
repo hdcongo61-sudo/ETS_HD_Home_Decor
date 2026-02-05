@@ -228,7 +228,7 @@ const EmployeeForm = () => {
               {photoPreview ? (
                 <img
                   src={photoPreview}
-                  alt={`Photo de ${formData.name || "l'employé"}`}
+                  alt={formData.name || "Employé"}
                   className="w-20 h-20 rounded-2xl object-cover border border-gray-200 shadow-sm"
                 />
               ) : (

@@ -9,6 +9,8 @@ import OfflineIndicator from './components/OfflineIndicator';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SiteFooter from './components/SiteFooter';
 import PushNotificationManager from './components/PushNotificationManager';
+import AppLayout from './components/AppLayout';
+import BottomTabBar from './components/BottomTabBar';
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
@@ -30,7 +32,7 @@ const Bank = lazy(() => import('./pages/Bank'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
-const Sales = lazy(() => import('./pages/Sales'));
+const Sales = lazy(() => import('./pages/Sales.js'));
 const SalesArchive = lazy(() => import('./pages/SalesArchive'));
 const DeletedSales = lazy(() => import('./pages/DeletedSales'));
 const Clients = lazy(() => import('./pages/Clients'));
@@ -61,8 +63,8 @@ function App() {
             <Navigation />
             <OfflineIndicator />
             <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
-              <main className="flex-1">
-                <div className="container mx-auto px-4 py-8">
+              <main className="flex-1 min-h-0 pb-20 md:pb-0">
+                <AppLayout>
                   <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/access-restricted" element={<AccessRestricted />} />
@@ -388,13 +390,14 @@ function App() {
                   }
                 />
               </Routes>
-            </div>
+                </AppLayout>
           </main>
         </Suspense>
         <SiteFooter />
         <GlobalModals />
         <PushNotificationManager />
         <PwaInstallPrompt />
+        <BottomTabBar />
       </div>
         </Router>
       </AuthProvider>

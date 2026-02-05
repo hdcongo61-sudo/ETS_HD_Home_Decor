@@ -65,6 +65,7 @@ import {
 import RemindersPanel from "../components/RemindersPanel";
 import ExportModal from "../components/ExportModal";
 import BusinessAnalyticsDashboard from "../components/BusinessAnalyticsDashboard";
+import AccordionSection from "../components/AccordionSection";
 
 const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 
@@ -218,6 +219,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange is stable
   }, [timeRange, activeYear]);
 
   // ===== FETCH: période comparée (manuelle) =====
@@ -253,6 +255,7 @@ const Dashboard = () => {
       console.error("Erreur chargement période comparée :", e);
       setPrevCombinedData([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getPrevPeriod is stable
   }, [compareMode, timeRange, activeYear]);
 
   // ===== Reminders =====
@@ -270,6 +273,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchData();
     if (isAdmin) fetchReminders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders on mount only
   }, [timeRange, isAdmin, fetchData]);
 
   useEffect(() => {
@@ -469,16 +473,6 @@ const Dashboard = () => {
       year: "numeric",
     }).format(parsed);
   };
-  const formatRangeDay = (entry) => {
-    if (!entry?.date) return "—";
-    const parsed = new Date(entry.date);
-    if (Number.isNaN(parsed.getTime())) return entry.date;
-    return new Intl.DateTimeFormat("fr-FR", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    }).format(parsed);
-  };
 
   // ===== 🔹 Export des Statistiques de ventes (option B : TOUTES données) =====
   const exportSalesStatsAll = async () => {
@@ -569,12 +563,16 @@ const Dashboard = () => {
   // ===== LOADING =====
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+      <div className="flex items-center justify-center min-h-[40vh] bg-transparent">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Chargement du tableau de bord…</p>
+        </div>
       </div>
     );
 
   const today = new Date();
+  const userName = auth?.user?.name || auth?.user?.username || "";
 
   // ===== UI — styles des cartes principales =====
   const CARD_STYLES = [
@@ -605,29 +603,37 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* ===== HEADER ===== */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold">Tableau de Bord</h1>
-            <p className="text-gray-600 dark:text-gray-400">
+    <div className="min-h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        {/* ===== HEADER — Accueil professionnel mobile/desktop ===== */}
+        <header className="flex flex-col gap-4 sm:gap-5">
+          <div className="flex flex-col gap-1 sm:gap-0.5">
+            {userName && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                Bienvenue, <span className="text-gray-700 dark:text-gray-200">{userName}</span>
+              </p>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+              Tableau de bord
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 sm:text-base">
               Aperçu global des performances
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="Basculer thème"
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500"
+              className="min-h-[44px] px-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
               aria-label="Période"
             >
               <option value="day">Aujourd’hui</option>
@@ -647,7 +653,7 @@ const Dashboard = () => {
                     setSelectedYear(String(currentYear));
                   }
                 }}
-                className="w-28 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500"
+                className="min-h-[44px] w-24 sm:w-28 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm"
                 aria-label="Année"
                 placeholder="Année"
                 min="1970"
@@ -655,114 +661,121 @@ const Dashboard = () => {
               />
             )}
 
-            {/* Sélecteur de comparaison manuelle */}
             <select
               value={compareMode}
               onChange={(e) => setCompareMode(e.target.value)}
-              className="pl-4 pr-10 py-2 border border-blue-300 dark:border-blue-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500"
+              className="min-h-[44px] pl-4 pr-10 py-2 border border-indigo-200 dark:border-indigo-800 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
               aria-label="Comparer à"
               title="Comparer à"
             >
               <option value="none">Aucune comparaison</option>
-              <option value="prev-week">Comparer à la semaine précédente</option>
-              <option value="prev-month">Comparer au mois précédent</option>
-              <option value="prev-year">Comparer à l’année précédente</option>
+              <option value="prev-week">Vs semaine préc.</option>
+              <option value="prev-month">Vs mois préc.</option>
+              <option value="prev-year">Vs année préc.</option>
             </select>
 
             {isAdmin && (
               <button
                 onClick={() => setShowExportMenu(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+                className="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
               >
-                📤 Exporter
+                <Download size={18} />
+                <span className="hidden sm:inline">Exporter</span>
               </button>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* ===== CARTES PRINCIPALES (condensées) ===== */}
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-          initial={{ opacity: 0, y: 18 }}
+        {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
+        <motion.section
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4"
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
+          transition={{ duration: 0.3 }}
+          aria-label="Indicateurs clés"
         >
           {[
             {
-              title: "Ventes Totales",
+              title: "Ventes totales",
               value: totalSales,
-              icon: <DollarSign />,
+              icon: <DollarSign size={22} />,
               trend: salesTrend,
               style: CARD_STYLES[0],
             },
             {
               title: "Encaissements",
               value: totalPaid,
-              icon: <Coins />,
-              trend: pct(totalPaid, totalSales), // ratio visuel
+              icon: <Coins size={22} />,
+              trend: pct(totalPaid, totalSales),
               style: CARD_STYLES[1],
             },
             {
               title: "Dépenses",
               value: totalExpenses,
-              icon: <TrendingDown />,
+              icon: <TrendingDown size={22} />,
               trend: expenseTrend,
               style: CARD_STYLES[2],
             },
             {
-              title: "Profit Net",
+              title: "Profit net",
               value: profit,
-              icon: <PieIcon />,
+              icon: <PieIcon size={22} />,
               trend: profitTrend,
               style: CARD_STYLES[3],
             },
           ].map((stat, i) => (
-            <motion.div
+            <motion.article
               key={i}
-              whileHover={{ scale: 1.02 }}
-              className={`p-5 rounded-3xl bg-gradient-to-br ${stat.style.bg} shadow-lg border ${stat.style.border} backdrop-blur-md`}
+              whileHover={{ scale: 1.01 }}
+              className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
             >
-              <div className="flex justify-between items-center">
-                <div className={`p-3 ${stat.style.iconWrap} rounded-xl`}>
-                  {stat.icon}
+              <div className="flex items-start justify-between gap-3">
+                <div className={`p-2.5 sm:p-3 ${stat.style.iconWrap} rounded-xl shrink-0`}>
+                  <span className={stat.style.text}>{stat.icon}</span>
                 </div>
+                <span
+                  className={`text-xs font-medium shrink-0 ${
+                    String(stat.trend).startsWith("+")
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {String(stat.trend).startsWith("+") ? "↑" : "↓"} {stat.trend}
+                </span>
               </div>
-              <h4 className="text-sm font-medium mt-3 text-gray-700 dark:text-gray-300">
+              <h2 className="text-sm font-medium mt-3 text-gray-700 dark:text-gray-300">
                 {stat.title}
-              </h4>
-              <p className={`text-2xl font-bold ${stat.style.text}`}>
-                {stat.value.toLocaleString("fr-FR")} CFA
+              </h2>
+              <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
+                {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
               </p>
-              <p
-                className={`mt-1 text-xs ${
-                  String(stat.trend).startsWith("+")
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-red-600 dark:text-red-400"
-                }`}
-              >
-                {String(stat.trend).startsWith("+") ? "📈" : "📉"} {stat.trend}
-              </p>
-            </motion.div>
+            </motion.article>
           ))}
-        </motion.div>
+        </motion.section>
 
-        {/* ===== GRAPHIQUE FINANCIER MIXTE (barres + lignes comparées) ===== */}
-        <div className="relative overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700">
-          <div className="absolute right-4 top-4 text-[11px] px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow">
-            Analyse comparée {compareMode !== "none" ? "activée" : "désactivée"}
+        {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
+        <section
+          className="relative overflow-hidden bg-white dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700"
+          aria-label="Analyse financière"
+        >
+          <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-indigo-600 text-white font-medium">
+            Comparaison {compareMode !== "none" ? "activée" : "désactivée"}
           </div>
 
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-base font-semibold">Analyse financière</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 pr-24 sm:pr-28">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Analyse financière
+            </h2>
             <button
+              type="button"
               onClick={() => handleOpenDayDetails(today)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all text-sm"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors"
             >
-              <CalendarDays size={16} /> Détails du jour
+              <CalendarDays size={18} /> Détails du jour
             </button>
           </div>
 
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedForChart}
@@ -856,11 +869,12 @@ const Dashboard = () => {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </section>
 
         {isAdmin && (
+        <AccordionSection title="📊 Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
-          className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border-0"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
@@ -868,8 +882,8 @@ const Dashboard = () => {
           {/* 🔹 En-tête + contrôles (période + switch lissage + export ALL) */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                📊 Statistiques des ventes
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 sr-only">
+                Contrôles statistiques
               </h2>
               <p className="text-gray-500 text-xs">
                 Tendance, encaissements, méthodes, statuts & top produits
@@ -1143,6 +1157,7 @@ const Dashboard = () => {
             </ul>
           </div>
         </motion.div>
+        </AccordionSection>
         )}
 
         {isAdmin && (

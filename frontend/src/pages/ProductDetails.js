@@ -12,13 +12,10 @@ import { productEditPath, productPath } from '../utils/paths';
 /* 🧩 UTILITAIRES DE FORMATTAGE */
 /* ===================================================== */
 const toNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
-const formatNumber = (v) => toNumber(v).toLocaleString('fr-FR');
 const formatCurrency = (v) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(
     toNumber(v)
   );
-const formatDecimal = (v, d = 2) =>
-  toNumber(v).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /* ===================================================== */
 /* 🧮 STRUCTURE DE BASE DES STATS */

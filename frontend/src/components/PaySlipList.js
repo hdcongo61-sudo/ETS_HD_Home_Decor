@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
   employeeBasePath,
-  employeePayrollPath,
   employeePayrollNewPath,
   employeePayrollPayslipEditPath,
   employeePayrollPayslipPrintPath,

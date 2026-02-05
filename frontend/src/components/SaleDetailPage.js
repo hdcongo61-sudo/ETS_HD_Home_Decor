@@ -365,15 +365,15 @@ const SaleDetailPage = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="flex justify-center items-center min-h-[16rem]">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-indigo-200 border-t-indigo-600" aria-hidden />
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 mx-4 border border-red-200">
+            <div className="p-4 mx-4 mt-6 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 border border-red-200 dark:border-red-800">
                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -383,7 +383,9 @@ const SaleDetailPage = () => {
     }
 
     if (!sale) {
-        return <div className="p-4">Vente non trouvée</div>;
+        return (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">Vente non trouvée</div>
+        );
     }
 
     const totalProfit = calculateTotalProfit();
@@ -403,204 +405,210 @@ const SaleDetailPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => navigate(`/sales`)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2 transition-colors"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Retour aux ventes
-                        </button>
-                    </div>
-                </div>
-
-                {/* Page Title */}
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="bg-blue-500 p-2 rounded-xl">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+            <div className="max-w-6xl mx-auto px-4 sm:px-5 md:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
+                {/* Back + Page title */}
+                <header className="flex flex-col gap-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/sales')}
+                        className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium text-sm w-fit min-h-[44px] sm:min-h-0 justify-center sm:justify-start focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-xl px-2 -mx-2"
+                    >
+                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
+                        Retour aux ventes
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <span className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </span>
+                        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Détails de la vente</h1>
                     </div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Détails de la Vente</h1>
-                </div>
+                </header>
 
-                {/* Message de notification */}
                 {message && (
-                    <div className={`p-4 rounded-xl flex items-center gap-3 ${message.includes('succès') || message.includes('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div
+                        role="alert"
+                        className={`p-4 rounded-xl flex items-center gap-3 ${message.includes('succès') || message.includes('✅') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}
+                    >
+                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {message.includes('succès') || message.includes('✅') ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             )}
                         </svg>
-                        {message}
+                        <span className="text-sm sm:text-base">{message}</span>
                     </div>
                 )}
 
-                {/* En-tête de la vente */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                        <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <h2 className="text-xl font-semibold text-gray-900">
-                                    Vente #{sale._id?.substring(18) || 'N/A'}
-                                </h2>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
-                                    {getStatusText(sale.status)}
-                                </span>
-                                {Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0 && (
-                                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                        Modifiée
+                {/* Sale header card */}
+                <section className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex flex-col gap-4 sm:gap-0 sm:flex-row sm:justify-between sm:items-start">
+                            <div>
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                                        Vente #{sale._id?.substring(18) || 'N/A'}
+                                    </h2>
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
+                                        {getStatusText(sale.status)}
                                     </span>
+                                    {Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0 && (
+                                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                            Modifiée
+                                        </span>
+                                    )}
+                                    {sale.status === 'completed' && (
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getDeliveryStatusClass(sale.deliveryStatus)}`}>
+                                            {getDeliveryStatusText(sale.deliveryStatus)}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 0 002 2z" />
+                                    </svg>
+                                    {sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {isAdmin && sale.status !== 'cancelled' && (
+                                    <Link
+                                        to={`/sales/${sale._id}/edit`}
+                                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Modifier
+                                    </Link>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                    disabled={sale.status === 'completed' || sale.status === 'cancelled'}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h6m-6 0H6" />
+                                    </svg>
+                                    Ajouter paiement
+                                </button>
+                                {(sale.status === 'pending' || sale.status === 'partially_paid') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowReminderModal(true)}
+                                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {sale.paymentReminder?.isSet ? 'Modifier rappel' : 'Définir rappel'}
+                                    </button>
                                 )}
                                 {sale.status === 'completed' && (
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDeliveryStatusClass(sale.deliveryStatus)}`}>
-                                        {getDeliveryStatusText(sale.deliveryStatus)}
-                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDeliveryModal(true)}
+                                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                        Statut livraison
+                                    </button>
+                                )}
+                                {sale.modificationHistory && sale.modificationHistory.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowHistoryModal(true)}
+                                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Historique
+                                    </button>
                                 )}
                             </div>
-                            <div className="flex items-center text-gray-500 text-sm">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 0 002 2z" />
-                                </svg>
-                                {sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            {isAdmin && sale.status !== 'cancelled' && (
-                                <Link
-                                    to={`/sales/${sale._id}/edit`}
-                                    className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl border border-gray-300 flex items-center gap-2 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Modifier
-                                </Link>
-                            )}
-                            <button
-                                onClick={() => setShowPaymentModal(true)}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-                                disabled={sale.status === 'completed' || sale.status === 'cancelled'}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h6m-6 0H6" />
-                                </svg>
-                                Ajouter Paiement
-                            </button>
-                            {(sale.status === 'pending' || sale.status === 'partially_paid') && (
-                                <button
-                                    onClick={() => setShowReminderModal(true)}
-                                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    {sale.paymentReminder?.isSet ? 'Modifier Rappel' : 'Définir Rappel'}
-                                </button>
-                            )}
-                            {sale.status === 'completed' && (
-                                <button
-                                    onClick={() => setShowDeliveryModal(true)}
-                                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                    Statut Livraison
-                                </button>
-                            )}
-                            {sale.modificationHistory && sale.modificationHistory.length > 0 && (
-                                <button
-                                    onClick={() => setShowHistoryModal(true)}
-                                    className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Historique
-                                </button>
-                            )}
                         </div>
                     </div>
 
                     {/* Payment Reminder Section */}
                     {sale.paymentReminder?.isSet && (
-                        <div className={`mb-6 p-4 rounded-xl border ${isReminderOverdue()
-                            ? 'bg-red-50 border-red-200'
+                        <div className={`mx-4 sm:mx-6 mb-6 p-4 rounded-xl border ${isReminderOverdue()
+                            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                             : sale.paymentReminder.status === 'sent'
-                                ? 'bg-green-50 border-green-200'
+                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                                 : isReminderDueToday()
-                                    ? 'bg-orange-50 border-orange-200'
-                                    : 'bg-blue-50 border-blue-200'
+                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                    : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
                             }`}>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-orange-100 rounded-lg">
-                                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 shrink-0">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-medium text-gray-900">Rappel de paiement</h4>
-                                        <p className="text-sm">
+                                    </span>
+                                    <div className="min-w-0">
+                                        <h4 className="font-medium text-gray-900 dark:text-white">Rappel de paiement</h4>
+                                        <p className="text-sm mt-0.5">
                                             {sale.paymentReminder.status === 'sent' ? (
-                                                <span className="text-green-600">
-                                                    ✅ Envoyé le {formatReminderDate(sale.paymentReminder.sentAt)}
+                                                <span className="text-green-600 dark:text-green-400">
+                                                    Envoyé le {formatReminderDate(sale.paymentReminder.sentAt)}
                                                 </span>
                                             ) : isReminderOverdue() ? (
-                                                <span className="text-red-600 font-medium">
-                                                    ⚠️ EN RETARD - {formatReminderDate(sale.paymentReminder.reminderDate)}
+                                                <span className="text-red-600 dark:text-red-400 font-medium">
+                                                    En retard – {formatReminderDate(sale.paymentReminder.reminderDate)}
                                                 </span>
                                             ) : isReminderDueToday() ? (
-                                                <span className="text-orange-600 font-medium">
-                                                    ⏰ AUJOURD'HUI - {formatReminderDate(sale.paymentReminder.reminderDate)}
+                                                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                                    Aujourd'hui – {formatReminderDate(sale.paymentReminder.reminderDate)}
                                                 </span>
                                             ) : (
-                                                <span className="text-blue-600">
-                                                    📅 Programmé pour {formatReminderDate(sale.paymentReminder.reminderDate)}
+                                                <span className="text-indigo-600 dark:text-indigo-400">
+                                                    Programmé pour {formatReminderDate(sale.paymentReminder.reminderDate)}
                                                 </span>
                                             )}
                                         </p>
                                         {sale.paymentReminder.reminderNote && (
-                                            <p className="text-sm text-gray-600 mt-1">
-                                                Note: {sale.paymentReminder.reminderNote}
-                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{sale.paymentReminder.reminderNote}</p>
                                         )}
                                     </div>
                                 </div>
-
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                     {sale.paymentReminder.status === 'pending' && (
                                         <button
+                                            type="button"
                                             onClick={handleSendReminder}
-                                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+                                            className="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
                                             title="Envoyer le rappel maintenant"
                                         >
                                             Envoyer
                                         </button>
                                     )}
                                     <button
+                                        type="button"
                                         onClick={() => setShowReminderModal(true)}
-                                        className="text-blue-600 hover:text-blue-800 p-1.5 transition-colors"
+                                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
                                         title="Modifier le rappel"
+                                        aria-label="Modifier le rappel"
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={handleDeleteReminder}
-                                        className="text-red-600 hover:text-red-800 p-1.5 transition-colors"
-                                        title='Supprimer le rappel'
+                                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-red-600 hover:text-red-700 dark:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                        title="Supprimer le rappel"
+                                        aria-label="Supprimer le rappel"
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -613,85 +621,79 @@ const SaleDetailPage = () => {
 
                     {/* Delivery Status Section */}
                     {sale.status === 'completed' && (
-                        <div className={`mb-6 p-4 rounded-xl border ${sale.deliveryStatus === 'delivered'
-                            ? 'bg-green-50 border-green-200'
+                        <div className={`mx-4 sm:mx-6 mb-6 p-4 rounded-xl border ${sale.deliveryStatus === 'delivered'
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                             : sale.deliveryStatus === 'not_delivered'
-                                ? 'bg-red-50 border-red-200'
-                                : 'bg-blue-50 border-blue-200'
+                                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                                : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
                             }`}>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-100 rounded-lg">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2M5 8a2 2 0 011-2h12a2 2 0 011 2m-2 6h.01M17 16h.01" />
                                         </svg>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-medium text-gray-900">Statut de livraison</h4>
-                                        <p className="text-sm">
+                                    </span>
+                                    <div className="min-w-0">
+                                        <h4 className="font-medium text-gray-900 dark:text-white">Statut de livraison</h4>
+                                        <p className="text-sm mt-0.5">
                                             {sale.deliveryStatus === 'delivered' ? (
-                                                <span className="text-green-600 font-medium">
-                                                    ✅ Livré le {sale.deliveryDate ? new Date(sale.deliveryDate).toLocaleDateString('fr-FR') : 'Date non spécifiée'}
+                                                <span className="text-green-600 dark:text-green-400 font-medium">
+                                                    Livré le {sale.deliveryDate ? new Date(sale.deliveryDate).toLocaleDateString('fr-FR') : '—'}
                                                 </span>
                                             ) : sale.deliveryStatus === 'not_delivered' ? (
-                                                <span className="text-red-600 font-medium">
-                                                    ❌ Non livré
-                                                </span>
+                                                <span className="text-red-600 dark:text-red-400 font-medium">Non livré</span>
                                             ) : (
-                                                <span className="text-blue-600">
-                                                    ⏳ En attente de livraison
-                                                </span>
+                                                <span className="text-indigo-600 dark:text-indigo-400">En attente de livraison</span>
                                             )}
                                         </p>
                                         {sale.deliveryNote && (
-                                            <p className="text-sm text-gray-600 mt-1">
-                                                Note: {sale.deliveryNote}
-                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{sale.deliveryNote}</p>
                                         )}
                                     </div>
                                 </div>
-
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setShowDeliveryModal(true)}
-                                        className="text-blue-600 hover:text-blue-800 p-1.5 transition-colors"
-                                        title="Modifier le statut de livraison"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeliveryModal(true)}
+                                    className="min-w-[44px] min-h-[44px] w-fit flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors px-3"
+                                    title="Modifier le statut de livraison"
+                                    aria-label="Modifier le statut de livraison"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span className="text-sm font-medium sm:hidden">Modifier</span>
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* Note Section */}
                     {sale.note && (
-                        <div className="mb-6">
-                            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <div className="bg-gray-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mx-4 sm:mx-6 mb-6">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700">
+                                    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                </div>
+                                </span>
                                 Note
                             </h3>
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                                <p className="text-gray-700 whitespace-pre-wrap">{sale.note}</p>
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                                <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{sale.note}</p>
                             </div>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 px-4 sm:px-6">
                         {/* Informations client */}
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <div className="bg-blue-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
+                                    <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
-                                </div>
+                                </span>
                                 Client
                             </h3>
 
@@ -742,13 +744,13 @@ const SaleDetailPage = () => {
                         </div>
 
                         {/* Informations vendeur */}
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <div className="bg-green-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="CurrentColor" viewBox="0 0 24 24">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                                    <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
-                                </div>
+                                </span>
                                 Vendeur
                             </h3>
 
@@ -767,13 +769,13 @@ const SaleDetailPage = () => {
                         </div>
 
                         {/* Résumé financier */}
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <div className="bg-purple-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40">
+                                    <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                </div>
+                                </span>
                                 Résumé Financier
                             </h3>
 
@@ -797,13 +799,13 @@ const SaleDetailPage = () => {
 
                         {/* Section Bénéfices */}
                         {isAdmin && (
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <div className="bg-green-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40">
+                                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                </div>
+                                </span>
                                 Bénéfices
                             </h3>
 
@@ -832,14 +834,14 @@ const SaleDetailPage = () => {
                     </div>
 
                     {/* Produits vendus avec bénéfices */}
-                    <div className="mb-6">
+                    <div className="mb-6 px-4 sm:px-6">
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <div className="bg-yellow-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                                    <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                     </svg>
-                                </div>
+                                </span>
                                 {isAdmin ? 'Produits vendus avec bénéfices' : 'Produits vendus'}
                             </h3>
                             <span className="text-sm text-gray-500">{sale.products.length} {sale.products.length > 1 ? 'lignes' : 'ligne'}</span>
@@ -1111,7 +1113,7 @@ const SaleDetailPage = () => {
                             </div>
                         )}
                     </div>
-                </div>
+                </section>
 
                 {/* Modal de paiement */}
                 <PaymentModal
@@ -1123,79 +1125,72 @@ const SaleDetailPage = () => {
 
                 {/* Modal de rappel */}
                 {showReminderModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <div className="bg-orange-100 p-1.5 rounded-lg">
-                                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowReminderModal(false)}
+                    >
+                        <div
+                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                    </div>
+                                    </span>
                                     {sale.paymentReminder?.isSet ? 'Modifier le rappel' : 'Définir un rappel'}
                                 </h3>
                                 <button
+                                    type="button"
                                     onClick={() => setShowReminderModal(false)}
-                                    className="text-gray-500 hover:text-gray-700 p-1 rounded-full transition-colors"
+                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    aria-label="Fermer"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-
-                            <div className="space-y-4">
+                            <div className="p-4 sm:p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Date et heure du rappel
-                                    </label>
+                                    <label htmlFor="reminder-datetime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date et heure du rappel</label>
                                     <input
+                                        id="reminder-datetime"
                                         type="datetime-local"
                                         value={reminderDate}
                                         onChange={(e) => setReminderDate(e.target.value)}
                                         min={new Date().toISOString().slice(0, 16)}
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Note du rappel (optionnelle)
-                                    </label>
+                                    <label htmlFor="reminder-note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note du rappel (optionnelle)</label>
                                     <textarea
+                                        id="reminder-note"
                                         value={reminderNote}
                                         onChange={(e) => setReminderNote(e.target.value)}
                                         placeholder="Message pour le rappel..."
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        rows="3"
-                                        maxLength="200"
+                                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y"
+                                        rows={3}
+                                        maxLength={200}
                                     />
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        {reminderNote.length}/200 caractères
-                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{reminderNote.length}/200 caractères</p>
                                 </div>
-
-                                <div className="bg-blue-50 p-3 rounded-xl border border-blue-200">
-                                    <p className="text-sm text-blue-700">
-                                        Ce rappel sera affiché sur le tableau de bord et pourra être utilisé pour envoyer
-                                        des notifications de suivi au client.
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                                        Ce rappel sera affiché sur le tableau de bord et pourra être utilisé pour envoyer des notifications de suivi au client.
                                     </p>
                                 </div>
-
-                                <div className="flex justify-end gap-3 mt-6">
-                                    <button
-                                        onClick={() => setShowReminderModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                                    >
-                                        Annuler
-                                    </button>
-                                    <button
-                                        onClick={handleSetReminder}
-                                        className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors"
-                                    >
-                                        {sale.paymentReminder?.isSet ? 'Modifier' : 'Définir'}
-                                    </button>
-                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30">
+                                <button type="button" onClick={() => setShowReminderModal(false)} className="min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    Annuler
+                                </button>
+                                <button type="button" onClick={handleSetReminder} className="min-h-[44px] px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium">
+                                    {sale.paymentReminder?.isSet ? 'Modifier' : 'Définir'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1203,74 +1198,69 @@ const SaleDetailPage = () => {
 
                 {/* Modal de statut de livraison */}
                 {showDeliveryModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200 shadow-xl">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <div className="bg-blue-100 p-1.5 rounded-lg">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <div
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowDeliveryModal(false)}
+                    >
+                        <div
+                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2M5 8a2 2 0 011-2h12a2 2 0 011 2m-2 6h.01M17 16h.01" />
                                         </svg>
-                                    </div>
+                                    </span>
                                     Statut de livraison
                                 </h3>
                                 <button
+                                    type="button"
                                     onClick={() => setShowDeliveryModal(false)}
-                                    className="text-gray-500 hover:text-gray-700 p-1 rounded-full transition-colors"
+                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    aria-label="Fermer"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-
-                            <div className="space-y-4">
+                            <div className="p-4 sm:p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Statut de livraison
-                                    </label>
+                                    <label htmlFor="delivery-status-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statut de livraison</label>
                                     <select
+                                        id="delivery-status-select"
                                         value={deliveryStatus}
                                         onChange={(e) => setDeliveryStatus(e.target.value)}
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     >
                                         <option value="pending">En attente</option>
                                         <option value="delivered">Livré</option>
                                         <option value="not_delivered">Non livré</option>
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Note de livraison (optionnelle)
-                                    </label>
+                                    <label htmlFor="delivery-note-ta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note de livraison (optionnelle)</label>
                                     <textarea
+                                        id="delivery-note-ta"
                                         value={deliveryNote}
                                         onChange={(e) => setDeliveryNote(e.target.value)}
                                         placeholder="Notes sur la livraison..."
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                        rows="3"
-                                        maxLength="500"
+                                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y"
+                                        rows={3}
+                                        maxLength={500}
                                     />
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        {deliveryNote.length}/500 caractères
-                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{deliveryNote.length}/500 caractères</p>
                                 </div>
-
-                                <div className="flex justify-end gap-3 mt-6">
-                                    <button
-                                        onClick={() => setShowDeliveryModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                                    >
-                                        Annuler
-                                    </button>
-                                    <button
-                                        onClick={handleUpdateDelivery}
-                                        className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
-                                    >
-                                        Enregistrer
-                                    </button>
-                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30">
+                                <button type="button" onClick={() => setShowDeliveryModal(false)} className="min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    Annuler
+                                </button>
+                                <button type="button" onClick={handleUpdateDelivery} className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">
+                                    Enregistrer
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1278,28 +1268,36 @@ const SaleDetailPage = () => {
 
                 {/* Modal d'historique des modifications */}
                 {showHistoryModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-4xl border border-gray-200 shadow-xl">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <div className="bg-gray-100 p-1.5 rounded-lg">
-                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        onClick={() => setShowHistoryModal(false)}
+                    >
+                        <div
+                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                    </div>
+                                    </span>
                                     Historique des modifications
                                 </h3>
                                 <button
+                                    type="button"
                                     onClick={() => setShowHistoryModal(false)}
-                                    className="text-gray-500 hover:text-gray-700 p-1 rounded-full transition-colors"
+                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    aria-label="Fermer"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
                                 {sale.modificationHistory && sale.modificationHistory.length > 0 ? (
                                     <div className="overflow-y-auto max-h-96">
                                         <table className="min-w-full divide-y divide-gray-200">
@@ -1393,18 +1391,18 @@ const SaleDetailPage = () => {
                                         <svg className="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                         </svg>
-                                        <p className="mt-4 text-gray-500 text-sm">Aucune modification enregistrée pour cette vente</p>
+                                        <p className="mt-4 text-gray-500 dark:text-gray-400 text-sm">Aucune modification enregistrée pour cette vente</p>
                                     </div>
                                 )}
-
-                                <div className="flex justify-end mt-6">
-                                    <button
-                                        onClick={() => setShowHistoryModal(false)}
-                                        className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
-                                    >
-                                        Fermer
-                                    </button>
-                                </div>
+                            </div>
+                            <div className="flex justify-end px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHistoryModal(false)}
+                                    className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium"
+                                >
+                                    Fermer
+                                </button>
                             </div>
                         </div>
                     </div>

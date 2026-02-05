@@ -1,0 +1,81 @@
+{
+  "$schema": "./modules-manifest.schema.json",
+  "version": "1.0.0",
+  "description": "Business modules for ETS HD SaaS. Used for navigation, permissions, and future micro-frontends.",
+  "modules": [
+    {
+      "id": "sales",
+      "label": "Ventes",
+      "path": "/sales",
+      "icon": "shopping-cart",
+      "order": 1,
+      "children": [
+        { "id": "sales-list", "label": "Toutes les ventes", "path": "/sales" },
+        { "id": "sales-archive", "label": "Archives", "path": "/sales/all" },
+        { "id": "sales-partially-paid", "label": "Paiements partiels", "path": "/sales/partially-paid" },
+        { "id": "sales-deleted", "label": "Ventes supprimées", "path": "/sales/deleted", "adminOnly": true }
+      ]
+    },
+    {
+      "id": "bank",
+      "label": "Caisse",
+      "path": "/bank",
+      "icon": "bank",
+      "order": 2
+    },
+    {
+      "id": "clients",
+      "label": "Clients",
+      "path": "/clients",
+      "icon": "users",
+      "order": 3,
+      "children": [
+        { "id": "clients-list", "label": "Liste", "path": "/clients" },
+        { "id": "clients-dashboard", "label": "Tableau de bord", "path": "/clients/dashboard" }
+      ]
+    },
+    {
+      "id": "products",
+      "label": "Produits",
+      "path": "/products",
+      "icon": "package",
+      "order": 4,
+      "children": [
+        { "id": "products-list", "label": "Catalogue", "path": "/products" },
+        { "id": "product-dashboard", "label": "Dashboard", "path": "/product-dashboard", "adminOnly": true },
+        { "id": "never-sold", "label": "Jamais vendus", "path": "/products/never-sold", "adminOnly": true },
+        { "id": "top-sellers", "label": "Meilleures ventes", "path": "/products/top-sellers", "adminOnly": true },
+        { "id": "critical-stock", "label": "Stock critique", "path": "/products/critical", "adminOnly": true },
+        { "id": "out-of-stock", "label": "Rupture", "path": "/products/out-of-stock", "adminOnly": true }
+      ]
+    },
+    {
+      "id": "employees",
+      "label": "Employés",
+      "path": "/employees",
+      "icon": "user-group",
+      "order": 5
+    },
+    {
+      "id": "expenses",
+      "label": "Dépenses",
+      "path": "/expenses",
+      "icon": "currency",
+      "order": 6,
+      "adminOnly": true
+    },
+    {
+      "id": "admin",
+      "label": "Administration",
+      "path": "/admin",
+      "icon": "cog",
+      "order": 99,
+      "adminOnly": true,
+      "children": [
+        { "id": "users", "label": "Utilisateurs", "path": "/admin/users" },
+        { "id": "users-stats", "label": "Stats utilisateurs", "path": "/users/stats" },
+        { "id": "login-stats", "label": "Historique connexions", "path": "/users/login-stats" }
+      ]
+    }
+  ]
+}

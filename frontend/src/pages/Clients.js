@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -35,9 +36,11 @@ const Clients = () => {
   const navigate = useNavigate();
 
   const printRef = useRef();
+  const tableRef = useRef(null);
 
   const [clients, setClients] = useState([]);
   const [stats, setStats] = useState(null);
+  // eslint-disable-next-line no-unused-vars -- setFilters reserved for future filter UI
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -46,6 +49,7 @@ const Clients = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line no-unused-vars -- filtering state for applyFilters
   const [filtering, setFiltering] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -88,7 +92,8 @@ const Clients = () => {
     }
   }, [searchTerm]);
 
-  // --- Apply filters ---
+  // --- Apply filters --- (kept for future use / UI)
+  // eslint-disable-next-line no-unused-vars
   const applyFilters = async () => {
     try {
       setFiltering(true);
@@ -195,92 +200,40 @@ const Clients = () => {
     }
   };
 
+  useResponsiveTable(tableRef, [clients]);
+
   const renderClientList = () => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+    <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
+      <h2 className="sr-only">Liste des clients</h2>
       {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
+        <div className="flex justify-center py-12 min-h-[200px] items-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-200 border-t-blue-600" aria-hidden />
         </div>
       ) : clients.length > 0 ? (
         <>
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium">Nom</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium">Email</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium">Genre</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium">Téléphone</th>
-                  {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {clients.map((c) => (
-                  <tr key={c._id} className="hover:bg-gray-50">
-                    <td
-                      className="px-4 py-3 cursor-pointer text-blue-600 hover:underline"
-                      onClick={() => openClientDetails(c)}
-                    >
-                      {c.name}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{c.email || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatGender(c.gender)}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.phone || '—'}</td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingClient(c);
-                              setFormData({
-                                name: c.name,
-                                email: c.email,
-                                phone: c.phone,
-                                address: c.address,
-                                gender: c.gender || 'other',
-                              });
-                              setIsFormOpen(true);
-                            }}
-                            className="px-2 py-1 text-sm bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c._id)}
-                            className="px-2 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="sm:hidden space-y-4">
+          {/* Mobile: card list (touch-friendly, no table) */}
+          <div className="md:hidden space-y-3">
             {clients.map((c) => (
-              <div key={c._id} className="border border-gray-200 rounded-xl p-4 shadow-sm">
+              <article
+                key={c._id}
+                className="rounded-xl border border-gray-200 bg-gray-50/50 shadow-sm overflow-hidden active:bg-gray-100 transition-colors"
+              >
                 <button
+                  type="button"
+                  className="w-full text-left p-4 min-h-[44px] flex flex-col gap-1 touch-manipulation"
                   onClick={() => openClientDetails(c)}
-                  className="text-left text-lg font-semibold text-blue-600 hover:underline w-full"
                 >
-                  {c.name}
+                  <span className="font-semibold text-gray-900 text-base">{c.name}</span>
+                  <span className="text-sm text-gray-600 truncate">{c.email || '—'}</span>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-500 mt-0.5">
+                    <span>{formatGender(c.gender)}</span>
+                    <span>{c.phone || '—'}</span>
+                  </div>
                 </button>
-                <p className="text-sm text-gray-600 mt-1">
-                  Email : <span className="text-gray-800">{c.email || '—'}</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  Téléphone : <span className="text-gray-800">{c.phone || '—'}</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  Genre : <span className="text-gray-800">{formatGender(c.gender)}</span>
-                </p>
                 {isAdmin && (
-                  <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                  <div className="flex border-t border-gray-200 bg-white px-4 py-3 gap-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingClient(c);
                         setFormData({
@@ -292,26 +245,94 @@ const Clients = () => {
                         });
                         setIsFormOpen(true);
                       }}
-                      className="w-full px-3 py-2 text-sm bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                      className="flex-1 min-h-[44px] py-2.5 text-sm font-medium text-amber-800 bg-amber-50 rounded-xl active:bg-amber-100 touch-manipulation"
                     >
                       Modifier
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDelete(c._id)}
-                      className="w-full px-3 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      className="flex-1 min-h-[44px] py-2.5 text-sm font-medium text-red-700 bg-red-50 rounded-xl active:bg-red-100 touch-manipulation"
                     >
                       Supprimer
                     </button>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto w-full min-w-0">
+            <table ref={tableRef} className="responsive-table w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Nom</th>
+                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Email</th>
+                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Genre</th>
+                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Téléphone</th>
+                  {isAdmin && <th className="px-4 py-3 text-right text-gray-700 font-medium text-sm">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {clients.map((c) => (
+                  <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                    <td
+                      className="px-4 py-3 cursor-pointer text-blue-600 hover:underline font-medium"
+                      onClick={() => openClientDetails(c)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openClientDetails(c); } }}
+                    >
+                      {c.name}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{c.email || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatGender(c.gender)}</td>
+                    <td className="px-4 py-3 text-gray-600">{c.phone || '—'}</td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingClient(c);
+                              setFormData({
+                                name: c.name,
+                                email: c.email,
+                                phone: c.phone,
+                                address: c.address,
+                                gender: c.gender || 'other',
+                              });
+                              setIsFormOpen(true);
+                            }}
+                            className="px-3 py-2 text-sm bg-amber-50 text-amber-800 rounded-lg hover:bg-amber-100 font-medium"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
+                            className="px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       ) : (
-        <div className="text-center py-10 text-gray-500">Aucun client trouvé</div>
+        <div className="text-center py-12 px-4 text-gray-500">
+          <p className="text-base">Aucun client trouvé</p>
+          <p className="text-sm mt-1">Utilisez la recherche ou ajoutez un nouveau client.</p>
+        </div>
       )}
-    </div>
+    </section>
   );
 
   // --- Export to PDF (client-side capture) ---
@@ -366,261 +387,269 @@ const Clients = () => {
     : [];
   const totalGenderClients = genderStats.reduce((acc, item) => acc + (item.count || 0), 0);
 
-  // --- UI ---
+  // --- UI (mobile-first) ---
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900 flex items-center gap-2">
-              <div className="bg-blue-500 p-2 rounded-xl">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 md:p-6">
+      <Toaster position="top-center" />
+      <div className="max-w-7xl mx-auto space-y-5 md:space-y-8">
+        {/* Header: compact on mobile */}
+        <header className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2 sm:text-2xl md:text-3xl">
+              <div className="bg-blue-500 p-1.5 rounded-lg sm:p-2 sm:rounded-xl shrink-0">
+                <svg className="w-5 h-5 text-white sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              Gestion des Clients
+              <span className="truncate">Clients</span>
             </h1>
-            <p className="text-gray-600 mt-1">Recherchez, filtrez et gérez vos clients.</p>
+            <p className="text-sm text-gray-500 mt-0.5 sm:mt-1">Recherchez et gérez vos clients</p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full md:w-auto">
+          <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:w-auto">
             <button
               onClick={() => {
-              setIsFormOpen(true);
-              setEditingClient(null);
-              setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
-            }}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                setIsFormOpen(true);
+                setEditingClient(null);
+                setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
+              }}
+              className="min-h-[44px] w-full sm:w-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-4 py-3 rounded-xl touch-manipulation sm:py-2"
             >
-              + Nouveau Client
+              + Nouveau client
             </button>
             {isAdmin && (
               <>
                 <button
                   onClick={handleExportPdf}
-                  className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg shadow hover:opacity-90 transition"
+                  className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 active:bg-gray-100 font-medium touch-manipulation sm:py-2"
                 >
                   Exporter PDF
                 </button>
                 <Link
                   to="/clients/dashboard"
-                  className="w-full sm:w-auto text-center px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow hover:opacity-90 transition"
+                  className="min-h-[44px] w-full sm:w-auto flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:opacity-95 active:opacity-90 touch-manipulation sm:py-2"
                 >
-                  Voir le Tableau de Bord
+                  Tableau de bord
                 </Link>
               </>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* Search bar */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
+        {/* Stats sections (admin only) — before search bar */}
+        {isAdmin && stats && (
+          <div ref={printRef} className="space-y-5 md:space-y-8">
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+              {[
+                { label: 'Total clients', value: stats.totalClients },
+                { label: 'Achats cumulés', value: formatCurrency(stats.totalSpent) },
+                { label: 'Dépense moy.', value: formatCurrency(stats.avgSpent) },
+                { label: 'Nouveaux (mois)', value: stats.newThisMonth },
+              ].map((stat, i) => (
+                <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm md:p-4">
+                  <p className="text-xs text-gray-500 truncate md:text-sm">{stat.label}</p>
+                  <p className="text-lg font-semibold text-gray-900 mt-0.5 truncate md:text-2xl md:mt-1">{String(stat.value)}</p>
+                </div>
+              ))}
+            </section>
+
+            {stats.topClients?.length > 0 && (
+              <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
+                <h2 className="text-base font-semibold text-gray-800 mb-3 md:text-lg md:mb-4">Top 5 clients</h2>
+                <div className="h-56 sm:h-64 md:h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={stats.topClients} dataKey="totalSpent" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                        {stats.topClients.map((entry, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v) => `${Number(v).toLocaleString('fr-FR')} CFA`} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 space-y-2 md:mt-6">
+                  {stats.topClients.map((client, index) => (
+                    <Link
+                      key={`${client.clientId || client._id || index}-link`}
+                      to={clientPath({ _id: client.clientId || client._id, slug: client.slug })}
+                      className="flex items-center justify-between min-h-[44px] px-3 py-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 active:bg-blue-100 transition touch-manipulation"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 shrink-0">#{index + 1}</span>
+                        <span
+                          className={`font-semibold truncate ${
+                            index === 0 ? 'text-emerald-600' : index === 1 ? 'text-indigo-600' : index === 2 ? 'text-amber-600' : 'text-gray-800'
+                          }`}
+                        >
+                          {client.name}
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-600 shrink-0 ml-2">{client.totalSpent?.toLocaleString('fr-FR')} CFA</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {genderStats.length > 0 && (
+              <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 md:text-sm">Répartition par genre</p>
+                    <h3 className="text-lg font-semibold text-gray-900 mt-0.5 md:text-2xl md:mt-1">
+                      {totalGenderClients} client{totalGenderClients > 1 ? 's' : ''}
+                    </h3>
+                    <p className="text-xs text-gray-600 truncate md:text-sm">
+                      {genderStats.map((entry) => formatGender(entry.gender)).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="w-28 h-28 shrink-0 md:w-40 md:h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={genderStats}
+                          dataKey="count"
+                          nameKey="gender"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={24}
+                          outerRadius={40}
+                          paddingAngle={3}
+                        >
+                          {genderStats.map((entry) => (
+                            <Cell key={entry.gender} fill={getGenderColor(entry.gender)} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value} clients`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 md:gap-3 md:mt-6">
+                  {genderStats.map((entry) => (
+                    <div
+                      key={entry.gender}
+                      className="flex items-center justify-between min-h-[44px] border border-gray-100 rounded-xl px-3 py-2.5 md:px-4 md:py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-500 md:text-sm">{formatGender(entry.gender)}</p>
+                        <p className="text-base font-semibold text-gray-900 md:text-lg">{entry.count} clients</p>
+                      </div>
+                      <span className="text-xs text-gray-600 shrink-0 md:text-sm">{formatPercentage(entry.percentage)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* Search: full width, touch-friendly */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <input
             type="text"
             placeholder="Rechercher un client..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:flex-1 border border-gray-300 rounded-lg px-3 py-2"
+            className="w-full min-h-[44px] sm:min-h-0 py-3 sm:py-2 px-4 border border-gray-300 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
           />
           <button
             onClick={() => fetchClients()}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            className="min-h-[44px] w-full sm:w-auto py-3 sm:py-2 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl touch-manipulation"
           >
             Rechercher
           </button>
         </div>
 
-        {/* Stats */}
-        {isAdmin ? (
-          stats && (
-            <div ref={printRef} className="space-y-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Total Clients', value: stats.totalClients },
-                  { label: 'Achats Cumulés', value: formatCurrency(stats.totalSpent) },
-                  { label: 'Dépense Moyenne', value: formatCurrency(stats.avgSpent) },
-                  { label: 'Nouveaux (mois)', value: stats.newThisMonth },
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white border rounded-xl p-4 text-center shadow-sm">
-                    <p className="text-sm text-gray-500">{stat.label}</p>
-                    <h3 className="text-2xl font-semibold text-gray-900 mt-1">{stat.value}</h3>
-                  </div>
-                ))}
-              </div>
+        {/* Client list */}
+        <div className="space-y-5 md:space-y-8">
+          {renderClientList()}
+        </div>
 
-              {stats.topClients?.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Top 5 Clients</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie data={stats.topClients} dataKey="totalSpent" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                        {stats.topClients.map((entry, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-6 space-y-2">
-                    {stats.topClients.map((client, index) => (
-                      <Link
-                        key={`${client.clientId || client._id || index}-link`}
-                        to={clientPath({ _id: client.clientId || client._id, slug: client.slug })}
-                        className="flex items-center justify-between px-4 py-2 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
-                          <span
-                            className={`font-semibold ${
-                              index === 0
-                                ? 'text-emerald-600'
-                                : index === 1
-                                ? 'text-indigo-600'
-                                : index === 2
-                                ? 'text-amber-600'
-                                : 'text-gray-800'
-                            }`}
-                          >
-                            {client.name}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-600">
-                          {client.totalSpent?.toLocaleString('fr-FR')} CFA
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {genderStats.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                    <div>
-                      <p className="text-sm text-gray-500">Répartition par genre</p>
-                      <h3 className="text-2xl font-semibold text-gray-900 mt-1">
-                        {totalGenderClients} client{totalGenderClients > 1 ? 's' : ''}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {genderStats.map((entry) => formatGender(entry.gender)).join(' · ')}
-                      </p>
-                    </div>
-                    <div className="w-32 h-32 md:w-40 md:h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={genderStats}
-                            dataKey="count"
-                            nameKey="gender"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={30}
-                            outerRadius={50}
-                            paddingAngle={3}
-                          >
-                            {genderStats.map((entry) => (
-                              <Cell key={entry.gender} fill={getGenderColor(entry.gender)} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => `${value} clients`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    {genderStats.map((entry) => (
-                      <div
-                        key={entry.gender}
-                        className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"
-                      >
-                        <div>
-                          <p className="text-sm text-gray-500">{formatGender(entry.gender)}</p>
-                          <p className="text-lg font-semibold text-gray-900">{entry.count} clients</p>
-                        </div>
-                        <span className="text-sm text-gray-600">{formatPercentage(entry.percentage)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {renderClientList()}
-            </div>
-          )
-        ) : (
-          <div className="space-y-8">{renderClientList()}</div>
-        )}
-
-        {/* ✅ Animated Modal Form */}
+        {/* Modal: mobile-first form */}
         <Modal
           show={isFormOpen}
           onClose={() => {
             setIsFormOpen(false);
             setEditingClient(null);
           }}
-          title={editingClient ? 'Modifier Client' : 'Nouveau Client'}
+          title={editingClient ? 'Modifier le client' : 'Nouveau client'}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Nom"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              placeholder="Téléphone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              placeholder="Adresse"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-            />
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {GENDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <label className="block">
+              <span className="sr-only">Nom</span>
+              <input
+                type="text"
+                placeholder="Nom"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Email</span>
+              <input
+                type="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Téléphone</span>
+              <input
+                type="text"
+                inputMode="tel"
+                placeholder="Téléphone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Adresse</span>
+              <input
+                type="text"
+                placeholder="Adresse"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Genre</span>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                required
+                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white touch-manipulation"
+              >
+                {GENDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => {
                   setIsFormOpen(false);
                   setEditingClient(null);
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 active:bg-gray-300 font-medium touch-manipulation"
               >
                 Annuler
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white rounded-lg"
+                className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium rounded-xl touch-manipulation"
               >
                 {editingClient ? 'Mettre à jour' : 'Enregistrer'}
               </button>
@@ -632,14 +661,12 @@ const Clients = () => {
   );
 };
 
-/* ===================================================== */
-/* 🪟 MODAL ANIMÉ (Framer Motion) */
-/* ===================================================== */
+/* Modal: mobile-first (full height on small screens, centered on desktop) */
 const Modal = ({ show, onClose, title, children }) => (
   <AnimatePresence>
     {show && (
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -647,30 +674,26 @@ const Modal = ({ show, onClose, title, children }) => (
       >
         <motion.div
           onClick={(e) => e.stopPropagation()}
-          initial={{
-            opacity: 0,
-            scale: window.innerWidth < 768 ? 1 : 0.9,
-            y: window.innerWidth < 768 ? 40 : 0,
-          }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{
-            opacity: 0,
-            scale: window.innerWidth < 768 ? 1 : 0.9,
-            y: window.innerWidth < 768 ? 40 : 0,
-          }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="bg-white w-full max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md sm:max-h-[85vh]"
         >
-          <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <div className="sticky top-0 bg-white flex justify-between items-center px-4 py-3 border-b border-gray-200 sm:px-6 sm:py-4 z-10">
+            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">{title}</h2>
             <button
+              type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition text-2xl leading-none"
+              aria-label="Fermer"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-500 hover:text-gray-700 active:text-gray-900 rounded-xl touch-manipulation"
             >
-              &times;
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
-          <div className="p-6">{children}</div>
+          <div className="p-4 pb-8 sm:p-6">{children}</div>
         </motion.div>
       </motion.div>
     )}

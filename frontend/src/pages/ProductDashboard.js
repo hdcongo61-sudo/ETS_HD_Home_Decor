@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { motion } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -19,6 +20,10 @@ import {
 
 const ProductDashboard = () => {
   const navigate = useNavigate();
+  const topSellingTableRef = useRef(null);
+  const supplierTableRef = useRef(null);
+  const containerTableRef = useRef(null);
+  const warehouseTableRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -110,6 +115,11 @@ const ProductDashboard = () => {
     saveAs(blob, `Statistiques_Fournisseurs_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Export Excel généré avec succès 📊');
   };
+
+  useResponsiveTable(topSellingTableRef, [stats.topSellingProducts]);
+  useResponsiveTable(supplierTableRef, [stats.supplierStats]);
+  useResponsiveTable(containerTableRef, [stats.containerStats]);
+  useResponsiveTable(warehouseTableRef, [stats.warehouseStats]);
 
   if (loading)
     return (
@@ -231,8 +241,8 @@ const ProductDashboard = () => {
         transition={{ duration: 0.6 }}
       >
         <h2 className="text-xl font-bold mb-4 text-gray-700">Top Produits Vendus</h2>
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
             <thead className="bg-indigo-100 text-indigo-800 uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Produit</th>
@@ -254,33 +264,6 @@ const ProductDashboard = () => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="sm:hidden space-y-3">
-          {stats.topSellingProducts.slice(0, 5).map((p) => (
-            <div key={p._id} className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/40">
-              <div className="flex justify-between items-center">
-                <p className="font-semibold text-gray-900">{p.name}</p>
-                <span className="text-xs text-gray-500">{p.category}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm mt-3">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">Quantité</p>
-                  <p className="font-semibold text-gray-900">{p.sold}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">Revenu</p>
-                  <p className="font-semibold text-green-600">
-                    {p.revenue.toLocaleString()} CFA
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">Marge</p>
-                  <p className="font-semibold text-indigo-600">{p.margin}%</p>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </motion.div>
 
@@ -351,8 +334,8 @@ const ProductDashboard = () => {
           </div>
         </div>
 
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table ref={supplierTableRef} className="responsive-table min-w-full text-left text-sm">
             <thead className="bg-purple-100 text-purple-800 uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Fournisseur</th>
@@ -397,61 +380,6 @@ const ProductDashboard = () => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="sm:hidden space-y-4">
-          {stats.supplierStats.slice(0, 10).map((s, index) => (
-            <div key={index} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/50">
-              <div className="flex justify-between items-center mb-2">
-                <Link
-                  to={`/suppliers/${encodeURIComponent(
-                    s.supplierName || 'Inconnu'
-                  )}`}
-                  className="font-semibold text-gray-900 hover:underline"
-                >
-                  {s.supplierName}
-                </Link>
-                <span className="text-xs text-gray-500">#{index + 1}</span>
-              </div>
-              <div className="text-sm text-gray-600 mb-2">
-                Téléphone : {s.supplierPhone || '—'}
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500">Produits</p>
-                  <p className="font-semibold text-gray-900">{s.totalProducts}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock (CFA)</p>
-                  <p className="font-semibold text-gray-900">{s.totalStockValue.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Revenu</p>
-                  <p className="font-semibold text-green-600">
-                    {Number(s.totalRevenue || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Profit</p>
-                  <p className="font-semibold text-indigo-600">
-                    {Number(s.totalProfit || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock critique</p>
-                  <p className="font-semibold text-yellow-600">
-                    {Number(s.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Ruptures</p>
-                  <p className="font-semibold text-red-600">
-                    {Number(s.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </motion.div>
 
@@ -505,8 +433,8 @@ const ProductDashboard = () => {
           </div>
         </div>
 
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table ref={containerTableRef} className="responsive-table min-w-full text-left text-sm">
             <thead className="bg-emerald-100 text-emerald-800 uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Conteneur</th>
@@ -542,53 +470,6 @@ const ProductDashboard = () => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="sm:hidden space-y-4">
-          {stats.containerStats.slice(0, 10).map((c, index) => (
-            <div key={index} className="border border-emerald-100 rounded-2xl p-4 bg-emerald-50/50">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-gray-900">{c.containerName}</span>
-                <span className="text-xs text-gray-500">#{index + 1}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500">Produits</p>
-                  <p className="font-semibold text-gray-900">{c.totalProducts}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock (CFA)</p>
-                  <p className="font-semibold text-gray-900">
-                    {Number(c.totalStockValue || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Revenu</p>
-                  <p className="font-semibold text-emerald-700">
-                    {Number(c.totalRevenue || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Profit</p>
-                  <p className="font-semibold text-indigo-600">
-                    {Number(c.totalProfit || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock critique</p>
-                  <p className="font-semibold text-yellow-600">
-                    {Number(c.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Ruptures</p>
-                  <p className="font-semibold text-red-600">
-                    {Number(c.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </motion.div>
 
@@ -650,8 +531,8 @@ const ProductDashboard = () => {
           </div>
         </div>
 
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table ref={warehouseTableRef} className="responsive-table min-w-full text-left text-sm">
             <thead className="bg-sky-100 text-sky-800 uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Entrepot</th>
@@ -687,53 +568,6 @@ const ProductDashboard = () => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="sm:hidden space-y-4">
-          {stats.warehouseStats.slice(0, 10).map((w, index) => (
-            <div key={index} className="border border-sky-100 rounded-2xl p-4 bg-sky-50/50">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-gray-900">{w.warehouseName}</span>
-                <span className="text-xs text-gray-500">#{index + 1}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500">Produits</p>
-                  <p className="font-semibold text-gray-900">{w.totalProducts}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock (CFA)</p>
-                  <p className="font-semibold text-gray-900">
-                    {Number(w.totalStockValue || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Revenu</p>
-                  <p className="font-semibold text-sky-700">
-                    {Number(w.totalRevenue || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Profit</p>
-                  <p className="font-semibold text-emerald-700">
-                    {Number(w.totalProfit || 0).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Stock critique</p>
-                  <p className="font-semibold text-yellow-600">
-                    {Number(w.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Ruptures</p>
-                  <p className="font-semibold text-red-600">
-                    {Number(w.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </motion.div>
     </motion.div>

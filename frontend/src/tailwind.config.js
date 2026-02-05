@@ -15,6 +15,12 @@ module.exports = {
           dark: '#c2410c',
         },
       },
+      maxWidth: {
+        'saas': '1600px',
+      },
+      screens: {
+        'touch': { 'raw': '(pointer: coarse)' },
+      },
     },
   },
   variants: {

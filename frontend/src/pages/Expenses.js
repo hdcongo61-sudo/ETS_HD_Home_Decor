@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../services/api';
 import ExpenseForm from '../components/ExpenseForm';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 
 const Expenses = () => {
+  const tableRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
   const [filter, setFilter] = useState({
     search: '',
@@ -20,6 +21,7 @@ const Expenses = () => {
 
   useEffect(() => {
     fetchExpenses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpenses uses filter
   }, [filter]);
 
   const fetchExpenses = async () => {
@@ -158,6 +160,8 @@ const Expenses = () => {
     supplies: 'Fournitures',
     other: 'Autre'
   };
+
+  useResponsiveTable(tableRef, [expenses]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -406,67 +410,8 @@ const Expenses = () => {
                 </div>
               )}
 
-              <div className="space-y-4 md:hidden">
-                {expenses.map((expense) => (
-                  <div key={expense._id} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{expense.description}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(expense.date).toLocaleDateString('fr-FR')} ·{' '}
-                          <span className="capitalize">{expense.paymentMethod}</span>
-                        </p>
-                      </div>
-                      <p className="text-base font-semibold text-blue-600">{expense.amount.toLocaleString('fr-FR')} CFA</p>
-                    </div>
-
-                    {(expense.createdBy || expense.updatedBy) && (
-                      <div className="mt-3 rounded-xl bg-white/70 p-3 text-xs text-gray-500">
-                        {expense.createdBy && (
-                          <div>
-                            Créé par {formatUser(expense.createdBy)}
-                            {formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}
-                          </div>
-                        )}
-                        {expense.updatedBy && (
-                          <div className="mt-1">
-                            Modifié par {formatUser(expense.updatedBy)}
-                            {formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${expense.category === 'rent' ? 'bg-red-100 text-red-800' :
-                          expense.category === 'salaries' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}
-                      >
-                        {categoryLabels[expense.category] || expense.category}
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-sm"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense._id)}
-                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-600 shadow-sm"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="hidden md:block overflow-visible md:overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto">
+                <table ref={tableRef} className="responsive-table w-full">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>

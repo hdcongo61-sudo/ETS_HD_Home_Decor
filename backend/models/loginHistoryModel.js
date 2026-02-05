@@ -24,6 +24,10 @@ const loginHistorySchema = mongoose.Schema(
             type: String,
             default: null
         },
+        attemptedPhone: {
+            type: String,
+            default: null
+        },
         error: {
             type: String,
             default: null

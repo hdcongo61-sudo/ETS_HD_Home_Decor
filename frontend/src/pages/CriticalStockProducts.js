@@ -9,8 +9,8 @@ import { productEditPath, productPath } from '../utils/paths';
 
 const CriticalStockProducts = () => {
   const [products, setProducts] = useState([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [, setError] = useState('');
+  const [, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {

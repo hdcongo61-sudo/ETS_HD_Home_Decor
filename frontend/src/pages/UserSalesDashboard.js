@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -39,6 +40,8 @@ const formatCFA = (amount) => {
 
 const UserSalesDashboard = () => {
     const { userId } = useParams();
+    const topProductsTableRef = useRef(null);
+    const salesTableRef = useRef(null);
     const [user, setUser] = useState(null);
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -160,6 +163,7 @@ const UserSalesDashboard = () => {
     };
 
     const stats = sales.length > 0 ? calculateStats() : null;
+    // eslint-disable-next-line no-unused-vars -- safeStats for potential highlight cards
     const safeStats = {
         totalSales: stats?.totalSales || 0,
         totalAmount: stats?.totalAmount || 0,
@@ -171,39 +175,8 @@ const UserSalesDashboard = () => {
         completedSales: stats?.completedSales || 0,
         cancelledSales: stats?.cancelledSales || 0,
     };
-    const topProductsList = stats?.topProducts || [];
+    // eslint-disable-next-line no-unused-vars -- paymentEntries for payment chart
     const paymentEntries = Object.entries(stats?.paymentMethods || {});
-    const latestSales = sales.slice(0, 10);
-    const highlightCards = [
-        {
-            title: 'Ventes réalisées',
-            value: safeStats.totalSales.toLocaleString('fr-FR'),
-            footer: 'Transactions homologuées',
-            accent: 'bg-indigo-100 text-indigo-700',
-            icon: '🧾',
-        },
-        {
-            title: "Chiffre d'affaires",
-            value: formatCFA(safeStats.totalAmount),
-            footer: 'Montant cumulé',
-            accent: 'bg-emerald-100 text-emerald-700',
-            icon: '💰',
-        },
-        {
-            title: 'Bénéfice estimé',
-            value: formatCFA(safeStats.totalProfit),
-            footer: 'Avant charges variables',
-            accent: 'bg-amber-100 text-amber-700',
-            icon: '📈',
-        },
-        {
-            title: 'Ticket moyen',
-            value: formatCFA(safeStats.averageTicket || 0),
-            footer: 'Par vente',
-            accent: 'bg-purple-100 text-purple-700',
-            icon: '🧮',
-        },
-    ];
 
     useEffect(() => {
         const fetchData = async () => {
@@ -276,7 +249,6 @@ const UserSalesDashboard = () => {
     };
 
     const salesChartData = getSalesChartData();
-    const chartHasData = !!(salesChartData && salesChartData.labels && salesChartData.labels.length);
 
     // Données pour le graphique des méthodes de paiement
     const paymentChartData = stats ? {
@@ -330,7 +302,9 @@ const UserSalesDashboard = () => {
             }
         ]
     } : null;
-    const hasPaymentData = paymentEntries.length > 0;
+
+    useResponsiveTable(topProductsTableRef, [stats?.topProducts]);
+    useResponsiveTable(salesTableRef, [sales]);
 
     if (!auth.isAdmin && auth.user._id !== userId) {
         return (
@@ -383,7 +357,7 @@ const UserSalesDashboard = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div>
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
                     <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,9 +586,8 @@ const UserSalesDashboard = () => {
                 <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-2">
                     <h3 className="text-lg font-semibold mb-4">Produits les plus vendus</h3>
                     {stats && stats.topProducts.length > 0 ? (
-                        <>
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
+                        <div className="overflow-x-auto">
+                            <table ref={topProductsTableRef} className="responsive-table min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
@@ -643,31 +616,6 @@ const UserSalesDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="md:hidden space-y-3">
-                            {stats.topProducts.map((product, index) => (
-                                <div key={index} className="border border-gray-200 rounded-2xl p-4">
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-base font-semibold text-gray-900">{product.name}</p>
-                                        <span className="text-xs text-gray-500">#{index + 1}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 text-sm mt-3">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Quantité</p>
-                                            <p className="font-semibold text-gray-900">{product.quantity}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">CA</p>
-                                            <p className="font-semibold text-gray-900">{formatCFA(product.totalSales)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Bénéfice</p>
-                                            <p className="font-semibold text-emerald-600">{formatCFA(product.profit)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        </>
                     ) : (
                         <div className="text-center py-8 text-gray-500">
                             Aucun produit vendu
@@ -692,9 +640,8 @@ const UserSalesDashboard = () => {
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Aucune vente trouvée</h3>
                     </div>
                 ) : (
-                    <>
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="overflow-x-auto">
+                        <table ref={salesTableRef} className="responsive-table min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -743,39 +690,6 @@ const UserSalesDashboard = () => {
                             </tbody>
                         </table>
                     </div>
-                    <div className="md:hidden space-y-4 p-4">
-                        {sales.slice(0, 10).map((sale) => (
-                            <div key={sale._id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div>
-                                        <p className="text-base font-semibold text-gray-900">
-                                            {format(new Date(sale.saleDate), 'dd/MM/yyyy', { locale: fr })}
-                                        </p>
-                                        <p className="text-sm text-gray-500">{sale.client?.name || 'Non spécifié'}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${sale.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                        sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                            sale.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                        {sale.status === 'completed' ? 'Complétée' :
-                                            sale.status === 'pending' ? 'En attente' :
-                                                sale.status === 'cancelled' ? 'Annulée' : sale.status}
-                                    </span>
-                                </div>
-                                <div className="text-sm text-gray-600 space-y-1">
-                                    <p>Produits : {sale.products.length}</p>
-                                    <p>Montant : {formatCFA(sale.totalAmount || 0)}</p>
-                                </div>
-                                <Link
-                                    to={`/sales/${sale._id}`}
-                                    className="mt-3 inline-block text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                                >
-                                    Voir détails →
-                                </Link>
-                            </div>
-                        ))}
-                    </div>
-                    </>
                 )}
             </div>
         </div>

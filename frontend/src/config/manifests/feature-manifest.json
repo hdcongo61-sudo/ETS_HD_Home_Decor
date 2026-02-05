@@ -1,0 +1,133 @@
+{
+  "$schema": "./feature-manifest.schema.json",
+  "version": "1.0.0",
+  "description": "Feature manifest for ETS HD Home Decor SaaS. Toggle or plan features without code changes.",
+  "features": [
+    {
+      "id": "sales",
+      "name": "Ventes",
+      "enabled": true,
+      "route": "/sales",
+      "description": "Gestion des ventes, paiements, rappels et livraisons",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "bank",
+      "name": "Caisse",
+      "enabled": true,
+      "route": "/bank",
+      "description": "Transactions bancaires et trésorerie",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "clients",
+      "name": "Clients",
+      "enabled": true,
+      "route": "/clients",
+      "description": "Répertoire clients et tableaux de bord",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "products",
+      "name": "Produits",
+      "enabled": true,
+      "route": "/products",
+      "description": "Catalogue, stock, fournisseurs, entrepôts",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "product-dashboard",
+      "name": "Dashboard Produits",
+      "enabled": true,
+      "route": "/product-dashboard",
+      "description": "Analyses produits (jamais vendus, meilleures ventes, stock critique)",
+      "adminOnly": true,
+      "mobilePriority": false
+    },
+    {
+      "id": "users-stats",
+      "name": "Dashboard Utilisateurs",
+      "enabled": true,
+      "route": "/users/stats",
+      "description": "Statistiques et activité des utilisateurs",
+      "adminOnly": true,
+      "mobilePriority": false
+    },
+    {
+      "id": "employees",
+      "name": "Employés",
+      "enabled": true,
+      "route": "/employees",
+      "description": "Fiches employés, paie, avances",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "expenses",
+      "name": "Dépenses",
+      "enabled": true,
+      "route": "/expenses",
+      "description": "Suivi des dépenses",
+      "adminOnly": true,
+      "mobilePriority": true
+    },
+    {
+      "id": "user-management",
+      "name": "Gestion Utilisateurs",
+      "enabled": true,
+      "route": "/admin/users",
+      "description": "Création et gestion des comptes utilisateurs",
+      "adminOnly": true,
+      "mobilePriority": false
+    },
+    {
+      "id": "login-stats",
+      "name": "Historique Connexions",
+      "enabled": true,
+      "route": "/users/login-stats",
+      "description": "Tentatives de connexion et sécurité",
+      "adminOnly": true,
+      "mobilePriority": false
+    },
+    {
+      "id": "invoicing",
+      "name": "Facturation",
+      "enabled": false,
+      "route": "/invoicing",
+      "description": "Édition de factures PDF et numérotation légale (future)",
+      "adminOnly": false,
+      "mobilePriority": true
+    },
+    {
+      "id": "inventory-alerts",
+      "name": "Alertes Stock",
+      "enabled": false,
+      "route": "/settings/alerts",
+      "description": "Seuils et notifications automatiques (future)",
+      "adminOnly": true,
+      "mobilePriority": true
+    },
+    {
+      "id": "multi-tenant",
+      "name": "Multi-établissements",
+      "enabled": false,
+      "route": null,
+      "description": "Plusieurs points de vente / filiales (future)",
+      "adminOnly": true,
+      "mobilePriority": false
+    },
+    {
+      "id": "api-keys",
+      "name": "Clés API",
+      "enabled": false,
+      "route": "/settings/api",
+      "description": "Clés API pour intégrations tierces (future)",
+      "adminOnly": true,
+      "mobilePriority": false
+    }
+  ]
+}

@@ -9,7 +9,6 @@ import {
   CalendarDays,
   ShoppingBag,
   Users,
-  TrendingUp,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";

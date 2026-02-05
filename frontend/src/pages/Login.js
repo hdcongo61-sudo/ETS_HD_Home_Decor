@@ -4,7 +4,7 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState(''); // téléphone ou email
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -12,6 +12,14 @@ const Login = () => {
   const [lockout, setLockout] = useState(null);
   const { setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  const isEmail = (value) => typeof value === 'string' && value.includes('@');
+  const loginPayload = () => {
+    const trimmed = (loginId || '').trim();
+    if (isEmail(trimmed)) return { email: trimmed, password };
+    if (trimmed.length > 0) return { phone: trimmed, password };
+    return { password };
+  };
 
   // Check for existing token on component mount
   useEffect(() => {
@@ -27,7 +35,7 @@ const Login = () => {
     setError('');
 
     try {
-      const { data } = await api.post('/users/login', { email, password });
+      const { data } = await api.post('/users/login', loginPayload());
 
       // Store token securely (consider using HTTP-only cookies in production)
       localStorage.setItem('token', data.token);
@@ -138,17 +146,19 @@ const Login = () => {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Adresse Email
+            <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-2">
+              Téléphone ou email
             </label>
             <div className="relative">
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="loginId"
+                type="text"
+                inputMode={isEmail(loginId) ? 'email' : 'tel'}
+                autoComplete="username"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
                 className="w-full px-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                placeholder="exemple@societe.com"
+                placeholder="07 00 00 00 00 ou exemple@societe.com"
                 required
                 disabled={!!lockoutTime}
               />
@@ -163,11 +173,14 @@ const Login = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                   />
                 </svg>
               </div>
             </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Entrez votre numéro de téléphone ou votre adresse email
+            </p>
           </div>
 
           <div>

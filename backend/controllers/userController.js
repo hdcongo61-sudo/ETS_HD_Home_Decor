@@ -157,21 +157,39 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Authenticate user
+// @desc    Authenticate user (by email or phone)
 // @route   POST /api/users/login
 // @access  Public
 const MAX_LOGIN_ATTEMPTS = 5;
 const ACCOUNT_LOCK_DURATION_MINUTES = 15;
 const ACCOUNT_LOCK_DURATION_MS = ACCOUNT_LOCK_DURATION_MINUTES * 60 * 1000;
 
-const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+const normalizePhoneToDigits = (value) => (value || '').replace(/\D/g, '');
 
-  const user = await User.findOne({ email });
+const findUserByPhone = async (phoneInput) => {
+  const digits = normalizePhoneToDigits(phoneInput);
+  if (digits.length < 8) return null;
+  const users = await User.find({ phone: { $exists: true, $ne: '' } }).select('+phone');
+  return users.find((u) => normalizePhoneToDigits(u.phone) === digits) || null;
+};
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, phone, password } = req.body;
+  const loginByPhone = typeof phone === 'string' && phone.trim().length > 0;
+
+  let user = null;
+  if (loginByPhone) {
+    user = await findUserByPhone(phone.trim());
+  }
+  if (!user && email) {
+    user = await User.findOne({ email: (email || '').trim() });
+  }
 
   // Get client information
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   const device = req.headers['user-agent'] || 'Unknown device';
+
+  const attemptedIdentifier = loginByPhone ? { attemptedPhone: phone?.trim() } : { attemptedEmail: email };
 
   if (user && user.lockUntil && user.lockUntil > Date.now()) {
     const remainingMinutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);
@@ -180,7 +198,7 @@ const loginUser = asyncHandler(async (req, res) => {
       ipAddress,
       device,
       success: false,
-      attemptedEmail: email,
+      ...attemptedIdentifier,
       error: 'Compte verrouillé temporairement'
     });
 
@@ -209,7 +227,7 @@ const loginUser = asyncHandler(async (req, res) => {
           ipAddress,
           device,
           success: false,
-          attemptedEmail: email,
+          ...attemptedIdentifier,
           error: 'Accès refusé (fenêtre de connexion)'
         });
 
@@ -249,8 +267,9 @@ const loginUser = asyncHandler(async (req, res) => {
     user.loginAttempts = (user.loginAttempts || 0) + 1;
 
     let statusCode = 401;
-    let responsePayload = { message: 'Email ou mot de passe invalide' };
-    let historyError = 'Email ou mot de passe invalide';
+    const invalidMessage = loginByPhone ? 'Téléphone ou mot de passe invalide' : 'Email ou mot de passe invalide';
+    let responsePayload = { message: invalidMessage };
+    let historyError = invalidMessage;
 
     if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
       user.lockUntil = new Date(Date.now() + ACCOUNT_LOCK_DURATION_MS);
@@ -270,7 +289,7 @@ const loginUser = asyncHandler(async (req, res) => {
       ipAddress,
       device,
       success: false,
-      attemptedEmail: email,
+      ...attemptedIdentifier,
       error: historyError
     });
 
@@ -282,11 +301,12 @@ const loginUser = asyncHandler(async (req, res) => {
     ipAddress,
     device,
     success: false,
-    attemptedEmail: email,
+    ...attemptedIdentifier,
     error: 'Utilisateur inconnu'
   });
 
-  return res.status(401).json({ message: 'Email ou mot de passe invalide' });
+  const invalidMessage = loginByPhone ? 'Téléphone ou mot de passe invalide' : 'Email ou mot de passe invalide';
+  return res.status(401).json({ message: invalidMessage });
 });
 
 const getCurrentUser = async (req, res) => {
