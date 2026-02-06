@@ -5,28 +5,21 @@ export default function usePwaPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setDeferredPrompt(event);
-    };
+    if (typeof window === 'undefined') return undefined;
 
     const handleAppInstalled = () => {
       setDeferredPrompt(null);
       setIsInstalled(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
+    return () => window.removeEventListener('appinstalled', handleAppInstalled);
   }, []);
+
+  // Do NOT listen for 'beforeinstallprompt' or call event.preventDefault().
+  // That triggers: "Banner not shown: beforeinstallpromptevent.preventDefault() called.
+  // The page must call beforeinstallpromptevent.prompt() to show the banner."
+  // Let the browser show its native install UI instead of our custom banner.
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) {

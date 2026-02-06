@@ -9,26 +9,19 @@ const protect = asyncHandler(async (req, res, next) => {
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
+    token = req.headers.authorization.split(' ')[1];
     try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1];
-
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Get user from the token
       const user = await User.findById(decoded.id).select('-password');
 
       if (!user) {
-        res.status(401);
-        throw new Error('Not authorized');
+        return res.status(401).json({ message: 'Non autorisé. Session invalide.' });
       }
 
       if (user.accessControlEnabled) {
         const now = new Date();
         const accessStart = user.accessStart ? new Date(user.accessStart) : null;
         const accessEnd = user.accessEnd ? new Date(user.accessEnd) : null;
-
         const beforeStart = accessStart && now < accessStart;
         const afterEnd = accessEnd && now > accessEnd;
 
@@ -42,18 +35,21 @@ const protect = asyncHandler(async (req, res, next) => {
       }
 
       req.user = user;
-
       next();
     } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Session expirée. Veuillez vous reconnecter.', code: 'TOKEN_EXPIRED' });
+      }
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({ message: 'Token invalide. Veuillez vous reconnecter.', code: 'TOKEN_INVALID' });
+      }
       console.error(error);
-      res.status(401);
-      throw new Error('Not authorized');
+      return res.status(401).json({ message: 'Non autorisé.' });
     }
   }
 
   if (!token) {
-    res.status(401);
-    throw new Error('Not authorized, no token');
+    return res.status(401).json({ message: 'Non autorisé, aucun token.' });
   }
 });
 

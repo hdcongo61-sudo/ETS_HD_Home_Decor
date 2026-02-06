@@ -166,30 +166,60 @@ const ACCOUNT_LOCK_DURATION_MS = ACCOUNT_LOCK_DURATION_MINUTES * 60 * 1000;
 
 const normalizePhoneToDigits = (value) => (value || '').replace(/\D/g, '');
 
+/** Normalize for comparison: digits only, then strip leading 0 so 07... and 7... match */
+const normalizePhoneForMatch = (value) => {
+  const digits = normalizePhoneToDigits(value);
+  if (digits.length >= 10 && digits[0] === '0') return digits.slice(1);
+  return digits;
+};
+
 const findUserByPhone = async (phoneInput) => {
-  const digits = normalizePhoneToDigits(phoneInput);
-  if (digits.length < 8) return null;
-  const users = await User.find({ phone: { $exists: true, $ne: '' } }).select('+phone');
-  return users.find((u) => normalizePhoneToDigits(u.phone) === digits) || null;
+  const inputNorm = normalizePhoneForMatch(phoneInput);
+  if (inputNorm.length < 8) return null;
+  const inputDigits = normalizePhoneToDigits(phoneInput);
+  const users = await User.find({ phone: { $exists: true, $ne: '' } });
+  return users.find((u) => {
+    const stored = u.phone || '';
+    const storedNorm = normalizePhoneForMatch(stored);
+    const storedDigits = normalizePhoneToDigits(stored);
+    return storedNorm.length >= 8 && (storedNorm === inputNorm || storedDigits === inputDigits);
+  }) || null;
 };
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, phone, password } = req.body;
-  const loginByPhone = typeof phone === 'string' && phone.trim().length > 0;
+  let { email, phone, password } = req.body;
+  const login = typeof req.body.login === 'string' ? req.body.login.trim() : '';
+  if (login.length > 0 && !email && !phone) {
+    if (login.includes('@')) {
+      email = login;
+    } else {
+      phone = login;
+    }
+  }
+  const phoneStr = typeof phone === 'string' ? phone.trim() : '';
+  const emailStr = typeof email === 'string' ? email.trim() : '';
+  const loginByPhone = phoneStr.length > 0;
+
+  if (!password) {
+    return res.status(400).json({ message: 'Mot de passe requis.' });
+  }
+  if (!loginByPhone && !emailStr) {
+    return res.status(400).json({ message: 'Téléphone ou email requis.' });
+  }
 
   let user = null;
   if (loginByPhone) {
-    user = await findUserByPhone(phone.trim());
+    user = await findUserByPhone(phoneStr);
   }
-  if (!user && email) {
-    user = await User.findOne({ email: (email || '').trim() });
+  if (!user && emailStr) {
+    user = await User.findOne({ email: emailStr });
   }
 
   // Get client information
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   const device = req.headers['user-agent'] || 'Unknown device';
 
-  const attemptedIdentifier = loginByPhone ? { attemptedPhone: phone?.trim() } : { attemptedEmail: email };
+  const attemptedIdentifier = loginByPhone ? { attemptedPhone: phoneStr } : { attemptedEmail: emailStr };
 
   if (user && user.lockUntil && user.lockUntil > Date.now()) {
     const remainingMinutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);

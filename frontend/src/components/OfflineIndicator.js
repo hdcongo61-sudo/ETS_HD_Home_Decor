@@ -9,7 +9,10 @@ function OfflineIndicator() {
   }
 
   return (
-    <div className="fixed left-1/2 top-5 z-50 w-full max-w-sm -translate-x-1/2 px-4">
+    <div
+      className="fixed left-1/2 z-50 w-full max-w-sm -translate-x-1/2 px-4"
+      style={{ top: 'max(1.25rem, env(safe-area-inset-top, 0px))' }}
+    >
       <div className="rounded-xl border border-yellow-400 bg-white/95 p-3 shadow-2xl backdrop-blur">
         <p className="text-center text-sm font-medium text-yellow-600">
           Vous êtes hors-ligne. Les données mises en cache restent disponibles, certaines actions

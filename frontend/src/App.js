@@ -63,7 +63,7 @@ function App() {
             <Navigation />
             <OfflineIndicator />
             <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
-              <main className="flex-1 min-h-0 pb-20 md:pb-0">
+              <main className="flex-1 min-h-0 main-with-tab-bar">
                 <AppLayout>
                   <Routes>
                 <Route path="/login" element={<Login />} />

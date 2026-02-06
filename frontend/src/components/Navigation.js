@@ -108,7 +108,7 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/70 sticky top-0 z-50 supports-backdrop-blur:bg-white/60">
+    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/70 sticky top-0 z-50 supports-backdrop-blur:bg-white/60 nav-safe-top">
       <div className="container mx-auto px-4 py-2">
         <div className="flex justify-between items-center gap-3">
           {/* === Logo === */}

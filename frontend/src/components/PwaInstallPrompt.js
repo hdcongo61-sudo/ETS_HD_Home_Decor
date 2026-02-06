@@ -26,7 +26,7 @@ function PwaInstallPrompt() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pb-6">
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center safe-area-bottom pb-6">
       <div className="mx-4 flex w-full max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
         <div className="flex-1">
           <p className="text-sm font-semibold text-slate-900">Installer ETS HD ?</p>

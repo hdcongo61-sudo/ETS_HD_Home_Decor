@@ -30,7 +30,13 @@ const FloatingActionButton = () => {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div
+      className="fixed z-50"
+      style={{
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+        right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+      }}
+    >
       {/* Menu des actions */}
       {isMenuOpen && (
         <div className="absolute bottom-16 right-0 mb-2 space-y-2">

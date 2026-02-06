@@ -35,6 +35,10 @@ const LoginActivityDetail = () => {
         try {
             setIsLocationLoading(true);
             const response = await fetch(`https://ipapi.co/${loginActivity.ipAddress}/json/`);
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error('Réponse non-JSON (géolocalisation indisponible)');
+            }
             const data = await response.json();
             setLocation(data);
         } catch (err) {

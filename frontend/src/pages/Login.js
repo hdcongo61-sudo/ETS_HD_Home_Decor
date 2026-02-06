@@ -16,9 +16,13 @@ const Login = () => {
   const isEmail = (value) => typeof value === 'string' && value.includes('@');
   const loginPayload = () => {
     const trimmed = (loginId || '').trim();
-    if (isEmail(trimmed)) return { email: trimmed, password };
-    if (trimmed.length > 0) return { phone: trimmed, password };
-    return { password };
+    if (!trimmed) return { password };
+    const isEmailLogin = isEmail(trimmed);
+    return {
+      login: trimmed,
+      ...(isEmailLogin ? { email: trimmed } : { phone: trimmed }),
+      password,
+    };
   };
 
   // Check for existing token on component mount
@@ -288,7 +292,7 @@ const Login = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a 3 0 013-3h7a3 3 0 013 3v1"
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                   />
                 </svg>
                 {lockoutTime ? 'Compte verrouillé' : 'Se connecter'}

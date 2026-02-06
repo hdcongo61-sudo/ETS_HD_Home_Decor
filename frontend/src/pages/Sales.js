@@ -82,19 +82,25 @@ const GlassCard = ({ children, className = "" }) => (
   </motion.div>
 );
 
+const truncateLabel = (str, max = 14) =>
+  typeof str === "string" && str.length > max ? str.slice(0, max) + "…" : str || "";
+const CHART_LABEL_FONT = { size: 10, family: "system-ui" };
+
 const StatCard = ({ title, value, icon, color }) => (
-  <GlassCard>
-    <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-h-0">
+  <GlassCard className="h-full">
+    <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-h-[4.5rem] sm:min-h-0">
       <div
-        className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl text-white ${color}`}
+        className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl text-white ${color}`}
         style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,.15)" }}
         aria-hidden
       >
-        <span className="text-lg sm:text-xl leading-none">{icon}</span>
+        <span className="text-xl leading-none" aria-hidden>{icon}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">{title}</p>
-        <p className="text-base sm:text-xl font-semibold text-gray-900 truncate mt-0.5 tabular-nums">{value}</p>
+        <p className="text-xs sm:text-sm font-medium text-gray-500 leading-snug mb-0.5">{title}</p>
+        <p className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 tabular-nums break-words leading-snug">
+          {value}
+        </p>
       </div>
     </div>
   </GlassCard>
@@ -175,7 +181,7 @@ const ClientSegmentationChart = ({ segmentation }) => {
 
 const ProductPerformanceChart = ({ products }) => {
   const data = {
-    labels: products.slice(0, 6).map((p) => p.product?.name || "Produit"),
+    labels: products.slice(0, 6).map((p) => truncateLabel(p.product?.name || "Produit", 12)),
     datasets: [
       {
         label: "Revenus (CFA)",
@@ -185,13 +191,17 @@ const ProductPerformanceChart = ({ products }) => {
     ],
   };
   return (
-    <div className="h-64">
+    <div className="h-56 sm:h-64 min-h-[200px]">
       <Bar
         data={data}
         options={{
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { maxRotation: 45, minRotation: 0, font: CHART_LABEL_FONT, maxTicksLimit: 8 } },
+            y: { ticks: { font: CHART_LABEL_FONT } },
+          },
         }}
       />
     </div>
@@ -289,9 +299,7 @@ const ProfitAnalysis = () => {
   };
 
   const topProductsChart = {
-    labels: topProducts.slice(0, 8).map((p) =>
-      p.productName.length > 24 ? p.productName.slice(0, 24) + "…" : p.productName
-    ),
+    labels: topProducts.slice(0, 8).map((p) => truncateLabel(p.productName, 12)),
     datasets: [
       {
         label: "Bénéfice (CFA)",
@@ -434,27 +442,27 @@ const ProfitAnalysis = () => {
           </div>
         </GlassCard>
 
-        <GlassCard>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Top produits rentables
-            </h3>
-            <div className="h-64">
-              <Bar
-                data={topProductsChart}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } },
-                    x: { grid: { display: false } },
-                  },
-                }}
-              />
-            </div>
-          </div>
-        </GlassCard>
+                <GlassCard>
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                      Top produits rentables
+                    </h3>
+                    <div className="h-48 sm:h-64 min-h-[180px]">
+                      <Bar
+                        data={topProductsChart}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { display: false } },
+                          scales: {
+                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
+                            x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT, maxRotation: 45, minRotation: 0, maxTicksLimit: 8 } },
+                          },
+                        }}
+                      />
+                    </div>
+                  </div>
+                </GlassCard>
       </div>
 
       {/* Détails produits & par catégorie */}
@@ -478,29 +486,47 @@ const ProfitAnalysis = () => {
               <tbody className="md:divide-y md:divide-gray-100">
                 {profitData.topProducts.slice(0, 10).map((p, i) => (
                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 text-sm font-medium text-gray-900">
-                      {p.productName}
-                      <div className="mt-2 text-xs text-gray-500 space-y-1 md:hidden">
-                        <p>Quantité: {p.totalQuantity}</p>
-                        <p>CA: {(p.totalRevenue || 0).toLocaleString("fr-FR")} CFA</p>
-                        <p>Coût: {(p.totalCost || 0).toLocaleString("fr-FR")} CFA</p>
-                        <p>Bénéfice: {(p.totalProfit || 0).toLocaleString("fr-FR")} CFA</p>
-                        <p>Marge: {(p.profitMargin || 0).toFixed(2)}%</p>
+                    <td className="p-3 md:p-4 responsive-table__product-cell">
+                      <div className="md:min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{p.productName}</p>
+                        {/* Mobile: card-style stats */}
+                        <div className="mt-3 md:hidden rounded-xl bg-gray-50/80 border border-gray-100 p-3 space-y-2">
+                          <div className="flex justify-between items-baseline gap-2">
+                            <span className="text-xs text-gray-500">Qté</span>
+                            <span className="text-sm font-medium text-gray-900 tabular-nums">{p.totalQuantity}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                            <span className="text-xs text-gray-500">CA</span>
+                            <span className="text-sm tabular-nums text-gray-900">{(p.totalRevenue || 0).toLocaleString("fr-FR")} CFA</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                            <span className="text-xs text-gray-500">Coût</span>
+                            <span className="text-sm tabular-nums text-gray-900">{(p.totalCost || 0).toLocaleString("fr-FR")} CFA</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                            <span className="text-xs text-gray-500">Bénéfice</span>
+                            <span className="text-sm font-semibold text-green-600 tabular-nums">{(p.totalProfit || 0).toLocaleString("fr-FR")} CFA</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                            <span className="text-xs text-gray-500">Marge</span>
+                            <span className="text-sm font-semibold text-blue-600 tabular-nums">{(p.profitMargin || 0).toFixed(2)}%</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="hidden md:table-cell p-3 text-sm md:text-right">
+                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
                       {p.totalQuantity}
                     </td>
-                    <td className="hidden md:table-cell p-3 text-sm md:text-right">
+                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
                       {(p.totalRevenue || 0).toLocaleString("fr-FR")} CFA
                     </td>
-                    <td className="hidden md:table-cell p-3 text-sm md:text-right">
+                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
                       {(p.totalCost || 0).toLocaleString("fr-FR")} CFA
                     </td>
-                    <td className="hidden md:table-cell p-3 text-sm font-semibold text-green-600 md:text-right">
+                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right font-semibold text-green-600 tabular-nums">
                       {(p.totalProfit || 0).toLocaleString("fr-FR")} CFA
                     </td>
-                    <td className="hidden md:table-cell p-3 text-sm font-semibold text-blue-600 md:text-right">
+                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right font-semibold text-blue-600 tabular-nums">
                       {(p.profitMargin || 0).toFixed(2)}%
                     </td>
                   </tr>
@@ -1132,7 +1158,7 @@ const Sales = () => {
   };
 
   const topProductsChart = {
-    labels: dashboardData.topProducts.map((i) => i.product?.name || "Produit").slice(0, 6),
+    labels: dashboardData.topProducts.map((i) => truncateLabel(i.product?.name || "Produit", 12)).slice(0, 6),
     datasets: [
       {
         label: "Quantité vendue",
@@ -1210,66 +1236,81 @@ const Sales = () => {
   useResponsiveTable(statusTableRef, [dashboardData?.statusStats]);
 
   /* ========= Barre de filtres rapides ========= */
+  const quickFilterConfig = [
+    {
+      key: "highValue",
+      label: "Hautes Valeurs",
+      icon: "💎",
+      active: quickFilters.highValue,
+      activeClass: "bg-purple-50 border-purple-400 text-purple-800 ring-1 ring-purple-200",
+    },
+    {
+      key: "latePayments",
+      label: "Retards Paiement",
+      icon: "⚠️",
+      active: quickFilters.latePayments,
+      activeClass: "bg-red-50 border-red-400 text-red-800 ring-1 ring-red-200",
+    },
+    {
+      key: "recurring",
+      label: "Clients Récurrents",
+      icon: "🔄",
+      active: quickFilters.recurring,
+      activeClass: "bg-green-50 border-green-400 text-green-800 ring-1 ring-green-200",
+    },
+    {
+      key: "highProfit",
+      label: "Hauts Bénéfices",
+      icon: "💰",
+      active: quickFilters.highProfit,
+      activeClass: "bg-emerald-50 border-emerald-400 text-emerald-800 ring-1 ring-emerald-200",
+    },
+  ];
+  const hasActiveFilter =
+    quickFilters.highValue ||
+    quickFilters.latePayments ||
+    quickFilters.recurring ||
+    quickFilters.highProfit;
+
   const QuickFilterBar = () => (
-    <div className="flex flex-wrap gap-3 mb-2">
-      <button
-        onClick={() => setQuickFilters((p) => ({ ...p, highValue: !p.highValue }))}
-        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-          quickFilters.highValue
-            ? "bg-purple-100 border-purple-500 text-purple-700"
-            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        💎 Hautes Valeurs
-      </button>
-      <button
-        onClick={() => setQuickFilters((p) => ({ ...p, latePayments: !p.latePayments }))}
-        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-          quickFilters.latePayments
-            ? "bg-red-100 border-red-500 text-red-700"
-            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        ⚠️ Retards Paiement
-      </button>
-      <button
-        onClick={() => setQuickFilters((p) => ({ ...p, recurring: !p.recurring }))}
-        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-          quickFilters.recurring
-            ? "bg-green-100 border-green-500 text-green-700"
-            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        🔄 Clients Récurrents
-      </button>
-      <button
-        onClick={() => setQuickFilters((p) => ({ ...p, highProfit: !p.highProfit }))}
-        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-          quickFilters.highProfit
-            ? "bg-emerald-100 border-emerald-500 text-emerald-700"
-            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        💰 Hauts Bénéfices
-      </button>
-      {(quickFilters.highValue ||
-        quickFilters.latePayments ||
-        quickFilters.recurring ||
-        quickFilters.highProfit) && (
-        <button
-          onClick={() =>
-            setQuickFilters({
-              highValue: false,
-              latePayments: false,
-              recurring: false,
-              highProfit: false,
-            })
-          }
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors flex items-center gap-2"
-        >
-          ✕ Effacer
-        </button>
-      )}
+    <div className="rounded-xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-3 sm:p-4 mb-2">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-full sm:w-auto sm:mr-1">
+          Filtres rapides
+        </span>
+        {quickFilterConfig.map(({ key, label, icon, active, activeClass }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setQuickFilters((p) => ({ ...p, [key]: !p[key] }))}
+            className={`inline-flex items-center gap-2 min-h-[2.75rem] px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+              active ? activeClass : "bg-gray-50/80 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300"
+            }`}
+            aria-pressed={active}
+          >
+            <span aria-hidden>{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
+        {hasActiveFilter && (
+          <button
+            type="button"
+            onClick={() =>
+              setQuickFilters({
+                highValue: false,
+                latePayments: false,
+                recurring: false,
+                highProfit: false,
+              })
+            }
+            className="inline-flex items-center gap-2 min-h-[2.75rem] px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors sm:ml-auto"
+            aria-label="Effacer tous les filtres"
+          >
+            <span aria-hidden>✕</span>
+            Effacer
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -1563,42 +1604,59 @@ const Sales = () => {
   /* ========= Rendu principal ========= */
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white px-4 sm:px-5 md:px-6 py-5 sm:py-6 md:py-8 safe-area-padding">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         <Toaster position="top-right" />
         {/* En-tête */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-              📊 Tableau de Bord Commercial
-            </h1>
-            <p className="text-gray-600 mt-1">Analyses avancées, encaissements et livraisons</p>
-          </div>
+        <header className="rounded-2xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-5 lg:p-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+                Tableau de Bord Commercial
+              </h1>
+              <p className="text-sm sm:text-base text-gray-500 mt-1">
+                Analyses avancées, encaissements et livraisons
+              </p>
+            </div>
 
-          <div className="flex flex-wrap gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => setShowExportModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl border border-gray-300 transition-colors"
-              >
-                📤 Exporter
-              </button>
-            )}
-
-            {isAdmin && (
-              <select
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value)}
-                className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="dashboard">📋 Vue Standard</option>
-                <option value="analytics">📈 Analytics Avancées</option>
-                <option value="profits">💰 Analyse Bénéfices</option>
-                <option value="clients">👥 Analyse Clients</option>
-              </select>
-            )}
+            <div className="flex flex-row flex-wrap gap-2 sm:gap-3 lg:flex-shrink-0">
+              {isAdmin && (
+                <>
+                  <div className="flex flex-wrap gap-2 sm:gap-2" role="tablist" aria-label="Mode d’affichage">
+                    {[
+                      { value: "dashboard", label: "Vue Standard", icon: "📋" },
+                      { value: "analytics", label: "Analytics", icon: "📈" },
+                      { value: "profits", label: "Bénéfices", icon: "💰" },
+                      { value: "clients", label: "Clients", icon: "👥" },
+                    ].map(({ value, label, icon }) => (
+                      <button
+                        key={value}
+                        role="tab"
+                        aria-selected={viewMode === value}
+                        onClick={() => setViewMode(value)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                          viewMode === value
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        <span aria-hidden>{icon}</span>
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setShowExportModal(true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors whitespace-nowrap"
+                  >
+                    <span aria-hidden>📤</span>
+                    Exporter
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* Notification */}
         {message && (
@@ -1744,16 +1802,22 @@ const Sales = () => {
         )}
 
         {viewMode === "profits" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">💰 Analyse des Bénéfices</h2>
+          <div className="space-y-4 sm:space-y-6">
+            <header className="rounded-2xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                  Analyse des Bénéfices
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">Bénéfices, marges et produits les plus rentables</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setViewMode("analytics")}
-                className="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors"
               >
-                Retour aux Analytics
+                ← Retour aux Analytics
               </button>
-            </div>
+            </header>
             <ProfitAnalysis />
           </div>
         )}
@@ -1813,13 +1877,13 @@ const Sales = () => {
             {isAdmin && <QuickFilterBar />}
 
             {/* Range & actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <span className="bg-indigo-500 p-1.5 rounded-lg text-white">📈</span>
-                Tableau de bord des ventes
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4">
+              <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 flex items-center gap-2 min-w-0">
+                <span className="bg-indigo-500 p-1 sm:p-1.5 rounded-lg text-white shrink-0" aria-hidden>📈</span>
+                <span className="break-words">Tableau de bord des ventes</span>
               </h2>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 shrink-0">
                 {["7days", "30days", "90days", "all"].map((r) => (
                   <button
                     key={r}
@@ -1848,8 +1912,11 @@ const Sales = () => {
               </div>
             ) : (
               <>
-                {/* KPIs (incluant Encaissements) — 2 cols mobile, 3 sm, 6 lg */}
-                <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4" aria-label="Indicateurs clés">
+                {/* KPIs — mobile 2 cols, desktop 6; chiffres lisibles (taille + break-words) */}
+                <section
+                  className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 items-stretch"
+                  aria-label="Indicateurs clés"
+                >
                   <StatCard
                     title="Chiffre d'affaires"
                     value={`${dashboardData.totalSales.toLocaleString("fr-FR")} CFA`}
@@ -2006,50 +2073,56 @@ const Sales = () => {
                 </div>
 
                 {/* Tendance & Top produits */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <GlassCard>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                           Tendance des ventes
                         </h3>
                         <button
                           onClick={() => navigate("/sales/partially-paid")}
-                          className="text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 w-full sm:w-auto text-center"
+                          className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 w-full sm:w-auto text-center"
                         >
-                          Consulter les ventes partiellement payées →
+                          Ventes partiellement payées →
                         </button>
                       </div>
-                      <Line
-                        data={salesTrendChart}
-                        options={{
-                          responsive: true,
-                          plugins: { legend: { position: "top" } },
-                          scales: {
-                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } },
-                            x: { grid: { display: false } },
-                          },
-                        }}
-                      />
+                      <div className="h-48 sm:h-56 min-h-[180px]">
+                        <Line
+                          data={salesTrendChart}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: "top", labels: { font: CHART_LABEL_FONT } } },
+                            scales: {
+                              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
+                              x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } },
+                            },
+                          }}
+                        />
+                      </div>
                     </div>
                   </GlassCard>
 
                   <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <div className="p-4 sm:p-6">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                         Top produits (quantités)
                       </h3>
-                      <Bar
-                        data={topProductsChart}
-                        options={{
-                          responsive: true,
-                          plugins: { legend: { position: "top" } },
-                          scales: {
-                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } },
-                            x: { grid: { display: false } },
-                          },
-                        }}
-                      />
+                      <div className="h-48 sm:h-56 min-h-[180px]">
+                        <Bar
+                          data={topProductsChart}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
+                              x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT, maxRotation: 45, minRotation: 0, maxTicksLimit: 8 } },
+                            },
+                          }}
+                        />
+                      </div>
                     </div>
                   </GlassCard>
 

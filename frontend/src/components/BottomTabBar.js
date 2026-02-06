@@ -19,7 +19,6 @@ const BottomTabBar = () => {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200 safe-area-bottom"
-      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       aria-label="Navigation principale"
     >
       <div className="grid grid-cols-4 h-14">

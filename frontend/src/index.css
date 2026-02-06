@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === PWA safe area (viewport-fit=cover in index.html) === */
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --safe-area-inset-top: env(safe-area-inset-top);
+    --safe-area-inset-right: env(safe-area-inset-right);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom);
+    --safe-area-inset-left: env(safe-area-inset-left);
+  }
+}
+
 /* === SaaS / Mobile-friendly base === */
 html {
   -webkit-text-size-adjust: 100%;
@@ -10,10 +20,16 @@ html {
 
 body {
   @apply bg-gray-50;
-  /* Safe area for notched devices (iOS/Android) */
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Safe area for notched devices (iOS/Android PWA) */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Touch-friendly tap targets (min 44px) */
@@ -26,11 +42,35 @@ body {
   }
 }
 
-/* Optional: safe-area utility for fixed/sticky elements */
+/* Safe area utilities for fixed/sticky elements (mobile PWA) */
 .safe-area-padding {
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.safe-area-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Main content when bottom tab bar is visible (mobile): reserve space + safe area */
+.main-with-tab-bar {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .main-with-tab-bar {
+    padding-bottom: 0;
+  }
+}
+
+/* Sticky nav: avoid content under status bar / notch */
+.nav-safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
 }
 
 .btn-primary {
@@ -147,6 +187,15 @@ input:focus {
   margin-bottom: 0.25rem;
 }
 
+/* Product cell with custom mobile content: full-width block, no label prefix */
+.responsive-table tbody td.responsive-table__product-cell {
+  display: block;
+  padding: 0.75rem 0 0;
+}
+.responsive-table tbody td.responsive-table__product-cell::before {
+  display: none;
+}
+
 /* Desktop: table layout from 768px */
 @media (min-width: 768px) {
   .responsive-table {
@@ -190,6 +239,14 @@ input:focus {
   .responsive-table tbody td:last-child::before {
     width: auto;
     margin-bottom: 0;
+  }
+  .responsive-table tbody td.responsive-table__product-cell {
+    display: table-cell;
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+  }
+  .responsive-table tbody td.responsive-table__product-cell::before {
+    content: none;
   }
 }
 
