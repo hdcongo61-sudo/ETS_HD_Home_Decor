@@ -7,8 +7,10 @@ import { useModal } from '../context/ModalContext';
 const FloatingActionButton = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
-  const { openModal } = useModal();
+  const { openModal, activeModal } = useModal();
   const navigate = useNavigate();
+
+  const isModalOrFormOpen = Boolean(activeModal);
 
   const handleNewSale = () => {
     openModal('sale');
@@ -64,6 +66,8 @@ const FloatingActionButton = () => {
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [isExpanded]);
+
+  if (isModalOrFormOpen) return null;
 
   return (
     <>
