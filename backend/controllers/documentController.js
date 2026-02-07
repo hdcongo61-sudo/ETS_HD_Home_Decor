@@ -2,10 +2,42 @@ const Document = require('../models/documentModel');
 const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
 const asyncHandler = require('express-async-handler');
+const sharp = require('sharp');
 
 const DOCUMENT_FOLDER = 'business_documents';
+const MAX_DOC_BYTES = 5 * 1024 * 1024; // 5 Mo
 
-const uploadDocumentToCloudinary = (buffer, mimetype, originalName) => new Promise((resolve, reject) => {
+/** Compress image buffer to stay under MAX_DOC_BYTES (WebP). Returns compressed buffer or original if not image. */
+async function compressImageIfNeeded(buffer, mimetype) {
+  if (!buffer || !mimetype || !mimetype.startsWith('image/')) return buffer;
+  if (buffer.length <= MAX_DOC_BYTES) {
+    try {
+      const compressed = await sharp(buffer)
+        .webp({ quality: 85, effort: 4 })
+        .toBuffer();
+      return compressed.length < buffer.length ? compressed : buffer;
+    } catch {
+      return buffer;
+    }
+  }
+  let quality = 80;
+  let lastBuffer = buffer;
+  while (quality >= 20) {
+    const out = await sharp(buffer)
+      .webp({ quality, effort: 5 })
+      .toBuffer();
+    if (out.length <= MAX_DOC_BYTES) return out;
+    lastBuffer = out;
+    quality -= 15;
+  }
+  const resized = await sharp(buffer)
+    .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 50, effort: 6 })
+    .toBuffer();
+  return resized.length <= MAX_DOC_BYTES ? resized : lastBuffer;
+}
+
+const uploadDocumentToCloudinary = (buffer, mimetype) => new Promise((resolve, reject) => {
   const isImage = mimetype && mimetype.startsWith('image/');
   const resourceType = isImage ? 'image' : 'raw';
   const options = {
@@ -67,11 +99,15 @@ const createDocument = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('Type et date sont requis.');
   }
-  const fileUrl = await uploadDocumentToCloudinary(
-    req.file.buffer,
-    req.file.mimetype,
-    req.file.originalname
-  );
+  let buffer = req.file.buffer;
+  if (req.file.mimetype && req.file.mimetype.startsWith('image/')) {
+    buffer = await compressImageIfNeeded(buffer, req.file.mimetype);
+  }
+  if (buffer.length > MAX_DOC_BYTES) {
+    res.status(400);
+    throw new Error('Le fichier dépasse 5 Mo après compression. Réduisez la taille ou la résolution.');
+  }
+  const fileUrl = await uploadDocumentToCloudinary(buffer, req.file.mimetype);
   const doc = await Document.create({
     type,
     fileName: req.file.originalname || 'document',

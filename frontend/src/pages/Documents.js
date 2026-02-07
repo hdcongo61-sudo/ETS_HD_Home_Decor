@@ -245,7 +245,7 @@ const Documents = () => {
           }
         }}
         title="Ajouter un document"
-        subtitle="Fiscal, loyer, contrat… (PDF, images, 15 Mo max)"
+        subtitle="Fiscal, loyer, contrat… (PDF, images, 5 Mo max, compression auto)"
         size="md"
       >
         <form onSubmit={handleUpload} className="space-y-4">
@@ -291,7 +291,7 @@ const Documents = () => {
               className="block w-full text-sm text-gray-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">PDF, Word, Excel ou images. Max 15 Mo.</p>
+            <p className="text-xs text-gray-500 mt-1">PDF, Word, Excel ou images. Max 5 Mo (images compressées automatiquement).</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
             <button

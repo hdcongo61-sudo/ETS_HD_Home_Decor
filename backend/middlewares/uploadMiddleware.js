@@ -26,8 +26,8 @@ const imageUpload = multer({
   fileFilter,
 });
 
-// Documents: PDF and common office formats, 15MB
-const MAX_DOC_SIZE = 15 * 1024 * 1024;
+// Documents: PDF and common office formats, max 5MB (will compress images to stay under)
+const MAX_DOC_SIZE = 5 * 1024 * 1024;
 const DOC_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
 const docFileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
