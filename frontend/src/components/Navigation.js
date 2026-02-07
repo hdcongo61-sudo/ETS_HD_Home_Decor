@@ -109,7 +109,13 @@ const Navigation = () => {
 
   return (
     <nav className="surface-bar sticky top-0 z-50 nav-safe-top border-b border-gray-200/50">
-      <div className="container mx-auto px-4 py-2.5">
+      <div
+        className="container mx-auto py-2.5 px-4 md:px-4"
+        style={{
+          paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+          paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
+        }}
+      >
         <div className="flex justify-between items-center gap-3">
           {/* === Logo === */}
           <Link
@@ -203,30 +209,34 @@ const Navigation = () => {
           />
         )}
 
-        {/* === Menu mobile === */}
+        {/* === Menu mobile: single column, touch-friendly, safe area === */}
         <div
           className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
             isMenuOpen
-              ? "max-h-[90vh] overflow-y-auto py-3 bg-white/95 backdrop-blur-lg rounded-lg mt-2 shadow-lg border border-gray-200"
+              ? "max-h-[85dvh] overflow-y-auto overflow-x-hidden py-3 bg-white/98 backdrop-blur-lg rounded-xl mt-2 shadow-lg border border-gray-200 touch-manipulation"
               : "max-h-0"
           }`}
+          style={{
+            paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+            WebkitOverflowScrolling: "touch",
+          }}
         >
           {auth.isAuthenticated && (
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 mb-2">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 mb-2 min-h-[56px]">
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
                 {auth.user?.photo ? (
                   <img src={auth.user.photo} alt={auth.user.name || 'Profil'} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-gray-700 font-semibold">{userInitial}</span>
+                  <span className="text-gray-700 font-semibold text-base">{userInitial}</span>
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{auth.user?.name}</p>
                 <p className="text-xs text-gray-500 truncate">{auth.user?.email}</p>
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 px-2">
+          <div className="flex flex-col gap-0.5 px-3">
             {renderNavigationLinks(auth, handleLogout, closeMenu, true, true, false, () => {})}
           </div>
         </div>
@@ -238,11 +248,11 @@ const Navigation = () => {
 // === Liens du menu (desktop + mobile) ===
 const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
   const linkClass = isMobile
-    ? "flex items-center px-4 py-3 text-gray-800 hover:bg-gray-100/80 active:bg-gray-200/60 rounded-md transition-all duration-200 text-base font-medium"
+    ? "flex items-center min-h-[48px] px-4 py-3 text-gray-800 hover:bg-gray-100/80 active:bg-gray-200/60 rounded-xl transition-all duration-200 text-[15px] font-medium w-full touch-manipulation"
     : "flex flex-col items-center p-2 text-gray-700 hover:text-gray-900 rounded-md transition-all duration-200 group";
 
   const iconClass = isMobile
-    ? "w-5 h-5 mr-3 text-gray-500"
+    ? "w-6 h-6 mr-3 text-gray-500 shrink-0"
     : "w-5 h-5 text-gray-500 group-hover:text-gray-700";
 
   const showPrimaryTabs = !(isMobile && hidePrimaryTabsOnMobile);
@@ -448,6 +458,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                                 <Link to="/users/stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
                                 <Link to="/admin/users" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Gestion utilisateurs</Link>
                                 <Link to="/users/login-stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Historique connexions</Link>
+                                <Link to="/documents" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Documents entreprise</Link>
                               </div>
                             </>
                           )}
@@ -500,7 +511,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             isMobile={isMobile}
           />
           {/* Autres – Ventes */}
-          <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Ventes</div>
+          <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3 first:mt-0">Ventes</div>
           <NavIcon to="/sales#sale-form" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} label="Enregistrer une vente" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           <NavIcon to="/sales" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} label="Liste des ventes" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           <NavIcon to="/sales/all" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Archives ventes" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -509,11 +520,11 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             <NavIcon to="/sales/deleted" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>} label="Ventes supprimées" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           )}
           {/* Autres – Clients */}
-          <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Clients</div>
+          <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3">Clients</div>
           <NavIcon to="/clients" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} label="Liste des clients" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           <NavIcon to="/clients/dashboard" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} label="Tableau de bord clients" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           {/* Autres – Produits */}
-          <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Produits</div>
+          <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3">Produits</div>
           <NavIcon to="/products" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} label="Catalogue produits" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           {auth.isAdmin && (
             <>
@@ -528,20 +539,21 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             </>
           )}
           {/* Autres – Employés */}
-          <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Employés</div>
+          <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3">Employés</div>
           <NavIcon to="/employees" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} label="Liste des employés" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           <NavIcon to="/employees/new" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>} label="Nouvel employé" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           {/* Autres – Caisse & Dépenses */}
-          <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Autres</div>
+          <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3">Autres</div>
           <NavIcon to="/bank" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M5 10V7l7-4 7 4v3M5 10v8m4-8v8m4-8v8m4-8v8M3 18h18" /></svg>} label="Caisse" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           {/* Administration (admin) */}
           {auth.isAdmin && (
             <>
-              <div className="col-span-2 px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 mt-1 pt-2">Administration</div>
+              <div className="px-3 py-2 mt-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100 pt-3">Administration</div>
               <NavIcon to="/users/stats" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 13h8V3H3zm10 8h8V11h-8zm0-8h8V3h-8zM3 21h8v-6H3z" /></svg>} label="Dashboard Utilisateurs" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
               <NavIcon to="/admin/users" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} label="Gestion utilisateurs" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
               <NavIcon to="/users/login-stats" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>} label="Historique connexions" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
+              <NavIcon to="/documents" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Documents entreprise" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             </>
           )}
         </>
@@ -584,7 +596,18 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         onClick={closeMenu}
         isMobile={isMobile}
       />
-
+          <NavIcon
+            to="/documents"
+            icon={
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+            label="Documents"
+            className={linkClass}
+            onClick={closeMenu}
+            isMobile={isMobile}
+          />
           <NavIcon
             to="/employees"
             icon={

@@ -401,7 +401,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   if (!isAdmin) {
     return (
       <div>
-        <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100">
+        <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100 touch-manipulation">
           <div className="max-w-xl">
             <label htmlFor="search-products" className="sr-only">Rechercher un produit</label>
             <input
@@ -410,7 +410,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+              className="w-full min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
+              autoComplete="off"
             />
           </div>
         </div>
@@ -421,6 +422,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               key={p._id}
               to={productPath(p)}
               {...desktopLinkProps}
+              onClick={() => typeof document !== 'undefined' && document.activeElement?.blur?.()}
               className="block p-4 flex flex-col gap-1 hover:bg-gray-50 transition-colors lg:p-5 lg:rounded-2xl lg:border lg:border-gray-200 lg:shadow-sm lg:hover:shadow-md lg:hover:border-indigo-200"
             >
               <p className="text-base font-semibold text-gray-900 lg:text-lg">{p.name}</p>
@@ -450,8 +452,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   return (
     <div>
-      {/* Search bar — desktop: full width, larger */}
-      <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100">
+      {/* Search bar — desktop: full width, larger; mobile: reliable focus, blur on tap outside */}
+      <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100 touch-manipulation">
         <label htmlFor="admin-product-search" className="sr-only">Rechercher un produit</label>
         <input
           id="admin-product-search"
@@ -459,7 +461,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-2xl px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+          className="w-full max-w-2xl min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
+          autoComplete="off"
         />
       </div>
 
@@ -496,7 +499,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filtered.map((p) => (
-              <tr key={p._id} className="hover:bg-indigo-50/50 transition-colors">
+              <tr key={p._id} className="hover:bg-indigo-50/50 transition-colors" onClick={() => document.activeElement?.blur?.()}>
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
                   <div className="flex flex-col gap-2 items-center">
                     <Link
@@ -569,7 +572,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
       {/* Mobile cards (admin) */}
       <div className="md:hidden space-y-4 p-4">
         {filtered.map((p) => (
-          <div key={p._id} className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white">
+          <div key={p._id} className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white" onClick={() => document.activeElement?.blur?.()}>
             <div className="flex gap-3">
               {p.image ? (
                 <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />

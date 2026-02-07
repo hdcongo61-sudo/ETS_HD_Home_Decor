@@ -26,4 +26,26 @@ const imageUpload = multer({
   fileFilter,
 });
 
-module.exports = { imageUpload };
+// Documents: PDF and common office formats, 15MB
+const MAX_DOC_SIZE = 15 * 1024 * 1024;
+const DOC_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+const docFileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowed = DOC_EXTENSIONS.includes(ext) || file.mimetype === 'application/pdf' ||
+    file.mimetype.startsWith('image/') ||
+    file.mimetype.includes('document') ||
+    file.mimetype.includes('sheet');
+  if (allowed) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Format non autorisé. Autorisés: ${DOC_EXTENSIONS.join(', ')}`), false);
+  }
+};
+
+const documentUpload = multer({
+  storage,
+  limits: { fileSize: MAX_DOC_SIZE },
+  fileFilter: docFileFilter,
+});
+
+module.exports = { imageUpload, documentUpload };
