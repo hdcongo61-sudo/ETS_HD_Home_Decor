@@ -42,6 +42,7 @@ import {
   parseDateSafely,
 } from "../utils/saleUtils";
 import { SalesFiltersBar, SaleCard } from "./sales-shared";
+import AppLoader from "../components/AppLoader";
 
 // Enregistrement Chart.js
 ChartJS.register(
@@ -941,9 +942,10 @@ const Sales = () => {
   }, []);
 
   const fetchDashboardData = useCallback(
-    async (range, dayFilter) => {
+    async (range, dayFilter, options = {}) => {
+      const { showLoading = true } = options;
       try {
-        setDashboardLoading(true);
+        if (showLoading) setDashboardLoading(true);
         const params = new URLSearchParams({ range });
         if (dayFilter) params.append("summaryDate", dayFilter);
         const { data } = await api.get(`/sales/dashboard-sale?${params.toString()}`);
@@ -951,7 +953,7 @@ const Sales = () => {
       } catch (e) {
         setMessage("Erreur de chargement du tableau de bord");
       } finally {
-        setDashboardLoading(false);
+        if (showLoading) setDashboardLoading(false);
       }
     },
     [setMessage]
@@ -983,26 +985,26 @@ const Sales = () => {
     []
   );
 
-  // Chargers initiaux
+  const initialBootstrapDone = useRef(false);
+
+  // Premier chargement : ventes, clients, produits, stats, dashboard (une seule fois)
   useEffect(() => {
+    if (initialBootstrapDone.current) return;
+    setLoading(true);
     const bootstrap = async () => {
-      setLoading(true);
       try {
         const [clientsData, , salesData] = await Promise.all([
           fetchClients(),
           fetchProducts(),
           fetchSales(),
         ]);
-
         await hydrateDeliveryStats(salesData);
-
         if (isAdmin) {
           await fetchDashboardData(timeRange, dateFilter);
           const predictive = calculatePredictiveAnalytics(salesData);
           const segmentation = analyzeClientSegmentation(salesData);
           const anomaliesDetected = detectAnomalies(salesData);
           const kpis = calculateAdvancedKPIs(salesData, clientsData);
-
           setPredictiveData(predictive);
           setClientSegmentation(segmentation);
           setAnomalies(anomaliesDetected);
@@ -1020,10 +1022,17 @@ const Sales = () => {
         setError("Erreur de chargement des données");
       } finally {
         setLoading(false);
+        initialBootstrapDone.current = true;
       }
     };
     bootstrap();
-  }, [isAdmin, timeRange, dateFilter, fetchClients, fetchProducts, fetchSales, fetchDashboardData, hydrateDeliveryStats]);
+  }, [isAdmin, fetchClients, fetchProducts, fetchSales, fetchDashboardData, hydrateDeliveryStats]);
+
+  // Changement de période (7j / 30j / 90j / Tous) : met à jour uniquement le dashboard, sans recharger toute la page
+  useEffect(() => {
+    if (!initialBootstrapDone.current || !isAdmin) return;
+    fetchDashboardData(timeRange, dateFilter);
+  }, [timeRange, dateFilter, isAdmin, fetchDashboardData]);
 
   /* ========= Dérivés & filtres ========= */
   const salesWithProfit = useMemo(
@@ -1099,7 +1108,7 @@ const Sales = () => {
       toast.success("Vente enregistrée avec succès !");
       const updated = await fetchSales();
       await hydrateDeliveryStats(updated);
-      if (isAdmin) await fetchDashboardData(timeRange, dateFilter);
+      if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
     } catch (e) {
       setMessage("Erreur: " + (e.response?.data?.message || e.message));
     }
@@ -1113,7 +1122,7 @@ const Sales = () => {
       setMessage("Paiement ajouté avec succès !");
       setShowPaymentModal(false);
       await hydrateDeliveryStats(updated);
-      if (isAdmin) await fetchDashboardData(timeRange, dateFilter);
+      if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
     } catch (error) {
       setMessage("Erreur: " + (error.response?.data?.message || error.message));
       throw error;
@@ -1318,7 +1327,7 @@ const Sales = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+        <AppLoader fullScreen={false} text="Chargement des ventes…" />
       </div>
     );
   }
@@ -1348,7 +1357,7 @@ const Sales = () => {
             <div id="sale-form">
               <GlassCard>
                 <div className="p-6">
-                  <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
+                  <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
                     <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
                   </Suspense>
                 </div>
@@ -2212,7 +2221,7 @@ const Sales = () => {
               <div id="sale-form">
                 <GlassCard>
                   <div className="p-6">
-                    <Suspense fallback={<div className="text-sm text-gray-500">Chargement du formulaire…</div>}>
+                    <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
                       <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
                     </Suspense>
                   </div>
@@ -2340,7 +2349,7 @@ const Sales = () => {
                                 {sale.status === "completed" && (
                                   <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
                                     <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
-                                      <Suspense fallback={<span className="text-xs text-gray-400">PDF…</span>}>
+                                      <Suspense fallback={<div className="flex justify-center py-2"><AppLoader fullScreen={false} text="PDF…" /></div>}>
                                         <ExportSalesPdf sale={sale} />
                                       </Suspense>
                                     </div>
@@ -2412,7 +2421,7 @@ const Sales = () => {
                     </button>
                   </div>
                   <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                    <Suspense fallback={<div className="text-sm text-gray-500 py-4">Préparation…</div>}>
+                    <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Préparation…" /></div>}>
                       <ExportSales />
                     </Suspense>
                   </div>

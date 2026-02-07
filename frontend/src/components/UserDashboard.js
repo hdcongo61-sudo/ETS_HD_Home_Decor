@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import UserForm from './UserForm';
+import Modal from './Modal';
 import { toast } from 'react-toastify';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import AppLoader from './AppLoader';
 
 // Icônes SVG réutilisables
 const PencilIcon = ({ className }) => (
@@ -291,7 +293,7 @@ const UserDashboard = () => {
                             setSelectedUser(null);
                             setShowForm(true);
                         }}
-                        disabled={stats.totalUsers >= 3}
+                        disabled={stats.totalUsers >= 4}
                         className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
                     >
                         <PlusIcon className="w-4 h-4 text-white" />
@@ -337,43 +339,24 @@ const UserDashboard = () => {
                 </p>
             </div>
 
-            {showForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md md:max-w-2xl shadow-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900">
-                                {selectedUser ? "Modifier l'utilisateur" : "Ajouter un nouvel utilisateur"}
-                            </h2>
-                            <button
-                                onClick={() => {
-                                    setShowForm(false);
-                                    setSelectedUser(null);
-                                }}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="max-h-[70vh] overflow-y-auto pr-1">
-                            <UserForm
-                                user={selectedUser}
-                                onCancel={() => {
-                                    setShowForm(false);
-                                    setSelectedUser(null);
-                                }}
-                                onSubmit={handleFormSubmit}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal
+                show={showForm}
+                onClose={() => { setShowForm(false); setSelectedUser(null); }}
+                title={selectedUser ? "Modifier l'utilisateur" : "Ajouter un nouvel utilisateur"}
+                subtitle={selectedUser ? "Mettez à jour les informations du compte." : "Créez un nouveau compte utilisateur."}
+                size="lg"
+            >
+                <UserForm
+                    user={selectedUser}
+                    embedded
+                    onCancel={() => { setShowForm(false); setSelectedUser(null); }}
+                    onSubmit={handleFormSubmit}
+                />
+            </Modal>
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-gray-200">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                    <p className="text-gray-600">Chargement des utilisateurs...</p>
+                    <AppLoader fullScreen={false} text="Chargement des utilisateurs…" />
                 </div>
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">

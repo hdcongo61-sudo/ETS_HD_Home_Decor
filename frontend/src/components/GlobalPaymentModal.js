@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
+import Modal from './Modal';
 
 const GlobalPaymentModal = () => {
   const { activeModal, closeModal } = useModal();
@@ -83,109 +84,102 @@ const GlobalPaymentModal = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-md">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Ajouter un Paiement</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={closeModal}
+      title="Ajouter un paiement"
+      size="sm"
+      footer={
+        <>
           <button
+            type="button"
             onClick={closeModal}
-            className="text-gray-500 hover:bg-gray-100 p-2 rounded-full"
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors touch-manipulation"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            Annuler
           </button>
+          <button
+            type="submit"
+            form="global-payment-form"
+            disabled={isLoading}
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed touch-manipulation"
+          >
+            {isLoading ? 'En cours...' : 'Enregistrer'}
+          </button>
+        </>
+      }
+    >
+      <form id="global-payment-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Sale Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Vente</label>
+          <select
+            value={selectedSale}
+            onChange={(e) => {
+              setSelectedSale(e.target.value);
+              setError('');
+            }}
+            className="w-full min-h-[44px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 touch-manipulation"
+            required
+          >
+            <option value="">Sélectionner une vente...</option>
+            {sales.map(sale => {
+              const balance = calculateBalance(sale);
+              return balance > 0 ? (
+                <option key={sale._id} value={sale._id}>
+                  {sale.client?.name} - Solde: {balance.toFixed()} CFA
+                </option>
+              ) : null;
+            })}
+          </select>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Sale Selection */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Vente</label>
-            <select
-              value={selectedSale}
-              onChange={(e) => {
-                setSelectedSale(e.target.value);
-                setError('');
-              }}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl"
-              required
-            >
-              <option value="">Sélectionner une vente...</option>
-              {sales.map(sale => {
-                const balance = calculateBalance(sale);
-                return balance > 0 ? (
-                  <option key={sale._id} value={sale._id}>
-                    {sale.client?.name} - Solde: {balance.toFixed()} CFA
-                  </option>
-                ) : null;
-              })}
-            </select>
-          </div>
+        {/* Amount */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Montant (CFA)</label>
+          <input
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setError('');
+            }}
+            className="w-full min-h-[44px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 touch-manipulation"
+            placeholder="0.00"
+            required
+          />
+        </div>
 
-          {/* Amount */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Montant</label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setError('');
-              }}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl"
-              placeholder="0.00"
-              required
-            />
+        {/* Payment Method */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Méthode</label>
+          <div className="grid grid-cols-3 gap-2">
+            {['cash', 'MobileMoney', 'credit'].map((methodOption) => (
+              <button
+                key={methodOption}
+                type="button"
+                onClick={() => setMethod(methodOption)}
+                className={`min-h-[44px] px-2 py-2 rounded-xl border text-sm font-medium touch-manipulation ${
+                  method === methodOption
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                {methodOption === 'cash' ? 'Espèces' :
+                 methodOption === 'MobileMoney' ? 'Mobile Money' : 'Crédit'}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Payment Method */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Méthode</label>
-            <div className="grid grid-cols-3 gap-2">
-              {['cash', 'MobileMoney', 'credit'].map((methodOption) => (
-                <button
-                  key={methodOption}
-                  type="button"
-                  onClick={() => setMethod(methodOption)}
-                  className={`p-2 rounded-xl border text-sm ${
-                    method === methodOption
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-700'
-                  }`}
-                >
-                  {methodOption === 'cash' ? 'Espèces' :
-                   methodOption === 'MobileMoney' ? 'Mobile Money' : 'Crédit'}
-                </button>
-              ))}
-            </div>
+        {error && (
+          <div className="text-red-600 dark:text-red-400 text-sm p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+            {error}
           </div>
-
-          {error && (
-            <div className="mb-4 text-red-600 text-sm p-3 bg-red-50 rounded-xl">
-              {error}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={closeModal}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-xl"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl disabled:bg-gray-400"
-            >
-              {isLoading ? 'Enregistrement...' : 'Enregistrer'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </Modal>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import AppLoader from './AppLoader';
 import {
   employeeAdvancesNewPath,
   employeeEditPath,
@@ -126,10 +127,7 @@ const EmployeeDetail = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gray-300 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Chargement des données de l'employé...</p>
-        </div>
+        <AppLoader fullScreen={false} text="Chargement des données de l'employé…" />
       </div>
     );
   }

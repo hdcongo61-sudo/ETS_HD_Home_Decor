@@ -11,8 +11,7 @@ const AppLayout = ({ children, className = '', fullWidth = false }) => {
   return (
     <div
       className={`
-        w-full
-        mx-auto
+        w-full mx-auto
         px-4 sm:px-5 md:px-6 lg:px-8
         py-5 sm:py-6 md:py-8
         safe-area-padding

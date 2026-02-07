@@ -1,84 +1,160 @@
 // components/FloatingActionButton.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, CreditCard, Receipt, Users, Package, ChevronUp } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
 const FloatingActionButton = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef(null);
   const { openModal } = useModal();
+  const navigate = useNavigate();
 
-  const actions = [
+  const handleNewSale = () => {
+    openModal('sale');
+    setIsExpanded(false);
+  };
+
+  const handleNewPayment = () => {
+    openModal('payment');
+    setIsExpanded(false);
+  };
+
+  const quickLinks = [
     {
-      label: 'Nouvelle Vente',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      ),
-      onClick: () => openModal('sale'),
-      color: 'bg-blue-500 hover:bg-blue-600'
+      label: 'Ventes',
+      icon: Receipt,
+      onClick: () => {
+        navigate('/sales');
+        setIsExpanded(false);
+      },
+      accent: 'text-blue-600',
+      bg: 'bg-white hover:bg-blue-50 border border-gray-200',
     },
     {
-      label: 'Ajouter Paiement',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      onClick: () => openModal('payment'),
-      color: 'bg-green-500 hover:bg-green-600'
-    }
+      label: 'Clients',
+      icon: Users,
+      onClick: () => {
+        navigate('/clients');
+        setIsExpanded(false);
+      },
+      accent: 'text-emerald-600',
+      bg: 'bg-white hover:bg-emerald-50 border border-gray-200',
+    },
+    {
+      label: 'Produits',
+      icon: Package,
+      onClick: () => {
+        navigate('/products');
+        setIsExpanded(false);
+      },
+      accent: 'text-amber-600',
+      bg: 'bg-white hover:bg-amber-50 border border-gray-200',
+    },
   ];
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsExpanded(false);
+      }
+    };
+    if (isExpanded) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [isExpanded]);
+
   return (
-    <div
-      className="fixed z-50"
-      style={{
-        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
-        right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
-      }}
-    >
-      {/* Menu des actions */}
-      {isMenuOpen && (
-        <div className="absolute bottom-16 right-0 mb-2 space-y-2">
-          {actions.map((action, index) => (
-            <div
-              key={action.label}
-              className="flex items-center justify-end space-x-2 transition-all duration-300"
-              style={{
-                opacity: isMenuOpen ? 1 : 0,
-                transform: `translateY(${isMenuOpen ? 0 : 20}px)`,
-                transitionDelay: isMenuOpen ? `${index * 100}ms` : '0ms'
-              }}
-            >
-              <span className="bg-gray-800 text-white text-sm px-3 py-1 rounded-lg whitespace-nowrap">
-                {action.label}
-              </span>
-              <button
-                onClick={action.onClick}
-                className={`${action.color} text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110`}
-              >
-                {action.icon}
-              </button>
-            </div>
-          ))}
-        </div>
+    <>
+      {/* Backdrop when expanded (mobile-friendly) */}
+      {isExpanded && (
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] md:bg-black/10 transition-opacity"
+          onClick={() => setIsExpanded(false)}
+        />
       )}
 
-      {/* Bouton principal */}
-      <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full flex items-center justify-center shadow-2xl transition-all transform hover:scale-110"
+      <div
+        ref={containerRef}
+        className="fixed z-50 right-[calc(1rem+env(safe-area-inset-right,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] flex flex-col items-end gap-3"
       >
-        <svg 
-          className={`w-6 h-6 transition-transform duration-300 ${isMenuOpen ? 'rotate-45' : 'rotate-0'}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      </button>
-    </div>
+        {/* Expandable speed-dial */}
+        {isExpanded && (
+          <div className="flex flex-col items-end gap-2 transition-all duration-200">
+            {/* Primary: New Sale (in speed-dial too for consistency) */}
+            <button
+              type="button"
+              onClick={handleNewSale}
+              className="flex items-center gap-3 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+            >
+              <span className="text-sm font-medium">Nouvelle vente</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                <ShoppingCart className="w-5 h-5" strokeWidth={2} />
+              </span>
+            </button>
+            {/* Payment */}
+            <button
+              type="button"
+              onClick={handleNewPayment}
+              className="flex items-center gap-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+            >
+              <span className="text-sm font-medium">Ajouter paiement</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                <CreditCard className="w-5 h-5" strokeWidth={2} />
+              </span>
+            </button>
+            {/* Divider / label */}
+            <div className="w-full border-t border-gray-200/80 pt-2 mt-1">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2 text-right">Accès rapide</p>
+            </div>
+            {/* Quick links */}
+            {quickLinks.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className={`flex items-center gap-3 rounded-2xl ${item.bg} shadow hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-2.5 min-w-[160px] justify-end`}
+                >
+                  <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.accent}`}>
+                    <Icon className="w-4 h-4" strokeWidth={2} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Main FAB: one tap = New Sale */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex h-[22px] w-[21px] items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 shadow border border-gray-200 md:border-0"
+            aria-label={isExpanded ? 'Fermer le menu' : 'Plus d\'actions'}
+          >
+            <ChevronUp
+              className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              strokeWidth={2}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={handleNewSale}
+            className="flex h-[34px] w-[38px] items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-blue-500/20"
+            aria-label="Nouvelle vente"
+          >
+            <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
+          </button>
+          <span className="text-[10px] font-medium text-gray-500 hidden md:block">Nouvelle vente</span>
+        </div>
+      </div>
+    </>
   );
 };
 

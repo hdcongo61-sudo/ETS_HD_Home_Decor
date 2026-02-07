@@ -9,6 +9,7 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
+import Modal from '../components/Modal';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const GENDER_OPTIONS = [
@@ -69,26 +70,32 @@ const Clients = () => {
   const fetchStats = useCallback(async () => {
     try {
       const { data } = await api.get('/clients/stats');
-      setStats(data);
+      setStats(data && typeof data === 'object' ? data : null);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Erreur stats:', err);
-      toast.error("Impossible de charger les statistiques");
+      const msg = err.isHtmlResponse ? err.message : "Impossible de charger les statistiques";
+      toast.error(msg);
     }
   }, []);
 
   // --- Fetch clients ---
-  const fetchClients = useCallback(async (signal) => {
+  const fetchClients = useCallback(async (signal, options = {}) => {
+    const { showLoading = true } = options;
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const { data } = await api.get('/clients', { params: { search: searchTerm }, signal });
-      setClients(data.clients || []);
+      const list = data && (Array.isArray(data.clients) ? data.clients : Array.isArray(data) ? data : []);
+      setClients(list);
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Erreur clients:', err);
-        toast.error('Erreur lors du chargement des clients');
+        setClients([]);
+        const msg = err.isHtmlResponse ? err.message : 'Erreur lors du chargement des clients';
+        toast.error(msg);
       }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (showLoading && !signal?.aborted) setLoading(false);
     }
   }, [searchTerm]);
 
@@ -98,11 +105,14 @@ const Clients = () => {
     try {
       setFiltering(true);
       const { data } = await api.get('/clients/filter', { params: filters });
-      setClients(data);
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.clients) ? data.clients : []);
+      setClients(list);
       toast.success('Filtres appliqués');
     } catch (err) {
       console.error('Erreur filtre:', err);
-      toast.error('Erreur lors du filtrage');
+      setClients([]);
+      const msg = err.isHtmlResponse ? err.message : 'Erreur lors du filtrage';
+      toast.error(msg);
     } finally {
       setFiltering(false);
     }
@@ -170,7 +180,7 @@ const Clients = () => {
       setIsFormOpen(false);
       setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
       setEditingClient(null);
-      fetchClients();
+      await fetchClients(undefined, { showLoading: false });
       fetchStats();
     } catch (err) {
       console.error(err);
@@ -183,7 +193,7 @@ const Clients = () => {
     try {
       await api.delete(`/clients/${id}`);
       toast.success('🗑️ Client supprimé avec succès');
-      fetchClients();
+      await fetchClients(undefined, { showLoading: false });
       fetchStats();
     } catch (err) {
       console.error(err);
@@ -570,12 +580,13 @@ const Clients = () => {
 
         {/* Modal: mobile-first form */}
         <Modal
-          show={isFormOpen}
+          isOpen={isFormOpen}
           onClose={() => {
             setIsFormOpen(false);
             setEditingClient(null);
           }}
           title={editingClient ? 'Modifier le client' : 'Nouveau client'}
+          size="sm"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block">
@@ -660,44 +671,5 @@ const Clients = () => {
     </div>
   );
 };
-
-/* Modal: mobile-first (full height on small screens, centered on desktop) */
-const Modal = ({ show, onClose, title, children }) => (
-  <AnimatePresence>
-    {show && (
-      <motion.div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          onClick={(e) => e.stopPropagation()}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 24 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="bg-white w-full max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md sm:max-h-[85vh]"
-        >
-          <div className="sticky top-0 bg-white flex justify-between items-center px-4 py-3 border-b border-gray-200 sm:px-6 sm:py-4 z-10">
-            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">{title}</h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Fermer"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-500 hover:text-gray-700 active:text-gray-900 rounded-xl touch-manipulation"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4 pb-8 sm:p-6">{children}</div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
 
 export default Clients;

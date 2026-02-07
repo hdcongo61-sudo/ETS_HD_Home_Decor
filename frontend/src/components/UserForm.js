@@ -16,7 +16,9 @@ const toIsoStringOrNull = (value) => {
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const UserForm = ({ user, onSubmit, onCancel }) => {
+const inputClass = 'w-full min-h-[44px] px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base';
+
+const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -192,218 +194,114 @@ const UserForm = ({ user, onSubmit, onCancel }) => {
         onSubmit({ payload, config });
     };
 
+    const formContent = (
+        <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Photo */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="relative shrink-0">
+                    {photoPreview ? (
+                        <img src={photoPreview} alt={formData.name || 'Utilisateur'} className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                    ) : (
+                        <div className="w-16 h-16 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-dashed border-blue-200">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                    )}
+                    {photoPreview && (
+                        <button type="button" onClick={handlePhotoRemove} className="absolute -top-2 -right-2 bg-white border border-gray-200 text-gray-500 rounded-full p-1.5 shadow-sm hover:bg-gray-50 min-h-[32px] min-w-[32px] flex items-center justify-center" aria-label="Retirer la photo">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    )}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">Photo</p>
+                    <p className="text-xs text-gray-500 mt-0.5">JPG, PNG ou WEBP (max 5 Mo)</p>
+                    <label className="mt-2 inline-flex items-center min-h-[44px] px-4 py-2.5 bg-white border border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 text-sm font-medium text-gray-700">
+                        <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" /></svg>
+                        Choisir une photo
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    </label>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Nom complet</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} placeholder="Ex. Jean Dupont" />
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputClass} placeholder="exemple@etshd.com" />
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Téléphone</label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="+242 06 000 0000" />
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} minLength={6} className={inputClass} placeholder={user ? 'Laisser vide pour ne pas changer' : 'Minimum 6 caractères'} />
+            </div>
+            {formData.password && (
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
+                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={inputClass} placeholder="Confirmer le mot de passe" />
+                </div>
+            )}
+
+            <div className="flex items-center min-h-[44px] p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">Accès administrateur</label>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-800">Fenêtre de connexion</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Restreindre les plages horaires de connexion.</p>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer min-h-[44px]">
+                        <input type="checkbox" name="accessControlEnabled" checked={formData.accessControlEnabled} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                        Activer
+                    </label>
+                </div>
+                {formData.accessControlEnabled && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-600">Début autorisé</label>
+                            <input type="datetime-local" name="accessStart" value={formData.accessStart} onChange={handleChange} className={`${inputClass} text-sm`} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-600">Fin autorisée</label>
+                            <input type="datetime-local" name="accessEnd" value={formData.accessEnd} onChange={handleChange} className={`${inputClass} text-sm`} />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
+                <button type="button" onClick={onCancel} className="min-h-[44px] px-5 py-2.5 rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium transition-colors w-full sm:w-auto">
+                    Annuler
+                </button>
+                <button type="submit" className="min-h-[44px] px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                    {user ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
+                </button>
+            </div>
+        </form>
+    );
+
+    if (embedded) {
+        return formContent;
+    }
+
     return (
         <div className="max-w-md mx-auto">
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                 <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                        {user ? 'Edit User' : 'Create New User'}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        {user ? 'Update user information' : 'Add a new user to the system'}
-                    </p>
+                    <h2 className="text-xl font-semibold text-gray-900">{user ? "Modifier l'utilisateur" : "Ajouter un utilisateur"}</h2>
+                    <p className="text-sm text-gray-500 mt-1">{user ? "Mettez à jour les informations du compte." : "Créez un nouveau compte utilisateur."}</p>
                 </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            {photoPreview ? (
-                                <img
-                                    src={photoPreview}
-                                    alt={formData.name || "Utilisateur"}
-                                    className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm"
-                                />
-                            ) : (
-                                <div className="w-16 h-16 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-dashed border-blue-200">
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15.5 21h-7A2.5 2.5 0 016 18.5v0A5.5 5.5 0 0111.5 13h1A5.5 5.5 0 0118 18.5v0A2.5 2.5 0 0115.5 21z" />
-                                    </svg>
-                                </div>
-                            )}
-                            {photoPreview && (
-                                <button
-                                    type="button"
-                                    onClick={handlePhotoRemove}
-                                    className="absolute -top-2 -right-2 bg-white border border-gray-200 text-gray-500 rounded-full p-1 shadow-sm hover:bg-gray-50"
-                                    aria-label="Retirer la photo"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">Photo de l'utilisateur</p>
-                            <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, WEBP (max 5 Mo).</p>
-                            <div className="mt-3 flex flex-wrap gap-3">
-                                <label className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition">
-                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V8a2 2 0 00-2-2h-3l-1.447-1.894A2 2 0 0011.382 4H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    <span className="text-sm font-medium">Choisir une photo</span>
-                                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                                </label>
-                                {photoPreview && (
-                                    <button
-                                        type="button"
-                                        onClick={handlePhotoRemove}
-                                        className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 text-sm"
-                                    >
-                                        Supprimer
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Name</label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder="Enter full name"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Email</label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder="Enter email address"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Téléphone</label>
-                        <input
-                            type="tel"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder="Ex: +242 06 000 0000"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            {user ? 'New Password' : 'Password'}
-                        </label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            minLength="6"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder={user ? 'Enter new password (optional)' : 'Enter password'}
-                        />
-                    </div>
-
-                    {formData.password && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
-                                Confirm Password
-                            </label>
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                                placeholder="Confirm your password"
-                            />
-                        </div>
-                    )}
-
-                    <div className="flex items-center p-3 bg-gray-50 rounded-xl">
-                        <input
-                            type="checkbox"
-                            id="isAdmin"
-                            name="isAdmin"
-                            checked={formData.isAdmin}
-                            onChange={handleChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="isAdmin" className="ml-3 text-sm text-gray-700">
-                            Administrator Access
-                        </label>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-xl space-y-4">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-800">Fenêtre de connexion</h3>
-                                <p className="text-xs text-gray-500">Limitez la période pendant laquelle cet utilisateur peut se connecter.</p>
-                            </div>
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                <input
-                                    type="checkbox"
-                                    name="accessControlEnabled"
-                                    checked={formData.accessControlEnabled}
-                                    onChange={handleChange}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                />
-                                Activer
-                            </label>
-                        </div>
-
-                        {formData.accessControlEnabled && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Début autorisé</label>
-                                    <input
-                                        type="datetime-local"
-                                        name="accessStart"
-                                        value={formData.accessStart}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 text-sm"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Fin autorisée</label>
-                                    <input
-                                        type="datetime-local"
-                                        name="accessEnd"
-                                        value={formData.accessEnd}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 text-sm"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-6 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={onCancel}
-                            className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 justify-center transition-colors shadow-sm"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            {user ? 'Update User' : 'Create User'}
-                        </button>
-                    </div>
-                </form>
+                {formContent}
             </div>
         </div>
     );

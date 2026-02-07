@@ -11,6 +11,9 @@ import SiteFooter from './components/SiteFooter';
 import PushNotificationManager from './components/PushNotificationManager';
 import AppLayout from './components/AppLayout';
 import BottomTabBar from './components/BottomTabBar';
+import AppLoader from './components/AppLoader';
+import ScrollToTop from './components/ScrollToTop';
+
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
@@ -59,10 +62,11 @@ function App() {
     <ModalProvider>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen flex flex-col bg-gray-50">
+          <ScrollToTop />
+          <div className="min-h-screen flex flex-col bg-[#f2f2f7]">
             <Navigation />
             <OfflineIndicator />
-            <Suspense fallback={<div className="p-8 text-center text-gray-500">Chargement...</div>}>
+            <Suspense fallback={<AppLoader />}>
               <main className="flex-1 min-h-0 main-with-tab-bar">
                 <AppLayout>
                   <Routes>

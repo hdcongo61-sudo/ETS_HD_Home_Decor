@@ -108,21 +108,21 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/70 sticky top-0 z-50 supports-backdrop-blur:bg-white/60 nav-safe-top">
-      <div className="container mx-auto px-4 py-2">
+    <nav className="surface-bar sticky top-0 z-50 nav-safe-top border-b border-gray-200/50">
+      <div className="container mx-auto px-4 py-2.5">
         <div className="flex justify-between items-center gap-3">
           {/* === Logo === */}
           <Link
             to="/"
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2.5"
             onClick={closeMenu}
           >
             <img
               src={`${process.env.PUBLIC_URL || ''}/logo.png`}
               alt="ETS HD Logo"
-              className="w-10 h-10 rounded-lg object-contain border border-gray-200 shadow-sm bg-white"
+              className="w-10 h-10 rounded-apple object-contain border border-gray-200/80 shadow-apple-sm bg-white"
             />
-            <span className="text-gray-900 text-lg font-semibold hidden md:block">
+            <span className="text-gray-900 text-[17px] font-semibold hidden md:block tracking-tight">
               ETS HD-Gestion
             </span>
           </Link>
@@ -137,7 +137,7 @@ const Navigation = () => {
             {auth.isAuthenticated && (
               <>
                 <Link to="/profile" className="block" onClick={closeMenu}>
-                  <div className="bg-gray-100 border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition overflow-hidden">
+                  <div className="bg-gray-100 border border-gray-200/80 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition-colors duration-apple ease-apple overflow-hidden min-w-[44px] min-h-[44px]">
                     {auth.user?.photo ? (
                       <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
                     ) : (
@@ -153,7 +153,7 @@ const Navigation = () => {
             {!isDesktop && (
               <button
                 onClick={toggleMenu}
-                className="text-gray-600 focus:outline-none hover:text-gray-900"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center -m-2 text-gray-600 focus:outline-none hover:text-gray-900 transition-colors duration-apple ease-apple rounded-apple active:bg-gray-100"
                 aria-label="Toggle menu"
                 aria-expanded={isMenuOpen}
               >

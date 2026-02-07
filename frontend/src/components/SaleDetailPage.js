@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath } from '../utils/paths';
 import PaymentModal from '../components/PaymentModal';
+import Modal from './Modal';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
@@ -15,6 +16,8 @@ import {
     Tooltip,
     Legend
 } from 'chart.js';
+
+import AppLoader from './AppLoader';
 
 // Enregistrer les composants de Chart.js
 ChartJS.register(
@@ -366,7 +369,7 @@ const SaleDetailPage = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-[16rem]">
-                <div className="animate-spin rounded-full h-12 w-12 border-2 border-indigo-200 border-t-indigo-600" aria-hidden />
+                <AppLoader fullScreen={false} text="Chargement de la vente…" />
             </div>
         );
     }
@@ -782,16 +785,16 @@ const SaleDetailPage = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between">
                                     <span className="text-sm">Total de la vente:</span>
-                                    <span className="text-sm font-semibold">{sale.totalAmount?.toFixed(0)} CFA</span>
+                                    <span className="text-sm font-semibold">{(Number(sale.totalAmount) || 0).toFixed(0)} CFA</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm">Total payé:</span>
-                                    <span className="text-sm font-semibold text-green-600">{sale.totalPaid?.toFixed(0)} CFA</span>
+                                    <span className="text-sm font-semibold text-green-600">{(Number(sale.totalPaid) || 0).toFixed(0)} CFA</span>
                                 </div>
                                 <div className="flex justify-between border-t pt-2">
                                     <span className="text-sm font-medium">Solde restant:</span>
-                                    <span className={`text-sm font-semibold ${sale.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                        {Math.abs(sale.balance)?.toFixed(0)} CFA
+                                    <span className={`text-sm font-semibold ${Number(sale.balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                        {Math.abs(Number(sale.balance) || 0).toFixed(0)} CFA
                                     </span>
                                 </div>
                             </div>
@@ -1124,289 +1127,241 @@ const SaleDetailPage = () => {
                 />
 
                 {/* Modal de rappel */}
-                {showReminderModal && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                        onClick={() => setShowReminderModal(false)}
-                    >
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </span>
-                                    {sale.paymentReminder?.isSet ? 'Modifier le rappel' : 'Définir un rappel'}
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowReminderModal(false)}
-                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    aria-label="Fermer"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-4">
-                                <div>
-                                    <label htmlFor="reminder-datetime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date et heure du rappel</label>
-                                    <input
-                                        id="reminder-datetime"
-                                        type="datetime-local"
-                                        value={reminderDate}
-                                        onChange={(e) => setReminderDate(e.target.value)}
-                                        min={new Date().toISOString().slice(0, 16)}
-                                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="reminder-note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note du rappel (optionnelle)</label>
-                                    <textarea
-                                        id="reminder-note"
-                                        value={reminderNote}
-                                        onChange={(e) => setReminderNote(e.target.value)}
-                                        placeholder="Message pour le rappel..."
-                                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y"
-                                        rows={3}
-                                        maxLength={200}
-                                    />
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{reminderNote.length}/200 caractères</p>
-                                </div>
-                                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
-                                        Ce rappel sera affiché sur le tableau de bord et pourra être utilisé pour envoyer des notifications de suivi au client.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-3 px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30">
-                                <button type="button" onClick={() => setShowReminderModal(false)} className="min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                    Annuler
-                                </button>
-                                <button type="button" onClick={handleSetReminder} className="min-h-[44px] px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium">
-                                    {sale.paymentReminder?.isSet ? 'Modifier' : 'Définir'}
-                                </button>
-                            </div>
+                <Modal
+                    isOpen={showReminderModal}
+                    onClose={() => setShowReminderModal(false)}
+                    title={sale.paymentReminder?.isSet ? 'Modifier le rappel' : 'Définir un rappel'}
+                    size="sm"
+                    footer={
+                        <>
+                            <button type="button" onClick={() => setShowReminderModal(false)} className="min-h-[44px] w-full sm:w-auto px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium touch-manipulation">
+                                Annuler
+                            </button>
+                            <button type="button" onClick={handleSetReminder} className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium touch-manipulation">
+                                {sale.paymentReminder?.isSet ? 'Modifier' : 'Définir'}
+                            </button>
+                        </>
+                    }
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="reminder-datetime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date et heure du rappel</label>
+                            <input
+                                id="reminder-datetime"
+                                type="datetime-local"
+                                value={reminderDate}
+                                onChange={(e) => setReminderDate(e.target.value)}
+                                min={new Date().toISOString().slice(0, 16)}
+                                className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 touch-manipulation"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="reminder-note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note du rappel (optionnelle)</label>
+                            <textarea
+                                id="reminder-note"
+                                value={reminderNote}
+                                onChange={(e) => setReminderNote(e.target.value)}
+                                placeholder="Message pour le rappel..."
+                                className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y touch-manipulation"
+                                rows={3}
+                                maxLength={200}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{reminderNote.length}/200 caractères</p>
+                        </div>
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                            <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                                Ce rappel sera affiché sur le tableau de bord et pourra être utilisé pour envoyer des notifications de suivi au client.
+                            </p>
                         </div>
                     </div>
-                )}
+                </Modal>
 
                 {/* Modal de statut de livraison */}
-                {showDeliveryModal && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                        onClick={() => setShowDeliveryModal(false)}
-                    >
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V10a2 2 0 00-2-2M5 8a2 2 0 011-2h12a2 2 0 011 2m-2 6h.01M17 16h.01" />
-                                        </svg>
-                                    </span>
-                                    Statut de livraison
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDeliveryModal(false)}
-                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    aria-label="Fermer"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-4">
-                                <div>
-                                    <label htmlFor="delivery-status-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statut de livraison</label>
-                                    <select
-                                        id="delivery-status-select"
-                                        value={deliveryStatus}
-                                        onChange={(e) => setDeliveryStatus(e.target.value)}
-                                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    >
-                                        <option value="pending">En attente</option>
-                                        <option value="delivered">Livré</option>
-                                        <option value="not_delivered">Non livré</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="delivery-note-ta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note de livraison (optionnelle)</label>
-                                    <textarea
-                                        id="delivery-note-ta"
-                                        value={deliveryNote}
-                                        onChange={(e) => setDeliveryNote(e.target.value)}
-                                        placeholder="Notes sur la livraison..."
-                                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y"
-                                        rows={3}
-                                        maxLength={500}
-                                    />
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{deliveryNote.length}/500 caractères</p>
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-3 px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30">
-                                <button type="button" onClick={() => setShowDeliveryModal(false)} className="min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                    Annuler
-                                </button>
-                                <button type="button" onClick={handleUpdateDelivery} className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">
-                                    Enregistrer
-                                </button>
-                            </div>
+                <Modal
+                    isOpen={showDeliveryModal}
+                    onClose={() => setShowDeliveryModal(false)}
+                    title="Statut de livraison"
+                    size="sm"
+                    footer={
+                        <>
+                            <button type="button" onClick={() => setShowDeliveryModal(false)} className="min-h-[44px] w-full sm:w-auto px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium touch-manipulation">
+                                Annuler
+                            </button>
+                            <button type="button" onClick={handleUpdateDelivery} className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium touch-manipulation">
+                                Enregistrer
+                            </button>
+                        </>
+                    }
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="delivery-status-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statut de livraison</label>
+                            <select
+                                id="delivery-status-select"
+                                value={deliveryStatus}
+                                onChange={(e) => setDeliveryStatus(e.target.value)}
+                                className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 touch-manipulation"
+                            >
+                                <option value="pending">En attente</option>
+                                <option value="delivered">Livré</option>
+                                <option value="not_delivered">Non livré</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="delivery-note-ta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note de livraison (optionnelle)</label>
+                            <textarea
+                                id="delivery-note-ta"
+                                value={deliveryNote}
+                                onChange={(e) => setDeliveryNote(e.target.value)}
+                                placeholder="Notes sur la livraison..."
+                                className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 resize-y touch-manipulation"
+                                rows={3}
+                                maxLength={500}
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{deliveryNote.length}/500 caractères</p>
                         </div>
                     </div>
-                )}
+                </Modal>
 
                 {/* Modal d'historique des modifications */}
-                {showHistoryModal && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                        onClick={() => setShowHistoryModal(false)}
-                    >
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-xl"
-                            onClick={(e) => e.stopPropagation()}
+                <Modal
+                    isOpen={showHistoryModal}
+                    onClose={() => setShowHistoryModal(false)}
+                    title="Historique des modifications"
+                    size="lg"
+                    footer={
+                        <button
+                            type="button"
+                            onClick={() => setShowHistoryModal(false)}
+                            className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium touch-manipulation"
                         >
-                            <div className="flex items-center justify-between px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </span>
-                                    Historique des modifications
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowHistoryModal(false)}
-                                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    aria-label="Fermer"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                            Fermer
+                        </button>
+                    }
+                >
+                    <div className="p-0 overflow-y-auto min-h-0">
                                 {sale.modificationHistory && sale.modificationHistory.length > 0 ? (
-                                    <div className="overflow-y-auto max-h-96">
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modifications</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {sale.modificationHistory.map((history, index) => {
-                                                    const historyUser = history.user;
-                                                    const userName = historyUser && typeof historyUser === 'object'
-                                                        ? (historyUser.name || 'Utilisateur inconnu')
-                                                        : 'Utilisateur inconnu';
-                                                    const userRole = historyUser && typeof historyUser === 'object'
-                                                        ? (historyUser.isAdmin ? 'admin' : historyUser.role || 'user')
-                                                        : 'user';
+                                    <div className="space-y-6 pb-2">
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Historique ({sale.modificationHistory.length} entrée{sale.modificationHistory.length > 1 ? 's' : ''})
+                                        </p>
+                                        {sale.modificationHistory.map((history, index) => {
+                                            const historyUser = history.user;
+                                            const userName = historyUser && typeof historyUser === 'object'
+                                                ? (historyUser.name || 'Utilisateur inconnu')
+                                                : 'Utilisateur inconnu';
+                                            const userRole = historyUser && typeof historyUser === 'object'
+                                                ? (historyUser.isAdmin ? 'admin' : historyUser.role || 'user')
+                                                : 'user';
+                                            const changeTypeLabel = history.changeType === 'products_updated'
+                                                ? 'Modification des produits'
+                                                : history.changeType === 'sale_updated'
+                                                    ? 'Modification de la vente'
+                                                    : 'Modification';
+                                            const hasProducts = history.changes?.products?.length > 0;
+                                            const hasNote = history.note && String(history.note).trim() !== '';
 
-                                                    return (
-                                                        <tr key={index}>
-                                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                                <div className="text-sm text-gray-900">
+                                            return (
+                                                <article
+                                                    key={index}
+                                                    className="rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 overflow-hidden"
+                                                >
+                                                    {/* Header: date, user, type */}
+                                                    <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-gray-200 dark:border-gray-600 bg-white/80 dark:bg-gray-800/50">
+                                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                                            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                                                                <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                                                                     {formatModificationDate(history.date)}
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-medium text-gray-900">
-                                                                        {userName}
-                                                                    </span>
-                                                                    <span className="text-xs mt-1">
-                                                                        {getRoleBadge(userRole)}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-4">
-                                                                <div className="text-sm text-gray-500">
-                                                                    {history.note || "Aucune note"}
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-4">
-                                                                {history.changes && history.changes.products && history.changes.products.length > 0 ? (
-                                                                    <div className="text-sm space-y-2">
-                                                                        {history.changes.products.map((change, idx) => {
+                                                                </span>
+                                                                <span className="text-gray-400 dark:text-gray-500">·</span>
+                                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{userName}</span>
+                                                                <span>{getRoleBadge(userRole)}</span>
+                                                            </div>
+                                                            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg">
+                                                                {changeTypeLabel}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-4 sm:p-5 space-y-4">
+                                                        {/* Section: Note */}
+                                                        <section className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/50 p-4">
+                                                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                                                                Note
+                                                            </h4>
+                                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                                {hasNote ? history.note : <span className="italic text-gray-500 dark:text-gray-400">Aucune note</span>}
+                                                            </p>
+                                                        </section>
+
+                                                        {/* Section: Modifications produits */}
+                                                        <section className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/50 p-4">
+                                                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                                                                Modifications produits
+                                                            </h4>
+                                                            {hasProducts ? (
+                                                                <div className="space-y-3">
+                                                                    {history.changes.products.map((change, idx) => {
                                                                         const productId = change.product && typeof change.product === 'object'
                                                                             ? (change.product._id || change.product.toString?.())
                                                                             : change.product;
                                                                         const productName = (change.product && change.product.name)
                                                                             || (productId ? productNames[productId.toString()] : null)
                                                                             || "Produit inconnu";
-                                                                            return (
-                                                                                <div key={idx} className="mb-3 p-2 bg-gray-50 rounded-lg">
-                                                                                    <div className="font-medium text-blue-600 mb-1">{productName}</div>
-                                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                                        {change.oldQuantity !== undefined && change.newQuantity !== undefined && (
-                                                                                            <div className="flex justify-between">
-                                                                                                <span className="text-gray-500">Quantité:</span>
-                                                                                                <span>
-                                                                                                    {change.oldQuantity} → <span className="font-semibold text-green-600">{change.newQuantity}</span>
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        )}
-                                                                                        {change.oldPrice !== undefined && change.newPrice !== undefined && (
-                                                                                            <div className="flex justify-between">
-                                                                                                <span className="text-gray-500">Prix:</span>
-                                                                                                <span>
-                                                                                                    {change.oldPrice?.toFixed(0)} CFA → <span className="font-semibold text-green-600">{change.newPrice?.toFixed(0)} CFA</span>
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
+                                                                        return (
+                                                                            <div
+                                                                                key={idx}
+                                                                                className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-700/50 p-3 sm:p-4"
+                                                                            >
+                                                                                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                                                                                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{productName}</p>
+                                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                                                                                        {formatModificationDate(history.date)}
+                                                                                    </span>
                                                                                 </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-sm text-gray-500">Aucun détail de modification</span>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                                                                <div className="space-y-2 text-sm">
+                                                                                    {change.oldQuantity !== undefined && change.newQuantity !== undefined && (
+                                                                                        <div className="flex flex-wrap justify-between items-baseline gap-2">
+                                                                                            <span className="text-gray-500 dark:text-gray-400">Quantité</span>
+                                                                                            <span className="tabular-nums text-gray-900 dark:text-white">
+                                                                                                {change.oldQuantity} → <span className="font-semibold text-green-600 dark:text-green-400">{change.newQuantity}</span>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {change.oldPrice !== undefined && change.newPrice !== undefined && (
+                                                                                        <div className="flex flex-wrap justify-between items-baseline gap-2">
+                                                                                            <span className="text-gray-500 dark:text-gray-400">Prix</span>
+                                                                                            <span className="tabular-nums text-gray-900 dark:text-white">
+                                                                                                {(change.oldPrice || 0).toLocaleString('fr-FR')} → <span className="font-semibold text-green-600 dark:text-green-400">{(change.newPrice || 0).toLocaleString('fr-FR')} CFA</span>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun détail de modification produit pour cette entrée.</p>
+                                                            )}
+                                                        </section>
+                                                    </div>
+                                                </article>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-8">
-                                        <svg className="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <p className="mt-4 text-gray-500 dark:text-gray-400 text-sm">Aucune modification enregistrée pour cette vente</p>
+                                    <div className="flex flex-col items-center justify-center py-10 sm:py-12 text-center">
+                                        <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 mb-4">
+                                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </span>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 px-4">Aucune modification enregistrée pour cette vente</p>
                                     </div>
                                 )}
-                            </div>
-                            <div className="flex justify-end px-4 py-4 sm:px-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowHistoryModal(false)}
-                                    className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium"
-                                >
-                                    Fermer
-                                </button>
-                            </div>
-                        </div>
                     </div>
-                )}
+                </Modal>
             </div>
         </div>
     );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import Modal from './Modal';
 
 const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
   const [amount, setAmount] = useState('');
@@ -47,53 +47,50 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
 
   if (!sale) return null;
 
-  const totalPaid = sale.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-  const balance = sale.totalAmount - totalPaid;
+  const totalPaid = sale.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+  const balance = (Number(sale.totalAmount) || 0) - totalPaid;
 
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          key="backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={onClose}
-        >
-          <motion.div
-            key="modal"
-            initial={{ scale: 0.96, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.96, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      title="Ajouter un paiement"
+      subtitle={sale.client?.name ? `${sale.client.name} · Solde: ${balance.toFixed(0)} CFA` : undefined}
+      size="sm"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors touch-manipulation disabled:opacity-70"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-                Ajouter un paiement
-              </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                aria-label="Fermer"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            Annuler
+          </button>
+          <button
+            type="submit"
+            form="sale-payment-form"
+            disabled={isSubmitting}
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Traitement...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-5 sm:p-6 space-y-6">
+                Enregistrer
+              </>
+            )}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-6">
               {/* Summary */}
               <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
@@ -129,12 +126,9 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                     </h3>
                     <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 pr-1">
                       {sale.payments.map((p, i) => (
-                        <motion.div
+                        <div
                           key={i}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm"
+                          className="flex justify-between items-center bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm"
                         >
                           <div className="flex items-center gap-2 text-sm">
                             <div
@@ -160,7 +154,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                           <span className="font-semibold text-green-600">
                             {p.amount.toFixed()} CFA
                           </span>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -168,7 +162,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
               </div>
 
               {/* Payment Form */}
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form id="sale-payment-form" onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Montant à payer
@@ -200,16 +194,14 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                   </label>
                   <div className="grid grid-cols-3 gap-3">
                     {['cash', 'MobileMoney', 'credit'].map((opt) => (
-                      <motion.button
+                      <button
                         key={opt}
                         type="button"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => setMethod(opt)}
-                        className={`p-3 rounded-xl border-2 text-sm transition-all ${
+                        className={`min-h-[44px] p-3 rounded-xl border-2 text-sm font-medium transition-all touch-manipulation ${
                           method === opt
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500'
                         }`}
                       >
                         <div className="flex flex-col items-center gap-1">
@@ -232,85 +224,22 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                               : 'Espèces'}
                           </span>
                         </div>
-                      </motion.button>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 9v2m0 4h.01M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-sm flex items-center gap-2">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     {error}
-                  </motion.div>
+                  </div>
                 )}
-
-                <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={isSubmitting}
-                    className="min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                  >
-                    Annuler
-                  </button>
-                  <motion.button
-                    type="submit"
-                    disabled={isSubmitting}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className={`min-h-[44px] px-5 py-2.5 rounded-xl flex items-center gap-2 text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
-                      isSubmitting
-                        ? 'bg-indigo-400 cursor-not-allowed'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        Traitement...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Enregistrer
-                      </>
-                    )}
-                  </motion.button>
-                </div>
               </form>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      </div>
+    </Modal>
   );
 };
 

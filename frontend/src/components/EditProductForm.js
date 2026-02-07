@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import AppLoader from './AppLoader';
 
 const CATEGORY_OPTIONS = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
 
@@ -133,7 +134,7 @@ const EditProductForm = () => {
       };
 
       await api.put(`/products/${id}`, productData);
-      navigate('/products');
+      navigate('/products', { replace: true, state: { fromProductEdit: true } });
     } catch (error) {
       console.error('Error updating product:', error);
       setError(error.response?.data?.message || 'Erreur lors de la mise à jour du produit');
@@ -142,24 +143,34 @@ const EditProductForm = () => {
     }
   };
 
+  const inputClass = (field) =>
+    `w-full px-4 py-2.5 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400 ${
+      validationErrors[field] ? 'border-red-500' : 'border-gray-300'
+    }`;
+  const selectClass = (field) =>
+    `w-full px-4 py-2.5 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pr-10 ${
+      validationErrors[field] ? 'border-red-500' : 'border-gray-300'
+    }`;
+
   /* ===================================================== */
   /* 🌀 ÉTATS DE CHARGEMENT / ERREUR */
   /* ===================================================== */
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center min-h-[320px]">
+        <AppLoader fullScreen={false} text="Chargement…" />
       </div>
     );
   }
 
   if (error && !product) {
     return (
-      <div className="text-center py-8">
-        <h2 className="text-xl font-semibold text-red-600">{error}</h2>
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+        <p className="text-red-600 font-medium">{error}</p>
         <button
+          type="button"
           onClick={() => navigate('/products')}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="mt-4 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium"
         >
           Retour à la liste
         </button>
@@ -171,246 +182,145 @@ const EditProductForm = () => {
   /* 🧱 FORMULAIRE PRINCIPAL */
   /* ===================================================== */
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="flex justify-between items-center p-4 bg-gray-50 border-b">
-          <button
-            onClick={() => navigate('/products')}
-            className="flex items-center text-blue-600 hover:text-blue-800"
-          >
-            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Retour
-          </button>
-          <h1 className="text-xl font-bold">Modifier le Produit</h1>
-          <div className="w-24"></div>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => navigate('/products')}
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Retour
+              </button>
+              <h1 className="text-xl font-semibold text-gray-900">Modifier le produit</h1>
+            </div>
+          </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 sm:p-8">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Nom et Catégorie */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Nom du Produit</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {validationErrors.name && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Catégorie</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.category ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Sélectionnez...</option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                {validationErrors.category && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
-                )}
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Section: Informations générales */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+                Informations générales
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du produit</label>
+                  <input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClass('name')} />
+                  {validationErrors.name && <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</label>
+                  <select name="category" value={formData.category} onChange={handleChange} className={selectClass('category')}>
+                    <option value="">Sélectionnez...</option>
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  {validationErrors.category && <p className="text-red-500 text-xs mt-1">{validationErrors.category}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Conteneur</label>
+                  <input type="text" name="container" value={formData.container} onChange={handleChange} className={inputClass('container')} placeholder="Ex: Conteneur A" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Entrepôt</label>
+                  <input type="text" name="warehouse" value={formData.warehouse} onChange={handleChange} className={inputClass('warehouse')} placeholder="Ex: Dépôt central" required />
+                </div>
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Conteneur</label>
-                <input
-                  type="text"
-                  name="container"
-                  value={formData.container}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded border-gray-300"
-                  placeholder="Ex: Conteneur A"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className={`${inputClass('description')} resize-y min-h-[80px]`} />
+                {validationErrors.description && <p className="text-red-500 text-xs mt-1">{validationErrors.description}</p>}
               </div>
+            </section>
+
+            {/* Section: Prix & stock */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+                Prix & stock
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix de revient (CFA)</label>
+                  <input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} min="0" step="0.01" className={inputClass('costPrice')} />
+                  {validationErrors.costPrice && <p className="text-red-500 text-xs mt-1">{validationErrors.costPrice}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix de vente (CFA)</label>
+                  <input type="number" name="price" value={formData.price} onChange={handleChange} min="0" step="0.01" className={inputClass('price')} />
+                  {validationErrors.price && <p className="text-red-500 text-xs mt-1">{validationErrors.price}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Stock disponible</label>
+                  <input type="number" name="stock" value={formData.stock} onChange={handleChange} min="0" className={inputClass('stock')} />
+                  {validationErrors.stock && <p className="text-red-500 text-xs mt-1">{validationErrors.stock}</p>}
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 flex flex-col justify-center">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Marge</p>
+                  <p className={`text-lg font-semibold tabular-nums ${Number(profitMargin) > 0 ? 'text-green-600' : Number(profitMargin) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    {profitMargin}%
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Section: Fournisseur */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+                Fournisseur
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du fournisseur</label>
+                  <input type="text" name="supplierName" value={formData.supplierName} onChange={handleChange} className={inputClass('supplierName')} required />
+                  {validationErrors.supplierName && <p className="text-red-500 text-xs mt-1">{validationErrors.supplierName}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Téléphone</label>
+                  <input type="text" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} className={inputClass('supplierPhone')} required />
+                  {validationErrors.supplierPhone && <p className="text-red-500 text-xs mt-1">{validationErrors.supplierPhone}</p>}
+                </div>
+              </div>
+            </section>
+
+            {/* Section: Image */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+                Image
+              </h2>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Entrepot</label>
-                <input
-                  type="text"
-                  name="warehouse"
-                  value={formData.warehouse}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded border-gray-300"
-                  placeholder="Ex: Depot Central"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">URL de l'image</label>
+                <input type="text" name="image" value={formData.image} onChange={handleChange} className={inputClass('image')} placeholder="https://..." />
               </div>
-            </div>
+            </section>
 
-            {/* Description */}
-            <div>
-              <label className="block text-gray-700 font-medium mb-2">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded ${
-                  validationErrors.description ? 'border-red-500' : 'border-gray-300'
-                }`}
-                rows="3"
-              />
-              {validationErrors.description && (
-                <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
-              )}
-            </div>
-
-            {/* Prix et Stock */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Prix de Revient</label>
-                <input
-                  type="number"
-                  name="costPrice"
-                  value={formData.costPrice}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.costPrice ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Prix de Vente</label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.price ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-              </div>
-
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <label className="block text-sm font-medium mb-1">Marge Bénéficiaire</label>
-                <p
-                  className={`text-lg font-semibold ${
-                    profitMargin > 0
-                      ? 'text-green-600'
-                      : profitMargin < 0
-                      ? 'text-red-600'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  {profitMargin}%
-                </p>
-              </div>
-            </div>
-
-            {/* Stock + Image */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Stock</label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.stock ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">URL Image</label>
-                <input
-                  type="text"
-                  name="image"
-                  value={formData.image}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded"
-                  placeholder="https://exemple.com/image.jpg"
-                />
-              </div>
-            </div>
-
-            {/* Fournisseur */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Nom du Fournisseur
-                </label>
-                <input
-                  type="text"
-                  name="supplierName"
-                  value={formData.supplierName}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.supplierName ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  required
-                />
-                {validationErrors.supplierName && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.supplierName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Téléphone du Fournisseur
-                </label>
-                <input
-                  type="text"
-                  name="supplierPhone"
-                  value={formData.supplierPhone}
-                  onChange={handleChange}
-                  className={`w-full p-2 border rounded ${
-                    validationErrors.supplierPhone ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  required
-                />
-                {validationErrors.supplierPhone && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.supplierPhone}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Boutons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t">
+            {/* Footer actions */}
+            <div className="pt-6 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
                 onClick={() => navigate('/products')}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 font-medium transition"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-4 py-2 rounded-md text-white flex items-center gap-2 ${
-                  isSubmitting
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
+                className="min-h-[44px] px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

@@ -4,7 +4,8 @@ const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
   // Évite "Unexpected token '<'" quand le serveur renvoie du HTML (404, SPA fallback, API injoignable)
   transformResponse: [(data, headers) => {
-    if (typeof data !== 'string') return data;
+    if (data == null || typeof data === 'object') return data;
+    const str = String(data);
     const contentType = (headers && headers['content-type']) || '';
     if (data.trimStart().startsWith('<') || contentType.includes('text/html')) {
       const err = new Error('Le serveur a renvoyé du HTML au lieu de JSON. Vérifiez REACT_APP_API_URL et que l’API backend est démarrée.');
@@ -12,8 +13,14 @@ const api = axios.create({
       throw err;
     }
     try {
-      return JSON.parse(data);
+      return JSON.parse(str);
     } catch (e) {
+      const msg = e.message || '';
+      if (msg.includes('Unexpected token') && str.trimStart().startsWith('<')) {
+        const err = new Error('Le serveur a renvoyé du HTML au lieu de JSON. Vérifiez REACT_APP_API_URL et que l\'API backend est démarrée.');
+        err.isHtmlResponse = true;
+        throw err;
+      }
       throw e;
     }
   }],

@@ -56,9 +56,11 @@ const getSales = asyncHandler(async (req, res) => {
 
     // Format sales data
     const formattedSales = sales.map(sale => {
-      // Calculate payment totals
-      const totalPaid = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
-      const balance = sale.totalAmount - totalPaid;
+      // Calculate payment totals (defensive: ensure numbers)
+      const payments = Array.isArray(sale.payments) ? sale.payments : [];
+      const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+      const totalAmount = Number(sale.totalAmount) || 0;
+      const balance = totalAmount - totalPaid;
 
       return {
         ...sale,
@@ -373,11 +375,12 @@ const addPayment = asyncHandler(async (req, res) => {
     await sale.save();
 
     // If payment completes the sale, update client
-    const totalPaid = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (totalPaid >= sale.totalAmount) {
+    const totalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const saleTotalAmount = Number(sale.totalAmount) || 0;
+    if (totalPaid >= saleTotalAmount) {
       await Client.findByIdAndUpdate(sale.client, {
         $inc: {
-          totalPurchases: sale.totalAmount,
+          totalPurchases: saleTotalAmount,
           purchaseCount: 1
         },
         $set: { lastPurchaseDate: new Date() }
@@ -385,7 +388,7 @@ const addPayment = asyncHandler(async (req, res) => {
     }
 
     await sale.populate('client', 'name');
-    const remainingBalance = Math.max(sale.totalAmount - totalPaid, 0);
+    const remainingBalance = Math.max(saleTotalAmount - totalPaid, 0);
 
     notifyPaymentRecorded({
       saleId: sale._id,
@@ -1130,9 +1133,11 @@ const getSaleById = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Vente non trouvée' });
     }
 
-    // Calculate payment totals
-    const totalPaid = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
-    const balance = sale.totalAmount - totalPaid;
+    // Calculate payment totals (defensive: ensure numbers, handle missing payments)
+    const payments = Array.isArray(sale.payments) ? sale.payments : [];
+    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const totalAmount = Number(sale.totalAmount) || 0;
+    const balance = totalAmount - totalPaid;
 
     // Format payment dates
     const formattedSale = {
@@ -1451,7 +1456,8 @@ const updateSale = asyncHandler(async (req, res) => {
       const modificationEntry = {
         user: user._id,
         date: new Date(),
-        note,
+        note: note || '',
+        changeType: 'products_updated',
         changes: {
           products: existingSale.products.map(oldItem => {
             const newItem = products.find(p =>
@@ -1633,9 +1639,11 @@ const deletePayment = asyncHandler(async (req, res) => {
     // Supprimer le paiement
     const [deletedPayment] = sale.payments.splice(paymentIndex, 1);
 
-    // Recalculer le total payé
-    sale.totalPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-    sale.balance = sale.totalAmount - sale.totalPaid;
+    // Recalculer le total payé (defensive: ensure numbers)
+    const totalPaid = (sale.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalAmount = Number(sale.totalAmount) || 0;
+    sale.totalPaid = totalPaid;
+    sale.balance = totalAmount - totalPaid;
 
     // Mettre à jour le statut
     if (sale.balance <= 0) {

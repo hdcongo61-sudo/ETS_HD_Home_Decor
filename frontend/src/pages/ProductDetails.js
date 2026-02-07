@@ -7,6 +7,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
+import AppLoader from '../components/AppLoader';
 
 /* ===================================================== */
 /* 🧩 UTILITAIRES DE FORMATTAGE */
@@ -129,7 +130,7 @@ const ProductDetails = () => {
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="w-10 h-10 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"></div>
+        <AppLoader fullScreen={false} text="Chargement du produit…" />
       </div>
     );
 

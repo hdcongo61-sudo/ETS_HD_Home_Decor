@@ -18,7 +18,8 @@ const BottomTabBar = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200 safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden surface-bar border-t border-gray-200/50 pt-2"
+      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       aria-label="Navigation principale"
     >
       <div className="grid grid-cols-4 h-14">
@@ -28,15 +29,15 @@ const BottomTabBar = () => {
             <Link
               key={path}
               to={path}
-              className={`flex flex-col items-center justify-center gap-0.5 min-w-0 px-2 py-2 transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 min-w-0 min-h-[44px] px-2 py-2 transition-colors duration-apple ease-apple rounded-apple active:bg-gray-100/80 ${
                 isActive
-                  ? "text-primary bg-primary/10 font-medium"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "text-[#007AFF] font-medium"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50/80"
               }`}
               aria-current={isActive ? "page" : undefined}
             >
               <Icon className="w-6 h-6 shrink-0" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className="text-xs truncate w-full text-center">{label}</span>
+              <span className="text-[11px] truncate w-full text-center font-medium">{label}</span>
             </Link>
           );
         })}

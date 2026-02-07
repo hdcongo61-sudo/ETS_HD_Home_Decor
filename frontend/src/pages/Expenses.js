@@ -7,6 +7,7 @@ import 'react-confirm-alert/src/react-confirm-alert.css';
 
 const Expenses = () => {
   const tableRef = useRef(null);
+  const formSectionRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
   const [filter, setFilter] = useState({
     search: '',
@@ -97,7 +98,7 @@ const Expenses = () => {
 
   const handleEdit = (expense) => {
     setEditingExpense(expense);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // Calcul des données pour le tableau de bord
@@ -320,7 +321,7 @@ const Expenses = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-200">
+        <div ref={formSectionRef} id="expense-form-section" className="bg-white p-6 rounded-2xl border border-gray-200 scroll-mt-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -410,68 +411,73 @@ const Expenses = () => {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
                 <table ref={tableRef} className="responsive-table w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paiement</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paiement</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {expenses.map((expense) => (
                       <tr key={expense._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td data-title="Date" className="px-4 sm:px-6 py-4 text-sm text-gray-900">
                           {new Date(expense.date).toLocaleDateString('fr-FR')}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 font-medium">{expense.description}</div>
+                        <td data-title="Description" className="px-4 sm:px-6 py-4">
+                          <div className="text-sm sm:text-base text-gray-900 font-medium">{expense.description}</div>
                           {(expense.createdBy || expense.updatedBy) && (
-                            <div className="mt-1 space-y-0.5 text-xs text-gray-400">
+                            <div className="mt-1.5 space-y-0.5 text-xs text-gray-500">
                               {expense.createdBy && (
-                                <div>
-                                  Créé par {formatUser(expense.createdBy)}
-                                  {formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}
-                                </div>
+                                <div>Créé par {formatUser(expense.createdBy)}{formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}</div>
                               )}
                               {expense.updatedBy && (
-                                <div>
-                                  Modifié par {formatUser(expense.updatedBy)}
-                                  {formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}
-                                </div>
+                                <div>Modifié par {formatUser(expense.updatedBy)}{formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}</div>
                               )}
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">{expense.amount.toLocaleString('fr-FR')} CFA</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${expense.category === 'rent' ? 'bg-red-100 text-red-800' :
+                        <td data-title="Montant" className="px-4 sm:px-6 py-4 text-base sm:text-sm font-semibold text-gray-900 tabular-nums">
+                          {expense.amount.toLocaleString('fr-FR')} CFA
+                        </td>
+                        <td data-title="Catégorie" className="px-4 sm:px-6 py-4">
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${expense.category === 'rent' ? 'bg-red-100 text-red-800' :
                             expense.category === 'salaries' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                              expense.category === 'utilities' ? 'bg-sky-100 text-sky-800' :
+                                expense.category === 'supplies' ? 'bg-amber-100 text-amber-800' :
+                                  expense.category === 'other' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-gray-100 text-gray-800'
                             }`}>
                             {categoryLabels[expense.category] || expense.category}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 capitalize">{expense.paymentMethod}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
+                        <td data-title="Paiement" className="px-4 sm:px-6 py-4 text-sm text-gray-900 capitalize">
+                          {expense.paymentMethod}
+                        </td>
+                        <td data-title="Actions" className="px-4 sm:px-6 py-4">
+                          <div className="flex gap-2 flex-wrap">
                             <button
+                              type="button"
                               onClick={() => handleEdit(expense)}
-                              className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 touch-manipulation"
+                              aria-label="Modifier"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                               </svg>
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleDelete(expense._id)}
-                              className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:text-red-800 rounded-xl hover:bg-red-50 touch-manipulation"
+                              aria-label="Supprimer"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>

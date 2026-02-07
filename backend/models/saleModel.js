@@ -104,7 +104,8 @@ const saleSchema = mongoose.Schema(
     modificationHistory: [{
       user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       date: Date,
-      note: String,
+      note: { type: String, default: '' },
+      changeType: { type: String, enum: ['products_updated', 'sale_updated'], default: 'products_updated' },
       changes: {
         products: [{
           product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },

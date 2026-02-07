@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import { formatDate } from "../utils/saleUtils";
+import AppLoader from "../components/AppLoader";
 
 const DeletedSales = () => {
   const [deletedSales, setDeletedSales] = useState([]);
@@ -27,8 +28,7 @@ const DeletedSales = () => {
 
   const loadingPlaceholder = (
     <div className="flex flex-col items-center justify-center py-20">
-      <div className="w-12 h-12 border-t-2 border-b-2 border-rose-500 rounded-full animate-spin" />
-      <p className="mt-3 text-gray-600">Chargement des ventes supprimées...</p>
+      <AppLoader fullScreen={false} text="Chargement des ventes supprimées…" />
     </div>
   );
 

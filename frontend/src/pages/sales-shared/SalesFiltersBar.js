@@ -73,14 +73,20 @@ const SalesFiltersBar = ({
           Date
         </label>
         {variant === "archive" ? (
-          <input
-            id="filter-date"
-            type="date"
-            value={dateFilter}
-            onChange={(e) => onDateChange(e.target.value)}
-            className={inputClass}
-            aria-label="Filtrer par date"
-          />
+          <label
+            htmlFor="filter-date"
+            className="flex items-center w-full min-h-[44px] px-3 py-2.5 sm:py-2 border border-gray-300 rounded-xl bg-white cursor-pointer touch-manipulation focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 focus-within:outline-none"
+          >
+            <input
+              id="filter-date"
+              type="date"
+              value={dateFilter}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="w-full min-h-[44px] border-0 p-0 bg-transparent text-base text-gray-900 focus:outline-none focus:ring-0 [color-scheme:light]"
+              style={{ fontSize: "16px" }}
+              aria-label="Filtrer par date"
+            />
+          </label>
         ) : (
           <select
             id="filter-date"

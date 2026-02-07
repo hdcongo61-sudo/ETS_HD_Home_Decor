@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import AppLoader from '../components/AppLoader';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar
@@ -125,10 +126,7 @@ const ClientProfile = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Chargement du profil client...</p>
-        </div>
+        <AppLoader fullScreen={false} text="Chargement du profil client…" />
       </div>
     );
   }
@@ -179,7 +177,7 @@ const ClientProfile = () => {
             <>
               <a href={`tel:${client.phone}`} className="px-3 py-2 bg-white border rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2">📞 Appeler</a>
               <a
-                href={`https://wa.me/${client.phone.replace(/[^\d]/g, '')}`}
+                href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
                 target="_blank" rel="noopener noreferrer"
                 className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
               >

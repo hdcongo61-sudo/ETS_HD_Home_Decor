@@ -15,6 +15,7 @@ import {
   parseDateSafely,
 } from "../utils/saleUtils";
 import { SalesFiltersBar, SaleCard } from "./sales-shared";
+import AppLoader from "../components/AppLoader";
 
 const SalesArchive = () => {
   const location = useLocation();
@@ -180,8 +181,7 @@ const SalesArchive = () => {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 sm:py-20">
-            <div className="w-12 h-12 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
-            <p className="mt-3 text-sm text-gray-600">Chargement des ventes...</p>
+            <AppLoader fullScreen={false} text="Chargement des ventes…" />
           </div>
         ) : (
           <>

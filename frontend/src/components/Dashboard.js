@@ -66,6 +66,7 @@ import RemindersPanel from "../components/RemindersPanel";
 import ExportModal from "../components/ExportModal";
 import BusinessAnalyticsDashboard from "../components/BusinessAnalyticsDashboard";
 import AccordionSection from "../components/AccordionSection";
+import AppLoader from "../components/AppLoader";
 
 const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 
@@ -322,7 +323,15 @@ const Dashboard = () => {
   );
   const profit = totalPaid - totalExpenses;
 
-  // Tendances vs semaine précédente (simple)
+  // Totaux période comparée (pour cartes + tendance selon compareMode)
+  const prevPeriodTotals = useMemo(() => {
+    const s = prevCombinedData.reduce((sum, d) => sum + (d.sales || 0), 0);
+    const p = prevCombinedData.reduce((sum, d) => sum + (d.paid || 0), 0);
+    const e = prevCombinedData.reduce((sum, d) => sum + (d.expenses || 0), 0);
+    return { sales: s, paid: p, expenses: e, profit: p - e };
+  }, [prevCombinedData]);
+
+  // Tendances: vs période comparée si active, sinon vs semaine précédente
   const prevWeek = getPrevPeriod("week", "prev-week");
   const prevWeekStats = useMemo(() => {
     if (!prevWeek) return { s: 0, p: 0, e: 0, pr: 0 };
@@ -356,9 +365,11 @@ const Dashboard = () => {
     return `${sym}${Math.abs(d).toFixed(1)}%`;
   };
 
-  const salesTrend = pct(totalSales, prevWeekStats.s);
-  const expenseTrend = pct(totalExpenses, prevWeekStats.e);
-  const profitTrend = pct(profit, prevWeekStats.pr);
+  const hasCompare = compareMode !== "none";
+  const trendBase = hasCompare ? prevPeriodTotals : { sales: prevWeekStats.s, paid: prevWeekStats.p, expenses: prevWeekStats.e, profit: prevWeekStats.pr };
+  const salesTrend = pct(totalSales, trendBase.sales);
+  const expenseTrend = pct(totalExpenses, trendBase.expenses);
+  const profitTrend = pct(profit, trendBase.profit);
 
   // ===== EXPORT principal (tableau combiné) =====
   const exportToExcel = () => {
@@ -564,10 +575,7 @@ const Dashboard = () => {
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-[40vh] bg-transparent">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Chargement du tableau de bord…</p>
-        </div>
+        <AppLoader fullScreen={false} text="Chargement du tableau de bord…" />
       </div>
     );
 
@@ -698,6 +706,7 @@ const Dashboard = () => {
             {
               title: "Ventes totales",
               value: totalSales,
+              prevValue: hasCompare ? prevPeriodTotals.sales : null,
               icon: <DollarSign size={22} />,
               trend: salesTrend,
               style: CARD_STYLES[0],
@@ -705,6 +714,7 @@ const Dashboard = () => {
             {
               title: "Encaissements",
               value: totalPaid,
+              prevValue: hasCompare ? prevPeriodTotals.paid : null,
               icon: <Coins size={22} />,
               trend: pct(totalPaid, totalSales),
               style: CARD_STYLES[1],
@@ -712,6 +722,7 @@ const Dashboard = () => {
             {
               title: "Dépenses",
               value: totalExpenses,
+              prevValue: hasCompare ? prevPeriodTotals.expenses : null,
               icon: <TrendingDown size={22} />,
               trend: expenseTrend,
               style: CARD_STYLES[2],
@@ -719,6 +730,7 @@ const Dashboard = () => {
             {
               title: "Profit net",
               value: profit,
+              prevValue: hasCompare ? prevPeriodTotals.profit : null,
               icon: <PieIcon size={22} />,
               trend: profitTrend,
               style: CARD_STYLES[3],
@@ -749,6 +761,11 @@ const Dashboard = () => {
               <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
                 {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
               </p>
+              {stat.prevValue != null && (
+                <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
+                  Vs période préc. : <span className="font-medium">{Number(stat.prevValue).toLocaleString("fr-FR")} CFA</span>
+                </p>
+              )}
             </motion.article>
           ))}
         </motion.section>
@@ -1222,7 +1239,7 @@ const Dashboard = () => {
         />
 
         {/* ===== Modal Détails jour ===== */}
-        <Suspense fallback={<div className="text-center p-6">Chargement...</div>}>
+        <Suspense fallback={<div className="flex justify-center p-6"><AppLoader fullScreen={false} /></div>}>
           {isModalOpen && (
             <DayDetailsModal
               date={selectedDate}

@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import AppLoader from './AppLoader';
 
 const storeRestrictionInfo = (payload) => {
   try {
@@ -37,11 +38,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   })();
 
   if (auth.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
-        Chargement...
-      </div>
-    );
+    return <AppLoader />;
   }
 
   if (!auth.isAuthenticated) {

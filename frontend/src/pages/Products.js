@@ -1,17 +1,21 @@
 // src/pages/Products.jsx
 import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import LoaderOverlay from '../components/LoaderOverlay';
+import AppLoader from '../components/AppLoader';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { productPath } from '../utils/paths';
+import Modal from '../components/Modal';
 
 const CATEGORY_OPTIONS = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
 
 const Products = () => {
   const { auth } = useContext(AuthContext);
+  const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const [products, setProducts] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -24,18 +28,26 @@ const Products = () => {
   }, []);
 
   useEffect(() => {
+    if (location.state?.fromProductEdit) {
+      fetchProducts({ showLoading: false });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.fromProductEdit]);
+
+  useEffect(() => {
     document.body.style.overflow = isFormOpen ? 'hidden' : 'auto';
   }, [isFormOpen]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (options = {}) => {
+    const { showLoading = true } = options;
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await api.get('/products');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -64,9 +76,9 @@ const Products = () => {
         toast.success(
           editingProduct ? 'Produit mis à jour avec succès 🎉' : 'Produit créé avec succès 🚀'
         );
-        fetchProducts();
         setIsFormOpen(false);
         setEditingProduct(null);
+        await fetchProducts({ showLoading: false });
       }
     } catch (error) {
       console.error('Error:', error.response?.data?.message || error.message);
@@ -84,15 +96,12 @@ const Products = () => {
   const handleDelete = async (productId) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
       try {
-        setLoading(true);
         await api.delete(`/products/${productId}`);
         toast.success('Produit supprimé ✅');
-        fetchProducts();
+        await fetchProducts({ showLoading: false });
       } catch (error) {
         console.error('Error deleting product:', error);
         toast.error('Erreur lors de la suppression ❌');
-      } finally {
-        setLoading(false);
       }
     }
   };
@@ -104,7 +113,7 @@ const Products = () => {
 
         <LoaderOverlay
           show={formSubmitting}
-          text={editingProduct ? 'Mise à jour du produit...' : 'Création du produit...'}
+          text={editingProduct ? 'Modification produit...' : 'Création du produit...'}
         />
 
         {/* ===== Header (desktop-optimized) ===== */}
@@ -155,38 +164,42 @@ const Products = () => {
       {/* ===== Modal Form ===== */}
       {isAdmin && (
         <Modal
-          show={isFormOpen}
+          isOpen={isFormOpen}
           onClose={() => {
             setIsFormOpen(false);
             setEditingProduct(null);
           }}
           title={editingProduct ? 'Modifier le produit' : 'Nouveau produit'}
+          subtitle={editingProduct ? 'Mettez à jour les informations du produit.' : 'Renseignez les informations du nouveau produit.'}
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormOpen(false);
+                  setEditingProduct(null);
+                }}
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 font-medium transition"
+                disabled={formSubmitting}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                form="product-form"
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition disabled:opacity-50"
+                disabled={formSubmitting}
+              >
+                {editingProduct ? 'Enregistrer les modifications' : 'Créer le produit'}
+              </button>
+            </>
+          }
         >
           <ProductForm
             product={editingProduct}
             onSubmit={handleCreate}
             loading={formSubmitting}
           />
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <button
-              onClick={() => {
-                setIsFormOpen(false);
-                setEditingProduct(null);
-              }}
-              className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
-              disabled={formSubmitting}
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              form="product-form"
-              className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition"
-              disabled={formSubmitting}
-            >
-              {editingProduct ? 'Mettre à jour' : 'Créer'}
-            </button>
-          </div>
         </Modal>
       )}
     </div>
@@ -226,7 +239,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
     if (formData.price && formData.costPrice) {
       const price = parseFloat(formData.price);
       const cost = parseFloat(formData.costPrice);
-      const margin = ((price - cost) / cost) * 100;
+      const margin = cost > 0 ? ((price - cost) / cost) * 100 : 0;
       setProfitMargin(isNaN(margin) ? 0 : margin);
     } else {
       setProfitMargin(0);
@@ -238,7 +251,6 @@ const ProductForm = ({ product, onSubmit, loading }) => {
       setPreviewUrl(formData.image || product?.image || '');
       return;
     }
-
     const objectUrl = URL.createObjectURL(imageFile);
     setPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
@@ -247,14 +259,11 @@ const ProductForm = ({ product, onSubmit, loading }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === 'image') {
-      setImageFile(null);
-    }
+    if (name === 'image') setImageFile(null);
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
-    setImageFile(file);
+    setImageFile(e.target.files?.[0] || null);
   };
 
   const handleSubmit = (e) => {
@@ -269,72 +278,72 @@ const ProductForm = ({ product, onSubmit, loading }) => {
   };
 
   return (
-    <form id="product-form" onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} />
-        <Select
-          label="Catégorie"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          options={CATEGORY_OPTIONS}
-        />
-        <Input label="Conteneur" name="container" value={formData.container} onChange={handleChange} />
-        <Input label="Entrepot" name="warehouse" value={formData.warehouse} onChange={handleChange} required />
-      </div>
-
-      <Textarea
-        label="Description"
-        name="description"
-        value={formData.description}
-        onChange={handleChange}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Input label="Prix de revient (CFA)" name="costPrice" type="number" value={formData.costPrice} onChange={handleChange} />
-        <Input label="Prix de vente (CFA)" name="price" type="number" value={formData.price} onChange={handleChange} />
-        <div
-          className={`p-4 rounded-xl text-center ${
-            profitMargin > 0 ? 'bg-green-50' : profitMargin < 0 ? 'bg-red-50' : 'bg-gray-50'
-          }`}
-        >
-          <p className="text-sm text-gray-600">Marge bénéficiaire</p>
-          <p
-            className={`text-lg font-bold ${
-              profitMargin > 0 ? 'text-green-600' : profitMargin < 0 ? 'text-red-600' : 'text-gray-600'
-            }`}
-          >
-            {profitMargin.toFixed(2)}%
-          </p>
+    <form id="product-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
+      {/* Section: Informations générales */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+          Informations générales
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required />
+          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={CATEGORY_OPTIONS} />
+          <Input label="Conteneur" name="container" value={formData.container} onChange={handleChange} />
+          <Input label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} required />
         </div>
-      </div>
+        <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} />
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Input label="Stock disponible" name="stock" type="number" value={formData.stock} onChange={handleChange} />
-        <Input label="Nom fournisseur" name="supplierName" value={formData.supplierName} onChange={handleChange} />
-        <Input label="Téléphone fournisseur" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} />
-      </div>
-
-      <Input label="URL de l'image" name="image" value={formData.image} onChange={handleChange} />
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Importer une image</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Un téléchargement déclenchera un upload Cloudinary automatique.
-        </p>
-      </div>
-
-      {previewUrl && (
-        <div className="flex justify-center mt-4">
-          <img src={previewUrl} alt="Aperçu" className="w-32 h-32 rounded-xl object-cover border border-gray-200 shadow-sm" />
+      {/* Section: Prix & stock */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+          Prix & stock
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Input label="Prix de revient (CFA)" name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
+          <Input label="Prix de vente (CFA)" name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
+          <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
+          <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 flex flex-col justify-center">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Marge</p>
+            <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-green-600' : profitMargin < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+              {Number(profitMargin).toFixed(1)}%
+            </p>
+          </div>
         </div>
-      )}
+      </section>
+
+      {/* Section: Fournisseur */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+          Fournisseur
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input label="Nom du fournisseur" name="supplierName" value={formData.supplierName} onChange={handleChange} />
+          <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} />
+        </div>
+      </section>
+
+      {/* Section: Image */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-2">
+          Image
+        </h3>
+        <Input label="URL de l'image" name="image" value={formData.image} onChange={handleChange} placeholder="https://..." />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Importer une image</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:transition-colors"
+            />
+            {previewUrl && (
+              <img src={previewUrl} alt="Aperçu" className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0" />
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-1.5">Upload déclenche un envoi automatique vers Cloudinary.</p>
+        </div>
+      </section>
     </form>
   );
 };
@@ -375,8 +384,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="w-10 h-10 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-600 text-sm">Chargement des produits...</p>
+        <AppLoader fullScreen={false} text="Chargement des produits…" />
       </div>
     );
   }
@@ -384,7 +392,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const filtered = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.supplierName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.container || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.warehouse || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -398,7 +407,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             <input
               id="search-products"
               type="text"
-              placeholder="Rechercher par nom, catégorie, conteneur ou entrepôt..."
+              placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
@@ -447,7 +456,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         <input
           id="admin-product-search"
           type="text"
-          placeholder="Rechercher par nom, catégorie, conteneur ou entrepôt..."
+          placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full max-w-2xl px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
@@ -489,19 +498,19 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             {filtered.map((p) => (
               <tr key={p._id} className="hover:bg-indigo-50/50 transition-colors">
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
-                  <div className="flex items-center gap-3">
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl object-cover shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gray-100 flex items-center justify-center rounded-xl shrink-0 text-lg">📦</div>
-                    )}
+                  <div className="flex flex-col gap-2 items-center">
                     <Link
                       to={productPath(p)}
-                      className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition"
+                      className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition line-clamp-2 text-center w-full"
                       {...desktopLinkProps}
                     >
                       {p.name}
                     </Link>
+                    {p.image ? (
+                      <img src={p.image} alt={p.name} className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl object-cover border border-gray-100 mx-auto" />
+                    ) : (
+                      <div className="w-14 h-14 lg:w-16 lg:h-16 bg-gray-100 flex items-center justify-center rounded-xl border border-gray-100 text-2xl mx-auto">📦</div>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-gray-600">{p.category}</td>
@@ -528,17 +537,25 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-right">
                   <div className="flex justify-end gap-2">
                     <button
+                      type="button"
                       onClick={() => onEdit(p)}
-                      className="px-3 py-2 lg:px-4 lg:py-2 text-sm font-medium bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition"
+                      className="p-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
+                      aria-label="Modifier le produit"
                     >
-                      Modifier
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                     </button>
                     {isAdmin && (
                       <button
+                        type="button"
                         onClick={() => onDelete(p._id)}
-                        className="px-3 py-2 lg:px-4 lg:py-2 text-sm font-medium bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition"
+                        className="p-2 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 transition"
+                        aria-label="Supprimer le produit"
                       >
-                        Supprimer
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     )}
                   </div>
@@ -624,24 +641,25 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 /* ===================================================== */
 /* 🧱 INPUTS */
 /* ===================================================== */
-const Input = ({ label, ...props }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <input {...props} className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" />
+const inputBaseClass = 'w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400';
+const Input = ({ label, className = '', ...props }) => (
+  <div className={className}>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+    <input {...props} className={inputBaseClass} />
   </div>
 );
 
-const Textarea = ({ label, ...props }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <textarea {...props} rows={3} className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" />
+const Textarea = ({ label, rows = 3, className = '', ...props }) => (
+  <div className={className}>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+    <textarea rows={rows} {...props} className={`${inputBaseClass} resize-y min-h-[80px]`} />
   </div>
 );
 
-const Select = ({ label, options, ...props }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <select {...props} className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+const Select = ({ label, options, className = '', ...props }) => (
+  <div className={className}>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+    <select {...props} className={`${inputBaseClass} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%236b7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10`}>
       <option value="">Sélectionnez...</option>
       {options.map((opt) => (
         <option key={opt}>{opt}</option>
@@ -649,59 +667,5 @@ const Select = ({ label, options, ...props }) => (
     </select>
   </div>
 );
-
-/* ===================================================== */
-/* 🪟 MODAL ANIMÉ */
-/* ===================================================== */
-const Modal = ({ show, onClose, title, children }) => {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm overflow-y-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.div
-            onClick={(e) => e.stopPropagation()}
-            initial={{
-              opacity: 0,
-              scale: isMobile ? 1 : 0.92,
-              y: isMobile ? 40 : 0,
-            }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{
-              opacity: 0,
-              scale: isMobile ? 1 : 0.95,
-              y: isMobile ? 40 : 0,
-            }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto my-6 sm:my-12 flex flex-col max-h-[90vh]"
-          >
-            <div className="flex justify-between items-center px-5 sm:px-6 py-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{title}</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition text-2xl leading-none"
-              >
-                &times;
-              </button>
-            </div>
-            <div
-              className="p-5 sm:p-6 overflow-y-auto"
-              style={{ maxHeight: 'calc(90vh - 72px)' }}
-            >
-              {children}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
 
 export default Products;

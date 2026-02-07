@@ -7,6 +7,7 @@ import {
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
+import AppLoader from '../components/AppLoader';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -87,10 +88,7 @@ const ClientDashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Chargement du tableau de bord client...</p>
-        </div>
+        <AppLoader fullScreen={false} text="Chargement du tableau de bord client…" />
       </div>
     );
   }

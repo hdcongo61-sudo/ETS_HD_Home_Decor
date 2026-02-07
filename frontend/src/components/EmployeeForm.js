@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import AppLoader from './AppLoader';
 
 const EmployeeForm = () => {
   const { id } = useParams();
@@ -189,7 +190,7 @@ const EmployeeForm = () => {
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <AppLoader fullScreen={false} text="Chargement…" />
     </div>
   );
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import AppLoader from '../components/AppLoader';
 
 const Bank = () => {
   const tableRef = useRef(null);
@@ -215,7 +216,7 @@ const Bank = () => {
 
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+            <AppLoader fullScreen={false} text="Chargement…" />
           </div>
         ) : transactions.length === 0 ? (
           <div className="text-center text-gray-500 py-10">Aucun mouvement enregistre.</div>

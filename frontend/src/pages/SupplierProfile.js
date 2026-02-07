@@ -218,8 +218,8 @@ const SupplierProfile = () => {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <table className="responsive-table min-w-full text-sm">
             <thead className="bg-indigo-50 text-indigo-700 uppercase text-xs">
               <tr>
                 <th className="py-2 px-3 text-left">Produit</th>
@@ -239,7 +239,7 @@ const SupplierProfile = () => {
                     key={`${supplier.supplierName}-${product._id}`}
                     className="border-b last:border-0 hover:bg-indigo-50/40 transition-colors"
                   >
-                    <td className="py-2 px-3 font-medium text-gray-800">
+                    <td data-title="Produit" className="py-2 px-3 font-medium text-gray-800 responsive-table__product-cell">
                       <Link
                         to={`/products/${product._id}`}
                         className="text-indigo-700 hover:text-indigo-900 hover:underline"
@@ -252,25 +252,25 @@ const SupplierProfile = () => {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-gray-500">
+                    <td data-title="Catégorie" className="py-2 px-3 text-gray-500">
                       {product.category || 'Non catégorisé'}
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td data-title="Stock" className="py-2 px-3 text-right">
                       {formatNumber(product.stock)}
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td data-title="Valeur Stock" className="py-2 px-3 text-right">
                       {formatCurrency(product.stockValue)}
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td data-title="Ventes" className="py-2 px-3 text-right">
                       {formatNumber(product.sold)}
                     </td>
-                    <td className="py-2 px-3 text-right text-emerald-600 font-semibold">
+                    <td data-title="Revenu" className="py-2 px-3 text-right text-emerald-600 font-semibold">
                       {formatCurrency(product.revenue)}
                     </td>
-                    <td className="py-2 px-3 text-right text-indigo-600 font-semibold">
+                    <td data-title="Profit" className="py-2 px-3 text-right text-indigo-600 font-semibold">
                       {formatCurrency(product.profit)}
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td data-title="Marge" className="py-2 px-3 text-right">
                       {`${Number(product.margin || 0).toFixed(1)} %`}
                     </td>
                   </tr>

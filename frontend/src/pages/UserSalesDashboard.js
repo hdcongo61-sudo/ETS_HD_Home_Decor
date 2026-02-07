@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import AppLoader from '../components/AppLoader';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -328,7 +329,7 @@ const UserSalesDashboard = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
+                <AppLoader fullScreen={false} text="Chargement…" />
             </div>
         );
     }

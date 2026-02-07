@@ -181,7 +181,7 @@ const SupplierProducts = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
+                <div className="flex flex-col gap-4 mb-6">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-800">
                       <Link
@@ -199,48 +199,36 @@ const SupplierProducts = () => {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Produits</p>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {formatNumber(supplier.totalProducts)}
-                      </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Produits</p>
+                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatNumber(supplier.totalProducts)}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Stock</p>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {formatCurrency(supplier.totalStockValue)}
-                      </p>
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Stock</p>
+                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatCurrency(supplier.totalStockValue)}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Revenu</p>
-                      <p className="text-lg font-semibold text-emerald-600">
-                        {formatCurrency(supplier.totalRevenue)}
-                      </p>
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Revenu</p>
+                      <p className="text-base sm:text-lg font-semibold text-emerald-600 mt-0.5">{formatCurrency(supplier.totalRevenue)}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Profit</p>
-                      <p className="text-lg font-semibold text-indigo-600">
-                        {formatCurrency(supplier.totalProfit)}
-                      </p>
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Profit</p>
+                      <p className="text-base sm:text-lg font-semibold text-indigo-600 mt-0.5">{formatCurrency(supplier.totalProfit)}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Unités vendues</p>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {formatNumber(supplier.totalUnitsSold)}
-                      </p>
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Unités vendues</p>
+                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatNumber(supplier.totalUnitsSold)}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Marge moyenne</p>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {`${Number(supplier.averageMargin || 0).toFixed(1)} %`}
-                      </p>
+                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
+                      <p className="text-xs sm:text-sm text-gray-500">Marge moy.</p>
+                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{`${Number(supplier.averageMargin || 0).toFixed(1)} %`}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
+                <div className="overflow-x-auto -mx-2 sm:mx-0">
+                  <table className="responsive-table min-w-full text-sm">
                     <thead className="bg-indigo-50 text-indigo-700 uppercase text-xs">
                       <tr>
                         <th className="py-2 px-3 text-left">Produit</th>
@@ -260,7 +248,7 @@ const SupplierProducts = () => {
                             key={`${supplier.supplierName}-${product._id}`}
                             className="border-b last:border-0 hover:bg-indigo-50/40 transition-colors"
                           >
-                            <td className="py-2 px-3 font-medium text-gray-800">
+                            <td data-title="Produit" className="py-2 px-3 font-medium text-gray-800 responsive-table__product-cell">
                               <Link
                                 to={`/products/${product._id}`}
                                 className="text-indigo-700 hover:text-indigo-900 hover:underline"
@@ -273,25 +261,25 @@ const SupplierProducts = () => {
                                 </span>
                               )}
                             </td>
-                            <td className="py-2 px-3 text-gray-500">
+                            <td data-title="Catégorie" className="py-2 px-3 text-gray-500">
                               {product.category || 'Non catégorisé'}
                             </td>
-                            <td className="py-2 px-3 text-right">
+                            <td data-title="Stock" className="py-2 px-3 text-right">
                               {formatNumber(product.stock)}
                             </td>
-                            <td className="py-2 px-3 text-right">
+                            <td data-title="Valeur Stock" className="py-2 px-3 text-right">
                               {formatCurrency(product.stockValue)}
                             </td>
-                            <td className="py-2 px-3 text-right">
+                            <td data-title="Ventes" className="py-2 px-3 text-right">
                               {formatNumber(product.sold)}
                             </td>
-                            <td className="py-2 px-3 text-right text-emerald-600 font-semibold">
+                            <td data-title="Revenu" className="py-2 px-3 text-right text-emerald-600 font-semibold">
                               {formatCurrency(product.revenue)}
                             </td>
-                            <td className="py-2 px-3 text-right text-indigo-600 font-semibold">
+                            <td data-title="Profit" className="py-2 px-3 text-right text-indigo-600 font-semibold">
                               {formatCurrency(product.profit)}
                             </td>
-                            <td className="py-2 px-3 text-right">
+                            <td data-title="Marge" className="py-2 px-3 text-right">
                               {`${Number(product.margin || 0).toFixed(1)} %`}
                             </td>
                           </tr>

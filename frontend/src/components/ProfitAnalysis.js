@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import api from '../services/api';
+import AppLoader from './AppLoader';
 
 const ProfitAnalysis = () => {
   const [profitData, setProfitData] = useState(null);
@@ -39,8 +40,7 @@ const ProfitAnalysis = () => {
   if (loading) {
     return (
       <div className="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-12 flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 border-t-green-500" />
-        <p className="text-sm text-gray-500">Chargement des données...</p>
+        <AppLoader fullScreen={false} text="Chargement des données…" />
       </div>
     );
   }

@@ -7,6 +7,7 @@ import {
   employeePayrollPayslipEditPath,
   employeePayrollPayslipPrintPath,
 } from '../utils/paths';
+import AppLoader from './AppLoader';
 
 const PaySlipList = () => {
     const { id } = useParams();
@@ -74,10 +75,7 @@ const PaySlipList = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-300 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Chargement des données de l'employé...</p>
-                </div>
+                <AppLoader fullScreen={false} text="Chargement des données de l'employé…" />
             </div>
         );
     }

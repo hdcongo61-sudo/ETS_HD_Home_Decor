@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import AppLoader from './AppLoader';
 
 const ResumeConnexions = () => {
     const tableRef = useRef(null);
@@ -105,7 +106,7 @@ const ResumeConnexions = () => {
 
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    <AppLoader fullScreen={false} text="Chargement…" />
                 </div>
             ) : (
                 <>

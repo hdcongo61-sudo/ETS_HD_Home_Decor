@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import EditSaleForm from '../components/EditSaleForm';
 import AuthContext from '../context/AuthContext';
+import AppLoader from '../components/AppLoader';
 
 const EditSalePage = () => {
     const { id } = useParams();
@@ -85,8 +86,7 @@ const EditSalePage = () => {
     if (loading) {
         return (
             <div className="min-h-[50vh] flex flex-col items-center justify-center p-6">
-                <div className="w-12 h-12 rounded-full border-2 border-gray-200 border-t-blue-500 animate-spin" aria-hidden />
-                <p className="mt-4 text-sm text-gray-500">Chargement de la vente…</p>
+                <AppLoader fullScreen={false} text="Chargement de la vente…" />
             </div>
         );
     }
