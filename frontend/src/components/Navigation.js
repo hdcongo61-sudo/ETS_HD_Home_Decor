@@ -490,6 +490,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                             <>
                               <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Administration</div>
                               <div className="space-y-0.5">
+                                <Link to="/settings" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paramètres</Link>
                                 <Link to="/users/stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
                                 <Link to="/admin/users" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Gestion utilisateurs</Link>
                                 <Link to="/users/login-stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Historique connexions</Link>

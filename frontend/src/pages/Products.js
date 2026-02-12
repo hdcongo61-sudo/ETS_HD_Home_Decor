@@ -10,8 +10,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { productPath } from '../utils/paths';
 import Modal from '../components/Modal';
 
-const CATEGORY_OPTIONS = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
-
 const Products = () => {
   const { auth } = useContext(AuthContext);
   const location = useLocation();
@@ -22,10 +20,31 @@ const Products = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
 
   useEffect(() => {
     fetchProducts();
+    fetchLookups();
   }, []);
+
+  const fetchLookups = async () => {
+    try {
+      const [cats, conts, whs, supps] = await Promise.all([
+        api.get('/lookups/categories'),
+        api.get('/lookups/containers'),
+        api.get('/lookups/warehouses'),
+        api.get('/lookups/suppliers'),
+      ]);
+      setLookups({
+        categories: cats.data,
+        containers: conts.data,
+        warehouses: whs.data,
+        suppliers: supps.data,
+      });
+    } catch (err) {
+      console.error('Error fetching lookups:', err);
+    }
+  };
 
   useEffect(() => {
     if (location.state?.fromProductEdit) {
@@ -199,6 +218,7 @@ const Products = () => {
             product={editingProduct}
             onSubmit={handleCreate}
             loading={formSubmitting}
+            lookups={lookups}
           />
         </Modal>
       )}
@@ -223,7 +243,8 @@ const getProductFormDefaults = (product) => ({
   warehouse: product?.warehouse || '',
 });
 
-const ProductForm = ({ product, onSubmit, loading }) => {
+const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
+  const { categories = [], containers = [], warehouses = [], suppliers = [] } = lookups;
   const [formData, setFormData] = useState(() => getProductFormDefaults(product));
   const [profitMargin, setProfitMargin] = useState(0);
   const [imageFile, setImageFile] = useState(null);
@@ -262,6 +283,16 @@ const ProductForm = ({ product, onSubmit, loading }) => {
     if (name === 'image') setImageFile(null);
   };
 
+  const handleSupplierChange = (e) => {
+    const selectedName = e.target.value;
+    const found = suppliers.find((s) => s.name === selectedName);
+    setFormData((prev) => ({
+      ...prev,
+      supplierName: selectedName,
+      supplierPhone: found?.phone || '',
+    }));
+  };
+
   const handleFileChange = (e) => {
     setImageFile(e.target.files?.[0] || null);
   };
@@ -286,9 +317,9 @@ const ProductForm = ({ product, onSubmit, loading }) => {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required />
-          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={CATEGORY_OPTIONS} />
-          <Input label="Conteneur" name="container" value={formData.container} onChange={handleChange} />
-          <Input label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} required />
+          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} />
+          <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} />
+          <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} />
         </div>
         <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} />
       </section>
@@ -317,8 +348,8 @@ const ProductForm = ({ product, onSubmit, loading }) => {
           Fournisseur
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Nom du fournisseur" name="supplierName" value={formData.supplierName} onChange={handleChange} />
-          <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} />
+          <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} />
+          <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
         </div>
       </section>
 

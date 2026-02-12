@@ -30,6 +30,7 @@ const pdfRoutes = require('./routes/pdfRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const bankRoutes = require('./routes/bankRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const lookupRoutes = require('./routes/lookupRoutes');
 
 const app = express();
 
@@ -98,6 +99,7 @@ app.use('/api/export', pdfRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/lookups', lookupRoutes);
 
 // 10. Error handler middleware
 app.use(errorHandler);

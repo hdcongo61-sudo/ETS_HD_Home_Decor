@@ -56,6 +56,7 @@ const employeeSchema = mongoose.Schema(
         bonuses: { type: Number, default: 0 },
         netSalary: { type: Number, required: true },
         paymentDate: { type: Date, default: Date.now },
+        status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
       },
     ],
   },

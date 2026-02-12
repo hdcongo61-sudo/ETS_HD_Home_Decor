@@ -13,10 +13,6 @@ const EmployeeForm = () => {
     position: '',
     salary: '',
     hireDate: new Date().toISOString().split('T')[0],
-    address: '',
-    city: '',
-    country: '',
-    postalCode: '',
     department: '',
     photo: ''
   });
@@ -45,10 +41,6 @@ const EmployeeForm = () => {
             position: data.position || '',
             salary: data.salary || '',
             hireDate: formattedDate,
-            address: data.address || '',
-            city: data.city || '',
-            country: data.country || '',
-            postalCode: data.postalCode || '',
             department: data.department || '',
             photo: data.photo || ''
           });

@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 
-const CATEGORY_OPTIONS = ['Meuble', 'Decoration', 'Recouvrement', 'Electro-menager'];
-
 const EditProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,28 +25,41 @@ const EditProductForm = () => {
   });
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
+  const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
 
   /* ===================================================== */
-  /* 🔄 CHARGEMENT DU PRODUIT EXISTANT */
+  /* 🔄 CHARGEMENT DU PRODUIT EXISTANT + LOOKUPS */
   /* ===================================================== */
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/products/${id}`);
-        setProduct(response.data);
+        const [productRes, cats, conts, whs, supps] = await Promise.all([
+          api.get(`/products/${id}`),
+          api.get('/lookups/categories'),
+          api.get('/lookups/containers'),
+          api.get('/lookups/warehouses'),
+          api.get('/lookups/suppliers'),
+        ]);
+        setProduct(productRes.data);
         setFormData({
-          name: response.data.name || '',
-          description: response.data.description || '',
-          price: response.data.price || '',
-          costPrice: response.data.costPrice || '',
-          stock: response.data.stock || '',
-          category: response.data.category || '',
-          image: response.data.image || '',
-          supplierName: response.data.supplierName || '',
-          supplierPhone: response.data.supplierPhone || '',
-          container: response.data.container || '',
-          warehouse: response.data.warehouse || ''
+          name: productRes.data.name || '',
+          description: productRes.data.description || '',
+          price: productRes.data.price || '',
+          costPrice: productRes.data.costPrice || '',
+          stock: productRes.data.stock || '',
+          category: productRes.data.category || '',
+          image: productRes.data.image || '',
+          supplierName: productRes.data.supplierName || '',
+          supplierPhone: productRes.data.supplierPhone || '',
+          container: productRes.data.container || '',
+          warehouse: productRes.data.warehouse || ''
+        });
+        setLookups({
+          categories: cats.data,
+          containers: conts.data,
+          warehouses: whs.data,
+          suppliers: supps.data,
         });
       } catch (err) {
         setError('Erreur lors du chargement du produit');
@@ -58,7 +69,7 @@ const EditProductForm = () => {
       }
     };
 
-    fetchProduct();
+    fetchData();
   }, [id]);
 
   /* ===================================================== */
@@ -87,6 +98,19 @@ const EditProductForm = () => {
     }
   };
 
+  const handleSupplierChange = (e) => {
+    const selectedName = e.target.value;
+    const found = lookups.suppliers.find((s) => s.name === selectedName);
+    setFormData((prev) => ({
+      ...prev,
+      supplierName: selectedName,
+      supplierPhone: found?.phone || '',
+    }));
+    if (validationErrors.supplierName) {
+      setValidationErrors({ ...validationErrors, supplierName: '' });
+    }
+  };
+
   /* ===================================================== */
   /* ✅ VALIDATION */
   /* ===================================================== */
@@ -103,7 +127,6 @@ const EditProductForm = () => {
       errors.stock = 'Le stock ne peut pas être négatif';
     if (!formData.category.trim()) errors.category = 'La catégorie est requise';
     if (!formData.supplierName.trim()) errors.supplierName = 'Le nom du fournisseur est requis';
-    if (!formData.supplierPhone.trim()) errors.supplierPhone = 'Le téléphone du fournisseur est requis';
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -226,19 +249,29 @@ const EditProductForm = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</label>
                   <select name="category" value={formData.category} onChange={handleChange} className={selectClass('category')}>
                     <option value="">Sélectionnez...</option>
-                    {CATEGORY_OPTIONS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                    {lookups.categories.map((c) => (
+                      <option key={c._id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                   {validationErrors.category && <p className="text-red-500 text-xs mt-1">{validationErrors.category}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Conteneur</label>
-                  <input type="text" name="container" value={formData.container} onChange={handleChange} className={inputClass('container')} placeholder="Ex: Conteneur A" />
+                  <select name="container" value={formData.container} onChange={handleChange} className={selectClass('container')}>
+                    <option value="">Sélectionnez...</option>
+                    {lookups.containers.map((c) => (
+                      <option key={c._id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Entrepôt</label>
-                  <input type="text" name="warehouse" value={formData.warehouse} onChange={handleChange} className={inputClass('warehouse')} placeholder="Ex: Dépôt central" required />
+                  <select name="warehouse" value={formData.warehouse} onChange={handleChange} className={selectClass('warehouse')}>
+                    <option value="">Sélectionnez...</option>
+                    {lookups.warehouses.map((w) => (
+                      <option key={w._id} value={w.name}>{w.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
@@ -285,13 +318,18 @@ const EditProductForm = () => {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du fournisseur</label>
-                  <input type="text" name="supplierName" value={formData.supplierName} onChange={handleChange} className={inputClass('supplierName')} required />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Fournisseur</label>
+                  <select name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} className={selectClass('supplierName')}>
+                    <option value="">Sélectionnez...</option>
+                    {lookups.suppliers.map((s) => (
+                      <option key={s._id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
                   {validationErrors.supplierName && <p className="text-red-500 text-xs mt-1">{validationErrors.supplierName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Téléphone</label>
-                  <input type="text" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} className={inputClass('supplierPhone')} required />
+                  <input type="text" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} className={inputClass('supplierPhone')} readOnly />
                   {validationErrors.supplierPhone && <p className="text-red-500 text-xs mt-1">{validationErrors.supplierPhone}</p>}
                 </div>
               </div>

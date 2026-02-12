@@ -57,6 +57,7 @@ const LoginActivityDetail = lazy(() => import('./components/LoginActivityDetail'
 const EditSalePage = lazy(() => import('./pages/EditSalePage'));
 const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
   return (
@@ -311,6 +312,14 @@ function App() {
                   element={
                     <ProtectedRoute adminOnly>
                       <Documents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Settings />
                     </ProtectedRoute>
                   }
                 />

@@ -16,7 +16,6 @@ const AdvanceForm = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [maxAdvance, setMaxAdvance] = useState(0);
     const employeeReference = employee || { _id: id };
 
     useEffect(() => {
@@ -25,7 +24,6 @@ const AdvanceForm = () => {
                 setLoading(true);
                 const { data } = await api.get(`/employees/${id}`);
                 setEmployee(data);
-                setMaxAdvance(data.salary * 0.5); // Max 50% du salaire
                 setErrors({});
             } catch (err) {
                 setErrors({ fetch: err.response?.data?.message || 'Erreur de chargement des données' });
@@ -39,12 +37,6 @@ const AdvanceForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-
-        if (parseFloat(formData.amount) > maxAdvance) {
-            setErrors({ amount: `L'avance ne peut pas dépasser ${new Intl.NumberFormat('fr-FR').format(maxAdvance)} CFA (50% du salaire)` });
-            setIsSubmitting(false);
-            return;
-        }
 
         try {
             const data = {
@@ -96,15 +88,9 @@ const AdvanceForm = () => {
                     <div className="mb-6 p-4 bg-gray-50 rounded-xl">
                         <div className="text-sm font-medium text-gray-500 mb-1">Employé</div>
                         <div className="text-lg font-semibold text-gray-900 mb-2">{employee.name}</div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <div className="text-xs text-gray-500">Salaire Mensuel</div>
-                                <div className="text-sm font-medium text-gray-900">{new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA</div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-gray-500">Avance Maximum</div>
-                                <div className="text-sm font-medium text-blue-600">{new Intl.NumberFormat('fr-FR').format(maxAdvance)} CFA</div>
-                            </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Salaire Mensuel</div>
+                            <div className="text-sm font-medium text-gray-900">{new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA</div>
                         </div>
                     </div>
                 )}
@@ -130,7 +116,6 @@ const AdvanceForm = () => {
                         error={errors.amount}
                         onChange={handleChange}
                         min="0"
-                        max={maxAdvance}
                         required
                         placeholder="Saisir le montant"
                     />
@@ -209,7 +194,7 @@ const AdvanceForm = () => {
     );
 };
 
-const FormField = ({ label, type = 'text', name, value, error, onChange, min, max, required, placeholder }) => (
+const FormField = ({ label, type = 'text', name, value, error, onChange, min, required, placeholder }) => (
     <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
             {label}
@@ -221,7 +206,6 @@ const FormField = ({ label, type = 'text', name, value, error, onChange, min, ma
             value={value}
             onChange={onChange}
             min={min}
-            max={max}
             placeholder={placeholder}
             className={`w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors ${error ? 'border-red-500' : 'border-gray-200'}`}
         />

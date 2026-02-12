@@ -14,11 +14,10 @@ const {
   requestAdvance,
   updateAdvance,
   deleteAdvance,
-  getPaySlip, // Assurez-vous que cette fonction est importée
+  getPaySlip,
   getEmployeeAdvances,
   getEmployeePaySlips,
   getFinancialSummary,
-  exportPayListPDF
 } = require('../controllers/payrollController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
@@ -43,7 +42,6 @@ router.route('/:id/payroll/:payslipId')
   .put(protect, admin, updatePaySlip)
   .delete(protect, admin, deletePaySlip);
 
-router.route('/:id/payroll/:payslipId/pdf').get(protect, admin, exportPayListPDF)
 // Routes pour les avances
 router.route('/:id/advances')
   .post(protect, admin, requestAdvance)

@@ -11,8 +11,7 @@ const PaySlipForm = () => {
         year: new Date().getFullYear(),
         deductions: 0,
         bonuses: 0,
-        notes: '',
-        status: 'approved'
+        status: 'pending'
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +35,6 @@ const PaySlipForm = () => {
                         year: payslipData.year,
                         deductions: payslipData.deductions,
                         bonuses: payslipData.bonuses,
-                        notes: payslipData.notes || '',
                         status: payslipData.status || 'pending'
                     });
                 }
@@ -253,28 +251,6 @@ const PaySlipForm = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Notes
-                        </label>
-                        <textarea
-                            name="notes"
-                            value={formData.notes}
-                            onChange={handleChange}
-                            rows="3"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
-                            placeholder="Ajoutez des notes sur ce bulletin de paie..."
-                        />
-                        {errors.notes && (
-                            <div className="text-red-500 text-sm flex items-center gap-1.5">
-                                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                </svg>
-                                {errors.notes}
-                            </div>
-                        )}
                     </div>
 
                     {/* Status Field (Edit Mode Only) */}

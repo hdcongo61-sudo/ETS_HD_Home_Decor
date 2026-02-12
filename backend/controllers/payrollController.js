@@ -5,7 +5,7 @@ const Employee = require('../models/employeeModel');
 // @access  Private/Admin
 const createPaySlip = async (req, res) => {
     try {
-        const { month, year, deductions, bonuses, notes } = req.body;
+        const { month, year, deductions, bonuses } = req.body;
         const employee = await Employee.findById(req.params.id);
 
         if (!employee) {
@@ -32,7 +32,6 @@ const createPaySlip = async (req, res) => {
             deductions: parseFloat(deductions) || 0,
             bonuses: parseFloat(bonuses) || 0,
             netSalary,
-            notes: notes || '',
             status: 'pending',
             paymentDate: new Date()
         };
@@ -83,7 +82,7 @@ const getPaySlip = async (req, res) => {
 // @access  Private/Admin
 const updatePaySlip = async (req, res) => {
     try {
-        const { month, year, deductions, bonuses, notes, status } = req.body;
+        const { month, year, deductions, bonuses, status } = req.body;
         const employee = await Employee.findById(req.params.id);
 
         if (!employee) {
@@ -100,7 +99,6 @@ const updatePaySlip = async (req, res) => {
         if (year) paySlip.year = parseInt(year);
         if (deductions !== undefined) paySlip.deductions = parseFloat(deductions);
         if (bonuses !== undefined) paySlip.bonuses = parseFloat(bonuses);
-        if (notes !== undefined) paySlip.notes = notes;
         if (status) paySlip.status = status;
 
         // Recalculer le salaire net
@@ -158,13 +156,6 @@ const requestAdvance = async (req, res) => {
             return res.status(404).json({ message: 'Employee not found' });
         }
 
-        const maxAdvance = employee.salary * 0.5;
-        if (amount > maxAdvance) {
-            return res.status(400).json({
-                message: `Advance cannot exceed ${maxAdvance} CFA (50% of salary)`
-            });
-        }
-
         const advance = {
             amount,
             reason,
@@ -198,14 +189,7 @@ const updateAdvance = async (req, res) => {
             return res.status(404).json({ message: 'Advance not found' });
         }
 
-        // Vérifier la limite si le montant est modifié
         if (amount !== undefined) {
-            const maxAdvance = employee.salary * 0.5;
-            if (amount > maxAdvance) {
-                return res.status(400).json({
-                    message: `Advance cannot exceed ${maxAdvance} CFA (50% of salary)`
-                });
-            }
             advance.amount = amount;
         }
 
@@ -339,29 +323,6 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
-// routes/payroll.js
-const exportPayListPDF = async (req, res) => {
-    try {
-
-        const payslip = await Employee.Payslip.findById(req.params.payslipId);
-        const employee = await Employee.findById(req.params.id);
-
-        // Utilisez une bibliothèque comme pdfkit ou puppeteer
-        const doc = new PDFDocument();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=fiche-paie-${employee.name}-${payslip.month}-${payslip.year}.pdf`);
-        doc.pipe(res);
-
-        // Génération du contenu PDF...
-        doc.text(`Fiche de paie - ${employee.name}`, 100, 100);
-        // ...
-
-        doc.end();
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
 module.exports = {
     createPaySlip,
     updatePaySlip,
@@ -374,5 +335,4 @@ module.exports = {
     getEmployeePaySlips,
     getFinancialSummary,
     getDashboardStats,
-    exportPayListPDF
 };
