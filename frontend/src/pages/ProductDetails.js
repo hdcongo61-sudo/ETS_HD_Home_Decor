@@ -48,6 +48,10 @@ const ProductDetails = () => {
   const [salesHistory, setSalesHistory] = useState([]);
   const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
   const [salesHistoryError, setSalesHistoryError] = useState('');
+  const [buyersModalOpen, setBuyersModalOpen] = useState(false);
+  const [buyersLoading, setBuyersLoading] = useState(false);
+  const [buyersError, setBuyersError] = useState('');
+  const [buyersSales, setBuyersSales] = useState([]);
   const qrCodeRef = useRef();
   const pageRef = useRef();
 
@@ -95,6 +99,26 @@ const ProductDetails = () => {
     product?.costPrice && product?.price ? product.price - product.costPrice : 0;
 
   const productUrl = `${window.location.origin}${productPath(product || id)}`;
+
+  const openBuyersModal = async () => {
+    setBuyersModalOpen(true);
+    if (buyersLoading || buyersSales.length > 0) return;
+
+    setBuyersLoading(true);
+    setBuyersError('');
+    try {
+      const { data } = await api.get(`/products/${id}/sales-history?limit=200`);
+      setBuyersSales(data.sales || []);
+    } catch (error) {
+      console.error('Error fetching buyers list:', error);
+      setBuyersSales([]);
+      setBuyersError('Impossible de charger la liste des acheteurs');
+    } finally {
+      setBuyersLoading(false);
+    }
+  };
+
+  const closeBuyersModal = () => setBuyersModalOpen(false);
 
   /* ===================================================== */
   /* 📦 EXPORT PDF */
@@ -374,6 +398,7 @@ const getActivityIcon = (type) => {
                         sales={salesHistory}
                         loading={salesHistoryLoading}
                         error={salesHistoryError}
+                        onViewAll={openBuyersModal}
                       />
                     }
                   />
@@ -531,6 +556,91 @@ const getActivityIcon = (type) => {
           </div>
         </div>
       )}
+
+      {/* 👥 MODALE ACHETEURS */}
+      {buyersModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-lg max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Acheteurs du produit
+              </h3>
+              <button
+                onClick={closeBuyersModal}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto border border-gray-100 rounded-xl">
+              {buyersLoading && (
+                <div className="p-6 text-sm text-gray-500">Chargement…</div>
+              )}
+
+              {!buyersLoading && buyersError && (
+                <div className="p-6 text-sm text-red-500">{buyersError}</div>
+              )}
+
+              {!buyersLoading && !buyersError && buyersSales.length === 0 && (
+                <div className="p-6 text-sm text-gray-500">Aucun acheteur trouvé</div>
+              )}
+
+              {!buyersLoading && !buyersError && buyersSales.length > 0 && (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left font-medium px-4 py-3">Client</th>
+                      <th className="text-left font-medium px-4 py-3">Date</th>
+                      <th className="text-left font-medium px-4 py-3">Statut</th>
+                      <th className="text-right font-medium px-4 py-3">Qté</th>
+                      <th className="text-right font-medium px-4 py-3">Total</th>
+                      <th className="text-right font-medium px-4 py-3">Vente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buyersSales.map((sale) => (
+                      <tr key={sale.saleId} className="border-t border-gray-100">
+                        <td className="px-4 py-3 text-gray-800">{sale.clientName || 'Client inconnu'}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {sale.saleDate
+                            ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
+                            : 'Date inconnue'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {sale.status || 'pending'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-700">{sale.quantity}</td>
+                        <td className="px-4 py-3 text-right text-gray-900">
+                          {formatCurrency(sale.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            to={`/sales/${sale.saleId}`}
+                            className="text-indigo-600 hover:text-indigo-700 text-xs font-medium"
+                          >
+                            Ouvrir
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={closeBuyersModal}
+                className="px-4 py-2 border rounded-xl hover:bg-gray-50"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -553,7 +663,7 @@ const Metric = ({ label, value, footer = null }) => (
   </div>
 );
 
-const SalesLinks = ({ sales, loading, error }) => {
+const SalesLinks = ({ sales, loading, error, onViewAll }) => {
   if (loading) {
     return <p className="text-xs text-gray-400">Chargement des ventes...</p>;
   }
@@ -567,24 +677,35 @@ const SalesLinks = ({ sales, loading, error }) => {
   }
 
   return (
-    <div className="space-y-1">
-      {sales.slice(0, 3).map((sale) => {
-        const formattedDate = sale.saleDate
-          ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
-          : 'Date inconnue';
-        return (
-          <Link
-            key={sale.saleId}
-            to={`/sales/${sale.saleId}`}
-            className="flex items-center justify-between text-xs text-indigo-600 hover:text-indigo-700"
-          >
-            <span className="truncate pr-2">
-              {sale.clientName || 'Vente'} • {formattedDate}
-            </span>
-            <span className="text-gray-500 whitespace-nowrap">{sale.quantity} u</span>
-          </Link>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="space-y-1">
+        {sales.slice(0, 3).map((sale) => {
+          const formattedDate = sale.saleDate
+            ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
+            : 'Date inconnue';
+          return (
+            <Link
+              key={sale.saleId}
+              to={`/sales/${sale.saleId}`}
+              className="flex items-center justify-between text-xs text-indigo-600 hover:text-indigo-700"
+            >
+              <span className="truncate pr-2">
+                {sale.clientName || 'Vente'} • {formattedDate}
+              </span>
+              <span className="text-gray-500 whitespace-nowrap">{sale.quantity} u</span>
+            </Link>
+          );
+        })}
+      </div>
+      {onViewAll && sales.length > 0 && (
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+        >
+          Voir tous les acheteurs
+        </button>
+      )}
     </div>
   );
 };

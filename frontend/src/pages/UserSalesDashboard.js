@@ -49,6 +49,8 @@ const UserSalesDashboard = () => {
     const [error, setError] = useState('');
     const [timeFilter, setTimeFilter] = useState('month');
     const { auth } = useContext(AuthContext);
+    const isOwner = Boolean(auth?.user?._id && auth.user._id === userId);
+    const isUnauthorized = !auth?.isAdmin && !isOwner;
 
     // Calculer les statistiques
     const calculateStats = () => {
@@ -195,10 +197,13 @@ const UserSalesDashboard = () => {
             }
         };
 
-        if (auth.isAdmin || auth.user._id === userId) {
+        if (auth.isLoading) {
+            return;
+        }
+        if (auth.isAdmin || isOwner) {
             fetchData();
         }
-    }, [userId, auth]);
+    }, [userId, auth.isAdmin, auth.isLoading, isOwner]);
 
     // Données pour le graphique des ventes
     const getSalesChartData = () => {
@@ -307,7 +312,15 @@ const UserSalesDashboard = () => {
     useResponsiveTable(topProductsTableRef, [stats?.topProducts]);
     useResponsiveTable(salesTableRef, [sales]);
 
-    if (!auth.isAdmin && auth.user._id !== userId) {
+    if (auth.isLoading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <AppLoader fullScreen={false} text="Chargement…" />
+            </div>
+        );
+    }
+
+    if (isUnauthorized) {
         return (
             <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg mt-10">
                 <div className="text-center py-12">

@@ -56,7 +56,11 @@ const Login = () => {
       });
 
       // Redirect based on role
-      navigate(userData.isAdmin ? '/' : '/');
+      if (userData.isAdmin) {
+        navigate('/');
+      } else {
+        navigate(`/sales/user/${userData._id}`);
+      }
     } catch (err) {
       let errorMessage = 'Identifiants incorrects';
 

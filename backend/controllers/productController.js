@@ -288,7 +288,7 @@ const getProductSalesHistory = async (req, res) => {
     const productId = product._id.toString();
 
     const sales = await Sale.find({ 'products.product': product._id })
-      .select('saleDate totalAmount client products')
+      .select('saleDate totalAmount client products status')
       .populate('client', 'name')
       .sort({ saleDate: -1 })
       .limit(limit)
@@ -308,6 +308,7 @@ const getProductSalesHistory = async (req, res) => {
           saleId: sale._id,
           saleDate: sale.saleDate,
           clientName: sale.client?.name || 'Client inconnu',
+          status: sale.status || 'pending',
           quantity: Number(matchingItem.quantity) || 0,
           priceAtSale: Number(
             matchingItem.priceAtSale ?? matchingItem.unitPrice ?? product.price ?? 0

@@ -101,7 +101,7 @@ function App() {
                 <Route
                   path="/sales/user/:userId"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute>
                       <UserSalesDashboard />
                     </ProtectedRoute>
                   }
