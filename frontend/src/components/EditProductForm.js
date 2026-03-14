@@ -167,11 +167,11 @@ const EditProductForm = () => {
   };
 
   const inputClass = (field) =>
-    `w-full px-4 py-2.5 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400 ${
+    `w-full px-4 py-2.5 text-base sm:text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400 ${
       validationErrors[field] ? 'border-red-500' : 'border-gray-300'
     }`;
   const selectClass = (field) =>
-    `w-full px-4 py-2.5 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pr-10 ${
+    `w-full px-4 py-2.5 text-base sm:text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pr-10 ${
       validationErrors[field] ? 'border-red-500' : 'border-gray-300'
     }`;
 

@@ -1,46 +1,44 @@
 // controllers/profitController.js
 const Sale = require('../models/saleModel');
+const Product = require('../models/productModel');
 
 // @desc    Obtenir les analyses de bénéfices
 // @route   GET /api/sales/profit-analytics
 // @access  Private/Admin
 const getProfitAnalytics = async (req, res) => {
   try {
-    const { 
-      period = 'month', 
-      startDate, 
+    const {
+      period = 'month',
+      startDate,
       endDate,
       category,
+      container,
       minProfit,
       maxProfit
     } = req.query;
 
-    // console.log('Profit analytics request:', { period, startDate, endDate, category });
+    // If filtering by container, pre-fetch matching product IDs
+    let containerProductIds = [];
+    if (container) {
+      const containerProducts = await Product.find({ container }, '_id');
+      containerProductIds = containerProducts.map(p => p._id);
+    }
 
-    // Construction des filtres
-    const filters = { 
-      period, 
-      startDate, 
-      endDate, 
-      category,
-      minProfit: minProfit ? parseFloat(minProfit) : undefined,
-      maxProfit: maxProfit ? parseFloat(maxProfit) : undefined
+    const baseMatch = {
+      status: { $ne: 'cancelled' },
+      ...(startDate || endDate ? {
+        saleDate: {
+          ...(startDate ? { $gte: new Date(startDate) } : {}),
+          ...(endDate ? { $lte: new Date(endDate) } : {})
+        }
+      } : {}),
+      ...(category ? { profitCategory: category } : {}),
+      ...(container ? { 'products.product': { $in: containerProductIds } } : {})
     };
 
     // Analyse des bénéfices par période
     const periodAnalytics = await Sale.aggregate([
-      { 
-        $match: { 
-          status: { $ne: 'cancelled' },
-          ...(startDate || endDate ? {
-            saleDate: {
-              ...(startDate ? { $gte: new Date(startDate) } : {}),
-              ...(endDate ? { $lte: new Date(endDate) } : {})
-            }
-          } : {}),
-          ...(category ? { profitCategory: category } : {})
-        } 
-      },
+      { $match: baseMatch },
       {
         $group: {
           _id: `$periodData.${period}`,
@@ -57,17 +55,7 @@ const getProfitAnalytics = async (req, res) => {
 
     // Produits les plus rentables (simplifié)
     const topProducts = await Sale.aggregate([
-      { 
-        $match: { 
-          status: { $ne: 'cancelled' },
-          ...(startDate || endDate ? {
-            saleDate: {
-              ...(startDate ? { $gte: new Date(startDate) } : {}),
-              ...(endDate ? { $lte: new Date(endDate) } : {})
-            }
-          } : {})
-        } 
-      },
+      { $match: baseMatch },
       { $unwind: '$products' },
       {
         $lookup: {
@@ -78,6 +66,7 @@ const getProfitAnalytics = async (req, res) => {
         }
       },
       { $unwind: '$productInfo' },
+      ...(container ? [{ $match: { 'productInfo.container': container } }] : []),
       {
         $group: {
           _id: '$products.product',
@@ -113,17 +102,7 @@ const getProfitAnalytics = async (req, res) => {
 
     // Statistiques générales
     const generalStats = await Sale.aggregate([
-      { 
-        $match: { 
-          status: { $ne: 'cancelled' },
-          ...(startDate || endDate ? {
-            saleDate: {
-              ...(startDate ? { $gte: new Date(startDate) } : {}),
-              ...(endDate ? { $lte: new Date(endDate) } : {})
-            }
-          } : {})
-        } 
-      },
+      { $match: baseMatch },
       {
         $group: {
           _id: null,
@@ -141,17 +120,34 @@ const getProfitAnalytics = async (req, res) => {
 
     // Analyse par catégorie de produit
     const profitByCategory = await Sale.aggregate([
-      { 
-        $match: { 
-          status: { $ne: 'cancelled' },
-          ...(startDate || endDate ? {
-            saleDate: {
-              ...(startDate ? { $gte: new Date(startDate) } : {}),
-              ...(endDate ? { $lte: new Date(endDate) } : {})
-            }
-          } : {})
-        } 
+      { $match: baseMatch },
+      { $unwind: '$products' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'products.product',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
       },
+      { $unwind: '$productInfo' },
+      ...(container ? [{ $match: { 'productInfo.container': container } }] : []),
+      {
+        $group: {
+          _id: '$productInfo.category',
+          totalProfit: { $sum: { $subtract: [
+            { $multiply: ['$products.quantity', '$products.priceAtSale'] },
+            { $multiply: ['$products.quantity', { $ifNull: ['$productInfo.costPrice', 0] }] }
+          ] } },
+          saleCount: { $sum: 1 }
+        }
+      },
+      { $sort: { totalProfit: -1 } }
+    ]);
+
+    // Analyse par conteneur de produit
+    const profitByContainer = await Sale.aggregate([
+      { $match: baseMatch },
       { $unwind: '$products' },
       {
         $lookup: {
@@ -164,15 +160,31 @@ const getProfitAnalytics = async (req, res) => {
       { $unwind: '$productInfo' },
       {
         $group: {
-          _id: '$productInfo.category',
-          totalProfit: { $sum: { $subtract: [
-            { $multiply: ['$products.quantity', '$products.priceAtSale'] },
-            { $multiply: ['$products.quantity', { $ifNull: ['$productInfo.costPrice', 0] }] }
-          ] } },
+          _id: '$productInfo.container',
+          totalRevenue: { $sum: { $multiply: ['$products.quantity', '$products.priceAtSale'] } },
+          totalCost: { $sum: { $multiply: ['$products.quantity', { $ifNull: ['$productInfo.costPrice', 0] }] } },
+          totalQuantity: { $sum: '$products.quantity' },
           saleCount: { $sum: 1 }
         }
       },
-      { $sort: { totalProfit: -1 } }
+      {
+        $project: {
+          _id: 1,
+          totalRevenue: 1,
+          totalCost: 1,
+          totalQuantity: 1,
+          saleCount: 1,
+          totalProfit: { $subtract: ['$totalRevenue', '$totalCost'] },
+          profitMargin: {
+            $cond: [
+              { $eq: ['$totalRevenue', 0] },
+              0,
+              { $multiply: [{ $divide: [{ $subtract: ['$totalRevenue', '$totalCost'] }, '$totalRevenue'] }, 100] }
+            ]
+          }
+        }
+      },
+      { $sort: { totalRevenue: -1 } }
     ]);
 
     const stats = generalStats[0] || {
@@ -191,11 +203,13 @@ const getProfitAnalytics = async (req, res) => {
         topProducts,
         generalStats: stats,
         profitByCategory,
+        profitByContainer,
         filters: {
           period,
           startDate,
           endDate,
-          category
+          category,
+          container
         }
       }
     });

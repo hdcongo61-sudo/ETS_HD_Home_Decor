@@ -215,12 +215,18 @@ const ProductPerformanceChart = ({ products }) => {
 const ProfitAnalysis = () => {
   const [profitData, setProfitData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [containers, setContainers] = useState([]);
   const [filters, setFilters] = useState({
     period: "month",
     startDate: "",
     endDate: "",
     category: "",
+    container: "",
   });
+
+  useEffect(() => {
+    api.get("/lookups/containers").then((r) => setContainers(r.data || [])).catch(() => {});
+  }, []);
 
   const fetchProfitData = useCallback(async () => {
     try {
@@ -267,7 +273,7 @@ const ProfitAnalysis = () => {
 
   // generalStats reserved for future use
   // eslint-disable-next-line no-unused-vars
-  const { periodAnalytics, topProducts, generalStats, profitByCategory } = profitData;
+  const { periodAnalytics, topProducts, generalStats, profitByCategory, profitByContainer = [] } = profitData;
 
   const profitTrendChart = {
     labels: periodAnalytics.map((item) =>
@@ -377,10 +383,27 @@ const ProfitAnalysis = () => {
                 className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
               />
             </div>
+            {containers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Conteneur
+                </label>
+                <select
+                  value={filters.container}
+                  onChange={(e) => handleFilterChange("container", e.target.value)}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Tous</option>
+                  {containers.map((c) => (
+                    <option key={c._id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex items-end">
               <button
                 onClick={() =>
-                  setFilters({ period: "month", startDate: "", endDate: "", category: "" })
+                  setFilters({ period: "month", startDate: "", endDate: "", category: "", container: "" })
                 }
                 className="w-full p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
               >
@@ -602,6 +625,53 @@ const ProfitAnalysis = () => {
           </div>
         </GlassCard>
       )}
+
+      {/* Bénéfices par conteneur */}
+      {profitByContainer.length > 0 && (
+        <GlassCard>
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Gains par conteneur
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="p-3 text-left font-medium text-gray-600">Conteneur</th>
+                    <th className="p-3 text-right font-medium text-gray-600">Chiffre d'affaires</th>
+                    <th className="p-3 text-right font-medium text-gray-600">Coût</th>
+                    <th className="p-3 text-right font-medium text-gray-600">Bénéfice</th>
+                    <th className="p-3 text-right font-medium text-gray-600">Marge</th>
+                    <th className="p-3 text-right font-medium text-gray-600">Qté</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {profitByContainer.map((c, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="p-3 font-medium text-gray-900">{c._id || "Non défini"}</td>
+                      <td className="p-3 text-right tabular-nums text-gray-800">
+                        {(c.totalRevenue || 0).toLocaleString("fr-FR")} CFA
+                      </td>
+                      <td className="p-3 text-right tabular-nums text-gray-600">
+                        {(c.totalCost || 0).toLocaleString("fr-FR")} CFA
+                      </td>
+                      <td className="p-3 text-right tabular-nums font-semibold text-green-600">
+                        {(c.totalProfit || 0).toLocaleString("fr-FR")} CFA
+                      </td>
+                      <td className="p-3 text-right tabular-nums text-blue-600">
+                        {(c.profitMargin || 0).toFixed(1)}%
+                      </td>
+                      <td className="p-3 text-right tabular-nums text-gray-700">
+                        {c.totalQuantity}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 };
@@ -780,6 +850,8 @@ const Sales = () => {
   const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
   const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [containerFilter, setContainerFilter] = useState("");
+  const [containers, setContainers] = useState([]);
   const [historyFiltersOpen, setHistoryFiltersOpen] = useState(false); // collapsed on mobile by default
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -929,6 +1001,15 @@ const Sales = () => {
     }
   }, []);
 
+  const fetchContainers = useCallback(async () => {
+    try {
+      const res = await api.get("/lookups/containers");
+      setContainers(res.data || []);
+    } catch {
+      // silently ignore — container filter just won't show
+    }
+  }, []);
+
   const fetchSales = useCallback(async () => {
     try {
       const res = await api.get("/sales");
@@ -997,6 +1078,7 @@ const Sales = () => {
           fetchClients(),
           fetchProducts(),
           fetchSales(),
+          fetchContainers(),
         ]);
         await hydrateDeliveryStats(salesData);
         if (isAdmin) {
@@ -1026,7 +1108,7 @@ const Sales = () => {
       }
     };
     bootstrap();
-  }, [isAdmin, fetchClients, fetchProducts, fetchSales, fetchDashboardData, hydrateDeliveryStats]);
+  }, [isAdmin, fetchClients, fetchProducts, fetchSales, fetchContainers, fetchDashboardData, hydrateDeliveryStats]);
 
   // Changement de période (7j / 30j / 90j / Tous) : met à jour uniquement le dashboard, sans recharger toute la page
   useEffect(() => {
@@ -1057,7 +1139,10 @@ const Sales = () => {
         !deliveryFilter ||
         (sale.status === "completed" &&
           (deliveryFilter === "all_completed" || sale.deliveryStatus === deliveryFilter));
-      return statusMatch && clientMatch && dateMatch && deliveryMatch;
+      const containerMatch =
+        !containerFilter ||
+        (sale.products || []).some((p) => p.product?.container === containerFilter);
+      return statusMatch && clientMatch && dateMatch && deliveryMatch && containerMatch;
     });
 
     let out = [...base];
@@ -1078,14 +1163,14 @@ const Sales = () => {
     }
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
-  }, [salesWithProfit, statusFilter, clientFilter, dateFilter, deliveryFilter, quickFilters]);
+  }, [salesWithProfit, statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
 
   const desktopLinkProps = useMemo(
     () => (isDesktop ? { target: "_blank", rel: "noopener noreferrer" } : {}),
     [isDesktop]
   );
 
-  const hasActiveFilters = Boolean(statusFilter || clientFilter || dateFilter || deliveryFilter);
+  const hasActiveFilters = Boolean(statusFilter || clientFilter || dateFilter || deliveryFilter || containerFilter);
 
   const historyLinkSearch = useMemo(() => {
     const params = new URLSearchParams();
@@ -1094,8 +1179,9 @@ const Sales = () => {
     if (clientFilter) params.set("client", clientFilter);
     if (dateFilter) params.set("date", dateFilter);
     if (deliveryFilter) params.set("delivery", deliveryFilter);
+    if (containerFilter) params.set("container", containerFilter);
     return `?${params.toString()}`;
-  }, [statusFilter, clientFilter, dateFilter, deliveryFilter]);
+  }, [statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
@@ -1431,16 +1517,20 @@ const Sales = () => {
                         clientFilter={clientFilter}
                         dateFilter={dateFilter}
                         deliveryFilter={deliveryFilter}
+                        containerFilter={containerFilter}
                         clients={clients}
+                        containers={containers}
                         onStatusChange={setStatusFilter}
                         onClientChange={setClientFilter}
                         onDateChange={setDateFilter}
                         onDeliveryChange={setDeliveryFilter}
+                        onContainerChange={setContainerFilter}
                         onReset={() => {
                           setStatusFilter("");
                           setClientFilter("");
                           setDateFilter("");
                           setDeliveryFilter("");
+                          setContainerFilter("");
                           setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
                         }}
                         variant="main"
@@ -2295,16 +2385,20 @@ const Sales = () => {
                           clientFilter={clientFilter}
                           dateFilter={dateFilter}
                           deliveryFilter={deliveryFilter}
+                          containerFilter={containerFilter}
                           clients={clients}
+                          containers={containers}
                           onStatusChange={setStatusFilter}
                           onClientChange={setClientFilter}
                           onDateChange={setDateFilter}
                           onDeliveryChange={setDeliveryFilter}
+                          onContainerChange={setContainerFilter}
                           onReset={() => {
                             setStatusFilter("");
                             setClientFilter("");
                             setDateFilter("");
                             setDeliveryFilter("");
+                            setContainerFilter("");
                             setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
                           }}
                           variant="archive"

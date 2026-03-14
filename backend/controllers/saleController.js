@@ -47,7 +47,7 @@ const getSales = asyncHandler(async (req, res) => {
       .populate('client', 'name email')
       .populate({
         path: 'products.product',
-        select: 'name costPrice',
+        select: 'name costPrice container',
         model: 'Product'
       })
       .populate('user', 'name')
@@ -103,7 +103,7 @@ const getUserSales = asyncHandler(async (req, res) => {
     .populate('client', 'name')
     .populate({
       path: 'products.product',
-      select: 'name costPrice'
+      select: 'name costPrice container'
     })
     .sort({ saleDate: -1 })
     .lean();

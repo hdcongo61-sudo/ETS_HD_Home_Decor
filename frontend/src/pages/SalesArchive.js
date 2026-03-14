@@ -27,6 +27,8 @@ const SalesArchive = () => {
   const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [containerFilter, setContainerFilter] = useState("");
+  const [containers, setContainers] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -41,15 +43,17 @@ const SalesArchive = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [salesRes, clientsRes] = await Promise.all([
+        const [salesRes, clientsRes, containersRes] = await Promise.all([
           api.get("/sales"),
           api.get("/clients"),
+          api.get("/lookups/containers"),
         ]);
         setSales(salesRes.data || []);
         const list = Array.isArray(clientsRes.data)
           ? clientsRes.data
           : clientsRes.data?.clients || [];
         setClients(list);
+        setContainers(containersRes.data || []);
       } catch (err) {
         console.error("Erreur lors du chargement des ventes :", err);
         setError("Impossible de charger les ventes.");
@@ -82,19 +86,23 @@ const SalesArchive = () => {
         !deliveryFilter ||
         (sale.status === "completed" &&
           (deliveryFilter === "all_completed" || sale.deliveryStatus === deliveryFilter));
-      return statusMatch && clientMatch && dateMatch && deliveryMatch;
+      const containerMatch =
+        !containerFilter ||
+        (sale.products || []).some((p) => p.product?.container === containerFilter);
+      return statusMatch && clientMatch && dateMatch && deliveryMatch && containerMatch;
     });
     return base;
-  }, [salesWithMetrics, statusFilter, clientFilter, dateFilter, deliveryFilter]);
+  }, [salesWithMetrics, statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const hasActiveFilters =
-    !!statusFilter || !!clientFilter || !!dateFilter || !!deliveryFilter;
+    !!statusFilter || !!clientFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
 
   const handleResetFilters = () => {
     setStatusFilter("");
     setClientFilter("");
     setDateFilter("");
     setDeliveryFilter("");
+    setContainerFilter("");
   };
 
   return (
@@ -161,11 +169,14 @@ const SalesArchive = () => {
                 clientFilter={clientFilter}
                 dateFilter={dateFilter}
                 deliveryFilter={deliveryFilter}
+                containerFilter={containerFilter}
                 clients={clients}
+                containers={containers}
                 onStatusChange={setStatusFilter}
                 onClientChange={setClientFilter}
                 onDateChange={setDateFilter}
                 onDeliveryChange={setDeliveryFilter}
+                onContainerChange={setContainerFilter}
                 onReset={handleResetFilters}
                 variant="archive"
               />

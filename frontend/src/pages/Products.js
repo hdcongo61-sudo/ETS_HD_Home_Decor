@@ -441,7 +441,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
+              className="w-full min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-base lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
               autoComplete="off"
             />
           </div>
@@ -492,7 +492,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-2xl min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
+          className="w-full max-w-2xl min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
           autoComplete="off"
         />
       </div>
@@ -675,7 +675,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 /* ===================================================== */
 /* 🧱 INPUTS */
 /* ===================================================== */
-const inputBaseClass = 'w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400';
+const inputBaseClass = 'w-full px-4 py-2.5 text-base sm:text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition placeholder:text-gray-400';
 const Input = ({ label, className = '', ...props }) => (
   <div className={className}>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>

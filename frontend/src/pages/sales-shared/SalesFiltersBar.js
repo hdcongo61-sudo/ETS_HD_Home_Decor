@@ -15,11 +15,14 @@ const SalesFiltersBar = ({
   clientFilter,
   dateFilter,
   deliveryFilter,
+  containerFilter = "",
   clients = [],
+  containers = [],
   onStatusChange,
   onClientChange,
   onDateChange,
   onDeliveryChange,
+  onContainerChange,
   onReset,
   variant = "main",
 }) => {
@@ -29,8 +32,12 @@ const SalesFiltersBar = ({
     "w-full min-h-[44px] px-3 py-2.5 sm:py-2 border border-gray-300 rounded-xl text-gray-900 " +
     "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500";
 
+  const colsClass = containers.length > 0
+    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" role="group" aria-label="Filtres des ventes">
+    <div className={colsClass} role="group" aria-label="Filtres des ventes">
       <div className="space-y-1.5">
         <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700">
           Statut
@@ -103,6 +110,25 @@ const SalesFiltersBar = ({
           </select>
         )}
       </div>
+      {containers.length > 0 && (
+        <div className="space-y-1.5">
+          <label htmlFor="filter-container" className="block text-sm font-medium text-gray-700">
+            Conteneur
+          </label>
+          <select
+            id="filter-container"
+            value={containerFilter}
+            onChange={(e) => onContainerChange(e.target.value)}
+            className={inputClass}
+            aria-label="Filtrer par conteneur"
+          >
+            <option value="">Tous les conteneurs</option>
+            {containers.map((c) => (
+              <option key={c._id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="space-y-1.5">
         <label htmlFor="filter-delivery" className="block text-sm font-medium text-gray-700">
           Livraison
