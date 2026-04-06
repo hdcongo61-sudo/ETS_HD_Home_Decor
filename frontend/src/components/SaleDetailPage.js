@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath } from '../utils/paths';
+import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
 import { Bar } from 'react-chartjs-2';
@@ -44,6 +45,7 @@ const SaleDetailPage = () => {
     const [mobileHistoryTab, setMobileHistoryTab] = useState('payments');
     const [message, setMessage] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showProfitSections, setShowProfitSections] = useState(true);
 
     useAutoClearMessage(message, setMessage);
     const [reminderDate, setReminderDate] = useState('');
@@ -460,6 +462,9 @@ const SaleDetailPage = () => {
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
                                         {getStatusText(sale.status)}
                                     </span>
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getSaleTypeClass(sale.saleType)}`}>
+                                        {getSaleTypeText(sale.saleType)}
+                                    </span>
                                     {Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0 && (
                                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                                             Modifiée
@@ -479,6 +484,25 @@ const SaleDetailPage = () => {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
+                                {isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProfitSections((prev) => !prev)}
+                                        className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            {showProfitSections ? (
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.004-3.196 3.565-5.675 6.73-6.588M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.364 6.364L3.636 5.636" />
+                                            ) : (
+                                                <>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </>
+                                            )}
+                                        </svg>
+                                        {showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}
+                                    </button>
+                                )}
                                 {isAdmin && sale.status !== 'cancelled' && (
                                     <Link
                                         to={`/sales/${sale._id}/edit`}
@@ -801,7 +825,7 @@ const SaleDetailPage = () => {
                         </div>
 
                         {/* Section Bénéfices */}
-                        {isAdmin && (
+                        {isAdmin && showProfitSections && (
                             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40">
@@ -845,7 +869,7 @@ const SaleDetailPage = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                     </svg>
                                 </span>
-                                {isAdmin ? 'Produits vendus avec bénéfices' : 'Produits vendus'}
+                                {isAdmin && showProfitSections ? 'Produits vendus avec bénéfices' : 'Produits vendus'}
                             </h3>
                             <span className="text-sm text-gray-500">{sale.products.length} {sale.products.length > 1 ? 'lignes' : 'ligne'}</span>
                         </div>
@@ -867,19 +891,21 @@ const SaleDetailPage = () => {
                                                 <span className="text-sm text-gray-600">{item.quantity}×</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 mt-3 text-xs text-gray-500">
-                                                <div>
-                                                    <div>Profit unitaire</div>
-                                                    <div className={`font-semibold ${profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
+                                                {isAdmin && showProfitSections && (
+                                                    <div>
+                                                        <div>Profit unitaire</div>
+                                                        <div className={`font-semibold ${profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                            {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
                                                 <div>
                                                     <div>Total</div>
                                                     <div className="font-semibold text-gray-900">
                                                         {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
                                                     </div>
                                                 </div>
-                                                {isAdmin && (
+                                                {isAdmin && showProfitSections && (
                                                     <>
                                                         <div>
                                                             <div>Profit total</div>
@@ -907,7 +933,7 @@ const SaleDetailPage = () => {
                                             <tr>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
-                                                {isAdmin && (
+                                                {isAdmin && showProfitSections && (
                                                     <>
                                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coût unitaire</th>
                                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice unit.</th>
@@ -915,7 +941,7 @@ const SaleDetailPage = () => {
                                                 )}
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                                {isAdmin && (
+                                                {isAdmin && showProfitSections && (
                                                     <>
                                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice total</th>
                                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marge</th>
@@ -937,7 +963,7 @@ const SaleDetailPage = () => {
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                             {item.priceAtSale?.toFixed(0)} CFA
                                                         </td>
-                                                        {isAdmin && (
+                                                        {isAdmin && showProfitSections && (
                                                             <>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                     {costPrice > 0 ? `${costPrice?.toFixed(0)} CFA` : 'N/A'}
@@ -955,7 +981,7 @@ const SaleDetailPage = () => {
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                                             {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
                                                         </td>
-                                                        {isAdmin && (
+                                                        {isAdmin && showProfitSections && (
                                                             <>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                                                     <span className={profit.total >= 0 ? 'text-green-600' : 'text-red-600'}>

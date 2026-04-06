@@ -44,6 +44,7 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showProfitSections, setShowProfitSections] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [salesHistory, setSalesHistory] = useState([]);
   const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
@@ -255,6 +256,23 @@ const getActivityIcon = (type) => {
 
           <div className="flex space-x-3">
             <button
+              onClick={() => setShowProfitSections((prev) => !prev)}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+              type="button"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {showProfitSections ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.004-3.196 3.565-5.675 6.73-6.588M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.364 6.364L3.636 5.636" />
+                ) : (
+                  <>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </>
+                )}
+              </svg>
+              {showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}
+            </button>
+            <button
               onClick={handleExportPDF}
               className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 flex items-center"
             >
@@ -298,7 +316,7 @@ const getActivityIcon = (type) => {
               alt={product.name}
               className="rounded-xl object-cover w-full max-h-96 shadow-sm"
             />
-            {profitMargin > 0 && (
+            {showProfitSections && profitMargin > 0 && (
               <div className="mt-3 inline-flex px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
                 +{profitMargin.toFixed(1)}% marge
               </div>
@@ -314,7 +332,7 @@ const getActivityIcon = (type) => {
                 <span className="text-2xl font-bold text-indigo-600">
                   {formatCurrency(product.price)}
                 </span>
-                {product.costPrice && (
+                {showProfitSections && product.costPrice && (
                   <span className="text-sm text-gray-500">Coût: {formatCurrency(product.costPrice)}</span>
                 )}
               </div>
@@ -403,7 +421,9 @@ const getActivityIcon = (type) => {
                     }
                   />
                   <Metric label="CA total" value={formatCurrency(stats.totalRevenue)} />
-                  <Metric label="Bénéfice total" value={formatCurrency(stats.totalProfit)} />
+                  {showProfitSections && (
+                    <Metric label="Bénéfice total" value={formatCurrency(stats.totalProfit)} />
+                  )}
                   <Metric label="Valeur du stock" value={formatCurrency(stats.stock.stockValue)} />
                 </div>
               </div>
@@ -413,16 +433,28 @@ const getActivityIcon = (type) => {
           {activeTab === 'financial' && (
             <div className="grid md:grid-cols-3 gap-5">
               <Card title="Prix de vente">{formatCurrency(product.price)}</Card>
-              <Card title="Prix de revient">{formatCurrency(product.costPrice)}</Card>
-              <Card title="Bénéfice unitaire">{formatCurrency(absoluteProfit)}</Card>
+              {showProfitSections && (
+                <>
+                  <Card title="Prix de revient">{formatCurrency(product.costPrice)}</Card>
+                  <Card title="Bénéfice unitaire">{formatCurrency(absoluteProfit)}</Card>
 
-              <div className="md:col-span-3 bg-indigo-50 rounded-xl p-5 border border-indigo-200">
-                <h4 className="font-semibold text-indigo-700 mb-2">Rentabilité du stock</h4>
-                <p className="text-gray-700 text-sm">
-                  Si tout le stock est vendu à ce prix, le bénéfice total estimé est de{' '}
-                  <strong>{formatCurrency(absoluteProfit * product.stock)}</strong>.
-                </p>
-              </div>
+                  <div className="md:col-span-3 bg-indigo-50 rounded-xl p-5 border border-indigo-200">
+                    <h4 className="font-semibold text-indigo-700 mb-2">Rentabilité du stock</h4>
+                    <p className="text-gray-700 text-sm">
+                      Si tout le stock est vendu à ce prix, le bénéfice total estimé est de{' '}
+                      <strong>{formatCurrency(absoluteProfit * product.stock)}</strong>.
+                    </p>
+                  </div>
+                </>
+              )}
+              {!showProfitSections && (
+                <div className="md:col-span-2 bg-gray-50 rounded-xl p-5 border border-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2">Sections bénéfice masquées</h4>
+                  <p className="text-gray-600 text-sm">
+                    Les informations de marge, bénéfice et prix de revient sont actuellement cachées sur cette page.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
