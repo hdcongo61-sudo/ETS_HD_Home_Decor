@@ -32,6 +32,17 @@ const saleSchema = mongoose.Schema(
       min: [0, 'Le montant total ne peut pas être négatif'],
       default: 0
     },
+    saleType: {
+      type: String,
+      enum: ['normal', 'wholesale'],
+      default: 'normal',
+      index: true
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['cash', 'MobileMoney', 'credit'],
+      default: 'cash'
+    },
     payments: [{
       amount: {
         type: Number,

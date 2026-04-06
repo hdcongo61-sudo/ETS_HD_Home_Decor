@@ -12,9 +12,76 @@ const {
 
 const mongoose = require('mongoose');
 
+const normalizeSaleType = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (['vente en gros', 'gros', 'grossiste', 'gross', 'wholesale'].includes(normalized)) {
+    return 'wholesale';
+  }
+
+  return 'normal';
+};
+
+const normalizeObjectId = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  return String(value);
+};
+
+const isAdminUser = (user) => Boolean(user?.isAdmin);
+
+const buildSaleAccessFilter = (user, baseFilter = {}) => {
+  if (isAdminUser(user)) {
+    return baseFilter;
+  }
+
+  return {
+    ...baseFilter,
+    user: user?._id
+  };
+};
+
+const assertSaleAccess = (sale, user) => {
+  if (!sale) {
+    return { allowed: false, status: 404, message: 'Vente non trouvée' };
+  }
+
+  if (isAdminUser(user)) {
+    return { allowed: true };
+  }
+
+  const saleOwnerId = normalizeObjectId(sale.user);
+  const requesterId = normalizeObjectId(user?._id);
+
+  if (saleOwnerId && requesterId && saleOwnerId === requesterId) {
+    return { allowed: true };
+  }
+
+  return { allowed: false, status: 403, message: 'Non autorisé à accéder à cette vente' };
+};
+
+const formatGroupedSummary = (rows = [], expectedKeys = []) => {
+  const totalCount = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+
+  return expectedKeys.reduce((acc, key) => {
+    const match = rows.find((row) => row._id === key);
+    const count = Number(match?.count) || 0;
+    const totalAmount = Number(match?.totalAmount) || 0;
+
+    acc[key] = {
+      count,
+      totalAmount,
+      percentage: totalCount > 0 ? (count / totalCount) * 100 : 0
+    };
+
+    return acc;
+  }, {});
+};
+
 // @desc    Get all sales with filters
 // @route   GET /api/sales
-// @access  Private/Admin
+// @access  Private (admin: all sales, user: own sales)
 const getSales = asyncHandler(async (req, res) => {
   try {
     // Build filter object
@@ -43,7 +110,11 @@ const getSales = asyncHandler(async (req, res) => {
       filter.paymentMethod = req.query.paymentMethod;
     }
 
-    const sales = await Sale.find(filter)
+    if (req.query.saleType) {
+      filter.saleType = normalizeSaleType(req.query.saleType);
+    }
+
+    const sales = await Sale.find(buildSaleAccessFilter(req.user, filter))
       .populate('client', 'name email')
       .populate({
         path: 'products.product',
@@ -226,7 +297,7 @@ const calculateSalesStats = (sales) => {
 // @route   POST /api/sales
 // @access  Private
 const createSale = asyncHandler(async (req, res) => {
-  const { client, products, paymentMethod,note,reminderDate, reminderNote} = req.body;
+  const { client, products, paymentMethod, note, reminderDate, reminderNote, saleType } = req.body;
 
   try {
     let totalAmount = 0;
@@ -285,10 +356,15 @@ const createSale = asyncHandler(async (req, res) => {
     }
 
     // Create sale with reminder data
+    const resolvedSaleType = isAdminUser(req.user)
+      ? normalizeSaleType(saleType)
+      : 'normal';
+
     const saleData = {
       client,
       products: populatedProducts,
       totalAmount,
+      saleType: resolvedSaleType,
       paymentMethod,
       note,
       user: req.user._id
@@ -357,8 +433,9 @@ const addPayment = asyncHandler(async (req, res) => {
 
   try {
     const sale = await Sale.findById(id);
-    if (!sale) {
-      return res.status(404).json({ message: 'Vente non trouvée' });
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     if (sale.status === 'cancelled') {
@@ -411,18 +488,32 @@ const addPayment = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getSalesStats = asyncHandler(async (req, res) => {
   try {
-    // Nouvelle aggregation qui calcule les paiements réels
     const stats = await Sale.aggregate([
       {
-        $unwind: "$payments" // Déplier les paiements
+        $match: {
+          status: { $ne: 'cancelled' }
+        }
+      },
+      {
+        $project: {
+          totalAmount: 1,
+          totalPaid: {
+            $reduce: {
+              input: { $ifNull: ["$payments", []] },
+              initialValue: 0,
+              in: { $add: ["$$value", "$$this.amount"] }
+            }
+          },
+          productsCount: { $size: { $ifNull: ["$products", []] } }
+        }
       },
       {
         $group: {
           _id: null,
           totalSales: { $sum: "$totalAmount" },
-          totalPaid: { $sum: "$payments.amount" }, // Somme des paiements effectués
+          totalPaid: { $sum: "$totalPaid" },
           averageSale: { $avg: "$totalAmount" },
-          totalProductsSold: { $sum: { $size: "$products" } },
+          totalProductsSold: { $sum: "$productsCount" },
           transactionCount: { $sum: 1 }
         }
       },
@@ -529,13 +620,16 @@ const getSalesStatsByStatus = asyncHandler(async (req, res) => {
 // @desc    Get sales by date range
 // @route   GET /api/sales/date-range
 // @access  Private
-// In your backend sales controller
 const getSalesByDateRange = asyncHandler(async (req, res) => {
   try {
     let { startDate, endDate } = req.query;
 
     // Default to last 30 days if no dates provided
-    if (!startDate) startDate = subDays(new Date(), 30);
+    if (!startDate) {
+      const defaultStart = new Date();
+      defaultStart.setDate(defaultStart.getDate() - 30);
+      startDate = defaultStart.toISOString();
+    }
     if (!endDate) endDate = new Date();
 
     // Convert to Date objects
@@ -546,16 +640,16 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'Format de date invalide' });
     }
 
-    const sales = await Sale.find({
-      createdAt: {
+    const sales = await Sale.find(buildSaleAccessFilter(req.user, {
+      saleDate: {
         $gte: start,
         $lte: end
       }
-    })
+    }))
     .populate('client', 'name')
     .populate('products.product', 'name price')
     .populate('payments')
-    .sort('createdAt');
+    .sort('saleDate');
 
     res.json(sales);
 
@@ -576,7 +670,12 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
     if (!startDate) startDate = new Date(now.setFullYear(now.getFullYear() - 1));
     if (!endDate) endDate = new Date();
 
+    const paymentsMatch = isAdminUser(req.user) ? {} : { user: req.user._id };
+
     const payments = await Sale.aggregate([
+      {
+        $match: paymentsMatch
+      },
       { $unwind: "$payments" },
       {
         $match: {
@@ -633,7 +732,7 @@ const getClientPurchases = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Client non trouvé' });
     }
 
-    const purchases = await Sale.find({ client: clientId })
+    const purchases = await Sale.find(buildSaleAccessFilter(req.user, { client: clientId }))
       .populate('products.product', 'name price')
       .sort({ saleDate: -1 })
       .lean();
@@ -714,6 +813,8 @@ const getDashboardData = asyncHandler(async (req, res) => {
       topProducts,
       salesTrend,
       paymentMethods,
+      saleTypes,
+      paymentStructures,
       salesByStatus,
       todaySales,
       todayPayments,
@@ -812,13 +913,96 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            status: { $ne: "cancelled" }
+          }
+        },
+        { $unwind: "$payments" },
+        {
+          $match: {
+            "payments.paymentDate": { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: "$payments.method",
+            totalAmount: { $sum: "$payments.amount" },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Types de vente
+      Sale.aggregate([
+        {
+          $match: {
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
         {
           $group: {
-            _id: "$paymentMethod",
+            _id: { $ifNull: ["$saleType", "normal"] },
+            count: { $sum: 1 },
+            totalAmount: { $sum: "$totalAmount" }
+          }
+        }
+      ]),
+
+      // Structure de paiement des commandes
+      Sale.aggregate([
+        {
+          $match: {
+            saleDate: { $gte: startDate, $lte: endDate },
+            status: { $ne: "cancelled" }
+          }
+        },
+        {
+          $project: {
+            totalAmount: 1,
+            paymentsCount: { $size: { $ifNull: ["$payments", []] } },
+            totalPaid: {
+              $reduce: {
+                input: { $ifNull: ["$payments", []] },
+                initialValue: 0,
+                in: { $add: ["$$value", "$$this.amount"] }
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            paymentStructure: {
+              $switch: {
+                branches: [
+                  {
+                    case: {
+                      $and: [
+                        { $gt: ["$paymentsCount", 1] },
+                        { $gte: ["$totalPaid", "$totalAmount"] }
+                      ]
+                    },
+                    then: "multiple_payments"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gt: ["$paymentsCount", 0] },
+                        { $lte: ["$paymentsCount", 1] },
+                        { $gte: ["$totalPaid", "$totalAmount"] }
+                      ]
+                    },
+                    then: "full_payment"
+                  }
+                ],
+                default: "pending_payment"
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$paymentStructure",
+            count: { $sum: 1 },
             totalAmount: { $sum: "$totalAmount" }
           }
         }
@@ -1038,15 +1222,28 @@ const getDashboardData = asyncHandler(async (req, res) => {
     let paymentTotalAmount = 0;
 
     paymentMethods.forEach(method => {
-      paymentTotalAmount += method.totalAmount;
+      paymentTotalAmount += Number(method.totalAmount) || 0;
     });
 
     paymentMethods.forEach(method => {
       const methodName = method._id || "non spécifié";
-      paymentMethodsData[methodName] = paymentTotalAmount > 0
-        ? (method.totalAmount / paymentTotalAmount) * 100
-        : 0;
+      const methodTotalAmount = Number(method.totalAmount) || 0;
+      const methodCount = Number(method.count) || 0;
+
+      paymentMethodsData[methodName] = {
+        totalAmount: methodTotalAmount,
+        count: methodCount,
+        percentage: paymentTotalAmount > 0
+          ? (methodTotalAmount / paymentTotalAmount) * 100
+          : 0
+      };
     });
+
+    const saleTypeSummary = formatGroupedSummary(saleTypes, ['normal', 'wholesale']);
+    const paymentStructureSummary = formatGroupedSummary(
+      paymentStructures,
+      ['full_payment', 'multiple_payments', 'pending_payment']
+    );
 
     // Formatage des ventes par statut
     const statusStats = {
@@ -1073,6 +1270,8 @@ const getDashboardData = asyncHandler(async (req, res) => {
       topProducts,
       salesTrend,
       paymentMethods: paymentMethodsData,
+      saleTypeSummary,
+      paymentStructureSummary,
       statusStats,
       dailySummary: {
         salesCount: dailySummary.count,
@@ -1129,8 +1328,9 @@ const getSaleById = asyncHandler(async (req, res) => {
       .populate('user', 'name email')
       .lean();
 
-    if (!sale) {
-      return res.status(404).json({ message: 'Vente non trouvée' });
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     // Calculate payment totals (defensive: ensure numbers, handle missing payments)
@@ -1174,6 +1374,10 @@ const getSaleById = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getUserSalesStats = asyncHandler(async (req, res) => {
   try {
+    if (!isAdminUser(req.user)) {
+      return res.status(403).json({ message: 'Non autorisé à accéder à ces statistiques' });
+    }
+
     const { range = '30days' } = req.query;
     let startDate = new Date();
 
@@ -1239,36 +1443,49 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
         }
       },
 
-      // Étape 5: Regrouper par utilisateur
+      // Étape 5: Regrouper d'abord par vente pour éviter de dupliquer totalAmount/salesCount
       {
         $group: {
-          _id: "$user",
-
-          // Informations sur les ventes
-          totalAmount: { $sum: "$totalAmount" },
-          totalProfit: { $sum: "$products.totalProfit" },
-          salesCount: { $sum: 1 },
-
-          // Clients distincts
-          clients: { $addToSet: "$client" },
-
-          // Produits vendus
-          productsSold: { $sum: "$products.quantity" },
-
-          // Détails des paiements
+          _id: "$_id",
+          user: { $first: "$user" },
+          client: { $first: "$client" },
+          totalAmount: { $first: "$totalAmount" },
           totalPaid: {
-            $sum: {
+            $first: {
               $reduce: {
                 input: "$payments",
                 initialValue: 0,
                 in: { $add: ["$$value", "$$this.amount"] }
               }
             }
-          }
+          },
+          totalProfit: { $sum: "$products.totalProfit" },
+          productsSold: { $sum: "$products.quantity" }
         }
       },
 
-      // Étape 6: Joindre les informations utilisateur
+      // Étape 6: Regrouper par utilisateur
+      {
+        $group: {
+          _id: "$user",
+
+          // Informations sur les ventes
+          totalAmount: { $sum: "$totalAmount" },
+          totalProfit: { $sum: "$totalProfit" },
+          salesCount: { $sum: 1 },
+
+          // Clients distincts
+          clients: { $addToSet: "$client" },
+
+          // Produits vendus
+          productsSold: { $sum: "$productsSold" },
+
+          // Détails des paiements
+          totalPaid: { $sum: "$totalPaid" }
+        }
+      },
+
+      // Étape 7: Joindre les informations utilisateur
       {
         $lookup: {
           from: "users",
@@ -1279,7 +1496,7 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
       },
       { $unwind: "$userData" },
 
-      // Étape 7: Formater les résultats
+      // Étape 8: Formater les résultats
       {
         $project: {
           _id: 0,
@@ -1304,7 +1521,7 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
         }
       },
 
-      // Étape 8: Trier par chiffre d'affaires décroissant
+      // Étape 9: Trier par chiffre d'affaires décroissant
       { $sort: { totalAmount: -1 } }
     ]);
 
@@ -1321,7 +1538,7 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
 
 const updateSale = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { products, note } = req.body;
+  const { products, note, saleType } = req.body;
   const user = req.user;
 
   // Validation de l'ID
@@ -1347,6 +1564,15 @@ const updateSale = asyncHandler(async (req, res) => {
       return res.status(404).json({
         message: "Vente non trouvée",
         providedId: id
+      });
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, 'saleType') &&
+      normalizeSaleType(saleType) !== normalizeSaleType(existingSale.saleType)
+    ) {
+      return res.status(400).json({
+        message: "Le type de vente ne peut pas être modifié après création"
       });
     }
 
@@ -1677,8 +1903,10 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
   try {
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const baseReminderFilter = isAdminUser(req.user) ? {} : { user: req.user._id };
 
     const overdue = await Sale.find({
+      ...baseReminderFilter,
       'paymentReminder.isSet': true,
       'paymentReminder.reminderDate': { $lte: now },
       'paymentReminder.status': 'pending',
@@ -1691,6 +1919,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     
 
     const upcoming = await Sale.find({
+      ...baseReminderFilter,
       'paymentReminder.isSet': true,
       'paymentReminder.reminderDate': { 
         $gt: now,
@@ -1736,8 +1965,12 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
 const sendReminder = asyncHandler(async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
-    
-    if (!sale || !sale.paymentReminder.isSet) {
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    if (!sale.paymentReminder.isSet) {
       return res.status(404).json({ message: 'Rappel non trouvé' });
     }
 
@@ -1765,9 +1998,9 @@ const updateReminder = asyncHandler(async (req, res) => {
   try {
     const { reminderDate, reminderNote, isSet } = req.body;
     const sale = await Sale.findById(req.params.id);
-
-    if (!sale) {
-      return res.status(404).json({ message: 'Vente non trouvée' });
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     if (isSet && reminderDate) {
@@ -1800,9 +2033,9 @@ const updateReminder = asyncHandler(async (req, res) => {
 const deleteReminder = asyncHandler(async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
-
-    if (!sale) {
-      return res.status(404).json({ message: 'Vente non trouvée' });
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     sale.paymentReminder = {
@@ -1831,9 +2064,9 @@ const updateDelivery = asyncHandler(async (req, res) => {
   try {
     const { deliveryStatus, deliveryNote, deliveryDate } = req.body;
     const sale = await Sale.findById(req.params.id);
-
-    if (!sale) {
-      return res.status(404).json({ message: 'Vente non trouvée' });
+    const access = assertSaleAccess(sale, req.user);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     if (sale.status !== 'completed') {
@@ -1861,11 +2094,14 @@ const updateDelivery = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getDeliveryStats = asyncHandler(async (req, res) => {
   try {
+    const deliveryMatch = {
+      status: 'completed',
+      ...(isAdminUser(req.user) ? {} : { user: req.user._id })
+    };
+
     const stats = await Sale.aggregate([
       {
-        $match: {
-          status: 'completed'
-        }
+        $match: deliveryMatch
       },
       {
         $group: {

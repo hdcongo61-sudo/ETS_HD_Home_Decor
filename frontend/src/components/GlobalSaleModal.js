@@ -1,15 +1,20 @@
 // components/GlobalSaleModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import AuthContext from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
 import Modal from './Modal';
+import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 
 const GlobalSaleModal = () => {
   const { activeModal, closeModal } = useModal();
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin);
   const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: 1, price: 0 }]);
   const [selectedClient, setSelectedClient] = useState('');
+  const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [totalAmount, setTotalAmount] = useState(0);
   const [errors, setErrors] = useState([]);
@@ -38,6 +43,7 @@ const GlobalSaleModal = () => {
     setSelectedClient('');
     setProductSearchTerms(['']);
     setClientSearchTerm('');
+    setSaleType('normal');
     setPaymentMethod('cash');
     setTotalAmount(0);
     setErrors([]);
@@ -112,7 +118,6 @@ const GlobalSaleModal = () => {
 
   useEffect(() => {
     if (isOpen) {
-      console.log('Modal opened, fetching clients and products...');
       fetchClients();
       fetchProducts();
       resetForm();
@@ -208,6 +213,7 @@ const GlobalSaleModal = () => {
       await api.post('/sales', {
         client: selectedClient,
         products: selectedProducts.filter(p => p.product !== ''),
+        saleType,
         paymentMethod,
         totalAmount,
         note,
@@ -460,6 +466,48 @@ const GlobalSaleModal = () => {
                 {note.length}/500 caractères
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Type de Vente</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {['normal', 'wholesale'].map((type) => {
+                    const active = saleType === type;
+
+                    return (
+                      <label
+                        key={type}
+                        className={`rounded-xl border-2 p-4 cursor-pointer transition-all ${
+                          active
+                            ? `${getSaleTypeClass(type)} border-current shadow-sm`
+                            : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="saleType"
+                          value={type}
+                          checked={active}
+                          onChange={(e) => setSaleType(e.target.value)}
+                          className="hidden"
+                        />
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold">{getSaleTypeText(type)}</div>
+                            <div className="mt-1 text-xs opacity-80">
+                              {type === 'wholesale'
+                                ? 'Visible séparément dans les statistiques.'
+                                : 'Commande standard.'}
+                            </div>
+                          </div>
+                          <span className={`mt-1 h-3.5 w-3.5 rounded-full border ${active ? 'border-current bg-current' : 'border-gray-300 bg-white'}`} />
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Payment Reminder Section */}
             <div className="mb-6">

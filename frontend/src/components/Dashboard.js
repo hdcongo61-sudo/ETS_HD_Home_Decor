@@ -8,6 +8,7 @@ import React, {
   Suspense,
   useCallback,
 } from "react";
+import { Link } from "react-router-dom";
 import {
   // Graphique financier composé
   ComposedChart,
@@ -43,7 +44,6 @@ import * as XLSX from "xlsx";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
 import {
-  Loader2,
   DollarSign,
   TrendingDown,
   PieChart as PieIcon,
@@ -471,6 +471,48 @@ const Dashboard = () => {
       : [];
 
   const topProducts = salesStatsData?.topProducts || [];
+  const saleTypeSummary = salesStatsData?.saleTypeSummary || {};
+  const paymentStructureSummary = salesStatsData?.paymentStructureSummary || {};
+  const highlightedSalesCards = [
+    {
+      key: "wholesale",
+      title: "Ventes en gros",
+      count: saleTypeSummary.wholesale?.count || 0,
+      amount: saleTypeSummary.wholesale?.totalAmount || 0,
+      percentage: saleTypeSummary.wholesale?.percentage || 0,
+      accent: "from-fuchsia-500 to-pink-500",
+      text: "text-fuchsia-700 dark:text-fuchsia-300",
+    },
+    {
+      key: "normal",
+      title: "Ventes normales",
+      count: saleTypeSummary.normal?.count || 0,
+      amount: saleTypeSummary.normal?.totalAmount || 0,
+      percentage: saleTypeSummary.normal?.percentage || 0,
+      accent: "from-cyan-500 to-sky-500",
+      text: "text-cyan-700 dark:text-cyan-300",
+    },
+    {
+      key: "full_payment",
+      title: "Paiement complet",
+      count: paymentStructureSummary.full_payment?.count || 0,
+      amount: paymentStructureSummary.full_payment?.totalAmount || 0,
+      percentage: paymentStructureSummary.full_payment?.percentage || 0,
+      accent: "from-emerald-500 to-green-500",
+      text: "text-emerald-700 dark:text-emerald-300",
+      linkTo: "/sales/all?history=1&paymentStructure=full_payment",
+    },
+    {
+      key: "multiple_payments",
+      title: "Paiements multiples",
+      count: paymentStructureSummary.multiple_payments?.count || 0,
+      amount: paymentStructureSummary.multiple_payments?.totalAmount || 0,
+      percentage: paymentStructureSummary.multiple_payments?.percentage || 0,
+      accent: "from-amber-500 to-orange-500",
+      text: "text-amber-700 dark:text-amber-300",
+      linkTo: "/sales/all?history=1&paymentStructure=multiple_payments",
+    },
+  ];
 
   const bestDays = salesStatsData?.bestDays;
   const formatBestDay = (day) => {
@@ -548,6 +590,39 @@ const Dashboard = () => {
         wb,
         XLSX.utils.json_to_sheet(statusRows),
         "StatutsVentes"
+      );
+
+      const saleTypeRows = Object.entries(d.saleTypeSummary || {}).map(
+        ([name, v]) => ({
+          Type: name === "wholesale" ? "Vente en gros" : "Vente normale",
+          "Nombre de ventes": v?.count || 0,
+          "Montant total (CFA)": v?.totalAmount || 0,
+          "% des ventes": Number(v?.percentage || 0),
+        })
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(saleTypeRows),
+        "TypesVentes"
+      );
+
+      const paymentStructureRows = Object.entries(d.paymentStructureSummary || {}).map(
+        ([name, v]) => ({
+          Structure:
+            name === "full_payment"
+              ? "Paiement complet"
+              : name === "multiple_payments"
+              ? "Paiements multiples"
+              : "Paiement en attente",
+          "Nombre de ventes": v?.count || 0,
+          "Montant total (CFA)": v?.totalAmount || 0,
+          "% des ventes": Number(v?.percentage || 0),
+        })
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(paymentStructureRows),
+        "StructuresPaiement"
       );
 
       // Top produits
@@ -1066,6 +1141,69 @@ const Dashboard = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {salesStatsData && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Types de commandes et structure des paiements
+                </h3>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Très visible sur la période sélectionnée
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {highlightedSalesCards.map((card) => {
+                  const cardContent = (
+                    <div className="h-full rounded-[calc(1.5rem-1px)] bg-white dark:bg-gray-900 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        {card.title}
+                      </p>
+                      <div className={`mt-3 text-3xl font-black tabular-nums ${card.text}`}>
+                        {card.count}
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                        {card.amount.toLocaleString("fr-FR")} CFA
+                      </p>
+                      <div className="mt-3 flex items-center justify-between rounded-2xl bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">Part des ventes</span>
+                        <span className={`font-semibold ${card.text}`}>
+                          {card.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                      {card.linkTo && (
+                        <div className="mt-3 text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                          Voir les ventes
+                        </div>
+                      )}
+                    </div>
+                  );
+
+                  if (!card.linkTo) {
+                    return (
+                      <div
+                        key={card.key}
+                        className={`rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
+                      >
+                        {cardContent}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={card.key}
+                      to={card.linkTo}
+                      className={`block rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+                      aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
+                    >
+                      {cardContent}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}

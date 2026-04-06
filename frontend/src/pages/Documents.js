@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import toast, { Toaster } from 'react-hot-toast';
@@ -41,7 +41,7 @@ const Documents = () => {
     }
   };
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -53,11 +53,11 @@ const Documents = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [yearFilter]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [yearFilter]);
+  }, [fetchDocuments]);
 
   useEffect(() => {
     fetchYears();

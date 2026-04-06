@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
 import { FormActionsSticky } from './FormLayout';
+import { getSaleTypeText } from '../utils/saleUtils';
 
 const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
     const [products, setProducts] = useState([]);
@@ -195,7 +196,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     </h2>
                 </div>
                 <div className="p-4 md:p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Client</p>
                             <p className="mt-0.5 font-semibold text-gray-900">{sale.client?.name || '—'}</p>
@@ -211,6 +212,11 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                         <div>
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nouveau total</p>
                             <p className="mt-0.5 font-semibold text-emerald-600">{Number(calculateTotal()).toLocaleString('fr-FR')} CFA</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type de vente</p>
+                            <p className="mt-0.5 font-semibold text-gray-700">{getSaleTypeText(sale.saleType)}</p>
+                            <p className="mt-1 text-xs text-gray-500">Non modifiable après création</p>
                         </div>
                     </div>
                 </div>
@@ -252,7 +258,6 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                 <div className="p-4 md:p-5 space-y-4">
                     {selectedProducts.map((item, index) => {
                         const selectedProduct = products.find((p) => p._id === item.product);
-                        const containerLabel = selectedProduct?.container?.trim() || 'Non défini';
                         return (
                             <div
                                 key={index}

@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
+import AuthContext from '../context/AuthContext';
+import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 
 const SaleForm = ({ clients = [], onSubmit }) => {
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin);
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: '', price: 0 }]);
   const [selectedClient, setSelectedClient] = useState('');
+  const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [totalAmount, setTotalAmount] = useState(0);
   const [errors, setErrors] = useState([]);
@@ -108,6 +113,7 @@ const SaleForm = ({ clients = [], onSubmit }) => {
   const resetForm = () => {
     setSelectedClient('');
     setSelectedProducts([{ product: '', quantity: '', price: 0 }]);
+    setSaleType('normal');
     setPaymentMethod('cash');
     setNote('');
     setSetReminder(false);
@@ -140,6 +146,7 @@ const SaleForm = ({ clients = [], onSubmit }) => {
           quantity: Number(p.quantity),
           price: Number(p.price),
         })),
+        saleType,
         paymentMethod,
         totalAmount,
         note,
@@ -344,6 +351,50 @@ const SaleForm = ({ clients = [], onSubmit }) => {
             aria-describedby="sale-form-note"
           />
         </section>
+
+        {isAdmin && (
+          <section className="space-y-3" aria-labelledby="sale-form-type">
+            <h4 id="sale-form-type" className={sectionTitleClass}>
+              Type de vente
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-labelledby="sale-form-type">
+              {['normal', 'wholesale'].map((type) => {
+                const active = saleType === type;
+
+                return (
+                  <label
+                    key={type}
+                    className={`rounded-2xl border-2 p-4 cursor-pointer transition-all ${
+                      active
+                        ? `${getSaleTypeClass(type)} border-current shadow-sm`
+                        : 'border-gray-200 bg-gray-50/60 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="saleType"
+                      value={type}
+                      checked={active}
+                      onChange={(e) => setSaleType(e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">{getSaleTypeText(type)}</p>
+                        <p className="mt-1 text-xs opacity-80">
+                          {type === 'wholesale'
+                            ? 'Commande en gros visible séparément dans les statistiques.'
+                            : 'Commande standard affichée comme vente normale.'}
+                        </p>
+                      </div>
+                      <span className={`mt-0.5 h-3.5 w-3.5 rounded-full border ${active ? 'border-current bg-current' : 'border-gray-300 bg-white'}`} />
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* REMINDER */}
         <section className="space-y-3" aria-labelledby="sale-form-reminder">

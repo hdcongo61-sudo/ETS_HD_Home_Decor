@@ -57,7 +57,7 @@ router.put('/:id/delivery', protect, updateDelivery);
 router.get('/stats/delivery', protect, getDeliveryStats);
 // POST /api/sales
 router.route('/user-stats')
-  .get(protect, getUserSalesStats);
+  .get(protect, admin, getUserSalesStats);
 // Dashboard route
 router.route('/dashboard-sale')
   .get(protect, admin, getDashboardData); // GET /api/sales/dashboard
@@ -79,7 +79,8 @@ router.route('/payments/date-range')
 router.route('/stats')
   .get(protect, admin, getSalesStats);
 
-router.get('/sales/stats/status', protect, admin,getSalesStatsByStatus);
+router.get('/stats/status', protect, admin, getSalesStatsByStatus);
+router.get('/sales/stats/status', protect, admin, getSalesStatsByStatus);
 
 router.route('/:id')
   .put(protect, admin, updateSale)

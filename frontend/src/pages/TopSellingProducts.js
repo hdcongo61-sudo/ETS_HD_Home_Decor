@@ -16,7 +16,6 @@ const TopSellingProducts = () => {
         setLoading(true);
         const response = await api.get('/products/dashboard?range=month');
         setData(response.data.topSellingProducts || []);
-        console.log('🔥 Top selling products:', response.data.topSellingProducts);
       } catch (err) {
         console.error(err);
         setError("Erreur lors du chargement des produits les plus vendus.");

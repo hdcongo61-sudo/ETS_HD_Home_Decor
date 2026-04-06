@@ -1,12 +1,11 @@
 // src/pages/Products.jsx
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import LoaderOverlay from '../components/LoaderOverlay';
 import AppLoader from '../components/AppLoader';
 import toast, { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 import { productPath } from '../utils/paths';
 import Modal from '../components/Modal';
 
@@ -22,12 +21,7 @@ const Products = () => {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
 
-  useEffect(() => {
-    fetchProducts();
-    fetchLookups();
-  }, []);
-
-  const fetchLookups = async () => {
+  const fetchLookups = useCallback(async () => {
     try {
       const [cats, conts, whs, supps] = await Promise.all([
         api.get('/lookups/categories'),
@@ -44,20 +38,9 @@ const Products = () => {
     } catch (err) {
       console.error('Error fetching lookups:', err);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    if (location.state?.fromProductEdit) {
-      fetchProducts({ showLoading: false });
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state?.fromProductEdit]);
-
-  useEffect(() => {
-    document.body.style.overflow = isFormOpen ? 'hidden' : 'auto';
-  }, [isFormOpen]);
-
-  const fetchProducts = async (options = {}) => {
+  const fetchProducts = useCallback(async (options = {}) => {
     const { showLoading = true } = options;
     try {
       if (showLoading) setLoading(true);
@@ -68,7 +51,23 @@ const Products = () => {
     } finally {
       if (showLoading) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+    fetchLookups();
+  }, [fetchProducts, fetchLookups]);
+
+  useEffect(() => {
+    if (location.state?.fromProductEdit) {
+      fetchProducts({ showLoading: false });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [fetchProducts, location.pathname, location.state?.fromProductEdit, navigate]);
+
+  useEffect(() => {
+    document.body.style.overflow = isFormOpen ? 'hidden' : 'auto';
+  }, [isFormOpen]);
 
   const handleCreate = async (productData, imageFile) => {
     try {

@@ -13,6 +13,8 @@ import {
 const SalesFiltersBar = ({
   statusFilter,
   clientFilter,
+  saleTypeFilter = "",
+  paymentStructureFilter = "",
   dateFilter,
   deliveryFilter,
   containerFilter = "",
@@ -20,6 +22,8 @@ const SalesFiltersBar = ({
   containers = [],
   onStatusChange,
   onClientChange,
+  onSaleTypeChange = () => {},
+  onPaymentStructureChange = () => {},
   onDateChange,
   onDeliveryChange,
   onContainerChange,
@@ -33,8 +37,8 @@ const SalesFiltersBar = ({
     "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500";
 
   const colsClass = containers.length > 0
-    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"
-    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4";
+    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 gap-4"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4";
 
   return (
     <div className={colsClass} role="group" aria-label="Filtres des ventes">
@@ -73,6 +77,39 @@ const SalesFiltersBar = ({
               {c.name}
             </option>
           ))}
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="filter-sale-type" className="block text-sm font-medium text-gray-700">
+          Type de vente
+        </label>
+        <select
+          id="filter-sale-type"
+          value={saleTypeFilter}
+          onChange={(e) => onSaleTypeChange(e.target.value)}
+          className={inputClass}
+          aria-label="Filtrer par type de vente"
+        >
+          <option value="">Tous les types</option>
+          <option value="normal">Vente normale</option>
+          <option value="wholesale">Vente en gros</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="filter-payment-structure" className="block text-sm font-medium text-gray-700">
+          Structure paiement
+        </label>
+        <select
+          id="filter-payment-structure"
+          value={paymentStructureFilter}
+          onChange={(e) => onPaymentStructureChange(e.target.value)}
+          className={inputClass}
+          aria-label="Filtrer par structure de paiement"
+        >
+          <option value="">Toutes les structures</option>
+          <option value="full_payment">Paiement complet</option>
+          <option value="multiple_payments">Paiements multiples</option>
+          <option value="pending_payment">Paiement en attente</option>
         </select>
       </div>
       <div className="space-y-1.5">

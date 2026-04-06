@@ -270,7 +270,7 @@ function App() {
                 <Route
                   path="/sales/:id/edit"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute adminOnly>
                       <EditSalePage />
                     </ProtectedRoute>
                   }

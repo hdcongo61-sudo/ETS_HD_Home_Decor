@@ -14,6 +14,12 @@ const PROFILE_GENDER_LABELS = {
   unknown: 'Non renseigné'
 };
 
+const ALERT_STYLES = {
+  yellow: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+  gray: 'bg-gray-50 border-gray-200 text-gray-800',
+  green: 'bg-green-50 border-green-200 text-green-800'
+};
+
 const formatGenderLabel = (gender) => PROFILE_GENDER_LABELS[gender] || PROFILE_GENDER_LABELS.unknown;
 
 const ClientProfile = () => {
@@ -198,7 +204,7 @@ const ClientProfile = () => {
       {notifications.length > 0 && (
         <div className="space-y-3">
           {notifications.map((n, i) => (
-            <div key={i} className={`p-4 rounded-xl border bg-${n.color}-50 border-${n.color}-200 text-${n.color}-800`}>
+            <div key={i} className={`p-4 rounded-xl border ${ALERT_STYLES[n.color] || ALERT_STYLES.gray}`}>
               <p className="font-semibold">{n.title}</p>
               <p className="text-sm">{n.message}</p>
             </div>

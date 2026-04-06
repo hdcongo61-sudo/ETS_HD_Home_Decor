@@ -26,6 +26,22 @@ export const calculateSaleTotals = (sale) => {
   return { totalPaid, balance };
 };
 
+export const getPaymentStructureKey = (sale) => {
+  const paymentsCount = Array.isArray(sale?.payments) ? sale.payments.length : 0;
+  const { balance, totalPaid } = calculateSaleTotals(sale);
+  const totalAmount = Number(sale?.totalAmount || 0);
+
+  if (paymentsCount > 1 && totalPaid >= totalAmount && balance <= 0) {
+    return "multiple_payments";
+  }
+
+  if (paymentsCount > 0 && totalPaid >= totalAmount && balance <= 0) {
+    return "full_payment";
+  }
+
+  return "pending_payment";
+};
+
 export const getStatusClass = (status) => {
   switch (status) {
     case "completed":
@@ -108,4 +124,14 @@ export const deriveProfitCategoryFromMargin = (margin) => {
   if (margin >= 30) return "élevé";
   if (margin >= 15) return "moyen";
   return "faible";
+};
+
+export const getSaleTypeText = (saleType) => {
+  return saleType === "wholesale" ? "Vente en gros" : "Vente normale";
+};
+
+export const getSaleTypeClass = (saleType) => {
+  return saleType === "wholesale"
+    ? "bg-fuchsia-100 text-fuchsia-800"
+    : "bg-cyan-100 text-cyan-800";
 };

@@ -65,6 +65,20 @@ const DayDetailsModal = ({
     return { totalSales, totalExpenses, totalPayments, profit, profitMargin };
   }, [sales, expenses, payments]);
 
+  const wholesaleStats = useMemo(() => {
+    const wholesaleSales = sales.filter(
+      (sale) => (sale?.saleType || "normal") === "wholesale"
+    );
+
+    return {
+      count: wholesaleSales.length,
+      totalAmount: wholesaleSales.reduce(
+        (sum, sale) => sum + Number(sale?.totalAmount || 0),
+        0
+      ),
+    };
+  }, [sales]);
+
   /* ------------------- AI-style Insight Summary ------------------- */
   const summary = useMemo(() => {
     // eslint-disable-next-line no-unused-vars -- only need totalSales, profit, profitMargin here
@@ -152,11 +166,17 @@ const DayDetailsModal = ({
           </div>
 
           {/* Stat Row: compact on mobile, clearer hierarchy */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3 px-4 py-4 sm:p-4 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-3 px-4 py-4 sm:p-4 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
             <MiniStat color="green" label="Ventes" value={totals.totalSales} />
             <MiniStat color="blue" label="Encaissements" value={totals.totalPayments} />
             <MiniStat color="red" label="Dépenses" value={totals.totalExpenses} />
             <MiniStat color="purple" label="Profit" value={totals.profit} />
+            <MiniStat
+              color="amber"
+              label="Vente en gros"
+              value={wholesaleStats.totalAmount}
+              helperText={`${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}`}
+            />
           </div>
 
           {/* Body: more spacing and clarity on mobile */}
@@ -315,14 +335,18 @@ const MINI_STAT_STYLES = {
   blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300",
   red: "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300",
   purple: "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300",
+  amber: "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300",
 };
 
-const MiniStat = ({ color, label, value }) => (
+const MiniStat = ({ color, label, value, helperText = "" }) => (
   <div
     className={`p-3 sm:p-3 rounded-2xl sm:rounded-xl flex flex-col items-center justify-center min-h-[64px] sm:min-h-0 ${MINI_STAT_STYLES[color] || MINI_STAT_STYLES.blue}`}
   >
     <div className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-current opacity-90">{label}</div>
     <div className="text-base sm:text-lg font-bold tabular-nums mt-1 break-all text-center">{Number(value || 0).toLocaleString("fr-FR")} CFA</div>
+    {helperText ? (
+      <div className="mt-1 text-[11px] sm:text-xs font-medium opacity-80 text-center">{helperText}</div>
+    ) : null}
   </div>
 );
 

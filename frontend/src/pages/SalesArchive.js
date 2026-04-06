@@ -8,6 +8,7 @@ import {
   calculateSaleMargin,
   deriveProfitCategoryFromMargin,
   formatDate,
+  getPaymentStructureKey,
   getProfitCategoryClass,
   getProfitCategoryText,
   getStatusClass,
@@ -25,6 +26,8 @@ const SalesArchive = () => {
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
+  const [saleTypeFilter, setSaleTypeFilter] = useState("");
+  const [paymentStructureFilter, setPaymentStructureFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [containerFilter, setContainerFilter] = useState("");
@@ -35,6 +38,8 @@ const SalesArchive = () => {
     const params = new URLSearchParams(location.search);
     setStatusFilter(params.get("status") || "");
     setClientFilter(params.get("client") || "");
+    setSaleTypeFilter(params.get("saleType") || "");
+    setPaymentStructureFilter(params.get("paymentStructure") || "");
     setDateFilter(params.get("date") || "");
     setDeliveryFilter(params.get("delivery") || "");
   }, [location.search]);
@@ -80,6 +85,9 @@ const SalesArchive = () => {
     const base = salesWithMetrics.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
+      const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
+      const paymentStructureMatch =
+        !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
       const saleDate = parseDateSafely(sale.saleDate);
       const dateMatch = !dateFilter || (saleDate && saleDate.toLocaleDateString("fr-CA") === dateFilter);
       const deliveryMatch =
@@ -89,17 +97,19 @@ const SalesArchive = () => {
       const containerMatch =
         !containerFilter ||
         (sale.products || []).some((p) => p.product?.container === containerFilter);
-      return statusMatch && clientMatch && dateMatch && deliveryMatch && containerMatch;
+      return statusMatch && clientMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
     return base;
-  }, [salesWithMetrics, statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter]);
+  }, [salesWithMetrics, statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const hasActiveFilters =
-    !!statusFilter || !!clientFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
+    !!statusFilter || !!clientFilter || !!saleTypeFilter || !!paymentStructureFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
 
   const handleResetFilters = () => {
     setStatusFilter("");
     setClientFilter("");
+    setSaleTypeFilter("");
+    setPaymentStructureFilter("");
     setDateFilter("");
     setDeliveryFilter("");
     setContainerFilter("");
@@ -167,6 +177,8 @@ const SalesArchive = () => {
               <SalesFiltersBar
                 statusFilter={statusFilter}
                 clientFilter={clientFilter}
+                saleTypeFilter={saleTypeFilter}
+                paymentStructureFilter={paymentStructureFilter}
                 dateFilter={dateFilter}
                 deliveryFilter={deliveryFilter}
                 containerFilter={containerFilter}
@@ -174,6 +186,8 @@ const SalesArchive = () => {
                 containers={containers}
                 onStatusChange={setStatusFilter}
                 onClientChange={setClientFilter}
+                onSaleTypeChange={setSaleTypeFilter}
+                onPaymentStructureChange={setPaymentStructureFilter}
                 onDateChange={setDateFilter}
                 onDeliveryChange={setDeliveryFilter}
                 onContainerChange={setContainerFilter}

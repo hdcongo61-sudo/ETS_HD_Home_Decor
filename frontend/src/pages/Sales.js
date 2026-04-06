@@ -35,6 +35,7 @@ import {
   calculateSaleMargin,
   deriveProfitCategoryFromMargin,
   formatDate,
+  getPaymentStructureKey,
   getStatusClass,
   getStatusText,
   getProfitCategoryClass,
@@ -848,6 +849,8 @@ const Sales = () => {
   // Filtres
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
+  const [saleTypeFilter, setSaleTypeFilter] = useState("");
+  const [paymentStructureFilter, setPaymentStructureFilter] = useState("");
   const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [containerFilter, setContainerFilter] = useState("");
@@ -915,6 +918,8 @@ const Sales = () => {
     if (params.has("client")) {
       setClientFilter(params.get("client") || "");
     }
+    setSaleTypeFilter(params.get("saleType") || "");
+    setPaymentStructureFilter(params.get("paymentStructure") || "");
     if (params.has("date")) {
       setDateFilter(params.get("date") || "");
     }
@@ -961,6 +966,15 @@ const Sales = () => {
     paymentsSummary: {
       paymentsCount: 0,
       paymentsTotal: 0,
+    },
+    saleTypeSummary: {
+      normal: { count: 0, totalAmount: 0, percentage: 0 },
+      wholesale: { count: 0, totalAmount: 0, percentage: 0 },
+    },
+    paymentStructureSummary: {
+      full_payment: { count: 0, totalAmount: 0, percentage: 0 },
+      multiple_payments: { count: 0, totalAmount: 0, percentage: 0 },
+      pending_payment: { count: 0, totalAmount: 0, percentage: 0 },
     },
     forecast: { next30Days: 0, growthRate: 0, confidence: 0 },
     clientMetrics: { topClients: [], newClients: 0, clientRetention: 0 },
@@ -1108,7 +1122,17 @@ const Sales = () => {
       }
     };
     bootstrap();
-  }, [isAdmin, fetchClients, fetchProducts, fetchSales, fetchContainers, fetchDashboardData, hydrateDeliveryStats]);
+  }, [
+    isAdmin,
+    timeRange,
+    dateFilter,
+    fetchClients,
+    fetchProducts,
+    fetchSales,
+    fetchContainers,
+    fetchDashboardData,
+    hydrateDeliveryStats,
+  ]);
 
   // Changement de période (7j / 30j / 90j / Tous) : met à jour uniquement le dashboard, sans recharger toute la page
   useEffect(() => {
@@ -1133,6 +1157,9 @@ const Sales = () => {
     const base = salesWithProfit.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
+      const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
+      const paymentStructureMatch =
+        !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
       const d = parseDateSafely(sale.saleDate);
       const dateMatch = !dateFilter || (d && d.toLocaleDateString("fr-CA") === dateFilter);
       const deliveryMatch =
@@ -1142,7 +1169,7 @@ const Sales = () => {
       const containerMatch =
         !containerFilter ||
         (sale.products || []).some((p) => p.product?.container === containerFilter);
-      return statusMatch && clientMatch && dateMatch && deliveryMatch && containerMatch;
+      return statusMatch && clientMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
 
     let out = [...base];
@@ -1163,25 +1190,27 @@ const Sales = () => {
     }
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
-  }, [salesWithProfit, statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
+  }, [salesWithProfit, statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
 
   const desktopLinkProps = useMemo(
     () => (isDesktop ? { target: "_blank", rel: "noopener noreferrer" } : {}),
     [isDesktop]
   );
 
-  const hasActiveFilters = Boolean(statusFilter || clientFilter || dateFilter || deliveryFilter || containerFilter);
+  const hasActiveFilters = Boolean(statusFilter || clientFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
 
   const historyLinkSearch = useMemo(() => {
     const params = new URLSearchParams();
     params.set("history", "1");
     if (statusFilter) params.set("status", statusFilter);
     if (clientFilter) params.set("client", clientFilter);
+    if (saleTypeFilter) params.set("saleType", saleTypeFilter);
+    if (paymentStructureFilter) params.set("paymentStructure", paymentStructureFilter);
     if (dateFilter) params.set("date", dateFilter);
     if (deliveryFilter) params.set("delivery", deliveryFilter);
     if (containerFilter) params.set("container", containerFilter);
     return `?${params.toString()}`;
-  }, [statusFilter, clientFilter, dateFilter, deliveryFilter, containerFilter]);
+  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
@@ -1291,27 +1320,49 @@ const Sales = () => {
     ],
   };
 
-  // Timeline livraison (7 jours)
-  const last7Days = [...Array(7)]
-    .map((_, i) => {
+  const deliveryTimelineData = useMemo(() => {
+    const dates = [...Array(7)].map((_, i) => {
       const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
-    })
-    .reverse();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - (6 - i));
+      return d;
+    });
 
-  // Data factice timeline (vous pouvez l’alimenter avec vos données agrégées si disponibles)
-  const deliveryTimelineData = {
-    labels: last7Days,
-    datasets: [
-      {
-        label: "Livraisons / jour (estim.)",
-        data: last7Days.map(() => Math.floor(Math.random() * 10)),
-        backgroundColor: "rgba(34,197,94,.85)",
-        borderRadius: 8,
-      },
-    ],
-  };
+    const countsByDay = dates.reduce((acc, date) => {
+      acc[date.toISOString().slice(0, 10)] = 0;
+      return acc;
+    }, {});
+
+    sales.forEach((sale) => {
+      if (sale.deliveryStatus !== "delivered") return;
+
+      const referenceDate = sale.deliveryDate || sale.updatedAt || sale.saleDate;
+      const parsed = new Date(referenceDate);
+
+      if (Number.isNaN(parsed.getTime())) return;
+
+      parsed.setHours(0, 0, 0, 0);
+      const key = parsed.toISOString().slice(0, 10);
+
+      if (Object.prototype.hasOwnProperty.call(countsByDay, key)) {
+        countsByDay[key] += 1;
+      }
+    });
+
+    return {
+      labels: dates.map((date) =>
+        date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })
+      ),
+      datasets: [
+        {
+          label: "Livraisons / jour",
+          data: dates.map((date) => countsByDay[date.toISOString().slice(0, 10)] || 0),
+          backgroundColor: "rgba(34,197,94,.85)",
+          borderRadius: 8,
+        },
+      ],
+    };
+  }, [sales]);
 
   const deliveryChartData = {
     labels: ["Livrées", "En attente", "Non livrées"],
@@ -1326,6 +1377,47 @@ const Sales = () => {
       },
     ],
   };
+
+  const highlightedOrderCards = [
+    {
+      key: "wholesale",
+      title: "Ventes en gros",
+      count: dashboardData.saleTypeSummary?.wholesale?.count || 0,
+      amount: dashboardData.saleTypeSummary?.wholesale?.totalAmount || 0,
+      percentage: dashboardData.saleTypeSummary?.wholesale?.percentage || 0,
+      accent: "from-fuchsia-500 to-pink-500",
+      text: "text-fuchsia-700",
+    },
+    {
+      key: "normal",
+      title: "Ventes normales",
+      count: dashboardData.saleTypeSummary?.normal?.count || 0,
+      amount: dashboardData.saleTypeSummary?.normal?.totalAmount || 0,
+      percentage: dashboardData.saleTypeSummary?.normal?.percentage || 0,
+      accent: "from-cyan-500 to-sky-500",
+      text: "text-cyan-700",
+    },
+    {
+      key: "full_payment",
+      title: "Paiement complet",
+      count: dashboardData.paymentStructureSummary?.full_payment?.count || 0,
+      amount: dashboardData.paymentStructureSummary?.full_payment?.totalAmount || 0,
+      percentage: dashboardData.paymentStructureSummary?.full_payment?.percentage || 0,
+      accent: "from-emerald-500 to-green-500",
+      text: "text-emerald-700",
+      linkTo: "/sales/all?history=1&paymentStructure=full_payment",
+    },
+    {
+      key: "multiple_payments",
+      title: "Paiements multiples",
+      count: dashboardData.paymentStructureSummary?.multiple_payments?.count || 0,
+      amount: dashboardData.paymentStructureSummary?.multiple_payments?.totalAmount || 0,
+      percentage: dashboardData.paymentStructureSummary?.multiple_payments?.percentage || 0,
+      accent: "from-amber-500 to-orange-500",
+      text: "text-amber-700",
+      linkTo: "/sales/all?history=1&paymentStructure=multiple_payments",
+    },
+  ];
 
   const statusTableRef = useRef(null);
   useResponsiveTable(statusTableRef, [dashboardData?.statusStats]);
@@ -1515,6 +1607,8 @@ const Sales = () => {
                       <SalesFiltersBar
                         statusFilter={statusFilter}
                         clientFilter={clientFilter}
+                        saleTypeFilter={saleTypeFilter}
+                        paymentStructureFilter={paymentStructureFilter}
                         dateFilter={dateFilter}
                         deliveryFilter={deliveryFilter}
                         containerFilter={containerFilter}
@@ -1522,12 +1616,16 @@ const Sales = () => {
                         containers={containers}
                         onStatusChange={setStatusFilter}
                         onClientChange={setClientFilter}
+                        onSaleTypeChange={setSaleTypeFilter}
+                        onPaymentStructureChange={setPaymentStructureFilter}
                         onDateChange={setDateFilter}
                         onDeliveryChange={setDeliveryFilter}
                         onContainerChange={setContainerFilter}
                         onReset={() => {
                           setStatusFilter("");
                           setClientFilter("");
+                          setSaleTypeFilter("");
+                          setPaymentStructureFilter("");
                           setDateFilter("");
                           setDeliveryFilter("");
                           setContainerFilter("");
@@ -2054,6 +2152,57 @@ const Sales = () => {
                   />
                 </section>
 
+                <section aria-label="Types de commandes et structures de paiement" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                  {highlightedOrderCards.map((card) => {
+                    const cardContent = (
+                      <div className="h-full rounded-[calc(1.5rem-1px)] bg-white p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                          {card.title}
+                        </p>
+                        <div className={`mt-3 text-3xl font-black tabular-nums ${card.text}`}>
+                          {card.count}
+                        </div>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {card.amount.toLocaleString("fr-FR")} CFA
+                        </p>
+                        <div className="mt-3 flex items-center justify-between rounded-2xl bg-gray-50 px-3 py-2 text-xs">
+                          <span className="text-gray-500">Part des ventes</span>
+                          <span className={`font-semibold ${card.text}`}>
+                            {card.percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                        {card.linkTo && (
+                          <div className="mt-3 text-xs font-medium text-indigo-600">
+                            Voir les ventes
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                    if (!card.linkTo) {
+                      return (
+                        <div
+                          key={card.key}
+                          className={`rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
+                        >
+                          {cardContent}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={card.key}
+                        to={card.linkTo}
+                        className={`block rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+                        aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
+                      >
+                        {cardContent}
+                      </Link>
+                    );
+                  })}
+                </section>
+
                 {/* ↘︎ Sous-bloc Encaissements (lisible et compact) */}
                 <GlassCard>
                   <div className="p-6">
@@ -2383,6 +2532,8 @@ const Sales = () => {
                         <SalesFiltersBar
                           statusFilter={statusFilter}
                           clientFilter={clientFilter}
+                          saleTypeFilter={saleTypeFilter}
+                          paymentStructureFilter={paymentStructureFilter}
                           dateFilter={dateFilter}
                           deliveryFilter={deliveryFilter}
                           containerFilter={containerFilter}
@@ -2390,12 +2541,16 @@ const Sales = () => {
                           containers={containers}
                           onStatusChange={setStatusFilter}
                           onClientChange={setClientFilter}
+                          onSaleTypeChange={setSaleTypeFilter}
+                          onPaymentStructureChange={setPaymentStructureFilter}
                           onDateChange={setDateFilter}
                           onDeliveryChange={setDeliveryFilter}
                           onContainerChange={setContainerFilter}
                           onReset={() => {
                             setStatusFilter("");
                             setClientFilter("");
+                            setSaleTypeFilter("");
+                            setPaymentStructureFilter("");
                             setDateFilter("");
                             setDeliveryFilter("");
                             setContainerFilter("");

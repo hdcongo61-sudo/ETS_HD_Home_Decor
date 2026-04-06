@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { getSaleTypeClass, getSaleTypeText } from "../../utils/saleUtils";
 
 /**
  * Reusable sale card for list views (Sales.js non-admin & admin, SalesArchive).
@@ -50,6 +51,9 @@ const SaleCard = ({
           <div className="flex flex-wrap items-center gap-2">
             <span className={`px-2.5 py-1.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
               {getStatusText(sale.status)}
+            </span>
+            <span className={`px-2.5 py-1.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium ${getSaleTypeClass(sale.saleType)}`}>
+              {getSaleTypeText(sale.saleType)}
             </span>
             {isModified && (
               <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 font-medium">
