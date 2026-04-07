@@ -40,6 +40,7 @@ const EmployeeDetail = () => {
     balance: 0
   });
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const employeeReference = employee || { _id: id };
 
   useEffect(() => {
@@ -80,7 +81,7 @@ const EmployeeDetail = () => {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, reloadToken]);
 
   const handleDeleteAdvance = async (advanceId) => {
     if (window.confirm('Confirmer la suppression de cette avance ?')) {
@@ -145,7 +146,7 @@ const EmployeeDetail = () => {
             <h3 className="text-lg font-semibold text-gray-900">Erreur de chargement</h3>
             <p className="text-gray-600 mt-1">{error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => setReloadToken((value) => value + 1)}
               className="mt-3 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm inline-flex items-center transition-colors"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

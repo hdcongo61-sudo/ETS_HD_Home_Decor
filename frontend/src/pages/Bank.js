@@ -35,6 +35,14 @@ const Bank = () => {
     }
   };
 
+  const matchesTransactionFilter = (transaction) => {
+    if (!transaction) return false;
+    const search = filters.search.trim().toLowerCase();
+    const searchMatch = !search || String(transaction.label || '').toLowerCase().includes(search);
+    const typeMatch = !filters.type || transaction.type === filters.type;
+    return searchMatch && typeMatch;
+  };
+
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch on filters change only
@@ -77,13 +85,17 @@ const Bank = () => {
 
     try {
       setSubmitting(true);
-      await api.post('/bank', {
+      const { data } = await api.post('/bank', {
         type: formData.type,
         amount,
         label: formData.label.trim()
       });
       setFormData({ type: 'deposit', amount: '', label: '' });
-      fetchTransactions();
+      if (matchesTransactionFilter(data)) {
+        setTransactions((prev) =>
+          [data, ...prev].sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())
+        );
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Erreur lors de l'enregistrement");
     } finally {

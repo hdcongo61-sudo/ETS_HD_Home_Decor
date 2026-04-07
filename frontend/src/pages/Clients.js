@@ -29,6 +29,8 @@ const GENDER_COLORS = {
   unknown: '#94a3b8'
 };
 const GENDER_ORDER = ['male', 'female', 'other', 'unknown'];
+const sortClientsByCreatedAt = (list) =>
+  [...list].sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
 
 const Clients = () => {
   const { auth } = useContext(AuthContext);
@@ -165,21 +167,38 @@ const Clients = () => {
   const formatPercentage = (value) =>
     typeof value === 'number' && !Number.isNaN(value) ? `${value.toFixed(1)}%` : '—';
 
+  const matchesClientSearch = useCallback((client) => {
+    const target = searchTerm.trim().toLowerCase();
+    if (!target) return true;
+    return [client?.name, client?.email, client?.phone]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(target));
+  }, [searchTerm]);
+
   // --- Add or Edit client ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingClient) {
-        await api.put(`/clients/${editingClient._id}`, formData);
+        const { data } = await api.put(`/clients/${editingClient._id}`, formData);
+        setClients((prev) => {
+          const next = prev.filter((client) => client._id !== editingClient._id);
+          if (matchesClientSearch(data)) {
+            next.unshift(data);
+          }
+          return sortClientsByCreatedAt(next);
+        });
         toast.success('✅ Client mis à jour avec succès');
       } else {
-        await api.post('/clients', formData);
+        const { data } = await api.post('/clients', formData);
+        if (matchesClientSearch(data)) {
+          setClients((prev) => sortClientsByCreatedAt([data, ...prev]));
+        }
         toast.success('✅ Client ajouté avec succès');
       }
       setIsFormOpen(false);
       setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
       setEditingClient(null);
-      await fetchClients(undefined, { showLoading: false });
       fetchStats();
     } catch (err) {
       console.error(err);
@@ -191,8 +210,8 @@ const Clients = () => {
     if (!window.confirm('Supprimer ce client ?')) return;
     try {
       await api.delete(`/clients/${id}`);
+      setClients((prev) => prev.filter((client) => client._id !== id));
       toast.success('🗑️ Client supprimé avec succès');
-      await fetchClients(undefined, { showLoading: false });
       fetchStats();
     } catch (err) {
       console.error(err);

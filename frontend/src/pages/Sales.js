@@ -1197,6 +1197,71 @@ const Sales = () => {
     [isDesktop]
   );
 
+  const enrichSaleForState = useCallback((incomingSale, fallbackSale = null) => {
+    const resolveId = (value) => {
+      if (!value) return null;
+      if (typeof value === "string") return value;
+      return value._id || null;
+    };
+
+    const clientId = resolveId(incomingSale?.client) || resolveId(fallbackSale?.client);
+    const localClient = clients.find((client) => client._id === clientId);
+    const resolvedClient =
+      localClient
+        ? { ...localClient, ...(typeof incomingSale?.client === "object" ? incomingSale.client : {}) }
+        : (typeof incomingSale?.client === "object" ? incomingSale.client : fallbackSale?.client);
+
+    const fallbackProducts = Array.isArray(fallbackSale?.products) ? fallbackSale.products : [];
+    const resolvedProducts = (Array.isArray(incomingSale?.products) ? incomingSale.products : fallbackProducts).map((item) => {
+      const productId = resolveId(item?.product);
+      const localProduct = products.find((product) => product._id === productId);
+      const previousLine = fallbackProducts.find((line) => resolveId(line?.product) === productId);
+      return {
+        ...item,
+        product: localProduct || (typeof item?.product === "object" ? item.product : previousLine?.product),
+      };
+    });
+
+    const payments = Array.isArray(incomingSale?.payments)
+      ? incomingSale.payments
+      : (Array.isArray(fallbackSale?.payments) ? fallbackSale.payments : []);
+
+    const formattedPayments = payments.map((payment) => ({
+      ...payment,
+      formattedDate: payment?.paymentDate
+        ? new Date(payment.paymentDate).toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : payment?.formattedDate,
+    }));
+
+    const totalAmount = Number(incomingSale?.totalAmount ?? fallbackSale?.totalAmount ?? 0);
+    const totalPaid = formattedPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+
+    return {
+      ...fallbackSale,
+      ...incomingSale,
+      client: resolvedClient,
+      products: resolvedProducts,
+      payments: formattedPayments,
+      formattedDate: incomingSale?.saleDate
+        ? new Date(incomingSale.saleDate).toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : (incomingSale?.formattedDate || fallbackSale?.formattedDate),
+      totalPaid,
+      balance: totalAmount - totalPaid,
+    };
+  }, [clients, products]);
+
   const hasActiveFilters = Boolean(statusFilter || clientFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
 
   const historyLinkSearch = useMemo(() => {
@@ -1218,11 +1283,15 @@ const Sales = () => {
   const handleSubmitSale = async (saleData) => {
     try {
       setMessage("");
-      await api.post("/sales", saleData);
+      const { data } = await api.post("/sales", saleData);
+      const nextSale = enrichSaleForState(data);
+      const updatedSales = [nextSale, ...sales].sort(
+        (a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime()
+      );
+      setSales(updatedSales);
       setMessage("Vente enregistrée avec succès !");
       toast.success("Vente enregistrée avec succès !");
-      const updated = await fetchSales();
-      await hydrateDeliveryStats(updated);
+      await hydrateDeliveryStats(updatedSales);
       if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
     } catch (e) {
       setMessage("Erreur: " + (e.response?.data?.message || e.message));
@@ -1232,11 +1301,14 @@ const Sales = () => {
   const handleAddPayment = async (paymentData) => {
     if (!selectedSale) return;
     try {
-      await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
-      const updated = await fetchSales();
+      const { data } = await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
+      const nextSale = enrichSaleForState(data, selectedSale);
+      const updatedSales = sales.map((sale) => (sale._id === selectedSale._id ? nextSale : sale));
+      setSales(updatedSales);
+      setSelectedSale(nextSale);
       setMessage("Paiement ajouté avec succès !");
       setShowPaymentModal(false);
-      await hydrateDeliveryStats(updated);
+      await hydrateDeliveryStats(updatedSales);
       if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
     } catch (error) {
       setMessage("Erreur: " + (error.response?.data?.message || error.message));
@@ -1254,14 +1326,40 @@ const Sales = () => {
         deliveryNote: deliveryNote || "",
         deliveryDate: deliveryStatus === "delivered" ? new Date().toISOString() : null,
       };
-      await api.put(`/sales/${selectedSale._id}/delivery`, payload);
-      const updated = await fetchSales();
-      await hydrateDeliveryStats(updated);
+      const { data } = await api.put(`/sales/${selectedSale._id}/delivery`, payload);
+      const nextDeliveryState = {
+        deliveryStatus: data?.deliveryStatus ?? payload.deliveryStatus,
+        deliveryNote: data?.deliveryNote ?? payload.deliveryNote,
+        deliveryDate: data?.deliveryDate ?? payload.deliveryDate,
+        updatedAt: data?.updatedAt ?? selectedSale.updatedAt,
+      };
+      const updatedSales = sales.map((sale) =>
+        sale._id === selectedSale._id
+          ? {
+              ...sale,
+              ...nextDeliveryState,
+            }
+          : sale
+      );
+
+      setSales(updatedSales);
+      setSelectedSale((prevSale) =>
+        prevSale
+          ? {
+              ...prevSale,
+              ...nextDeliveryState,
+            }
+          : prevSale
+      );
+      await hydrateDeliveryStats(updatedSales);
       setMessage("✅ Statut de livraison mis à jour avec succès !");
-      setIsUpdatingDelivery(false);
       setShowDeliveryModal(false);
+      if (isAdmin) {
+        fetchDashboardData(timeRange, dateFilter, { showLoading: false });
+      }
     } catch (e) {
       setMessage("❌ Erreur: " + (e.response?.data?.message || e.message));
+    } finally {
       setIsUpdatingDelivery(false);
     }
   };

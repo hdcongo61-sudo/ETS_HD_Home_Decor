@@ -50,19 +50,42 @@ const Expenses = () => {
     }
   };
 
+  const matchesExpenseFilter = (expense) => {
+    if (!expense) return false;
+    const expenseDate = expense.date ? new Date(expense.date) : null;
+    const search = filter.search.trim().toLowerCase();
+    const searchMatch = !search || [expense.description, expense.paymentMethod]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(search));
+    const categoryMatch = !filter.category || expense.category === filter.category;
+    const startMatch = !filter.startDate || (expenseDate && expenseDate >= new Date(filter.startDate));
+    const endMatch = !filter.endDate || (expenseDate && expenseDate <= new Date(filter.endDate));
+    return searchMatch && categoryMatch && startMatch && endMatch;
+  };
+
   const handleSubmit = async (expenseData) => {
     try {
       setError('');
       setSubmitting(true);
 
       if (editingExpense) {
-        await api.put(`/expenses/${editingExpense._id}`, expenseData);
+        const { data } = await api.put(`/expenses/${editingExpense._id}`, expenseData);
+        setExpenses((prev) => {
+          const next = prev.filter((expense) => expense._id !== editingExpense._id);
+          if (matchesExpenseFilter(data)) {
+            next.unshift(data);
+          }
+          return next.sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
+        });
         setEditingExpense(null);
       } else {
-        await api.post('/expenses', expenseData);
+        const { data } = await api.post('/expenses', expenseData);
+        if (matchesExpenseFilter(data)) {
+          setExpenses((prev) =>
+            [data, ...prev].sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime())
+          );
+        }
       }
-
-      fetchExpenses();
     } catch (err) {
       setError(err.response?.data?.message || "Erreur lors de l'enregistrement");
     } finally {
@@ -81,7 +104,7 @@ const Expenses = () => {
             try {
               setError('');
               await api.delete(`/expenses/${id}`);
-              fetchExpenses();
+              setExpenses((prev) => prev.filter((expense) => expense._id !== id));
             } catch (err) {
               setError(err.response?.data?.message || 'Erreur de suppression');
             }

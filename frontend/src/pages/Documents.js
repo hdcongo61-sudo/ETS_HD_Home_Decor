@@ -17,6 +17,9 @@ const formatDate = (value) => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+const sortDocumentsByDate = (items) =>
+  [...items].sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
+
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [years, setYears] = useState([]);
@@ -63,6 +66,21 @@ const Documents = () => {
     fetchYears();
   }, []);
 
+  const shouldIncludeDocumentInCurrentFilter = useCallback((document) => {
+    if (!yearFilter) return true;
+    const year = new Date(document?.date).getFullYear();
+    return String(year) === String(yearFilter);
+  }, [yearFilter]);
+
+  const syncYearsFromDocuments = useCallback((docs) => {
+    const nextYears = [...new Set(
+      docs
+        .map((doc) => new Date(doc?.date).getFullYear())
+        .filter((year) => Number.isFinite(year))
+    )].sort((a, b) => b - a);
+    setYears(nextYears);
+  }, []);
+
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
@@ -81,15 +99,17 @@ const Documents = () => {
       fd.append('type', form.type);
       fd.append('note', form.note);
       fd.append('date', form.date);
-      await api.post('/documents', fd, {
+      const { data } = await api.post('/documents', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Document enregistré.');
       setShowUpload(false);
       setForm({ type: 'fiscal', note: '', date: new Date().toISOString().slice(0, 10) });
       setFile(null);
-      fetchDocuments();
-      fetchYears();
+      if (shouldIncludeDocumentInCurrentFilter(data)) {
+        setDocuments((prev) => sortDocumentsByDate([data, ...prev]));
+      }
+      syncYearsFromDocuments([...documents, data]);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Erreur lors de l’envoi.';
       toast.error(msg);
@@ -104,8 +124,9 @@ const Documents = () => {
     try {
       await api.delete(`/documents/${id}`);
       toast.success('Document supprimé.');
-      fetchDocuments();
-      fetchYears();
+      const remainingDocuments = documents.filter((document) => document._id !== id);
+      setDocuments(remainingDocuments);
+      syncYearsFromDocuments(remainingDocuments);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur de suppression.');
     }

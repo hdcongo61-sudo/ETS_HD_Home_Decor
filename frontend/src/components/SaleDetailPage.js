@@ -45,6 +45,7 @@ const SaleDetailPage = () => {
     const [mobileHistoryTab, setMobileHistoryTab] = useState('payments');
     const [message, setMessage] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
     const [showProfitSections, setShowProfitSections] = useState(true);
 
     useAutoClearMessage(message, setMessage);
@@ -142,6 +143,70 @@ const SaleDetailPage = () => {
         };
     };
 
+    const mergeSaleState = (incomingSale) => {
+        const resolveId = (value) => {
+            if (!value) return null;
+            if (typeof value === 'string') return value;
+            return value._id || null;
+        };
+
+        const previousProducts = Array.isArray(sale?.products) ? sale.products : [];
+        const mergedProducts = Array.isArray(incomingSale?.products)
+            ? incomingSale.products.map((item) => {
+                const productId = resolveId(item?.product);
+                const previousItem = previousProducts.find((entry) => resolveId(entry?.product) === productId);
+                return {
+                    ...previousItem,
+                    ...item,
+                    product: typeof item?.product === 'object' ? item.product : previousItem?.product
+                };
+            })
+            : previousProducts;
+
+        const previousPayments = new Map(
+            (Array.isArray(sale?.payments) ? sale.payments : []).map((payment) => [String(payment._id), payment])
+        );
+        const mergedPayments = (Array.isArray(incomingSale?.payments) ? incomingSale.payments : (sale?.payments || [])).map((payment) => {
+            const previousPayment = previousPayments.get(String(payment._id));
+            return {
+                ...previousPayment,
+                ...payment,
+                user: typeof payment?.user === 'object' ? payment.user : previousPayment?.user,
+                formattedDate: payment?.paymentDate
+                    ? new Date(payment.paymentDate).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : previousPayment?.formattedDate
+            };
+        });
+
+        const totalAmount = Number(incomingSale?.totalAmount ?? sale?.totalAmount ?? 0);
+        const totalPaid = mergedPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+
+        return {
+            ...sale,
+            ...incomingSale,
+            client: typeof incomingSale?.client === 'object' ? { ...(sale?.client || {}), ...incomingSale.client } : sale?.client,
+            products: mergedProducts,
+            payments: mergedPayments,
+            totalPaid,
+            balance: totalAmount - totalPaid,
+            formattedDate: incomingSale?.saleDate
+                ? new Date(incomingSale.saleDate).toLocaleString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+                : sale?.formattedDate
+        };
+    };
+
     const fetchProductNames = async (productIds) => {
         try {
             const namesMap = {};
@@ -175,10 +240,8 @@ const SaleDetailPage = () => {
 
     const handleAddPayment = async (paymentData) => {
         try {
-            await api.post(`/sales/${id}/payments`, paymentData);
-            // Recharger les détails de la vente
-            const response = await api.get(`/sales/${id}`);
-            setSale(response.data);
+            const { data } = await api.post(`/sales/${id}/payments`, paymentData);
+            setSale(mergeSaleState(data));
             setMessage('Paiement ajouté avec succès!');
             setShowPaymentModal(false);
         } catch (error) {
@@ -191,11 +254,8 @@ const SaleDetailPage = () => {
         if (window.confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
             try {
                 setIsDeleting(true);
-                await api.delete(`/sales/${id}/payments/${paymentId}`);
-
-                // Recharger les détails de la vente
-                const response = await api.get(`/sales/${id}`);
-                setSale(response.data);
+                const { data } = await api.delete(`/sales/${id}/payments/${paymentId}`);
+                setSale(mergeSaleState(data.sale));
                 setMessage('Paiement supprimé avec succès!');
             } catch (error) {
                 console.error('Delete payment error:', error.response?.data);
@@ -214,7 +274,7 @@ const SaleDetailPage = () => {
                 isSet: !!reminderDate
             });
 
-            setSale(response.data);
+            setSale(mergeSaleState(response.data));
             setMessage('Rappel mis à jour avec succès!');
             setShowReminderModal(false);
         } catch (error) {
@@ -227,7 +287,7 @@ const SaleDetailPage = () => {
         if (window.confirm("Envoyer le rappel de paiement au client maintenant ?")) {
             try {
                 const response = await api.post(`/sales/${id}/send-reminder`);
-                setSale(response.data);
+                setSale(mergeSaleState(response.data));
                 setMessage('Rappel envoyé avec succès!');
             } catch (error) {
                 console.error('Send reminder error:', error.response?.data);
@@ -241,7 +301,7 @@ const SaleDetailPage = () => {
             try {
                 const { data } = await api.delete(`/sales/${id}/reminder`);
 
-                setSale(data);
+                setSale(mergeSaleState(data));
                 setReminderDate('');
                 setReminderNote('');
                 setMessage('Rappel supprimé avec succès!');
@@ -255,6 +315,7 @@ const SaleDetailPage = () => {
     const handleUpdateDelivery = async () => {
         try {
             setMessage('Mise à jour en cours...');
+            setIsUpdatingDelivery(true);
 
             const payload = {
                 deliveryStatus,
@@ -262,25 +323,22 @@ const SaleDetailPage = () => {
                 deliveryDate: deliveryStatus === 'delivered' ? new Date().toISOString() : null
             };
 
-            // 1. Mettre à jour le statut de livraison
-            await api.put(`/sales/${id}/delivery`, payload);
-            
-            // 2. Recharger TOUTES les données de la vente avec les relations
-            const updatedResponse = await api.get(`/sales/${id}`);
-            
-            // 3. Vérifier que les données sont complètes
-            if (updatedResponse.data) {
-                setSale(updatedResponse.data);
-                setMessage('✅ Statut de livraison mis à jour avec succès!');
-                
-                setTimeout(() => {
-                    setShowDeliveryModal(false);
-                }, 2000);
-            }
+            const { data } = await api.put(`/sales/${id}/delivery`, payload);
+            const nextDeliveryState = {
+                deliveryStatus: data?.deliveryStatus ?? payload.deliveryStatus,
+                deliveryNote: data?.deliveryNote ?? payload.deliveryNote,
+                deliveryDate: data?.deliveryDate ?? payload.deliveryDate,
+                updatedAt: data?.updatedAt
+            };
 
+            setSale(mergeSaleState(nextDeliveryState));
+            setMessage('✅ Statut de livraison mis à jour avec succès!');
+            setShowDeliveryModal(false);
         } catch (error) {
             console.error('Erreur:', error);
             setMessage('❌ Erreur: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsUpdatingDelivery(false);
         }
     };
 
@@ -1210,11 +1268,11 @@ const SaleDetailPage = () => {
                     size="sm"
                     footer={
                         <>
-                            <button type="button" onClick={() => setShowDeliveryModal(false)} className="min-h-[44px] w-full sm:w-auto px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium touch-manipulation">
+                            <button type="button" onClick={() => setShowDeliveryModal(false)} disabled={isUpdatingDelivery} className="min-h-[44px] w-full sm:w-auto px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium touch-manipulation disabled:opacity-60 disabled:cursor-not-allowed">
                                 Annuler
                             </button>
-                            <button type="button" onClick={handleUpdateDelivery} className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium touch-manipulation">
-                                Enregistrer
+                            <button type="button" onClick={handleUpdateDelivery} disabled={isUpdatingDelivery} className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium touch-manipulation disabled:opacity-60 disabled:cursor-not-allowed">
+                                {isUpdatingDelivery ? 'Enregistrement...' : 'Enregistrer'}
                             </button>
                         </>
                     }

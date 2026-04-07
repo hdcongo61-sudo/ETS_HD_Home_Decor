@@ -19,6 +19,7 @@ const PaySlipList = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showSummary, setShowSummary] = useState(true);
+    const [reloadToken, setReloadToken] = useState(0);
     const employeeReference = employee || { _id: id };
 
     useEffect(() => {
@@ -38,7 +39,7 @@ const PaySlipList = () => {
             }
         };
         fetchData();
-    }, [id]);
+    }, [id, reloadToken]);
 
     const handleEdit = (payslipId) => {
         navigate(employeePayrollPayslipEditPath(employeeReference, payslipId));
@@ -93,7 +94,7 @@ const PaySlipList = () => {
                         <h3 className="text-lg font-semibold text-gray-900">Erreur de chargement</h3>
                         <p className="text-gray-600 mt-1">{error}</p>
                         <button
-                            onClick={() => window.location.reload()}
+                            onClick={() => setReloadToken((value) => value + 1)}
                             className="mt-3 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm inline-flex items-center transition-colors"
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

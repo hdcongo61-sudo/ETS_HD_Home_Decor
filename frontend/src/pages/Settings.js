@@ -9,6 +9,9 @@ const TABS = [
   { key: 'suppliers', label: 'Fournisseurs', endpoint: '/lookups/suppliers' },
 ];
 
+const sortByName = (items) =>
+  [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
+
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('categories');
 
@@ -82,10 +85,10 @@ const LookupTab = ({ endpoint, label }) => {
     if (!newName.trim()) return;
     try {
       setSubmitting(true);
-      await api.post(endpoint, { name: newName.trim() });
+      const { data } = await api.post(endpoint, { name: newName.trim() });
+      setItems((prev) => sortByName([...prev, data]));
       setNewName('');
       toast.success('Ajouté');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     } finally {
@@ -97,11 +100,11 @@ const LookupTab = ({ endpoint, label }) => {
     if (!editName.trim()) return;
     try {
       setSubmitting(true);
-      await api.put(`${endpoint}/${id}`, { name: editName.trim() });
+      const { data } = await api.put(`${endpoint}/${id}`, { name: editName.trim() });
+      setItems((prev) => sortByName(prev.map((item) => (item._id === id ? data : item))));
       setEditingId(null);
       setEditName('');
       toast.success('Modifié');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     } finally {
@@ -113,8 +116,8 @@ const LookupTab = ({ endpoint, label }) => {
     if (!window.confirm('Supprimer cet élément ?')) return;
     try {
       await api.delete(`${endpoint}/${id}`);
+      setItems((prev) => prev.filter((item) => item._id !== id));
       toast.success('Supprimé');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     }
@@ -255,11 +258,11 @@ const SupplierTab = ({ endpoint }) => {
     if (!newName.trim()) return;
     try {
       setSubmitting(true);
-      await api.post(endpoint, { name: newName.trim(), phone: newPhone.trim() });
+      const { data } = await api.post(endpoint, { name: newName.trim(), phone: newPhone.trim() });
+      setItems((prev) => sortByName([...prev, data]));
       setNewName('');
       setNewPhone('');
       toast.success('Fournisseur ajouté');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     } finally {
@@ -271,10 +274,12 @@ const SupplierTab = ({ endpoint }) => {
     if (!editName.trim()) return;
     try {
       setSubmitting(true);
-      await api.put(`${endpoint}/${id}`, { name: editName.trim(), phone: editPhone.trim() });
+      const { data } = await api.put(`${endpoint}/${id}`, { name: editName.trim(), phone: editPhone.trim() });
+      setItems((prev) => sortByName(prev.map((item) => (item._id === id ? data : item))));
       setEditingId(null);
+      setEditName('');
+      setEditPhone('');
       toast.success('Modifié');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     } finally {
@@ -286,8 +291,8 @@ const SupplierTab = ({ endpoint }) => {
     if (!window.confirm('Supprimer ce fournisseur ?')) return;
     try {
       await api.delete(`${endpoint}/${id}`);
+      setItems((prev) => prev.filter((item) => item._id !== id));
       toast.success('Supprimé');
-      await fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur');
     }

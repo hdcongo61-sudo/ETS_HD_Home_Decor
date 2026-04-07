@@ -105,9 +105,18 @@ const PartiallyPaidPurchases = () => {
 
   const handleAddPayment = async (paymentData) => {
     if (!selectedSale) return;
-    await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
+    const { data } = await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
+    const nextSale = {
+      ...selectedSale,
+      ...data,
+      client: selectedSale.client,
+      products: selectedSale.products,
+    };
+    setSales((prev) =>
+      prev.map((sale) => (sale._id === selectedSale._id ? nextSale : sale))
+    );
+    setSelectedSale(nextSale);
     setShowPaymentModal(false);
-    await fetchSales();
   };
 
   return (

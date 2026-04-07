@@ -9,6 +9,9 @@ import toast, { Toaster } from 'react-hot-toast';
 import { productPath } from '../utils/paths';
 import Modal from '../components/Modal';
 
+const sortProductsByName = (items) =>
+  [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
+
 const Products = () => {
   const { auth } = useContext(AuthContext);
   const location = useLocation();
@@ -94,9 +97,14 @@ const Products = () => {
         toast.success(
           editingProduct ? 'Produit mis à jour avec succès 🎉' : 'Produit créé avec succès 🚀'
         );
+        setProducts((prev) => {
+          const next = editingProduct
+            ? prev.map((product) => (product._id === data._id ? data : product))
+            : [data, ...prev];
+          return sortProductsByName(next);
+        });
         setIsFormOpen(false);
         setEditingProduct(null);
-        await fetchProducts({ showLoading: false });
       }
     } catch (error) {
       console.error('Error:', error.response?.data?.message || error.message);
@@ -115,8 +123,8 @@ const Products = () => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
       try {
         await api.delete(`/products/${productId}`);
+        setProducts((prev) => prev.filter((product) => product._id !== productId));
         toast.success('Produit supprimé ✅');
-        await fetchProducts({ showLoading: false });
       } catch (error) {
         console.error('Error deleting product:', error);
         toast.error('Erreur lors de la suppression ❌');
