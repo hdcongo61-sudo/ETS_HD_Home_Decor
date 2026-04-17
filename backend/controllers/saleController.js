@@ -84,6 +84,10 @@ const formatGroupedSummary = (rows = [], expectedKeys = []) => {
 // @access  Private (admin: all sales, user: own sales)
 const getSales = asyncHandler(async (req, res) => {
   try {
+    const summaryMode = String(req.query.summary || '').trim().toLowerCase();
+    const isCompactSummary = summaryMode === 'compact';
+    const isListSummary = summaryMode === 'list';
+
     // Build filter object
     const filter = {};
 
@@ -114,16 +118,33 @@ const getSales = asyncHandler(async (req, res) => {
       filter.saleType = normalizeSaleType(req.query.saleType);
     }
 
-    const sales = await Sale.find(buildSaleAccessFilter(req.user, filter))
-      .populate('client', 'name email')
-      .populate({
-        path: 'products.product',
-        select: 'name costPrice container',
-        model: 'Product'
-      })
-      .populate('user', 'name')
-      .sort({ saleDate: -1 })
-      .lean();
+    let query = Sale.find(buildSaleAccessFilter(req.user, filter)).sort({ saleDate: -1 });
+
+    if (isCompactSummary) {
+      query = query
+        .select('_id client totalAmount payments saleDate status updatedAt createdAt')
+        .populate('client', 'name email');
+    } else if (isListSummary) {
+      query = query
+        .select('_id client products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory')
+        .populate('client', 'name email')
+        .populate({
+          path: 'products.product',
+          select: 'name container',
+          model: 'Product'
+        });
+    } else {
+      query = query
+        .populate('client', 'name email')
+        .populate({
+          path: 'products.product',
+          select: 'name costPrice container',
+          model: 'Product'
+        })
+        .populate('user', 'name');
+    }
+
+    const sales = await query.lean();
 
     // Format sales data
     const formattedSales = sales.map(sale => {
@@ -132,6 +153,27 @@ const getSales = asyncHandler(async (req, res) => {
       const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
       const totalAmount = Number(sale.totalAmount) || 0;
       const balance = totalAmount - totalPaid;
+
+      if (isCompactSummary) {
+        return {
+          ...sale,
+          totalPaid,
+          balance
+        };
+      }
+
+      if (isListSummary) {
+        return {
+          ...sale,
+          products: (sale.products || []).map((p) => ({
+            ...p,
+            product: p.product || { name: "Produit supprimé", container: '' }
+          })),
+          modificationCount: Array.isArray(sale.modificationHistory) ? sale.modificationHistory.length : 0,
+          totalPaid,
+          balance
+        };
+      }
 
       return {
         ...sale,
@@ -169,6 +211,15 @@ const getUserSales = asyncHandler(async (req, res) => {
     throw new Error('Non autorisé à accéder à ces données');
   }
 
+  const user = await User.findById(userId)
+    .select('name email phone photo isAdmin createdAt lastLogin')
+    .lean();
+
+  if (!user) {
+    res.status(404);
+    throw new Error('Utilisateur introuvable');
+  }
+
   // Récupérer les ventes avec les données associées
   const sales = await Sale.find({ user: userId })
     .populate('client', 'name')
@@ -181,7 +232,7 @@ const getUserSales = asyncHandler(async (req, res) => {
 
   if (!sales || sales.length === 0) {
     return res.json({
-      user: await User.findById(userId).select('name email isAdmin createdAt'),
+      user,
       sales: [],
       stats: null
     });
@@ -189,9 +240,6 @@ const getUserSales = asyncHandler(async (req, res) => {
 
   // Calculer les statistiques
   const stats = calculateSalesStats(sales);
-
-  // Récupérer les informations de l'utilisateur
-  const user = await User.findById(userId).select('name email isAdmin createdAt lastLogin');
 
   res.json({
     user,
@@ -297,24 +345,49 @@ const calculateSalesStats = (sales) => {
 // @route   POST /api/sales
 // @access  Private
 const createSale = asyncHandler(async (req, res) => {
-  const { client, products, paymentMethod, note, reminderDate, reminderNote, saleType } = req.body;
+  const {
+    client,
+    products,
+    paymentMethod,
+    note,
+    reminderDate,
+    reminderNote,
+    saleType,
+    initialPaymentAmount,
+    markAsDelivered
+  } = req.body;
+
+  let session;
 
   try {
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: 'Ajoutez au moins un produit à la vente' });
+    }
+
     let totalAmount = 0;
-    const productUpdates = [];
     const populatedProducts = [];
+    const requestedItems = products.map((item) => ({
+      productId: normalizeObjectId(item.product),
+      quantity: Number(item.quantity),
+      salePrice: Number(item.price)
+    }));
+    const uniqueProductIds = [...new Set(requestedItems.map((item) => item.productId).filter(Boolean))];
+    const productDocuments = await Product.find({ _id: { $in: uniqueProductIds } })
+      .select('_id name stock costPrice')
+      .lean();
+    const productMap = new Map(productDocuments.map((product) => [String(product._id), product]));
+    const requestedQuantities = new Map();
 
     // Validate and calculate total
-    for (const item of products) {
-      const product = await Product.findById(item.product);
+    for (const item of requestedItems) {
+      const product = productMap.get(item.productId);
 
       if (!product) {
         return res.status(404).json({ message: `Produit introuvable` });
       }
 
-      // Convertir explicitement les valeurs en nombres
-      const quantity = Number(item.quantity);
-      const salePrice = Number(item.price);
+      const quantity = item.quantity;
+      const salePrice = item.salePrice;
 
       // Validation numérique robuste
       if (isNaN(quantity) || quantity <= 0) {
@@ -329,30 +402,38 @@ const createSale = asyncHandler(async (req, res) => {
         });
       }
 
-      if (product.stock < quantity) {
-        return res.status(400).json({
-          message: `Stock insuffisant pour ${product.name} (${product.stock} disponibles)`
-        });
-      }
-
       if (salePrice < product.costPrice) {
         return res.status(400).json({
           message: `Prix de vente trop bas pour ${product.name} (min: ${product.costPrice} CFA)`
         });
       }
 
-      totalAmount += salePrice * quantity;
+      const nextRequestedQuantity = (requestedQuantities.get(item.productId) || 0) + quantity;
+      requestedQuantities.set(item.productId, nextRequestedQuantity);
 
-      productUpdates.push({
-        productId: product._id,
-        quantity: quantity
-      });
+      if (product.stock < nextRequestedQuantity) {
+        return res.status(400).json({
+          message: `Stock insuffisant pour ${product.name} (${product.stock} disponibles)`
+        });
+      }
+
+      totalAmount += salePrice * quantity;
 
       populatedProducts.push({
         product: product._id,
         quantity: quantity,
         priceAtSale: salePrice
       });
+    }
+
+    const normalizedInitialPayment = Math.max(0, Number(initialPaymentAmount) || 0);
+
+    if (normalizedInitialPayment > totalAmount) {
+      return res.status(400).json({ message: 'Le montant payé ne peut pas dépasser le total de la vente' });
+    }
+
+    if (markAsDelivered && normalizedInitialPayment < totalAmount) {
+      return res.status(400).json({ message: 'La livraison immédiate nécessite un paiement complet' });
     }
 
     // Create sale with reminder data
@@ -367,11 +448,27 @@ const createSale = asyncHandler(async (req, res) => {
       saleType: resolvedSaleType,
       paymentMethod,
       note,
-      user: req.user._id
+      user: req.user._id,
+      // Stock is deducted explicitly below in the controller.
+      stockDeducted: true
     };
 
+    if (normalizedInitialPayment > 0) {
+      saleData.payments = [{
+        amount: normalizedInitialPayment,
+        method: paymentMethod,
+        paymentDate: new Date(),
+        user: req.user._id
+      }];
+    }
+
+    if (markAsDelivered && normalizedInitialPayment >= totalAmount) {
+      saleData.deliveryStatus = 'delivered';
+      saleData.deliveryDate = new Date();
+    }
+
     // Add reminder if provided
-    if (reminderDate) {
+    if (reminderDate && normalizedInitialPayment < totalAmount) {
       saleData.paymentReminder = {
         isSet: true,
         reminderDate: new Date(reminderDate),
@@ -380,28 +477,39 @@ const createSale = asyncHandler(async (req, res) => {
       };
     }
 
-    const sale = await Sale.create(saleData);
+    const stockOperations = [...requestedQuantities.entries()].map(([productId, quantity]) => ({
+      updateOne: {
+        filter: { _id: productId },
+        update: { $inc: { stock: -quantity } }
+      }
+    }));
 
-    // Update client's purchase history
-    const updatedClient = await Client.findByIdAndUpdate(
-      client,
-      {
-        $push: { purchases: sale._id },
-        $inc: {
-          totalPurchases: totalAmount,
-          purchaseCount: 1
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    const [sale] = await Sale.create([saleData], { session });
+
+    const [updatedClient] = await Promise.all([
+      Client.findByIdAndUpdate(
+        client,
+        {
+          $push: { purchases: sale._id },
+          $inc: {
+            totalPurchases: totalAmount,
+            purchaseCount: 1
+          },
+          $set: { lastPurchaseDate: new Date() }
         },
-        $set: { lastPurchaseDate: new Date() }
-      },
-      { new: true, select: 'name' }
-    );
+        { new: true, select: 'name', session }
+      ),
+      stockOperations.length > 0
+        ? Product.bulkWrite(stockOperations, { session })
+        : Promise.resolve()
+    ]);
 
-    // Update product stocks
-    for (const update of productUpdates) {
-      await Product.findByIdAndUpdate(update.productId, {
-        $inc: { stock: -update.quantity }
-      });
-    }
+    await session.commitTransaction();
+    session.endSession();
+    session = null;
 
     const clientNameForNotification = updatedClient?.name || '';
 
@@ -417,6 +525,10 @@ const createSale = asyncHandler(async (req, res) => {
     res.status(201).json(sale);
 
   } catch (error) {
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
     res.status(500).json({
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -451,18 +563,8 @@ const addPayment = asyncHandler(async (req, res) => {
 
     await sale.save();
 
-    // If payment completes the sale, update client
     const totalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
     const saleTotalAmount = Number(sale.totalAmount) || 0;
-    if (totalPaid >= saleTotalAmount) {
-      await Client.findByIdAndUpdate(sale.client, {
-        $inc: {
-          totalPurchases: saleTotalAmount,
-          purchaseCount: 1
-        },
-        $set: { lastPurchaseDate: new Date() }
-      });
-    }
 
     await sale.populate('client', 'name');
     const remainingBalance = Math.max(saleTotalAmount - totalPaid, 0);
@@ -623,6 +725,8 @@ const getSalesStatsByStatus = asyncHandler(async (req, res) => {
 const getSalesByDateRange = asyncHandler(async (req, res) => {
   try {
     let { startDate, endDate } = req.query;
+    const summaryMode = String(req.query.summary || '').trim().toLowerCase();
+    const isDashboardSummary = summaryMode === 'dashboard';
 
     // Default to last 30 days if no dates provided
     if (!startDate) {
@@ -640,16 +744,28 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'Format de date invalide' });
     }
 
-    const sales = await Sale.find(buildSaleAccessFilter(req.user, {
+    const dateFilter = buildSaleAccessFilter(req.user, {
       saleDate: {
         $gte: start,
         $lte: end
       }
-    }))
-    .populate('client', 'name')
-    .populate('products.product', 'name price')
-    .populate('payments')
-    .sort('saleDate');
+    });
+
+    let query = Sale.find(dateFilter).sort('saleDate');
+
+    if (isDashboardSummary) {
+      query = query
+        .select('_id saleNumber client products totalAmount saleType saleDate createdAt')
+        .populate('client', 'name')
+        .populate('products.product', 'name price');
+    } else {
+      query = query
+        .populate('client', 'name')
+        .populate('products.product', 'name price')
+        .populate('payments');
+    }
+
+    const sales = await query.lean();
 
     res.json(sales);
 
@@ -665,12 +781,22 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
 const getPaymentsByDateRange = asyncHandler(async (req, res) => {
   try {
     let { startDate, endDate } = req.query;
+    const summaryMode = String(req.query.summary || '').trim().toLowerCase();
+    const isDashboardSummary = summaryMode === 'dashboard';
     const now = new Date();
 
     if (!startDate) startDate = new Date(now.setFullYear(now.getFullYear() - 1));
     if (!endDate) endDate = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-    const paymentsMatch = isAdminUser(req.user) ? {} : { user: req.user._id };
+    const paymentsMatch = buildSaleAccessFilter(req.user, {
+      payments: {
+        $elemMatch: {
+          paymentDate: { $gte: start, $lte: end }
+        }
+      }
+    });
 
     const payments = await Sale.aggregate([
       {
@@ -680,8 +806,8 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
       {
         $match: {
           "payments.paymentDate": {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate)
+            $gte: start,
+            $lte: end
           }
         }
       },
@@ -706,7 +832,40 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
           as: "client"
         }
       },
-      { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
+      ...(isDashboardSummary
+        ? [
+            {
+              $project: {
+                _id: 1,
+                amount: 1,
+                method: 1,
+                paymentDate: 1,
+                saleId: 1,
+                saleNumber: 1,
+                createdAt: 1,
+                client: {
+                  _id: "$client._id",
+                  name: "$client.name"
+                }
+              }
+            }
+          ]
+        : [
+            {
+              $project: {
+                _id: 1,
+                amount: 1,
+                method: 1,
+                paymentDate: 1,
+                user: "$user",
+                saleId: "$saleId",
+                saleNumber: "$saleNumber",
+                createdAt: 1,
+                client: 1
+              }
+            }
+          ])
     ]);
 
     res.json(payments);
@@ -815,6 +974,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
       paymentMethods,
       saleTypes,
       paymentStructures,
+      neverPaidSalesData,
       salesByStatus,
       todaySales,
       todayPayments,
@@ -913,6 +1073,11 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
+            payments: {
+              $elemMatch: {
+                paymentDate: { $gte: startDate, $lte: endDate }
+              }
+            },
             status: { $ne: "cancelled" }
           }
         },
@@ -1008,11 +1173,70 @@ const getDashboardData = asyncHandler(async (req, res) => {
         }
       ]),
 
+      // Ventes sans aucun paiement enregistré
+      Sale.aggregate([
+        {
+          $match: {
+            saleDate: { $gte: startDate, $lte: endDate },
+            status: { $ne: "cancelled" }
+          }
+        },
+        {
+          $addFields: {
+            paymentsCount: { $size: { $ifNull: ["$payments", []] } }
+          }
+        },
+        {
+          $match: {
+            paymentsCount: 0
+          }
+        },
+        {
+          $facet: {
+            summary: [
+              {
+                $group: {
+                  _id: null,
+                  count: { $sum: 1 },
+                  totalAmount: { $sum: "$totalAmount" }
+                }
+              }
+            ],
+            sales: [
+              { $sort: { saleDate: -1 } },
+              { $limit: 8 },
+              {
+                $lookup: {
+                  from: "clients",
+                  localField: "client",
+                  foreignField: "_id",
+                  as: "client"
+                }
+              },
+              { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  _id: 1,
+                  saleDate: 1,
+                  totalAmount: 1,
+                  status: 1,
+                  saleType: { $ifNull: ["$saleType", "normal"] },
+                  client: {
+                    _id: "$client._id",
+                    name: "$client.name"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]),
+
       // Statuts des ventes
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate },
+            saleDate: { $gte: startDate, $lte: endDate },
             status: { $ne: "cancelled" }
           }
         },
@@ -1098,7 +1322,11 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate, $lte: endDate },
+            payments: {
+              $elemMatch: {
+                paymentDate: { $gte: startDate, $lte: endDate }
+              }
+            },
             status: { $ne: "cancelled" }
           }
         },
@@ -1140,7 +1368,11 @@ const getDashboardData = asyncHandler(async (req, res) => {
       Sale.aggregate([
         {
           $match: {
-            saleDate: { $gte: startDate, $lte: endDate },
+            payments: {
+              $elemMatch: {
+                paymentDate: { $gte: startDate, $lte: endDate }
+              }
+            },
             status: { $ne: "cancelled" }
           }
         },
@@ -1244,6 +1476,12 @@ const getDashboardData = asyncHandler(async (req, res) => {
       paymentStructures,
       ['full_payment', 'multiple_payments', 'pending_payment']
     );
+    const neverPaidSummaryEntry = safeFirst(neverPaidSalesData?.[0]?.summary);
+    const neverPaidSales = {
+      count: Number(neverPaidSummaryEntry?.count) || 0,
+      totalAmount: Number(neverPaidSummaryEntry?.totalAmount) || 0,
+      sales: neverPaidSalesData?.[0]?.sales || []
+    };
 
     // Formatage des ventes par statut
     const statusStats = {
@@ -1272,6 +1510,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
       paymentMethods: paymentMethodsData,
       saleTypeSummary,
       paymentStructureSummary,
+      neverPaidSales,
       statusStats,
       dailySummary: {
         salesCount: dailySummary.count,
@@ -1769,11 +2008,15 @@ const updateSale = asyncHandler(async (req, res) => {
 const deleteSale = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const reason = (req.body?.reason || '').trim();
+  let session;
 
   try {
     if (!reason) {
       return res.status(400).json({ message: 'Une raison de suppression est requise' });
     }
+
+    session = await mongoose.startSession();
+    session.startTransaction();
 
     const sale = await Sale.findById(id)
       .populate('client', 'name email')
@@ -1781,27 +2024,33 @@ const deleteSale = asyncHandler(async (req, res) => {
         path: 'products.product',
         select: 'name costPrice'
       })
-      .populate('user', 'name email');
+      .populate('user', 'name email')
+      .session(session);
     if (!sale) {
+      await session.abortTransaction();
+      session.endSession();
+      session = null;
       return res.status(404).json({ message: 'Vente non trouvée' });
     }
 
-    await DeletedSale.create({
+    await DeletedSale.create([{
       saleId: sale._id,
       saleSnapshot: sale.toObject(),
       deletionReason: reason,
       deletedBy: req.user._id,
       deletedAt: new Date()
-    });
+    }], { session });
 
     // Annuler les effets de la vente
     // 1. Restaurer le stock des produits
-    for (const item of sale.products) {
-      const productId = item.product?._id || item.product;
-      if (!productId) continue;
-      await Product.findByIdAndUpdate(productId, {
-        $inc: { stock: item.quantity }
-      });
+    if (sale.stockDeducted) {
+      for (const item of sale.products) {
+        const productId = item.product?._id || item.product;
+        if (!productId) continue;
+        await Product.findByIdAndUpdate(productId, {
+          $inc: { stock: item.quantity }
+        }, { session });
+      }
     }
 
     // 2. Mettre à jour le client
@@ -1813,14 +2062,22 @@ const deleteSale = asyncHandler(async (req, res) => {
           totalPurchases: -sale.totalAmount,
           purchaseCount: -1
         }
-      });
+      }, { session });
     }
 
     // 3. Supprimer la vente
-    await Sale.deleteOne({ _id: id });
+    await Sale.deleteOne({ _id: id }, { session });
+
+    await session.commitTransaction();
+    session.endSession();
+    session = null;
 
     res.status(200).json({ message: 'Vente supprimée avec succès' });
   } catch (error) {
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
     res.status(500).json({
       message: 'Erreur lors de la suppression',
       error: error.message
@@ -1905,33 +2162,46 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const baseReminderFilter = isAdminUser(req.user) ? {} : { user: req.user._id };
 
-    const overdue = await Sale.find({
-      ...baseReminderFilter,
-      'paymentReminder.isSet': true,
-      'paymentReminder.reminderDate': { $lte: now },
-      'paymentReminder.status': 'pending',
-      status: { $in: ['pending', 'partially_paid'] }
-    })
-    .populate('client', 'name email phone')
-    .select('_id client totalAmount payments paymentReminder') // Include payments
-    .lean()
-    .sort({ 'paymentReminder.reminderDate': 1 });
-    
+    const [overdue, upcoming, neverPaid] = await Promise.all([
+      Sale.find({
+        ...baseReminderFilter,
+        'paymentReminder.isSet': true,
+        'paymentReminder.reminderDate': { $lte: now },
+        'paymentReminder.status': 'pending',
+        status: { $in: ['pending', 'partially_paid'] }
+      })
+        .populate('client', 'name email phone')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .lean()
+        .sort({ 'paymentReminder.reminderDate': 1 }),
 
-    const upcoming = await Sale.find({
-      ...baseReminderFilter,
-      'paymentReminder.isSet': true,
-      'paymentReminder.reminderDate': { 
-        $gt: now,
-        $lte: sevenDaysFromNow
-      },
-      'paymentReminder.status': 'pending',
-      status: { $in: ['pending', 'partially_paid'] }
-    })
-    .populate('client', 'name email phone')
-    .select('_id client totalAmount payments paymentReminder') // Include payments
-    .lean()
-    .sort({ 'paymentReminder.reminderDate': 1 });
+      Sale.find({
+        ...baseReminderFilter,
+        'paymentReminder.isSet': true,
+        'paymentReminder.reminderDate': {
+          $gt: now,
+          $lte: sevenDaysFromNow
+        },
+        'paymentReminder.status': 'pending',
+        status: { $in: ['pending', 'partially_paid'] }
+      })
+        .populate('client', 'name email phone')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .lean()
+        .sort({ 'paymentReminder.reminderDate': 1 }),
+
+      Sale.find({
+        ...baseReminderFilter,
+        status: 'pending',
+        $expr: {
+          $eq: [{ $size: { $ifNull: ['$payments', []] } }, 0]
+        }
+      })
+        .populate('client', 'name email phone')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .lean()
+        .sort({ saleDate: 1 })
+    ]);
 
     // Calculate balance and totalPaid manually
     const processReminders = (reminders) => {
@@ -1949,7 +2219,8 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
 
     res.json({
       overdue: processReminders(overdue),
-      upcoming: processReminders(upcoming)
+      upcoming: processReminders(upcoming),
+      neverPaid: processReminders(neverPaid)
     });
   } catch (error) {
     res.status(500).json({ 

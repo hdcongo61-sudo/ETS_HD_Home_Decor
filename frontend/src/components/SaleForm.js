@@ -1,17 +1,33 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 
-const SaleForm = ({ clients = [], onSubmit }) => {
+const normalizeCollection = (value, nestedKeys = []) => {
+  if (Array.isArray(value)) return value;
+  for (const key of nestedKeys) {
+    if (Array.isArray(value?.[key])) {
+      return value[key];
+    }
+  }
+  return [];
+};
+
+const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
-  const [products, setProducts] = useState([]);
+  const safeClients = useMemo(() => normalizeCollection(clients, ['clients', 'data']), [clients]);
+  const normalizedInitialProducts = useMemo(
+    () => normalizeCollection(initialProducts, ['products', 'data']),
+    [initialProducts]
+  );
+  const [products, setProducts] = useState(normalizedInitialProducts);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: '', price: 0 }]);
   const [selectedClient, setSelectedClient] = useState('');
   const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [totalAmount, setTotalAmount] = useState(0);
   const [errors, setErrors] = useState([]);
   const [formError, setFormError] = useState('');
@@ -22,21 +38,32 @@ const SaleForm = ({ clients = [], onSubmit }) => {
   const [reminderNote, setReminderNote] = useState('');
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
+  const [markAsDelivered, setMarkAsDelivered] = useState(false);
 
-  const safeClients = Array.isArray(clients) ? clients : [];
+	
+  useEffect(() => {
+    if (normalizedInitialProducts.length > 0) {
+      setProducts(normalizedInitialProducts);
+    }
+  }, [normalizedInitialProducts]);
 
   /** Fetch products **/
   useEffect(() => {
+    if (normalizedInitialProducts.length > 0) {
+      return undefined;
+    }
+
     const fetchProducts = async () => {
       try {
         const res = await api.get('/products');
-        setProducts(res.data);
+        setProducts(normalizeCollection(res.data, ['products', 'data']));
       } catch {
         setFormError('Impossible de charger les produits.');
       }
     };
     fetchProducts();
-  }, []);
+    return undefined;
+  }, [normalizedInitialProducts]);
 
   /** Calculate total **/
   useEffect(() => {
@@ -48,12 +75,35 @@ const SaleForm = ({ clients = [], onSubmit }) => {
     setTotalAmount(total);
   }, [selectedProducts]);
 
+  const normalizedPaymentAmount = Math.max(0, Number(paymentAmount) || 0);
+  const remainingBalance = Math.max(0, totalAmount - normalizedPaymentAmount);
+  const isFullyPaid = totalAmount > 0 && normalizedPaymentAmount === totalAmount;
+
+  useEffect(() => {
+    if (!isFullyPaid && markAsDelivered) {
+      setMarkAsDelivered(false);
+    }
+  }, [isFullyPaid, markAsDelivered]);
+
+  useEffect(() => {
+    if (isFullyPaid && setReminder) {
+      setSetReminder(false);
+      setReminderDate('');
+      setReminderNote('');
+    }
+  }, [isFullyPaid, setReminder]);
+
   /** Filter clients & products **/
   const filteredClients = safeClients.filter(c =>
     c.name.toLowerCase().includes(clientSearchTerm.toLowerCase())
   );
-  const getFilteredProducts = (term) =>
-    products.filter(p => p.name.toLowerCase().includes(term.toLowerCase()));
+  const getFilteredProducts = (term, selectedProductId = '') =>
+    products.filter((product) => {
+      const matchesSearch = (product.name || '').toLowerCase().includes(term.toLowerCase());
+      const hasStock = Number(product.stock) > 0;
+      const isCurrentSelection = product._id === selectedProductId;
+      return matchesSearch && (hasStock || isCurrentSelection);
+    });
 
   /** Validation **/
   const validatePrices = () => {
@@ -115,10 +165,12 @@ const SaleForm = ({ clients = [], onSubmit }) => {
     setSelectedProducts([{ product: '', quantity: '', price: 0 }]);
     setSaleType('normal');
     setPaymentMethod('cash');
+    setPaymentAmount('');
     setNote('');
     setSetReminder(false);
     setReminderDate('');
     setReminderNote('');
+    setMarkAsDelivered(false);
     setTotalAmount(0);
     setFormError('');
   };
@@ -138,6 +190,12 @@ const SaleForm = ({ clients = [], onSubmit }) => {
       return;
     }
 
+    if (normalizedPaymentAmount > totalAmount) {
+      setFormError('Le montant payé ne peut pas dépasser le total de la vente.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const payload = {
         client: selectedClient,
@@ -148,10 +206,11 @@ const SaleForm = ({ clients = [], onSubmit }) => {
         })),
         saleType,
         paymentMethod,
-        totalAmount,
+        initialPaymentAmount: normalizedPaymentAmount,
+        markAsDelivered: isFullyPaid && markAsDelivered,
         note,
-        reminderDate: setReminder ? reminderDate : undefined,
-        reminderNote: setReminder ? reminderNote : undefined,
+        reminderDate: setReminder && !isFullyPaid ? reminderDate : undefined,
+        reminderNote: setReminder && !isFullyPaid ? reminderNote : undefined,
       };
       await onSubmit(payload);
       resetForm();
@@ -257,7 +316,7 @@ const SaleForm = ({ clients = [], onSubmit }) => {
                         aria-describedby={errors[index] ? `product-error-${index}` : undefined}
                       >
                         <option value="">Sélectionner…</option>
-                        {getFilteredProducts(productSearchTerms[index]).map((p) => (
+                        {getFilteredProducts(productSearchTerms[index], item.product).map((p) => (
                           <option key={p._id} value={p._id}>
                             {p.name} ({p.stock})
                           </option>
@@ -401,16 +460,22 @@ const SaleForm = ({ clients = [], onSubmit }) => {
           <h4 id="sale-form-reminder" className={sectionTitleClass}>
             Rappel de paiement
           </h4>
+          {isFullyPaid && (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              La vente est soldée. Le rappel de paiement est désactivé.
+            </div>
+          )}
           <label className="flex items-center gap-3 cursor-pointer group">
             <input
               type="checkbox"
               checked={setReminder}
               onChange={(e) => setSetReminder(e.target.checked)}
+              disabled={isFullyPaid}
               className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Définir un rappel</span>
           </label>
-          {setReminder && (
+          {setReminder && !isFullyPaid && (
             <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 space-y-3">
               <input
                 type="datetime-local"
@@ -460,6 +525,63 @@ const SaleForm = ({ clients = [], onSubmit }) => {
               </label>
             ))}
           </div>
+
+          <div className="rounded-xl border border-gray-200/80 bg-gray-50/30 p-4 space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <label htmlFor="sale-payment-amount" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Montant payé maintenant
+                </label>
+                <input
+                  id="sale-payment-amount"
+                  type="number"
+                  min="0"
+                  max={totalAmount || undefined}
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className={`${inputBase} bg-white`}
+                  placeholder="0"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentAmount(totalAmount > 0 ? String(totalAmount) : '')}
+                className="min-h-[44px] px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium"
+              >
+                Paiement total
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                <p className="text-gray-500">Total vente</p>
+                <p className="font-semibold text-gray-900">{totalAmount.toLocaleString('fr-FR')} CFA</p>
+              </div>
+              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                <p className="text-gray-500">Payé</p>
+                <p className="font-semibold text-green-700">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
+              </div>
+              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                <p className="text-gray-500">Reste</p>
+                <p className="font-semibold text-amber-700">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
+              </div>
+            </div>
+
+            {isFullyPaid && (
+              <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={markAsDelivered}
+                  onChange={(e) => setMarkAsDelivered(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                <span className="text-sm font-medium text-green-800">
+                  Confirmer la livraison immédiatement
+                </span>
+              </label>
+            )}
+          </div>
         </section>
 
         {/* TOTAL */}
@@ -502,6 +624,15 @@ SaleForm.propTypes = {
       PropTypes.shape({
         _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
         name: PropTypes.string.isRequired,
+      })
+    ),
+    PropTypes.object,
+  ]),
+  products: PropTypes.oneOfType([
+    PropTypes.arrayOf(
+      PropTypes.shape({
+        _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+        name: PropTypes.string,
       })
     ),
     PropTypes.object,

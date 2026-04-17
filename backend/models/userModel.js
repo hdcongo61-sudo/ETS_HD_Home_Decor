@@ -80,6 +80,50 @@ const userSchema = mongoose.Schema(
       default: '',
       trim: true,
     },
+    salesGoals: {
+      monthlyRevenueTarget: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      monthlyProfitTarget: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      monthlyCollectionTarget: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+    adminPreferences: {
+      weeklyReportEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      weeklyReportFormat: {
+        type: String,
+        enum: ['excel', 'pdf'],
+        default: 'excel',
+      },
+      inactivityAlertsEnabled: {
+        type: Boolean,
+        default: true,
+      },
+      collectionAlertsEnabled: {
+        type: Boolean,
+        default: true,
+      },
+      weeklyReportLastSentAt: {
+        type: Date,
+        default: null,
+      },
+    },
     pushSubscriptions: [
       {
         endpoint: {

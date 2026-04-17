@@ -199,6 +199,11 @@ const saleSchema = mongoose.Schema(
   }
 );
 
+saleSchema.index({ status: 1, saleDate: -1 });
+saleSchema.index({ user: 1, status: 1, saleDate: -1 });
+saleSchema.index({ client: 1, saleDate: -1 });
+saleSchema.index({ 'payments.paymentDate': -1, status: 1 });
+
 // VIRTUALS EXISTANTS AMÉLIORÉS
 saleSchema.virtual('balance').get(function () {
   const totalPaid = this.payments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -351,24 +356,6 @@ saleSchema.pre('save', async function (next) {
   }
 
   next();
-});
-
-// MIDDLEWARE POST-SAVE POUR LA DÉDUCTION DU STOCK
-saleSchema.post('save', async function (doc) {
-  if (doc.isNew && !doc.stockDeducted) {
-    try {
-      for (const item of doc.products) {
-        await mongoose.model('Product').findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: -item.quantity } }
-        );
-      }
-      doc.stockDeducted = true;
-      await doc.save();
-    } catch (error) {
-      console.error('Erreur lors de la déduction du stock:', error);
-    }
-  }
 });
 
 // MÉTHODES STATIQUES POUR L'ANALYSE DES BÉNÉFICES

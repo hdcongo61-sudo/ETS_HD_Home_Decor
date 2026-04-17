@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useContext, useRef } from 'rea
 import { useNavigate, Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
@@ -122,10 +120,18 @@ const Clients = () => {
   useEffect(() => {
     const controller = new AbortController();
     fetchClients(controller.signal);
+    let statsTimeoutId = null;
     if (isAdmin) {
-      fetchStats();
+      statsTimeoutId = window.setTimeout(() => {
+        fetchStats();
+      }, 250);
     }
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (statsTimeoutId !== null) {
+        window.clearTimeout(statsTimeoutId);
+      }
+    };
   }, [fetchClients, fetchStats, isAdmin]);
 
   useEffect(() => {
@@ -371,6 +377,10 @@ const Clients = () => {
     }
 
     try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,

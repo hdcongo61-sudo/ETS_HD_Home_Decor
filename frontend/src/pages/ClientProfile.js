@@ -6,6 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar
 } from 'recharts';
+import { getPaymentStructureKey } from '../utils/saleUtils';
 
 const PROFILE_GENDER_LABELS = {
   male: 'Homme',
@@ -18,6 +19,12 @@ const ALERT_STYLES = {
   yellow: 'bg-yellow-50 border-yellow-200 text-yellow-800',
   gray: 'bg-gray-50 border-gray-200 text-gray-800',
   green: 'bg-green-50 border-green-200 text-green-800'
+};
+
+const PAYMENT_METHOD_LABELS = {
+  cash: 'Espèces',
+  MobileMoney: 'Mobile Money',
+  credit: 'Crédit'
 };
 
 const formatGenderLabel = (gender) => PROFILE_GENDER_LABELS[gender] || PROFILE_GENDER_LABELS.unknown;
@@ -36,6 +43,18 @@ const ClientProfile = () => {
     lastPurchaseDate: null,
     lastPaymentDate: null,
     averagePurchase: 0,
+    totalOutstanding: 0,
+    unpaidSalesCount: 0,
+    wholesaleCount: 0,
+    wholesaleAmount: 0,
+    singlePaymentCount: 0,
+    singlePaymentAmount: 0,
+    multiplePaymentCount: 0,
+    multiplePaymentAmount: 0,
+    averageItemsPerSale: 0,
+    averagePurchaseGapDays: null,
+    favoritePaymentMethod: null,
+    bestMonthLabel: null,
   });
 
   // --- Fetch client + sales ---
@@ -59,12 +78,106 @@ const ClientProfile = () => {
           ? new Date(Math.max(...s.map((x) => new Date(x.saleDate))))
           : null;
         const allPayments = s.flatMap((sale) => sale.payments || []);
+        const totalOutstanding = s.reduce((sum, sale) => {
+          const saleTotal = Number(sale.totalAmount) || 0;
+          const paid = (sale.payments || []).reduce((paymentSum, payment) => paymentSum + (Number(payment.amount) || 0), 0);
+          return sum + Math.max(saleTotal - paid, 0);
+        }, 0);
+        const unpaidSalesCount = s.filter((sale) => {
+          const saleTotal = Number(sale.totalAmount) || 0;
+          const paid = (sale.payments || []).reduce((paymentSum, payment) => paymentSum + (Number(payment.amount) || 0), 0);
+          return Math.max(saleTotal - paid, 0) > 0;
+        }).length;
         const lastPaymentDate = allPayments.length > 0
           ? new Date(Math.max(...allPayments.map((p) => new Date(p.paymentDate))))
           : null;
         const averagePurchase = purchaseCount ? totalSpent / purchaseCount : 0;
+        const wholesaleSales = s.filter((sale) => (sale.saleType || 'normal') === 'wholesale');
+        const wholesaleCount = wholesaleSales.length;
+        const wholesaleAmount = wholesaleSales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
 
-        setStats({ totalSpent, purchaseCount, lastPurchaseDate, lastPaymentDate, averagePurchase });
+        const paymentStructureStats = s.reduce((acc, sale) => {
+          const key = getPaymentStructureKey(sale);
+          const totalAmount = Number(sale.totalAmount) || 0;
+          acc[key].count += 1;
+          acc[key].amount += totalAmount;
+          return acc;
+        }, {
+          full_payment: { count: 0, amount: 0 },
+          multiple_payments: { count: 0, amount: 0 },
+          pending_payment: { count: 0, amount: 0 },
+        });
+
+        const paymentMethodStats = allPayments.reduce((acc, payment) => {
+          const method = payment?.method || 'cash';
+          if (!acc[method]) {
+            acc[method] = { count: 0, amount: 0 };
+          }
+          acc[method].count += 1;
+          acc[method].amount += Number(payment.amount) || 0;
+          return acc;
+        }, {});
+
+        const favoritePaymentMethodEntry = Object.entries(paymentMethodStats)
+          .sort((a, b) => b[1].amount - a[1].amount || b[1].count - a[1].count)[0];
+
+        const bestMonthMap = s.reduce((acc, sale) => {
+          const date = new Date(sale.saleDate);
+          const key = `${date.getFullYear()}-${date.getMonth()}`;
+          if (!acc[key]) {
+            acc[key] = {
+              label: date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+              total: 0,
+            };
+          }
+          acc[key].total += Number(sale.totalAmount) || 0;
+          return acc;
+        }, {});
+
+        const bestMonthEntry = Object.values(bestMonthMap).sort((a, b) => b.total - a.total)[0];
+
+        const totalItems = s.reduce((sum, sale) => (
+          sum + (sale.products || []).reduce((itemSum, item) => itemSum + (Number(item.quantity) || 0), 0)
+        ), 0);
+        const averageItemsPerSale = purchaseCount ? totalItems / purchaseCount : 0;
+
+        const sortedPurchaseDates = [...s]
+          .map((sale) => new Date(sale.saleDate))
+          .sort((a, b) => a - b);
+        const averagePurchaseGapDays = sortedPurchaseDates.length > 1
+          ? sortedPurchaseDates.slice(1).reduce((sum, currentDate, index) => {
+              const previousDate = sortedPurchaseDates[index];
+              const diffDays = (currentDate - previousDate) / (1000 * 60 * 60 * 24);
+              return sum + diffDays;
+            }, 0) / (sortedPurchaseDates.length - 1)
+          : null;
+
+        setStats({
+          totalSpent,
+          purchaseCount,
+          lastPurchaseDate,
+          lastPaymentDate,
+          averagePurchase,
+          totalOutstanding,
+          unpaidSalesCount,
+          wholesaleCount,
+          wholesaleAmount,
+          singlePaymentCount: paymentStructureStats.full_payment.count,
+          singlePaymentAmount: paymentStructureStats.full_payment.amount,
+          multiplePaymentCount: paymentStructureStats.multiple_payments.count,
+          multiplePaymentAmount: paymentStructureStats.multiple_payments.amount,
+          averageItemsPerSale,
+          averagePurchaseGapDays,
+          favoritePaymentMethod: favoritePaymentMethodEntry
+            ? {
+                key: favoritePaymentMethodEntry[0],
+                label: PAYMENT_METHOD_LABELS[favoritePaymentMethodEntry[0]] || favoritePaymentMethodEntry[0],
+                amount: favoritePaymentMethodEntry[1].amount,
+                count: favoritePaymentMethodEntry[1].count,
+              }
+            : null,
+          bestMonthLabel: bestMonthEntry?.label || null,
+        });
       } catch (err) {
         console.error('Erreur client:', err);
         setError("Impossible de charger les données du client.");
@@ -116,8 +229,60 @@ const ClientProfile = () => {
       });
     }
 
+    if (stats.totalOutstanding > 0) {
+      alerts.push({
+        type: 'warning',
+        title: 'Solde restant à suivre',
+        message: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA restent à encaisser sur ${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''}.`,
+        color: 'yellow'
+      });
+    }
+
     return alerts;
   }, [stats]);
+
+  const insightCards = useMemo(() => ([
+    {
+      label: 'Vente en gros',
+      value: `${stats.wholesaleAmount.toLocaleString('fr-FR')} CFA`,
+      helper: `${stats.wholesaleCount} vente${stats.wholesaleCount > 1 ? 's' : ''}`,
+      classes: 'bg-amber-50 border-amber-100 text-amber-700'
+    },
+    {
+      label: 'Paiement unique',
+      value: `${stats.singlePaymentAmount.toLocaleString('fr-FR')} CFA`,
+      helper: `${stats.singlePaymentCount} vente${stats.singlePaymentCount > 1 ? 's' : ''}`,
+      classes: 'bg-emerald-50 border-emerald-100 text-emerald-700'
+    },
+    {
+      label: 'Paiements multiples',
+      value: `${stats.multiplePaymentAmount.toLocaleString('fr-FR')} CFA`,
+      helper: `${stats.multiplePaymentCount} vente${stats.multiplePaymentCount > 1 ? 's' : ''}`,
+      classes: 'bg-indigo-50 border-indigo-100 text-indigo-700'
+    },
+    {
+      label: 'Solde restant',
+      value: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA`,
+      helper: `${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''} à suivre`,
+      classes: 'bg-rose-50 border-rose-100 text-rose-700'
+    },
+    {
+      label: 'Mode favori',
+      value: stats.favoritePaymentMethod?.label || '—',
+      helper: stats.favoritePaymentMethod
+        ? `${stats.favoritePaymentMethod.amount.toLocaleString('fr-FR')} CFA encaissés`
+        : 'Aucun paiement enregistré',
+      classes: 'bg-sky-50 border-sky-100 text-sky-700'
+    },
+    {
+      label: 'Rythme moyen',
+      value: stats.averagePurchaseGapDays !== null ? `${Math.round(stats.averagePurchaseGapDays)} j` : '—',
+      helper: stats.bestMonthLabel
+        ? `Mois fort : ${stats.bestMonthLabel}`
+        : 'Pas assez d’historique',
+      classes: 'bg-violet-50 border-violet-100 text-violet-700'
+    }
+  ]), [stats]);
 
   const handleCopy = async (number) => {
     try {
@@ -320,6 +485,51 @@ const ClientProfile = () => {
           </div>
         </div>
       </div>
+
+      {purchases.length > 0 && (
+        <div className="bg-white p-6 rounded-3xl shadow border space-y-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-gray-900">Statistiques commerciales</h2>
+            <p className="text-sm text-gray-500">
+              Lecture rapide du comportement d’achat et de paiement de ce client.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {insightCards.map((card) => (
+              <div key={card.label} className={`rounded-2xl border p-4 ${card.classes}`}>
+                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{card.label}</p>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{card.value}</p>
+                <p className="mt-1 text-sm opacity-90">{card.helper}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Panier moyen</p>
+              <p className="mt-2 text-xl font-bold text-gray-900">{stats.averagePurchase.toLocaleString('fr-FR')} CFA</p>
+              <p className="mt-1 text-sm text-gray-600">Moyenne par vente créée</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Articles par vente</p>
+              <p className="mt-2 text-xl font-bold text-gray-900">{stats.averageItemsPerSale.toFixed(1)}</p>
+              <p className="mt-1 text-sm text-gray-600">Volume moyen du panier</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Profil de paiement</p>
+              <p className="mt-2 text-xl font-bold text-gray-900">
+                {stats.multiplePaymentCount > stats.singlePaymentCount ? 'Échelonné' : 'Direct'}
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                {stats.multiplePaymentCount > stats.singlePaymentCount
+                  ? 'Ce client paie souvent en plusieurs fois.'
+                  : 'Ce client règle surtout en un seul paiement.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* GRAPHS + PURCHASE HISTORY */}
       {purchases.length > 0 && (

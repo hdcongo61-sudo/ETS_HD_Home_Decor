@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 
 const EditProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +27,7 @@ const EditProductForm = () => {
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
+  const returnTo = location.state?.returnTo || '/products';
 
   /* ===================================================== */
   /* 🔄 CHARGEMENT DU PRODUIT EXISTANT + LOOKUPS */
@@ -157,7 +159,7 @@ const EditProductForm = () => {
       };
 
       await api.put(`/products/${id}`, productData);
-      navigate('/products', { replace: true, state: { fromProductEdit: true } });
+      navigate(returnTo, { replace: true, state: { fromProductEdit: true } });
     } catch (error) {
       console.error('Error updating product:', error);
       setError(error.response?.data?.message || 'Erreur lors de la mise à jour du produit');
@@ -192,7 +194,7 @@ const EditProductForm = () => {
         <p className="text-red-600 font-medium">{error}</p>
         <button
           type="button"
-          onClick={() => navigate('/products')}
+          onClick={() => navigate(returnTo)}
           className="mt-4 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium"
         >
           Retour à la liste
@@ -213,7 +215,7 @@ const EditProductForm = () => {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => navigate('/products')}
+                onClick={() => navigate(returnTo)}
                 className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +352,7 @@ const EditProductForm = () => {
             <div className="pt-6 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
               <button
                 type="button"
-                onClick={() => navigate('/products')}
+                onClick={() => navigate(returnTo)}
                 className="min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 font-medium transition"
               >
                 Annuler

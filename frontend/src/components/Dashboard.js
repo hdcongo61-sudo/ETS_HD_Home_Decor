@@ -7,6 +7,7 @@ import React, {
   lazy,
   Suspense,
   useCallback,
+  useRef,
 } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -34,13 +35,16 @@ import {
   endOfMonth,
   startOfYear,
   endOfYear,
+  eachDayOfInterval,
+  eachWeekOfInterval,
+  max as maxDate,
+  min as minDate,
   subWeeks,
   subMonths,
   subYears,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { motion } from "framer-motion";
-import * as XLSX from "xlsx";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
 import {
@@ -62,13 +66,14 @@ import {
   Download // 🔹 export stats ventes
 } from "lucide-react";
 
-import RemindersPanel from "../components/RemindersPanel";
-import ExportModal from "../components/ExportModal";
-import BusinessAnalyticsDashboard from "../components/BusinessAnalyticsDashboard";
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
 
 const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
+const RemindersPanel = lazy(() => import("../components/RemindersPanel"));
+const ExportModal = lazy(() => import("../components/ExportModal"));
+const BusinessAnalyticsDashboard = lazy(() => import("../components/BusinessAnalyticsDashboard"));
+const loadXlsx = () => import("xlsx");
 
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
@@ -88,10 +93,67 @@ const Dashboard = () => {
   const [timeRange, setTimeRange] = useState("week"); // day|week|month|year
   const [compareMode, setCompareMode] = useState("none"); // none|prev-week|prev-month|prev-year
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState("");
   const activeYear = useMemo(() => {
     const parsed = parseInt(selectedYear, 10);
     return Number.isNaN(parsed) ? currentYear : parsed;
   }, [selectedYear, currentYear]);
+  const activeMonth = useMemo(() => {
+    const parsed = parseInt(selectedMonth, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [selectedMonth]);
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, monthIndex) => ({
+        value: String(monthIndex),
+        label: format(new Date(activeYear, monthIndex, 1), "MMMM", { locale: fr }),
+      })),
+    [activeYear]
+  );
+  const weekOptions = useMemo(() => {
+    const yearStart = startOfYear(new Date(activeYear, 0, 1));
+    const yearEnd = endOfYear(new Date(activeYear, 0, 1));
+    const periodStart =
+      activeMonth === null
+        ? yearStart
+        : startOfMonth(new Date(activeYear, activeMonth, 1));
+    const periodEnd =
+      activeMonth === null
+        ? yearEnd
+        : endOfMonth(new Date(activeYear, activeMonth, 1));
+    const weeks = eachWeekOfInterval(
+      {
+        start: startOfWeek(periodStart, { locale: fr }),
+        end: endOfWeek(periodEnd, { locale: fr }),
+      },
+      { locale: fr }
+    );
+
+    return weeks.map((weekStart, index) => {
+      const weekEnd = endOfWeek(weekStart, { locale: fr });
+      const boundedStart = maxDate([weekStart, periodStart]);
+      const boundedEnd = minDate([weekEnd, periodEnd]);
+
+      return {
+        value: format(weekStart, "yyyy-MM-dd"),
+        label: `Semaine ${index + 1} (${format(boundedStart, "dd MMM", {
+          locale: fr,
+        })} - ${format(boundedEnd, "dd MMM", { locale: fr })})`,
+      };
+    });
+  }, [activeMonth, activeYear]);
+
+  useEffect(() => {
+    if (timeRange !== "year") {
+      setSelectedMonth("");
+      setSelectedWeek("");
+    }
+  }, [timeRange]);
+
+  useEffect(() => {
+    setSelectedWeek("");
+  }, [selectedMonth, selectedYear]);
 
   // ===== DATA (courant) =====
   const [salesData, setSalesData] = useState([]);
@@ -107,11 +169,12 @@ const Dashboard = () => {
 
   // ===== Reminders / UI =====
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
+  const dashboardDataLoadedRef = useRef(false);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [overdueReminders, setOverdueReminders] = useState([]);
+  const [neverPaidReminders, setNeverPaidReminders] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [exportStartDate, setExportStartDate] = useState("");
-  const [exportEndDate, setExportEndDate] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -119,6 +182,7 @@ const Dashboard = () => {
   const [salesStatsRange, setSalesStatsRange] = useState("30days"); // 7days|30days|90days|all
   const [salesStatsData, setSalesStatsData] = useState(null);
   const [bestDaysRanges, setBestDaysRanges] = useState({});
+  const [nonCriticalReady, setNonCriticalReady] = useState(false);
   // 🔹 Switch lissage (persisté)
   const [smoothTrend, setSmoothTrend] = useState(
     localStorage.getItem("smoothTrend") === "true"
@@ -127,7 +191,76 @@ const Dashboard = () => {
     localStorage.setItem("smoothTrend", String(smoothTrend));
   }, [smoothTrend]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setNonCriticalReady(true);
+      return undefined;
+    }
+
+    let timeoutId = null;
+    let idleId = null;
+    let cancelled = false;
+
+    const markReady = () => {
+      if (!cancelled) setNonCriticalReady(true);
+    };
+
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(markReady, { timeout: 500 });
+    } else {
+      timeoutId = window.setTimeout(markReady, 250);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
   // ===== Helpers période =====
+  const getYearScopedRange = useCallback(() => {
+    const yearBase = new Date(activeYear, 0, 1);
+    const yearStart = startOfYear(yearBase);
+    const yearEnd = endOfYear(yearBase);
+
+    if (selectedWeek) {
+      const weekStart = startOfWeek(new Date(`${selectedWeek}T00:00:00`), {
+        locale: fr,
+      });
+      const weekEnd = endOfWeek(weekStart, { locale: fr });
+      const bounds =
+        activeMonth === null
+          ? {
+              start: yearStart,
+              end: yearEnd,
+            }
+          : {
+              start: startOfMonth(new Date(activeYear, activeMonth, 1)),
+              end: endOfMonth(new Date(activeYear, activeMonth, 1)),
+            };
+
+      return {
+        start: maxDate([weekStart, bounds.start]),
+        end: minDate([weekEnd, bounds.end]),
+      };
+    }
+
+    if (activeMonth !== null) {
+      const monthBase = new Date(activeYear, activeMonth, 1);
+      return {
+        start: startOfMonth(monthBase),
+        end: endOfMonth(monthBase),
+      };
+    }
+
+    return { start: yearStart, end: yearEnd };
+  }, [activeMonth, activeYear, selectedWeek]);
+
   const getDateRange = (range) => {
     const now = new Date();
     switch (range) {
@@ -138,10 +271,8 @@ const Dashboard = () => {
           start: startOfWeek(now, { locale: fr }),
           end: endOfWeek(now, { locale: fr }),
         };
-      case "year": {
-        const yearBase = new Date(activeYear, 0, 1);
-        return { start: startOfYear(yearBase), end: endOfYear(yearBase) };
-      }
+      case "year":
+        return getYearScopedRange();
       default:
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
@@ -170,11 +301,11 @@ const Dashboard = () => {
       (map[d] ||= { date: d, sales: 0, paid: 0, expenses: 0 });
 
     sales.forEach((s) => {
-      const d = format(new Date(s.createdAt), "yyyy-MM-dd");
+      const d = format(new Date(s.saleDate || s.createdAt), "yyyy-MM-dd");
       ensure(d).sales += s.totalAmount || 0;
     });
     expenses.forEach((e) => {
-      const d = format(new Date(e.createdAt), "yyyy-MM-dd");
+      const d = format(new Date(e.date || e.createdAt), "yyyy-MM-dd");
       ensure(d).expenses += e.amount || 0;
     });
     payments.forEach((p) => {
@@ -189,25 +320,28 @@ const Dashboard = () => {
 
   // ===== FETCH: période courante =====
   const fetchData = useCallback(async () => {
+    const isInitialLoad = !dashboardDataLoadedRef.current;
     try {
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      } else {
+        setChartLoading(true);
+      }
       const { start, end } = getDateRange(timeRange);
-      const [salesRes, expensesRes, paymentsRes, deliveryRes] = await Promise.all([
+      const [salesRes, expensesRes, paymentsRes] = await Promise.all([
         api.get(
-          `/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+          `/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
         api.get(
-          `/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+          `/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
         api.get(
-          `/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+          `/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
-        api.get(`/sales/stats/delivery`),
       ]);
       setSalesData(salesRes.data || []);
       setExpensesData(expensesRes.data || []);
       setPaymentsData(paymentsRes.data || []);
-      setDeliveryStats(deliveryRes.data || null);
       setCombinedData(
         processCombinedData(
           salesRes.data || [],
@@ -218,10 +352,15 @@ const Dashboard = () => {
     } catch (e) {
       console.error("Erreur de chargement :", e);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        dashboardDataLoadedRef.current = true;
+        setLoading(false);
+      } else {
+        setChartLoading(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange is stable
-  }, [timeRange, activeYear]);
+  }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
 
   // ===== FETCH: période comparée (manuelle) =====
   const fetchPrevData = useCallback(async () => {
@@ -230,6 +369,9 @@ const Dashboard = () => {
       return;
     }
     try {
+      if (dashboardDataLoadedRef.current) {
+        setChartLoading(true);
+      }
       const prev = getPrevPeriod(timeRange, compareMode);
       if (!prev) {
         setPrevCombinedData([]);
@@ -237,13 +379,13 @@ const Dashboard = () => {
       }
       const [salesRes, expensesRes, paymentsRes] = await Promise.all([
         api.get(
-          `/sales/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}`
+          `/sales/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
         api.get(
-          `/expenses/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}`
+          `/expenses/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
         api.get(
-          `/sales/payments/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}`
+          `/sales/payments/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
       ]);
       const prevCombined = processCombinedData(
@@ -255,9 +397,22 @@ const Dashboard = () => {
     } catch (e) {
       console.error("Erreur chargement période comparée :", e);
       setPrevCombinedData([]);
+    } finally {
+      if (dashboardDataLoadedRef.current) {
+        setChartLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- getPrevPeriod is stable
-  }, [compareMode, timeRange, activeYear]);
+  }, [compareMode, timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
+
+  const fetchDeliveryStats = useCallback(async () => {
+    try {
+      const response = await api.get("/sales/stats/delivery");
+      setDeliveryStats(response.data || null);
+    } catch (err) {
+      console.error("Erreur stats livraison:", err);
+    }
+  }, []);
 
   // ===== Reminders =====
   const fetchReminders = async () => {
@@ -266,6 +421,7 @@ const Dashboard = () => {
       const response = await api.get("/sales/reminders/upcoming");
       setUpcomingReminders(response.data.upcoming || []);
       setOverdueReminders(response.data.overdue || []);
+      setNeverPaidReminders(response.data.neverPaid || []);
     } catch (err) {
       console.error("Erreur de rappels:", err);
     }
@@ -273,9 +429,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchData();
-    if (isAdmin) fetchReminders();
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchDeliveryStats();
+  }, [fetchDeliveryStats]);
+
+  useEffect(() => {
+    if (isAdmin && nonCriticalReady) fetchReminders();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders on mount only
-  }, [timeRange, isAdmin, fetchData]);
+  }, [isAdmin, nonCriticalReady]);
 
   useEffect(() => {
     fetchPrevData();
@@ -337,9 +500,9 @@ const Dashboard = () => {
     if (!prevWeek) return { s: 0, p: 0, e: 0, pr: 0 };
     const prevSales = salesData
       .filter(
-        (s) =>
-          new Date(s.createdAt) >= prevWeek.start &&
-          new Date(s.createdAt) <= prevWeek.end
+          (s) =>
+          new Date(s.saleDate || s.createdAt) >= prevWeek.start &&
+          new Date(s.saleDate || s.createdAt) <= prevWeek.end
       )
       .reduce((a, b) => a + (b.totalAmount || 0), 0);
     const prevPaid = paymentsData
@@ -350,9 +513,9 @@ const Dashboard = () => {
       .reduce((a, b) => a + (b.amount || 0), 0);
     const prevExp = expensesData
       .filter(
-        (e) =>
-          new Date(e.createdAt) >= prevWeek.start &&
-          new Date(e.createdAt) <= prevWeek.end
+          (e) =>
+          new Date(e.date || e.createdAt) >= prevWeek.start &&
+          new Date(e.date || e.createdAt) <= prevWeek.end
       )
       .reduce((a, b) => a + (b.amount || 0), 0);
     return { s: prevSales, p: prevPaid, e: prevExp, pr: prevPaid - prevExp };
@@ -365,6 +528,64 @@ const Dashboard = () => {
     return `${sym}${Math.abs(d).toFixed(1)}%`;
   };
 
+  const exportDescriptor = useMemo(() => {
+    const now = new Date();
+    const { start, end } =
+      timeRange === "day"
+        ? { start: startOfDay(now), end: endOfDay(now) }
+        : timeRange === "week"
+        ? {
+            start: startOfWeek(now, { locale: fr }),
+            end: endOfWeek(now, { locale: fr }),
+          }
+        : timeRange === "year"
+        ? getYearScopedRange()
+        : { start: startOfMonth(now), end: endOfMonth(now) };
+    const startValue = format(start, "yyyy-MM-dd");
+    const endValue = format(end, "yyyy-MM-dd");
+
+    if (timeRange === "year") {
+      if (selectedWeek) {
+        return {
+          label: `Semaine du ${format(start, "dd MMM yyyy", { locale: fr })} au ${format(end, "dd MMM yyyy", { locale: fr })}`,
+          startValue,
+          endValue,
+          fileSuffix: `${startValue}_to_${endValue}`,
+        };
+      }
+
+      if (activeMonth !== null) {
+        const monthLabel = format(new Date(activeYear, activeMonth, 1), "MMMM-yyyy", { locale: fr });
+        return {
+          label: `Mois: ${format(new Date(activeYear, activeMonth, 1), "MMMM yyyy", { locale: fr })}`,
+          startValue,
+          endValue,
+          fileSuffix: monthLabel.toLowerCase().replace(/\s+/g, "-"),
+        };
+      }
+
+      return {
+        label: `Année ${activeYear}`,
+        startValue,
+        endValue,
+        fileSuffix: String(activeYear),
+      };
+    }
+
+    const labels = {
+      day: "Aujourd'hui",
+      week: "Semaine en cours",
+      month: "Mois en cours",
+    };
+
+    return {
+      label: labels[timeRange] || "Période filtrée",
+      startValue,
+      endValue,
+      fileSuffix: `${startValue}_to_${endValue}`,
+    };
+  }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
+
   const hasCompare = compareMode !== "none";
   const trendBase = hasCompare ? prevPeriodTotals : { sales: prevWeekStats.s, paid: prevWeekStats.p, expenses: prevWeekStats.e, profit: prevWeekStats.pr };
   const salesTrend = pct(totalSales, trendBase.sales);
@@ -372,7 +593,16 @@ const Dashboard = () => {
   const profitTrend = pct(profit, trendBase.profit);
 
   // ===== EXPORT principal (tableau combiné) =====
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    const XLSX = await loadXlsx();
+    const summaryRows = [
+      {
+        Filtre: exportDescriptor.label,
+        "Date début": exportDescriptor.startValue,
+        "Date fin": exportDescriptor.endValue,
+        "Lignes exportées": combinedData.length,
+      },
+    ];
     const rows = combinedData.map((d) => ({
       Date: format(new Date(d.date), "dd/MM/yyyy"),
       Ventes: d.sales,
@@ -381,9 +611,11 @@ const Dashboard = () => {
       Profit: d.paid - d.expenses,
     }));
     const wb = XLSX.utils.book_new();
+    const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
     const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, summarySheet, "Filtre");
     XLSX.utils.book_append_sheet(wb, ws, "Données");
-    XLSX.writeFile(wb, `dashboard-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    XLSX.writeFile(wb, `dashboard-${exportDescriptor.fileSuffix}.xlsx`);
     setShowExportMenu(false);
   };
 
@@ -399,6 +631,7 @@ const Dashboard = () => {
 
   // ===== 🔹 FETCH Statistiques des ventes (section condensée) =====
   useEffect(() => {
+    if (!isAdmin || !nonCriticalReady) return;
     const run = async () => {
       try {
         const res = await api.get(`/sales/dashboard-sale?range=${salesStatsRange}`);
@@ -409,9 +642,10 @@ const Dashboard = () => {
       }
     };
     run();
-  }, [salesStatsRange]);
+  }, [isAdmin, nonCriticalReady, salesStatsRange]);
 
   useEffect(() => {
+    if (!isAdmin || !nonCriticalReady) return;
     const ranges = [
       { key: "7days", label: "7 jours" },
       { key: "30days", label: "30 jours" },
@@ -438,7 +672,7 @@ const Dashboard = () => {
     };
 
     fetchBestForRange();
-  }, []);
+  }, [isAdmin, nonCriticalReady]);
 
   // ===== 🔹 Lissage de la tendance (moyenne mobile 3 points) =====
   const movingAverage = (arr, windowSize = 3) => {
@@ -473,6 +707,11 @@ const Dashboard = () => {
   const topProducts = salesStatsData?.topProducts || [];
   const saleTypeSummary = salesStatsData?.saleTypeSummary || {};
   const paymentStructureSummary = salesStatsData?.paymentStructureSummary || {};
+  const neverPaidSales = salesStatsData?.neverPaidSales || {
+    count: 0,
+    totalAmount: 0,
+    sales: [],
+  };
   const highlightedSalesCards = [
     {
       key: "wholesale",
@@ -527,9 +766,106 @@ const Dashboard = () => {
     }).format(parsed);
   };
 
+  const encaissementHighlights = useMemo(() => {
+    if (timeRange !== "year") return null;
+
+    const sumByKey = new Map();
+
+    paymentsData.forEach((payment) => {
+      const rawDate = payment?.paymentDate || payment?.createdAt;
+      if (!rawDate) return;
+      const paymentDate = new Date(rawDate);
+      if (Number.isNaN(paymentDate.getTime())) return;
+
+      let key = "";
+      if (selectedWeek) {
+        key = format(paymentDate, "yyyy-MM-dd");
+      } else if (activeMonth !== null) {
+        key = format(startOfWeek(paymentDate, { locale: fr }), "yyyy-MM-dd");
+      } else {
+        key = String(paymentDate.getMonth());
+      }
+
+      sumByKey.set(key, (sumByKey.get(key) || 0) + (Number(payment.amount) || 0));
+    });
+
+    let buckets = [];
+    let bestLabel = "Mois avec le meilleur encaissement";
+    let lowestLabel = "Mois avec le plus faible encaissement";
+    let helperText = `Année ${activeYear}`;
+
+    if (selectedWeek) {
+      const { start, end } = getYearScopedRange();
+      buckets = eachDayOfInterval({ start, end }).map((day) => {
+        const key = format(day, "yyyy-MM-dd");
+        return {
+          key,
+          label: format(day, "EEEE d MMMM", { locale: fr }),
+          total: Number(sumByKey.get(key) || 0),
+        };
+      });
+      bestLabel = "Jour avec le meilleur encaissement";
+      lowestLabel = "Jour avec le plus faible encaissement";
+      helperText = "Semaine sélectionnée";
+    } else if (activeMonth !== null) {
+      const monthStart = startOfMonth(new Date(activeYear, activeMonth, 1));
+      const monthEnd = endOfMonth(new Date(activeYear, activeMonth, 1));
+      buckets = weekOptions.map((week, index) => {
+        const weekStart = new Date(`${week.value}T00:00:00`);
+        const boundedStart = maxDate([weekStart, monthStart]);
+        const boundedEnd = minDate([endOfWeek(weekStart, { locale: fr }), monthEnd]);
+        const key = format(weekStart, "yyyy-MM-dd");
+
+        return {
+          key,
+          label: `Semaine ${index + 1} (${format(boundedStart, "dd MMM", {
+            locale: fr,
+          })} - ${format(boundedEnd, "dd MMM", { locale: fr })})`,
+          total: Number(sumByKey.get(key) || 0),
+        };
+      });
+      bestLabel = "Semaine avec le meilleur encaissement";
+      lowestLabel = "Semaine avec le plus faible encaissement";
+      helperText = format(new Date(activeYear, activeMonth, 1), "MMMM yyyy", { locale: fr });
+    } else {
+      buckets = monthOptions.map((month) => ({
+        key: month.value,
+        label: format(new Date(activeYear, Number(month.value), 1), "MMMM yyyy", { locale: fr }),
+        total: Number(sumByKey.get(month.value) || 0),
+      }));
+    }
+
+    if (!buckets.length) return null;
+
+    const best = buckets.reduce((winner, bucket) =>
+      bucket.total > winner.total ? bucket : winner
+    , buckets[0]);
+    const lowest = buckets.reduce((loser, bucket) =>
+      bucket.total < loser.total ? bucket : loser
+    , buckets[0]);
+
+    return {
+      best,
+      lowest,
+      bestLabel,
+      lowestLabel,
+      helperText,
+    };
+  }, [
+    timeRange,
+    paymentsData,
+    selectedWeek,
+    activeMonth,
+    activeYear,
+    monthOptions,
+    weekOptions,
+    getYearScopedRange,
+  ]);
+
   // ===== 🔹 Export des Statistiques de ventes (option B : TOUTES données) =====
   const exportSalesStatsAll = async () => {
     try {
+      const XLSX = await loadXlsx();
       const res = await api.get(`/sales/dashboard-sale?range=all`);
       const d = res.data || {};
 
@@ -544,6 +880,8 @@ const Dashboard = () => {
           "Nombre de ventes": d.salesCount || 0,
           "Paiements (total)": d.paymentsSummary?.paymentsTotal || 0,
           "Paiements (nombre)": d.paymentsSummary?.paymentsCount || 0,
+          "Ventes sans paiement": d.neverPaidSales?.count || 0,
+          "Montant sans paiement (CFA)": Math.round(d.neverPaidSales?.totalAmount || 0),
         },
       ];
       XLSX.utils.book_append_sheet(
@@ -623,6 +961,22 @@ const Dashboard = () => {
         wb,
         XLSX.utils.json_to_sheet(paymentStructureRows),
         "StructuresPaiement"
+      );
+
+      const neverPaidRows = (d.neverPaidSales?.sales || []).map((sale) => ({
+        Vente: sale?._id || "",
+        Client: sale?.client?.name || "Client non spécifié",
+        Date: sale?.saleDate
+          ? new Date(sale.saleDate).toLocaleDateString("fr-FR")
+          : "",
+        "Type de vente": sale?.saleType === "wholesale" ? "Vente en gros" : "Vente normale",
+        Statut: sale?.status || "",
+        "Montant total (CFA)": Number(sale?.totalAmount || 0),
+      }));
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(neverPaidRows),
+        "SansPaiement"
       );
 
       // Top produits
@@ -726,22 +1080,54 @@ const Dashboard = () => {
             </select>
 
             {timeRange === "year" && (
-              <input
-                type="number"
-                inputMode="numeric"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                onBlur={() => {
-                  if (Number.isNaN(parseInt(selectedYear, 10))) {
-                    setSelectedYear(String(currentYear));
-                  }
-                }}
-                className="min-h-[44px] w-24 sm:w-28 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm"
-                aria-label="Année"
-                placeholder="Année"
-                min="1970"
-                max={currentYear}
-              />
+              <>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  onBlur={() => {
+                    if (Number.isNaN(parseInt(selectedYear, 10))) {
+                      setSelectedYear(String(currentYear));
+                    }
+                  }}
+                  className="min-h-[44px] w-24 sm:w-28 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm"
+                  aria-label="Année"
+                  placeholder="Année"
+                  min="1970"
+                  max={currentYear}
+                />
+
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="min-h-[44px] pl-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
+                  aria-label="Mois de l'année"
+                >
+                  <option value="">Toute l'année</option>
+                  {monthOptions.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="min-h-[44px] pl-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
+                  aria-label="Semaine de l'année"
+                >
+                  <option value="">
+                    {selectedMonth ? "Tout le mois" : "Toutes les semaines"}
+                  </option>
+                  {weekOptions.map((week) => (
+                    <option key={week.value} value={week.value}>
+                      {week.label}
+                    </option>
+                  ))}
+                </select>
+              </>
             )}
 
             <select
@@ -770,89 +1156,102 @@ const Dashboard = () => {
         </header>
 
         {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
-        <motion.section
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          aria-label="Indicateurs clés"
-        >
-          {[
-            {
-              title: "Ventes totales",
-              value: totalSales,
-              prevValue: hasCompare ? prevPeriodTotals.sales : null,
-              icon: <DollarSign size={22} />,
-              trend: salesTrend,
-              style: CARD_STYLES[0],
-            },
-            {
-              title: "Encaissements",
-              value: totalPaid,
-              prevValue: hasCompare ? prevPeriodTotals.paid : null,
-              icon: <Coins size={22} />,
-              trend: pct(totalPaid, totalSales),
-              style: CARD_STYLES[1],
-            },
-            {
-              title: "Dépenses",
-              value: totalExpenses,
-              prevValue: hasCompare ? prevPeriodTotals.expenses : null,
-              icon: <TrendingDown size={22} />,
-              trend: expenseTrend,
-              style: CARD_STYLES[2],
-            },
-            {
-              title: "Profit net",
-              value: profit,
-              prevValue: hasCompare ? prevPeriodTotals.profit : null,
-              icon: <PieIcon size={22} />,
-              trend: profitTrend,
-              style: CARD_STYLES[3],
-            },
-          ].map((stat, i) => (
-            <motion.article
-              key={i}
-              whileHover={{ scale: 1.01 }}
-              className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className={`p-2.5 sm:p-3 ${stat.style.iconWrap} rounded-xl shrink-0`}>
-                  <span className={stat.style.text}>{stat.icon}</span>
-                </div>
-                <span
-                  className={`text-xs font-medium shrink-0 ${
-                    String(stat.trend).startsWith("+")
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
-                  }`}
-                >
-                  {String(stat.trend).startsWith("+") ? "↑" : "↓"} {stat.trend}
-                </span>
+        <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
+          {chartLoading && (
+            <div className="absolute inset-0 z-20 flex items-start justify-center rounded-3xl bg-white/55 pt-5 backdrop-blur-[2px] dark:bg-gray-950/35">
+              <div className="rounded-full border border-indigo-100 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-lg dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-200">
+                Mise à jour du graphique…
               </div>
-              <h2 className="text-sm font-medium mt-3 text-gray-700 dark:text-gray-300">
-                {stat.title}
-              </h2>
-              <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
-                {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
-              </p>
-              {stat.prevValue != null && (
-                <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                  Vs période préc. : <span className="font-medium">{Number(stat.prevValue).toLocaleString("fr-FR")} CFA</span>
-                </p>
-              )}
-            </motion.article>
-          ))}
-        </motion.section>
+            </div>
+          )}
 
-        {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
-        <section
-          className="relative overflow-hidden bg-white dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700"
-          aria-label="Analyse financière"
-        >
-          <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-indigo-600 text-white font-medium">
-            Comparaison {compareMode !== "none" ? "activée" : "désactivée"}
-          </div>
+          <motion.section
+            className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 transition-opacity ${
+              chartLoading ? "opacity-60" : "opacity-100"
+            }`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            aria-label="Indicateurs clés"
+          >
+            {[
+              {
+                title: "Ventes totales",
+                value: totalSales,
+                prevValue: hasCompare ? prevPeriodTotals.sales : null,
+                icon: <DollarSign size={22} />,
+                trend: salesTrend,
+                style: CARD_STYLES[0],
+              },
+              {
+                title: "Encaissements",
+                value: totalPaid,
+                prevValue: hasCompare ? prevPeriodTotals.paid : null,
+                icon: <Coins size={22} />,
+                trend: pct(totalPaid, totalSales),
+                style: CARD_STYLES[1],
+              },
+              {
+                title: "Dépenses",
+                value: totalExpenses,
+                prevValue: hasCompare ? prevPeriodTotals.expenses : null,
+                icon: <TrendingDown size={22} />,
+                trend: expenseTrend,
+                style: CARD_STYLES[2],
+              },
+              {
+                title: "Profit net",
+                value: profit,
+                prevValue: hasCompare ? prevPeriodTotals.profit : null,
+                icon: <PieIcon size={22} />,
+                trend: profitTrend,
+                style: CARD_STYLES[3],
+              },
+            ].map((stat, i) => (
+              <motion.article
+                key={i}
+                whileHover={{ scale: 1.01 }}
+                className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`p-2.5 sm:p-3 ${stat.style.iconWrap} rounded-xl shrink-0`}>
+                    <span className={stat.style.text}>{stat.icon}</span>
+                  </div>
+                  <span
+                    className={`text-xs font-medium shrink-0 ${
+                      String(stat.trend).startsWith("+")
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {String(stat.trend).startsWith("+") ? "↑" : "↓"} {stat.trend}
+                  </span>
+                </div>
+                <h2 className="text-sm font-medium mt-3 text-gray-700 dark:text-gray-300">
+                  {stat.title}
+                </h2>
+                <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
+                  {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
+                </p>
+                {stat.prevValue != null && (
+                  <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
+                    Vs période préc. : <span className="font-medium">{Number(stat.prevValue).toLocaleString("fr-FR")} CFA</span>
+                  </p>
+                )}
+              </motion.article>
+            ))}
+          </motion.section>
+
+          {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
+          <section
+            className={`relative overflow-hidden bg-white dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 transition-opacity ${
+              chartLoading ? "opacity-60" : "opacity-100"
+            }`}
+            aria-label="Analyse financière"
+          >
+            <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-indigo-600 text-white font-medium">
+              Comparaison {compareMode !== "none" ? "activée" : "désactivée"}
+            </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 pr-24 sm:pr-28">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -961,9 +1360,44 @@ const Dashboard = () => {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </section>
+          </section>
 
-        {isAdmin && (
+          {encaissementHighlights && (
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extrêmes des encaissements">
+              <article className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-gray-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  {encaissementHighlights.bestLabel}
+                </p>
+                <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {encaissementHighlights.best.label}
+                </p>
+                <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                  {Math.round(encaissementHighlights.best.total).toLocaleString("fr-FR")} CFA
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {encaissementHighlights.helperText}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm dark:border-rose-900/60 dark:from-rose-950/30 dark:to-gray-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                  {encaissementHighlights.lowestLabel}
+                </p>
+                <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {encaissementHighlights.lowest.label}
+                </p>
+                <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-300 tabular-nums">
+                  {Math.round(encaissementHighlights.lowest.total).toLocaleString("fr-FR")} CFA
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {encaissementHighlights.helperText}
+                </p>
+              </article>
+            </section>
+          )}
+        </div>
+
+        {isAdmin && nonCriticalReady && (
         <AccordionSection title="📊 Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
           className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border-0"
@@ -1208,6 +1642,73 @@ const Dashboard = () => {
             </div>
           )}
 
+          {salesStatsData && (
+            <div className="mb-5 rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 p-4 sm:p-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                    Ventes sans aucun paiement
+                  </h3>
+                  <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-1">
+                    Ventes créées sur la période sélectionnée sans paiement enregistré.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                    {neverPaidSales.count} vente{neverPaidSales.count > 1 ? "s" : ""}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                    {Math.round(neverPaidSales.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                  </span>
+                </div>
+              </div>
+
+              {neverPaidSales.sales?.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {neverPaidSales.sales.map((sale) => (
+                    <Link
+                      key={sale._id}
+                      to={`/sales/${sale._id}`}
+                      className="rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:shadow-md hover:border-rose-300 dark:hover:border-rose-700 transition"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {sale.client?.name || "Client non spécifié"}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Vente #{sale._id?.slice(-6)} • {sale.saleDate
+                              ? new Date(sale.saleDate).toLocaleDateString("fr-FR")
+                              : "Date indisponible"}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          sale.saleType === "wholesale"
+                            ? "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300"
+                            : "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300"
+                        }`}>
+                          {sale.saleType === "wholesale" ? "Vente en gros" : "Vente normale"}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-rose-700 dark:text-rose-300">
+                          {Math.round(sale.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                        </span>
+                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                          Ouvrir la vente
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-rose-200 dark:border-rose-900/40 bg-white/70 dark:bg-gray-900/40 px-4 py-5 text-sm text-gray-600 dark:text-gray-300">
+                  Aucune vente sans paiement sur cette période.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 🔹 Sous-bloc "Encaissements" (paymentsTotal / paymentsCount) */}
           {salesStatsData?.paymentsSummary && (
             <div className="mt-2">
@@ -1315,17 +1816,19 @@ const Dashboard = () => {
         </AccordionSection>
         )}
 
-        {isAdmin && (
-          <BusinessAnalyticsDashboard
-            sales={salesData}
-            expenses={expensesData}
-            payments={paymentsData}
-            defaultPeriod="month"
-          />
+        {isAdmin && nonCriticalReady && (
+          <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
+            <BusinessAnalyticsDashboard
+              sales={salesData}
+              expenses={expensesData}
+              payments={paymentsData}
+              defaultPeriod="month"
+            />
+          </Suspense>
         )}
 
         {/* ===== Admin only ===== */}
-        {isAdmin && (
+        {isAdmin && nonCriticalReady && (
         <>
             {Object.values(bestDaysRanges).length > 0 && (
               <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
@@ -1358,23 +1861,27 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-            <RemindersPanel
-              overdue={overdueReminders}
-              upcoming={upcomingReminders}
-            />
+            <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
+              <RemindersPanel
+                overdue={overdueReminders}
+                upcoming={upcomingReminders}
+                neverPaid={neverPaidReminders}
+              />
+            </Suspense>
           </>
         )}
 
         {/* ===== Export (global) ===== */}
-        <ExportModal
-          show={showExportMenu}
-          onClose={() => setShowExportMenu(false)}
-          onExport={exportToExcel}
-          startDate={exportStartDate}
-          endDate={exportEndDate}
-          setStartDate={setExportStartDate}
-          setEndDate={setExportEndDate}
-        />
+        <Suspense fallback={null}>
+          <ExportModal
+            show={showExportMenu}
+            onClose={() => setShowExportMenu(false)}
+            onExport={exportToExcel}
+            filterLabel={exportDescriptor.label}
+            startDate={exportDescriptor.startValue}
+            endDate={exportDescriptor.endValue}
+          />
+        </Suspense>
 
         {/* ===== Modal Détails jour ===== */}
         <Suspense fallback={<div className="flex justify-center p-6"><AppLoader fullScreen={false} /></div>}>
@@ -1383,12 +1890,12 @@ const Dashboard = () => {
               date={selectedDate}
               sales={salesData.filter(
                 (s) =>
-                  format(new Date(s.createdAt), "yyyy-MM-dd") ===
+                  format(new Date(s.saleDate || s.createdAt), "yyyy-MM-dd") ===
                   format(selectedDate, "yyyy-MM-dd")
               )}
               expenses={expensesData.filter(
                 (e) =>
-                  format(new Date(e.createdAt), "yyyy-MM-dd") ===
+                  format(new Date(e.date || e.createdAt), "yyyy-MM-dd") ===
                   format(selectedDate, "yyyy-MM-dd")
               )}
               payments={paymentsData.filter(

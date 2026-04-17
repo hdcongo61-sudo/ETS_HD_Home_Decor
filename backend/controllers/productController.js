@@ -15,14 +15,7 @@ const normaliseId = (value) => {
 // @access  Private
 const getProducts = async (req, res) => {
   try {
-    let query = Product.find({}).sort({ stock: -1 });
-
-    if (req.user && req.user.isAdmin) {
-      query = query
-        .select('+createdBy +updatedBy')
-        .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email');
-    }
+    const query = Product.find({}).sort({ stock: -1 });
 
     const products = await query.lean();
     res.json(products);

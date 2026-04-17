@@ -30,7 +30,6 @@ const sanitizeUser = (userDoc) => {
   const {
     password,
     loginAttempts,
-    lockUntil,
     __v,
     ...rest
   } = user;
@@ -59,6 +58,7 @@ const sanitizeUser = (userDoc) => {
     _id: normalizedId,
     phone: rest.phone || '',
     lastLogin: rest.lastLogin || null,
+    lockUntil: rest.lockUntil || null,
     lastModifiedBy: normalizeRef(rest.lastModifiedBy),
     lastModifiedAt: rest.lastModifiedAt || null,
     passwordModifiedBy: normalizeRef(rest.passwordModifiedBy),
@@ -66,6 +66,26 @@ const sanitizeUser = (userDoc) => {
     accessControlEnabled: Boolean(rest.accessControlEnabled),
     accessStart: rest.accessStart || null,
     accessEnd: rest.accessEnd || null,
+    salesGoals: {
+      monthlyRevenueTarget: Number(rest.salesGoals?.monthlyRevenueTarget) || 0,
+      monthlyProfitTarget: Number(rest.salesGoals?.monthlyProfitTarget) || 0,
+      monthlyCollectionTarget: Number(rest.salesGoals?.monthlyCollectionTarget) || 0,
+      updatedAt: rest.salesGoals?.updatedAt || null,
+    },
+    adminPreferences: {
+      weeklyReportEnabled: Boolean(rest.adminPreferences?.weeklyReportEnabled),
+      weeklyReportFormat:
+        rest.adminPreferences?.weeklyReportFormat === 'pdf' ? 'pdf' : 'excel',
+      inactivityAlertsEnabled:
+        typeof rest.adminPreferences?.inactivityAlertsEnabled === 'boolean'
+          ? rest.adminPreferences.inactivityAlertsEnabled
+          : true,
+      collectionAlertsEnabled:
+        typeof rest.adminPreferences?.collectionAlertsEnabled === 'boolean'
+          ? rest.adminPreferences.collectionAlertsEnabled
+          : true,
+      weeklyReportLastSentAt: rest.adminPreferences?.weeklyReportLastSentAt || null,
+    },
   };
 };
 
@@ -75,12 +95,20 @@ const parseDateOrNull = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+const parsePositiveNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    return fallback;
+  }
+  return parsed;
+};
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({})
-    .select('-password -loginAttempts -lockUntil')
+    .select('-password -loginAttempts')
     .populate('lastModifiedBy', 'name email')
     .populate('passwordModifiedBy', 'name email')
     .lean();
@@ -367,34 +395,65 @@ const getCurrentUser = async (req, res) => {
 // @access  Private/Admin
 const getUserStats = async (req, res) => {
   try {
-    // Total users count
-    const totalUsers = await User.countDocuments()
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Active users (logged in last 30 days)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const activeUsers = await User.countDocuments({
-      lastLogin: { $gte: thirtyDaysAgo }
-    })
+    const connectedThreshold = new Date(now.getTime() - 15 * 60 * 1000);
 
-    // Admin users count
-    const admins = await User.countDocuments({ isAdmin: true })
+    const dormantFilter = {
+      $or: [
+        { lastLogin: null, createdAt: { $lt: thirtyDaysAgo } },
+        { lastLogin: { $lt: thirtyDaysAgo } }
+      ]
+    };
 
-    // Recent users (last 30 days)
-    const recentUsers = await User.find({
-      createdAt: { $gte: thirtyDaysAgo }
-    })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('name email phone isAdmin createdAt')
-      .lean()
+    const [
+      totalUsers,
+      activeUsers,
+      admins,
+      lockedUsers,
+      accessControlledUsers,
+      connectedNow,
+      dormantUsers,
+      newUsersThisWeek,
+      recentUsers,
+      latestLoginUser
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ lastLogin: { $gte: thirtyDaysAgo } }),
+      User.countDocuments({ isAdmin: true }),
+      User.countDocuments({ lockUntil: { $gt: now } }),
+      User.countDocuments({ accessControlEnabled: true }),
+      User.countDocuments({ lastLogin: { $gte: connectedThreshold } }),
+      User.countDocuments(dormantFilter),
+      User.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+      User.find({ createdAt: { $gte: thirtyDaysAgo } })
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .select('name email phone isAdmin createdAt lastLogin accessControlEnabled')
+        .lean(),
+      User.findOne({ lastLogin: { $ne: null } })
+        .sort({ lastLogin: -1 })
+        .select('name email lastLogin')
+        .lean()
+    ]);
 
     res.json({
       totalUsers,
       activeUsers,
       admins,
-      recentUsers
+      standardUsers: Math.max(totalUsers - admins, 0),
+      lockedUsers,
+      accessControlledUsers,
+      connectedNow,
+      dormantUsers,
+      newUsersThisWeek,
+      recentUsers,
+      latestLoginUser: latestLoginUser || null
     })
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -491,6 +550,51 @@ const updateUser = async (req, res) => {
       user.accessEnd = parseDateOrNull(req.body.accessEnd);
     }
 
+    if (req.body.salesGoals && typeof req.body.salesGoals === 'object') {
+      user.salesGoals = {
+        monthlyRevenueTarget: parsePositiveNumber(
+          req.body.salesGoals.monthlyRevenueTarget,
+          user.salesGoals?.monthlyRevenueTarget || 0
+        ),
+        monthlyProfitTarget: parsePositiveNumber(
+          req.body.salesGoals.monthlyProfitTarget,
+          user.salesGoals?.monthlyProfitTarget || 0
+        ),
+        monthlyCollectionTarget: parsePositiveNumber(
+          req.body.salesGoals.monthlyCollectionTarget,
+          user.salesGoals?.monthlyCollectionTarget || 0
+        ),
+        updatedAt: new Date(),
+      };
+    }
+
+    if (req.body.adminPreferences && typeof req.body.adminPreferences === 'object') {
+      user.adminPreferences = {
+        weeklyReportEnabled:
+          typeof req.body.adminPreferences.weeklyReportEnabled === 'boolean'
+            ? req.body.adminPreferences.weeklyReportEnabled
+            : Boolean(user.adminPreferences?.weeklyReportEnabled),
+        weeklyReportFormat:
+          req.body.adminPreferences.weeklyReportFormat === 'pdf' ? 'pdf' : 'excel',
+        inactivityAlertsEnabled:
+          typeof req.body.adminPreferences.inactivityAlertsEnabled === 'boolean'
+            ? req.body.adminPreferences.inactivityAlertsEnabled
+            : typeof user.adminPreferences?.inactivityAlertsEnabled === 'boolean'
+              ? user.adminPreferences.inactivityAlertsEnabled
+              : true,
+        collectionAlertsEnabled:
+          typeof req.body.adminPreferences.collectionAlertsEnabled === 'boolean'
+            ? req.body.adminPreferences.collectionAlertsEnabled
+            : typeof user.adminPreferences?.collectionAlertsEnabled === 'boolean'
+              ? user.adminPreferences.collectionAlertsEnabled
+              : true,
+        weeklyReportLastSentAt:
+          parseDateOrNull(req.body.adminPreferences.weeklyReportLastSentAt) ||
+          user.adminPreferences?.weeklyReportLastSentAt ||
+          null,
+      };
+    }
+
     if (req.body.password) {
       user.password = req.body.password;
     }
@@ -502,7 +606,18 @@ const updateUser = async (req, res) => {
       user.photo = req.body.photo || '';
     }
 
-    const infoFields = ['name', 'email', 'phone', 'isAdmin', 'accessControlEnabled', 'accessStart', 'accessEnd', 'photo'];
+    const infoFields = [
+      'name',
+      'email',
+      'phone',
+      'isAdmin',
+      'accessControlEnabled',
+      'accessStart',
+      'accessEnd',
+      'photo',
+      'salesGoals',
+      'adminPreferences',
+    ];
     const infoChanged = infoFields.some((field) => user.isModified(field));
     const passwordChanged = user.isModified('password');
 

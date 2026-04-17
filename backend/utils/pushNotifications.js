@@ -41,14 +41,15 @@ const formatCurrency = (value) => {
   }
 };
 
-const sendNotification = async (payload, excludeUserId) => {
+const sendNotification = async (payload, excludeUserId, userFilter = {}) => {
   if (!pushConfigured) {
     return;
   }
 
-  const users = await User.find({ 'pushSubscriptions.0': { $exists: true } }).select(
-    'pushSubscriptions'
-  );
+  const users = await User.find({
+    'pushSubscriptions.0': { $exists: true },
+    ...userFilter,
+  }).select('pushSubscriptions adminPreferences isAdmin');
 
   if (!users.length) {
     return;
@@ -141,8 +142,43 @@ const notifyPaymentRecorded = async ({
   await sendNotification(payload, actorId);
 };
 
+const notifyAdminsWeeklyReport = async ({
+  actorName,
+  rangeLabel,
+  totalRevenue,
+  totalBalance,
+  sellersCount,
+}) => {
+  const tag = `admin-weekly-report-${Date.now()}`;
+  const payload = {
+    title: 'Rapport hebdomadaire administrateur',
+    body: [
+      actorName ? `${actorName} a préparé le rapport` : 'Rapport prêt',
+      `${rangeLabel} • ${sellersCount} vendeur(s)`,
+      `CA ${formatCurrency(totalRevenue)} • Reste ${formatCurrency(totalBalance)}`,
+    ].join(' • '),
+    icon: DEFAULT_ICON,
+    badge: DEFAULT_BADGE,
+    tag,
+    data: {
+      url: '/users/stats',
+      tag,
+      type: 'admin.weekly_report',
+      timestamp: Date.now(),
+    },
+    vibrate: [150, 100, 150],
+    renotify: true,
+  };
+
+  await sendNotification(payload, null, {
+    isAdmin: true,
+    'adminPreferences.weeklyReportEnabled': true,
+  });
+};
+
 module.exports = {
   isPushConfigured,
+  notifyAdminsWeeklyReport,
   notifySaleCreated,
   notifyPaymentRecorded
 };

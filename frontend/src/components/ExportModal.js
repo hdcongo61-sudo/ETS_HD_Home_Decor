@@ -6,10 +6,9 @@ const ExportModal = ({
   show,
   onClose,
   onExport,
+  filterLabel,
   startDate,
   endDate,
-  setStartDate,
-  setEndDate,
 }) => {
   return (
     <Modal
@@ -29,27 +28,31 @@ const ExportModal = ({
       }
     >
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Date début
-          </label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full min-h-[44px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 touch-manipulation"
-          />
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+            Le fichier suivra le filtre actif du dashboard
+          </p>
+          <p className="mt-1 text-sm text-blue-800 dark:text-blue-300">
+            {filterLabel || "Période filtrée"}
+          </p>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Date fin
-          </label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full min-h-[44px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 touch-manipulation"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Date début
+            </p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {startDate || "—"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Date fin
+            </p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {endDate || "—"}
+            </p>
+          </div>
         </div>
       </div>
     </Modal>

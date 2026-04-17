@@ -70,6 +70,16 @@ const PaymentModal = lazy(() => import("../components/PaymentModal"));
    =============================== */
 const getTodayFilterValue = () => new Date().toLocaleDateString("fr-CA");
 
+const normalizeCollection = (value, nestedKeys = []) => {
+  if (Array.isArray(value)) return value;
+  for (const key of nestedKeys) {
+    if (Array.isArray(value?.[key])) {
+      return value[key];
+    }
+  }
+  return [];
+};
+
 /* ===============================
    Sous-composants UI
    =============================== */
@@ -994,7 +1004,7 @@ const Sales = () => {
   const fetchClients = useCallback(async () => {
     try {
       const res = await api.get("/clients");
-      const list = Array.isArray(res.data) ? res.data : res.data.clients || [];
+      const list = normalizeCollection(res.data, ["clients", "data"]);
       setClients(list);
       return list;
     } catch (e) {
@@ -1007,10 +1017,12 @@ const Sales = () => {
   const fetchProducts = useCallback(async () => {
     try {
       const res = await api.get("/products");
-      setProducts(res.data);
-      return res.data;
+      const list = normalizeCollection(res.data, ["products", "data"]);
+      setProducts(list);
+      return list;
     } catch {
       setError("Erreur de chargement des produits");
+      setProducts([]);
       return [];
     }
   }, []);
@@ -1026,7 +1038,7 @@ const Sales = () => {
 
   const fetchSales = useCallback(async () => {
     try {
-      const res = await api.get("/sales");
+      const res = await api.get("/sales", { params: { summary: "list" } });
       setSales(res.data || []);
       return res.data || [];
     } catch {
@@ -1088,7 +1100,7 @@ const Sales = () => {
     setLoading(true);
     const bootstrap = async () => {
       try {
-        const [clientsData, , salesData] = await Promise.all([
+        const [, , salesData] = await Promise.all([
           fetchClients(),
           fetchProducts(),
           fetchSales(),
@@ -1096,23 +1108,7 @@ const Sales = () => {
         ]);
         await hydrateDeliveryStats(salesData);
         if (isAdmin) {
-          await fetchDashboardData(timeRange, dateFilter);
-          const predictive = calculatePredictiveAnalytics(salesData);
-          const segmentation = analyzeClientSegmentation(salesData);
-          const anomaliesDetected = detectAnomalies(salesData);
-          const kpis = calculateAdvancedKPIs(salesData, clientsData);
-          setPredictiveData(predictive);
-          setClientSegmentation(segmentation);
-          setAnomalies(anomaliesDetected);
-          setDashboardData((prev) => ({
-            ...prev,
-            forecast: predictive || prev.forecast,
-            clientMetrics: {
-              ...prev.clientMetrics,
-              topClients: segmentation.slice(0, 5),
-            },
-            kpis: { ...prev.kpis, ...kpis },
-          }));
+          fetchDashboardData(timeRange, dateFilter);
         }
       } catch {
         setError("Erreur de chargement des données");
@@ -1133,6 +1129,32 @@ const Sales = () => {
     fetchDashboardData,
     hydrateDeliveryStats,
   ]);
+
+  useEffect(() => {
+    if (!initialBootstrapDone.current || !isAdmin) return;
+
+    try {
+      const predictive = calculatePredictiveAnalytics(sales);
+      const segmentation = analyzeClientSegmentation(sales);
+      const anomaliesDetected = detectAnomalies(sales);
+      const kpis = calculateAdvancedKPIs(sales, clients);
+
+      setPredictiveData(predictive);
+      setClientSegmentation(segmentation);
+      setAnomalies(anomaliesDetected);
+      setDashboardData((prev) => ({
+        ...prev,
+        forecast: predictive || prev.forecast,
+        clientMetrics: {
+          ...prev.clientMetrics,
+          topClients: segmentation.slice(0, 5),
+        },
+        kpis: { ...prev.kpis, ...kpis },
+      }));
+    } catch {
+      setMessage("Erreur de préparation des analytics");
+    }
+  }, [sales, clients, isAdmin, setMessage]);
 
   // Changement de période (7j / 30j / 90j / Tous) : met à jour uniquement le dashboard, sans recharger toute la page
   useEffect(() => {
@@ -1743,8 +1765,7 @@ const Sales = () => {
                   ) : (
                     filteredSales.map((sale) => {
                       const { totalPaid, balance } = calculateSaleTotals(sale);
-                      const isModified =
-                        Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
+                      const isModified = (sale.modificationCount || 0) > 0;
                       return (
                         <SaleCard
                           key={sale._id}
@@ -2673,8 +2694,7 @@ const Sales = () => {
                         const profitCategory =
                           sale?.computedProfitCategory ?? deriveProfitCategoryFromMargin(saleMargin);
                         const showProfitInfo = isAdmin && sale.products?.length > 0;
-                        const isModified =
-                          Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
+                        const isModified = (sale.modificationCount || 0) > 0;
 
                         return (
                           <SaleCard

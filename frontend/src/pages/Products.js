@@ -23,6 +23,7 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
+  const [lookupsLoaded, setLookupsLoaded] = useState(false);
 
   const fetchLookups = useCallback(async () => {
     try {
@@ -38,6 +39,7 @@ const Products = () => {
         warehouses: whs.data,
         suppliers: supps.data,
       });
+      setLookupsLoaded(true);
     } catch (err) {
       console.error('Error fetching lookups:', err);
     }
@@ -58,8 +60,12 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    if (!isAdmin || !isFormOpen || lookupsLoaded) return;
     fetchLookups();
-  }, [fetchProducts, fetchLookups]);
+  }, [fetchLookups, isAdmin, isFormOpen, lookupsLoaded]);
 
   useEffect(() => {
     if (location.state?.fromProductEdit) {
@@ -390,7 +396,20 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
 /* 🧮 LISTE DES PRODUITS */
 /* ===================================================== */
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    product: '',
+    category: '',
+    container: '',
+    warehouse: '',
+    priceOperator: '',
+    price: '',
+    priceMax: '',
+    stockOperator: '',
+    stock: '',
+    stockMax: '',
+    supplier: '',
+  });
+  const [exporting, setExporting] = useState(null);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(min-width: 768px)').matches;
@@ -419,6 +438,128 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     ? { target: '_blank', rel: 'noopener noreferrer' }
     : {};
 
+  const normalizeText = (value) => String(value || '').trim().toLowerCase();
+  const parseNumericValue = (value) => {
+    if (value === '' || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const getEffectiveNumericOperator = (operator, primaryValue, secondaryValue) => {
+    if (operator) return operator;
+    const primary = parseNumericValue(primaryValue);
+    const secondary = parseNumericValue(secondaryValue);
+    if (primary !== null || secondary !== null) {
+      return secondary !== null ? 'between' : 'eq';
+    }
+    return '';
+  };
+  const formatNumberForExport = (value) => {
+    const numeric = parseNumericValue(value);
+    if (numeric === null) return '0';
+    const rounded = Math.round(numeric * 100) / 100;
+    const [integerPart, decimalPart] = String(rounded).split('.');
+    const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return decimalPart ? `${groupedInteger}.${decimalPart}` : groupedInteger;
+  };
+  const matchesNumericFilter = (value, operator, primaryValue, secondaryValue) => {
+    const effectiveOperator = getEffectiveNumericOperator(operator, primaryValue, secondaryValue);
+    if (!effectiveOperator) return true;
+    const numericValue = parseNumericValue(value);
+    if (numericValue === null) return false;
+
+    const primary = parseNumericValue(primaryValue);
+    const secondary = parseNumericValue(secondaryValue);
+
+    if (effectiveOperator === 'between') {
+      if (primary === null && secondary === null) return true;
+      if (primary !== null && secondary === null) return numericValue >= primary;
+      if (primary === null && secondary !== null) return numericValue <= secondary;
+      return numericValue >= Math.min(primary, secondary) && numericValue <= Math.max(primary, secondary);
+    }
+
+    if (primary === null) return true;
+
+    switch (effectiveOperator) {
+      case 'eq':
+        return numericValue === primary;
+      case 'gt':
+        return numericValue > primary;
+      case 'gte':
+        return numericValue >= primary;
+      case 'lt':
+        return numericValue < primary;
+      case 'lte':
+        return numericValue <= primary;
+      default:
+        return true;
+    }
+  };
+  const getFilterOptions = (items, accessor) =>
+    [...new Set(items.map(accessor).map((value) => String(value || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+
+  const categoryOptions = getFilterOptions(products, (product) => product.category);
+  const containerOptions = getFilterOptions(products, (product) => product.container);
+  const warehouseOptions = getFilterOptions(products, (product) => product.warehouse);
+  const supplierOptions = getFilterOptions(products, (product) => product.supplierName);
+
+  const handleFilterChange = (name, value) => {
+    setFilters((prev) => {
+      if (name === 'priceOperator') {
+        return {
+          ...prev,
+          priceOperator: value,
+          priceMax: value === 'between' ? prev.priceMax : '',
+        };
+      }
+      if (name === 'stockOperator') {
+        return {
+          ...prev,
+          stockOperator: value,
+          stockMax: value === 'between' ? prev.stockMax : '',
+        };
+      }
+      return { ...prev, [name]: value };
+    });
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      product: '',
+      category: '',
+      container: '',
+      warehouse: '',
+      priceOperator: '',
+      price: '',
+      priceMax: '',
+      stockOperator: '',
+      stock: '',
+      stockMax: '',
+      supplier: '',
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
+  const filterInputClass = 'w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+  const actionButtonClass = 'inline-flex items-center justify-center min-h-[40px] rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50';
+  const comparisonOptions = [
+    { value: '', label: 'Toutes' },
+    { value: 'eq', label: '=' },
+    { value: 'gt', label: '>' },
+    { value: 'gte', label: '>=' },
+    { value: 'lt', label: '<' },
+    { value: 'lte', label: '<=' },
+    { value: 'between', label: 'Entre' },
+  ];
+  const comparisonLabels = {
+    eq: '=',
+    gt: '>',
+    gte: '>=',
+    lt: '<',
+    lte: '<=',
+    between: 'entre',
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -427,32 +568,355 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     );
   }
 
-  const filtered = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.supplierName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.container || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.warehouse || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = products.filter((product) => {
+    const normalizedProductName = normalizeText(product.name);
+    const normalizedCategory = normalizeText(product.category);
+    const normalizedContainer = normalizeText(product.container);
+    const normalizedWarehouse = normalizeText(product.warehouse);
+    const normalizedSupplier = normalizeText(product.supplierName);
+
+    return (
+      (!normalizeText(filters.product) || normalizedProductName.includes(normalizeText(filters.product))) &&
+      (!normalizeText(filters.category) || normalizedCategory === normalizeText(filters.category)) &&
+      (!normalizeText(filters.container) || normalizedContainer === normalizeText(filters.container)) &&
+      (!normalizeText(filters.warehouse) || normalizedWarehouse === normalizeText(filters.warehouse)) &&
+      matchesNumericFilter(product.price, filters.priceOperator, filters.price, filters.priceMax) &&
+      matchesNumericFilter(product.stock, filters.stockOperator, filters.stock, filters.stockMax) &&
+      (!normalizeText(filters.supplier) || normalizedSupplier === normalizeText(filters.supplier))
+    );
+  });
+
+  const exportRows = filtered.map((product, index) => ({
+    '#': index + 1,
+    Produit: product.name || '—',
+    Catégorie: product.category || '—',
+    Conteneur: product.container?.trim() || 'Non défini',
+    Entrepôt: product.warehouse?.trim() || 'Non défini',
+    Prix: product.price || 0,
+    Stock: product.stock || 0,
+    Fournisseur: product.supplierName || '—',
+    Téléphone: product.supplierPhone || '—',
+    Description: product.description || '—',
+  }));
+
+  const activeFilterEntries = [
+    ['Produit', filters.product],
+    ['Catégorie', filters.category],
+    ['Conteneur', filters.container],
+    ['Entrepôt', filters.warehouse],
+    [
+      'Prix',
+      getEffectiveNumericOperator(filters.priceOperator, filters.price, filters.priceMax)
+        ? `${comparisonLabels[getEffectiveNumericOperator(filters.priceOperator, filters.price, filters.priceMax)] || ''} ${filters.price}${getEffectiveNumericOperator(filters.priceOperator, filters.price, filters.priceMax) === 'between' && filters.priceMax ? ` et ${filters.priceMax}` : ''}`.trim()
+        : '',
+    ],
+    [
+      'Stock',
+      getEffectiveNumericOperator(filters.stockOperator, filters.stock, filters.stockMax)
+        ? `${comparisonLabels[getEffectiveNumericOperator(filters.stockOperator, filters.stock, filters.stockMax)] || ''} ${filters.stock}${getEffectiveNumericOperator(filters.stockOperator, filters.stock, filters.stockMax) === 'between' && filters.stockMax ? ` et ${filters.stockMax}` : ''}`.trim()
+        : '',
+    ],
+    ['Fournisseur', filters.supplier],
+  ].filter(([, value]) => String(value || '').trim() !== '');
+
+  const filterSummary = activeFilterEntries.length > 0
+    ? activeFilterEntries.map(([label, value]) => `${label}: ${value}`).join(' | ')
+    : 'Aucun filtre appliqué';
+
+  const handleExportExcel = async () => {
+    if (filtered.length === 0) {
+      toast.error('Aucun produit à exporter');
+      return;
+    }
+
+    try {
+      setExporting('excel');
+      const exportDate = new Date();
+      const fileDateStamp = exportDate.toISOString().split('T')[0];
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.utils.book_new();
+      const filterSheet = XLSX.utils.json_to_sheet([
+        {
+          Filtres: filterSummary,
+          'Produits exportés': filtered.length,
+          'Exporté le': exportDate.toLocaleString('fr-FR'),
+        },
+      ]);
+      const dataSheet = XLSX.utils.json_to_sheet(
+        exportRows.map((row) => ({
+          ...row,
+          Prix: formatNumberForExport(row.Prix),
+          Stock: formatNumberForExport(row.Stock),
+        }))
+      );
+      XLSX.utils.book_append_sheet(workbook, filterSheet, 'Filtres');
+      XLSX.utils.book_append_sheet(workbook, dataSheet, 'Produits');
+      XLSX.writeFile(workbook, `produits-filtres-${fileDateStamp}.xlsx`);
+      toast.success('Export Excel généré');
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Impossible de générer le fichier Excel');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (filtered.length === 0) {
+      toast.error('Aucun produit à exporter');
+      return;
+    }
+
+    try {
+      setExporting('pdf');
+      const exportDate = new Date();
+      const fileDateStamp = exportDate.toISOString().split('T')[0];
+      const [{ jsPDF }, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4',
+      });
+
+      doc.setFontSize(18);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Export des produits', 40, 40);
+
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Exporté le : ${exportDate.toLocaleString('fr-FR')}`, 40, 60);
+
+      const filterLines = doc.splitTextToSize(`Filtres : ${filterSummary}`, 760);
+      doc.text(filterLines, 40, 78);
+      doc.text(`Produits exportés : ${filtered.length}`, 40, 78 + (filterLines.length * 14));
+
+      autoTableModule.default(doc, {
+        startY: 110 + (filterLines.length * 10),
+        head: [[
+          'Produit',
+          'Catégorie',
+          'Conteneur',
+          'Entrepôt',
+          'Prix (CFA)',
+          'Stock',
+          'Fournisseur',
+        ]],
+        body: filtered.map((product) => [
+          product.name || '—',
+          product.category || '—',
+          product.container?.trim() || 'Non défini',
+          product.warehouse?.trim() || 'Non défini',
+          formatNumberForExport(product.price),
+          formatNumberForExport(product.stock),
+          product.supplierName || '—',
+        ]),
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          textColor: [31, 41, 55],
+        },
+        headStyles: {
+          fillColor: [79, 70, 229],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        margin: { top: 40, left: 40, right: 40, bottom: 40 },
+      });
+
+      doc.save(`produits-filtres-${fileDateStamp}.pdf`);
+      toast.success('Export PDF généré');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Impossible de générer le PDF');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const renderNumericFilter = ({ label, operatorKey, valueKey, maxKey, valuePlaceholder, maxPlaceholder }) => (
+    <div>
+      <label htmlFor={`${operatorKey}-operator`} className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        {label}
+      </label>
+      <div className="space-y-2">
+        <select
+          id={`${operatorKey}-operator`}
+          value={filters[operatorKey]}
+          onChange={(e) => handleFilterChange(operatorKey, e.target.value)}
+          className={filterInputClass}
+        >
+          {comparisonOptions.map((option) => (
+            <option key={option.value || 'all'} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          placeholder={filters[operatorKey] === 'between' ? valuePlaceholder : 'Valeur'}
+          value={filters[valueKey]}
+          onChange={(e) => handleFilterChange(valueKey, e.target.value)}
+          className={filterInputClass}
+        />
+        {filters[operatorKey] === 'between' && (
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            placeholder={maxPlaceholder}
+            value={filters[maxKey]}
+            onChange={(e) => handleFilterChange(maxKey, e.target.value)}
+            className={filterInputClass}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  const renderFilterPanel = () => (
+    <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div>
+          <label htmlFor="product-filter-name" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Produit
+          </label>
+          <input
+            id="product-filter-name"
+            type="text"
+            placeholder="Nom du produit"
+            value={filters.product}
+            onChange={(e) => handleFilterChange('product', e.target.value)}
+            className={filterInputClass}
+            autoComplete="off"
+          />
+        </div>
+        <div>
+          <label htmlFor="product-filter-category" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Catégorie
+          </label>
+          <select
+            id="product-filter-category"
+            value={filters.category}
+            onChange={(e) => handleFilterChange('category', e.target.value)}
+            className={filterInputClass}
+          >
+            <option value="">Toutes les catégories</option>
+            {categoryOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="product-filter-container" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Conteneur
+          </label>
+          <select
+            id="product-filter-container"
+            value={filters.container}
+            onChange={(e) => handleFilterChange('container', e.target.value)}
+            className={filterInputClass}
+          >
+            <option value="">Tous les conteneurs</option>
+            {containerOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="product-filter-warehouse" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Entrepôt
+          </label>
+          <select
+            id="product-filter-warehouse"
+            value={filters.warehouse}
+            onChange={(e) => handleFilterChange('warehouse', e.target.value)}
+            className={filterInputClass}
+          >
+            <option value="">Tous les entrepôts</option>
+            {warehouseOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        {renderNumericFilter({
+          label: 'Prix',
+          operatorKey: 'priceOperator',
+          valueKey: 'price',
+          maxKey: 'priceMax',
+          valuePlaceholder: 'Prix min',
+          maxPlaceholder: 'Prix max',
+        })}
+        {renderNumericFilter({
+          label: 'Stock',
+          operatorKey: 'stockOperator',
+          valueKey: 'stock',
+          maxKey: 'stockMax',
+          valuePlaceholder: 'Stock min',
+          maxPlaceholder: 'Stock max',
+        })}
+        <div>
+          <label htmlFor="product-filter-supplier" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Fournisseur
+          </label>
+          <select
+            id="product-filter-supplier"
+            value={filters.supplier}
+            onChange={(e) => handleFilterChange('supplier', e.target.value)}
+            className={filterInputClass}
+          >
+            <option value="">Tous les fournisseurs</option>
+            {supplierOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            className="w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Réinitialiser les filtres
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="text-sm text-gray-600">
+          {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exporting !== null || filtered.length === 0}
+            className={actionButtonClass}
+          >
+            {exporting === 'excel' ? 'Export Excel…' : 'Exporter Excel'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exporting !== null || filtered.length === 0}
+            className={actionButtonClass}
+          >
+            {exporting === 'pdf' ? 'Export PDF…' : 'Exporter PDF'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 
   if (!isAdmin) {
     return (
       <div>
-        <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100 touch-manipulation">
-          <div className="max-w-xl">
-            <label htmlFor="search-products" className="sr-only">Rechercher un produit</label>
-            <input
-              id="search-products"
-              type="text"
-              placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-base lg:text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
-              autoComplete="off"
-            />
-          </div>
-        </div>
+        {renderFilterPanel()}
 
         <div className="divide-y divide-gray-100 bg-white lg:divide-y-0 lg:p-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6">
           {filtered.map((p) => (
@@ -490,18 +954,31 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   return (
     <div>
-      {/* Search bar — desktop: full width, larger; mobile: reliable focus, blur on tap outside */}
-      <div className="p-4 lg:p-6 bg-gray-50/80 border-b border-gray-100 touch-manipulation">
-        <label htmlFor="admin-product-search" className="sr-only">Rechercher un produit</label>
-        <input
-          id="admin-product-search"
-          type="text"
-          placeholder="Rechercher par nom, catégorie, fournisseur, conteneur ou entrepôt..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-2xl min-h-[44px] px-4 py-2.5 lg:px-5 lg:py-3 text-base border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white touch-manipulation"
-          autoComplete="off"
-        />
+      <div className="hidden md:flex items-center justify-between gap-4 px-4 py-4 lg:px-6 border-b border-gray-100 bg-gray-50/70">
+        <div className="text-sm text-gray-600">
+          {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exporting !== null || filtered.length === 0}
+            className={actionButtonClass}
+          >
+            {exporting === 'excel' ? 'Export Excel…' : 'Exporter Excel'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exporting !== null || filtered.length === 0}
+            className={actionButtonClass}
+          >
+            {exporting === 'pdf' ? 'Export PDF…' : 'Exporter PDF'}
+          </button>
+        </div>
+      </div>
+      <div className="md:hidden">
+        {renderFilterPanel()}
       </div>
 
       {/* Desktop table */}
@@ -532,6 +1009,158 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Actions
+              </th>
+            </tr>
+            <tr className="bg-white align-top">
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <input
+                  type="text"
+                  placeholder="Filtrer"
+                  value={filters.product}
+                  onChange={(e) => handleFilterChange('product', e.target.value)}
+                  className={filterInputClass}
+                  aria-label="Filtrer par produit"
+                  autoComplete="off"
+                />
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <select
+                  value={filters.category}
+                  onChange={(e) => handleFilterChange('category', e.target.value)}
+                  className={filterInputClass}
+                  aria-label="Filtrer par catégorie"
+                >
+                  <option value="">Toutes</option>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <select
+                  value={filters.container}
+                  onChange={(e) => handleFilterChange('container', e.target.value)}
+                  className={filterInputClass}
+                  aria-label="Filtrer par conteneur"
+                >
+                  <option value="">Tous</option>
+                  {containerOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <select
+                  value={filters.warehouse}
+                  onChange={(e) => handleFilterChange('warehouse', e.target.value)}
+                  className={filterInputClass}
+                  aria-label="Filtrer par entrepôt"
+                >
+                  <option value="">Tous</option>
+                  {warehouseOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <div className="space-y-2">
+                  <select
+                    value={filters.priceOperator}
+                    onChange={(e) => handleFilterChange('priceOperator', e.target.value)}
+                    className={filterInputClass}
+                    aria-label="Comparer le prix"
+                  >
+                    {comparisonOptions.map((option) => (
+                      <option key={`price-${option.value || 'all'}`} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    placeholder={filters.priceOperator === 'between' ? 'Prix min' : 'Valeur'}
+                    value={filters.price}
+                    onChange={(e) => handleFilterChange('price', e.target.value)}
+                    className={filterInputClass}
+                    aria-label="Valeur du filtre prix"
+                  />
+                  {filters.priceOperator === 'between' && (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      placeholder="Prix max"
+                      value={filters.priceMax}
+                      onChange={(e) => handleFilterChange('priceMax', e.target.value)}
+                      className={filterInputClass}
+                      aria-label="Valeur maximale du filtre prix"
+                    />
+                  )}
+                </div>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <div className="space-y-2">
+                  <select
+                    value={filters.stockOperator}
+                    onChange={(e) => handleFilterChange('stockOperator', e.target.value)}
+                    className={filterInputClass}
+                    aria-label="Comparer le stock"
+                  >
+                    {comparisonOptions.map((option) => (
+                      <option key={`stock-${option.value || 'all'}`} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    placeholder={filters.stockOperator === 'between' ? 'Stock min' : 'Valeur'}
+                    value={filters.stock}
+                    onChange={(e) => handleFilterChange('stock', e.target.value)}
+                    className={filterInputClass}
+                    aria-label="Valeur du filtre stock"
+                  />
+                  {filters.stockOperator === 'between' && (
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      placeholder="Stock max"
+                      value={filters.stockMax}
+                      onChange={(e) => handleFilterChange('stockMax', e.target.value)}
+                      className={filterInputClass}
+                      aria-label="Valeur maximale du filtre stock"
+                    />
+                  )}
+                </div>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4">
+                <select
+                  value={filters.supplier}
+                  onChange={(e) => handleFilterChange('supplier', e.target.value)}
+                  className={filterInputClass}
+                  aria-label="Filtrer par fournisseur"
+                >
+                  <option value="">Tous</option>
+                  {supplierOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </th>
+              <th className="px-4 py-3 lg:px-6 lg:py-4 text-right">
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    disabled={!hasActiveFilters}
+                    className={actionButtonClass}
+                  >
+                    Réinitialiser
+                  </button>
+                  <span className="text-xs text-gray-500">
+                    {filtered.length} produit{filtered.length > 1 ? 's' : ''}
+                  </span>
+                </div>
               </th>
             </tr>
           </thead>

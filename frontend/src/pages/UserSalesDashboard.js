@@ -1,723 +1,1480 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useContext, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { format, endOfDay, startOfDay, startOfYear, subDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
-import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from '../components/AppLoader';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Bar, Pie } from 'react-chartjs-2';
 import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement
-} from 'chart.js';
+  calculateSaleProfit,
+  calculateSaleTotals,
+  getPaymentStructureKey,
+  getSaleTypeText,
+  getStatusClass,
+  getStatusText,
+  parseDateSafely,
+} from '../utils/saleUtils';
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement
-);
+const RANGE_OPTIONS = [
+  { value: '30days', label: '30 jours' },
+  { value: '90days', label: '90 jours' },
+  { value: 'year', label: 'Cette année' },
+  { value: 'all', label: 'Tout' },
+  { value: 'custom', label: 'Dates' },
+];
 
-// Fonction utilitaire pour formater les montants en CFA
-const formatCFA = (amount) => {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'XOF',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-        currencyDisplay: 'code'
-    }).format(amount).replace('XOF', 'CFA');
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Tous statuts' },
+  { value: 'completed', label: 'Payées' },
+  { value: 'partially_paid', label: 'Partielles' },
+  { value: 'pending', label: 'En attente' },
+  { value: 'cancelled', label: 'Annulées' },
+];
+
+const SALE_TYPE_OPTIONS = [
+  { value: 'all', label: 'Tous types' },
+  { value: 'retail', label: 'Vente normale' },
+  { value: 'wholesale', label: 'Vente en gros' },
+];
+
+const PAYMENT_STRUCTURE_OPTIONS = [
+  { value: 'all', label: 'Tous paiements' },
+  { value: 'full_payment', label: 'Paiement unique' },
+  { value: 'multiple_payments', label: 'Paiements multiples' },
+  { value: 'pending_payment', label: 'Encore ouverts' },
+];
+
+const HISTORY_VIEW_OPTIONS = [
+  { value: 'all', label: 'Toutes les cartes' },
+  { value: 'outstanding', label: 'Reste à encaisser' },
+  { value: 'wholesale', label: 'Vente en gros' },
+  { value: 'multiple_payments', label: 'Paiements multiples' },
+  { value: 'high_profit', label: 'Plus rentables' },
+];
+
+const HISTORY_SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récentes' },
+  { value: 'oldest', label: 'Plus anciennes' },
+  { value: 'amount_desc', label: 'Montant décroissant' },
+  { value: 'paid_desc', label: 'Encaissement décroissant' },
+  { value: 'profit_desc', label: 'Bénéfice décroissant' },
+];
+
+const PAYMENT_STRUCTURE_META = {
+  full_payment: {
+    label: 'Paiement unique',
+    accent: 'bg-emerald-100 text-emerald-700',
+    chartColor: '#059669',
+  },
+  multiple_payments: {
+    label: 'Paiements multiples',
+    accent: 'bg-sky-100 text-sky-700',
+    chartColor: '#0284c7',
+  },
+  pending_payment: {
+    label: 'Paiement incomplet',
+    accent: 'bg-amber-100 text-amber-700',
+    chartColor: '#d97706',
+  },
 };
 
+const PAYMENT_METHOD_COLORS = ['#0f766e', '#0284c7', '#ea580c', '#7c3aed', '#dc2626'];
+
+const safeNumber = (value) => Number(value) || 0;
+
+const formatCFA = (amount) =>
+  new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    currencyDisplay: 'code',
+  })
+    .format(safeNumber(amount))
+    .replace(/\s?XOF/g, ' CFA');
+
+const formatCompactNumber = (value) =>
+  new Intl.NumberFormat('fr-FR', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(safeNumber(value));
+
+const formatPercent = (value) => `${safeNumber(value).toFixed(1)}%`;
+
+const formatDateLabel = (value, pattern = 'dd MMM yyyy') => {
+  const parsed = parseDateSafely(value);
+  return parsed ? format(parsed, pattern, { locale: fr }) : 'Date indisponible';
+};
+
+const formatDateTimeLabel = (value) => {
+  const parsed = parseDateSafely(value);
+  return parsed ? format(parsed, 'dd MMM yyyy • HH:mm', { locale: fr }) : 'Date indisponible';
+};
+
+const getDateRange = (rangePreset, startDate, endDate) => {
+  const now = new Date();
+  const todayEnd = endOfDay(now);
+
+  switch (rangePreset) {
+    case '30days':
+      return { start: startOfDay(subDays(now, 29)), end: todayEnd };
+    case '90days':
+      return { start: startOfDay(subDays(now, 89)), end: todayEnd };
+    case 'year':
+      return { start: startOfYear(now), end: todayEnd };
+    case 'custom': {
+      const start = startDate ? startOfDay(new Date(startDate)) : null;
+      const end = endDate ? endOfDay(new Date(endDate)) : null;
+      return { start, end };
+    }
+    case 'all':
+    default:
+      return { start: null, end: null };
+  }
+};
+
+const sanitizeFilePart = (value) =>
+  (value || 'utilisateur')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'utilisateur';
+
+const getRangeSummary = (rangePreset, startDate, endDate) => {
+  const { start, end } = getDateRange(rangePreset, startDate, endDate);
+
+  if (rangePreset === 'custom') {
+    if (start && end) {
+      return `Du ${formatDateLabel(start)} au ${formatDateLabel(end)}`;
+    }
+    if (start) {
+      return `À partir du ${formatDateLabel(start)}`;
+    }
+    if (end) {
+      return `Jusqu'au ${formatDateLabel(end)}`;
+    }
+    return 'Dates libres';
+  }
+
+  const option = RANGE_OPTIONS.find((item) => item.value === rangePreset);
+  if (option?.label) {
+    return option.label;
+  }
+
+  if (start || end) {
+    return `${start ? formatDateLabel(start) : 'Début'} - ${end ? formatDateLabel(end) : 'Fin'}`;
+  }
+
+  return 'Toutes les dates';
+};
+
+const buildTrendData = (sales, rangePreset, dateRange) => {
+  if (!sales.length) {
+    return { data: [], granularity: 'jour' };
+  }
+
+  const hasBoundedRange = dateRange.start && dateRange.end;
+  const daysSpan = hasBoundedRange
+    ? Math.max(1, Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / 86400000))
+    : null;
+  const granularity = rangePreset === 'all' || rangePreset === 'year' || (daysSpan && daysSpan > 120) ? 'month' : 'day';
+  const bucketMap = new Map();
+
+  sales.forEach((sale) => {
+    const date = sale.saleDateObject;
+    const key = granularity === 'month' ? format(date, 'yyyy-MM') : format(date, 'yyyy-MM-dd');
+    const current = bucketMap.get(key) || { revenue: 0, paid: 0, label: '' };
+    current.revenue += sale.totalAmount;
+    current.paid += sale.totalPaid;
+    current.label =
+      granularity === 'month'
+        ? format(date, 'MMM yyyy', { locale: fr })
+        : format(date, 'dd MMM', { locale: fr });
+    bucketMap.set(key, current);
+  });
+
+  return {
+    granularity: granularity === 'month' ? 'mois' : 'jour',
+    data: [...bucketMap.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => ({
+        key,
+        label: value.label,
+        revenue: value.revenue,
+        paid: value.paid,
+      })),
+  };
+};
+
+const buildFilterEntries = ({ rangePreset, startDate, endDate, search, status, saleType, paymentStructure }) => [
+  ['Période', getRangeSummary(rangePreset, startDate, endDate)],
+  ['Recherche', search?.trim() || 'Toutes les ventes'],
+  ['Statut', STATUS_OPTIONS.find((item) => item.value === status)?.label || 'Tous statuts'],
+  ['Type', SALE_TYPE_OPTIONS.find((item) => item.value === saleType)?.label || 'Tous types'],
+  [
+    'Structure de paiement',
+    PAYMENT_STRUCTURE_OPTIONS.find((item) => item.value === paymentStructure)?.label || 'Tous paiements',
+  ],
+];
+
+const DashboardStatCard = ({ label, value, helper, tone = 'slate' }) => {
+  const toneClass = {
+    slate: 'from-slate-900 via-slate-800 to-slate-700 text-white',
+    teal: 'from-teal-600 via-emerald-600 to-green-500 text-white',
+    amber: 'from-amber-400 via-orange-400 to-red-400 text-slate-950',
+    sky: 'from-sky-500 via-cyan-500 to-teal-400 text-white',
+  }[tone];
+
+  return (
+    <div className={`rounded-3xl bg-gradient-to-br p-4 shadow-sm ${toneClass}`}>
+      <p className="text-xs uppercase tracking-[0.18em] opacity-80">{label}</p>
+      <p className="mt-3 text-2xl font-semibold">{value}</p>
+      <p className="mt-2 text-sm opacity-85">{helper}</p>
+    </div>
+  );
+};
+
+const FilterChip = ({ active, label, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+      active
+        ? 'border-slate-900 bg-slate-900 text-white'
+        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+    }`}
+  >
+    {label}
+  </button>
+);
+
+const MiniInsightCard = ({ title, value, helper, accent = 'text-slate-900' }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <p className="text-sm text-slate-500">{title}</p>
+    <p className={`mt-2 text-xl font-semibold ${accent}`}>{value}</p>
+    <p className="mt-1 text-sm text-slate-500">{helper}</p>
+  </div>
+);
+
+const SaleBadge = ({ className, label }) => (
+  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${className}`}>{label}</span>
+);
+
+const EmptyState = ({ title, helper, action }) => (
+  <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+    <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+    <p className="mt-2 text-sm text-slate-500">{helper}</p>
+    {action ? <div className="mt-4">{action}</div> : null}
+  </div>
+);
+
 const UserSalesDashboard = () => {
-    const { userId } = useParams();
-    const topProductsTableRef = useRef(null);
-    const salesTableRef = useRef(null);
-    const [user, setUser] = useState(null);
-    const [sales, setSales] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [timeFilter, setTimeFilter] = useState('month');
-    const { auth } = useContext(AuthContext);
-    const isOwner = Boolean(auth?.user?._id && auth.user._id === userId);
-    const isUnauthorized = !auth?.isAdmin && !isOwner;
+  const { userId } = useParams();
+  const { auth } = useContext(AuthContext);
+  const [user, setUser] = useState(null);
+  const [sales, setSales] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [rangePreset, setRangePreset] = useState('90days');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [saleType, setSaleType] = useState('all');
+  const [paymentStructure, setPaymentStructure] = useState('all');
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyView, setHistoryView] = useState('all');
+  const [historySort, setHistorySort] = useState('recent');
+  const [exporting, setExporting] = useState('');
 
-    // Calculer les statistiques
-    const calculateStats = () => {
-        const stats = {
-            totalSales: sales.length,
-            totalAmount: 0,
-            totalProfit: 0,
-            totalPaid: 0,
-            pendingSales: 0,
-            partialSales: 0,
-            completedSales: 0,
-            cancelledSales: 0,
-            topProducts: {},
-            paymentMethods: {},
-            salesByDay: {},
-            salesByMonth: {},
-            salesByYear: {}
-        };
+  const deferredSearch = useDeferredValue(search);
+  const deferredHistorySearch = useDeferredValue(historySearch);
+  const isAdmin = Boolean(auth?.isAdmin || auth?.user?.isAdmin);
+  const isOwner = Boolean(auth?.user?._id && auth.user._id === userId);
+  const isUnauthorized = !isAdmin && !isOwner;
 
-        sales.forEach(sale => {
-            // Convertir en nombres et sécuriser contre les valeurs manquantes
-            const totalAmount = Number(sale.totalAmount) || 0;
-            stats.totalAmount += totalAmount;
-
-            // Calculer le total encaissé pour cette vente
-            let salePaid = 0;
-            sale.payments.forEach(payment => {
-                const amount = Number(payment.amount) || 0;
-                salePaid += amount;
-            });
-            stats.totalPaid += salePaid;
-
-            // Calculer le profit pour cette vente
-            let saleProfit = 0;
-            sale.products.forEach(item => {
-                const costPrice = Number(item.product?.costPrice) || 0;
-                const priceAtSale = Number(item.priceAtSale) || 0;
-                const quantity = Number(item.quantity) || 0;
-
-                // Calcul du profit pour ce produit
-                const profitPerItem = priceAtSale - costPrice;
-                saleProfit += profitPerItem * quantity;
-            });
-            stats.totalProfit += saleProfit;
-
-            // Compter par statut
-            if (sale.status === 'pending') stats.pendingSales++;
-            if (sale.status === 'partially_paid') stats.partialSales++;
-            if (sale.status === 'completed') stats.completedSales++;
-            if (sale.status === 'cancelled') stats.cancelledSales++;
-
-            // Compter par méthode de paiement
-            sale.payments.forEach(payment => {
-                const method = payment.method || 'unknown';
-                const amount = Number(payment.amount) || 0;
-
-                if (!stats.paymentMethods[method]) {
-                    stats.paymentMethods[method] = 0;
-                }
-
-                stats.paymentMethods[method] += amount;
-            });
-
-            // Top produits
-            sale.products.forEach(item => {
-                const productId = item.product?._id || 'unknown';
-                const productName = item.product?.name || 'Produit inconnu';
-
-                if (!stats.topProducts[productId]) {
-                    stats.topProducts[productId] = {
-                        name: productName,
-                        quantity: 0,
-                        totalSales: 0,
-                        profit: 0
-                    };
-                }
-
-                // Sécuriser les valeurs numériques
-                const costPrice = Number(item.product?.costPrice) || 0;
-                const priceAtSale = Number(item.priceAtSale) || 0;
-                const quantity = Number(item.quantity) || 0;
-
-                // Calcul du profit pour ce produit
-                const profitPerItem = priceAtSale - costPrice;
-                const productProfit = profitPerItem * quantity;
-
-                stats.topProducts[productId].quantity += quantity;
-                stats.topProducts[productId].totalSales += priceAtSale * quantity;
-                stats.topProducts[productId].profit += productProfit;
-            });
-
-            // Ventes par jour/mois/année
-            const saleDate = new Date(sale.saleDate);
-            const dayKey = saleDate.toISOString().split('T')[0];
-            const monthKey = saleDate.getFullYear() + '-' + (saleDate.getMonth() + 1).toString().padStart(2, '0');
-            const yearKey = saleDate.getFullYear().toString();
-
-            if (!stats.salesByDay[dayKey]) stats.salesByDay[dayKey] = 0;
-            if (!stats.salesByMonth[monthKey]) stats.salesByMonth[monthKey] = 0;
-            if (!stats.salesByYear[yearKey]) stats.salesByYear[yearKey] = 0;
-
-            stats.salesByDay[dayKey] += totalAmount;
-            stats.salesByMonth[monthKey] += totalAmount;
-            stats.salesByYear[yearKey] += totalAmount;
-        });
-
-        // Trier les produits les plus vendus
-        stats.topProducts = Object.values(stats.topProducts)
-            .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, 5);
-
-        return stats;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const response = await api.get(`/sales/user/${userId}`);
+        const payload = response?.data || {};
+        setUser(payload.user || null);
+        setSales(Array.isArray(payload.sales) ? payload.sales : []);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Échec du chargement des statistiques utilisateur');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const stats = sales.length > 0 ? calculateStats() : null;
-    // eslint-disable-next-line no-unused-vars -- safeStats for potential highlight cards
-    const safeStats = {
-        totalSales: stats?.totalSales || 0,
-        totalAmount: stats?.totalAmount || 0,
-        totalProfit: stats?.totalProfit || 0,
-        totalPaid: stats?.totalPaid || 0,
-        averageTicket: stats && stats.totalSales ? stats.totalAmount / stats.totalSales : 0,
-        pendingSales: stats?.pendingSales || 0,
-        partialSales: stats?.partialSales || 0,
-        completedSales: stats?.completedSales || 0,
-        cancelledSales: stats?.cancelledSales || 0,
+    if (auth?.isLoading) {
+      return;
+    }
+
+    if (isAdmin || isOwner) {
+      fetchData();
+    }
+  }, [auth?.isLoading, isAdmin, isOwner, userId]);
+
+  const normalizedSales = useMemo(
+    () =>
+      (Array.isArray(sales) ? sales : [])
+        .map((sale) => {
+          const totalAmount = safeNumber(sale?.totalAmount);
+          const { totalPaid, balance } = calculateSaleTotals(sale);
+          const profit = calculateSaleProfit(sale);
+          const products = Array.isArray(sale?.products) ? sale.products : [];
+          const productNames = products
+            .map((item) => item?.product?.name || item?.productName || null)
+            .filter(Boolean);
+          const containers = [...new Set(products.map((item) => item?.product?.container).filter(Boolean))];
+          const itemsCount = products.reduce((sum, item) => sum + safeNumber(item?.quantity), 0);
+          const payments = Array.isArray(sale?.payments) ? sale.payments : [];
+          const paymentMethods = [...new Set(payments.map((payment) => payment?.method || 'Non renseigné'))];
+          const saleDateObject =
+            parseDateSafely(sale?.saleDate) ||
+            parseDateSafely(sale?.updatedAt) ||
+            parseDateSafely(sale?.createdAt) ||
+            new Date();
+
+          return {
+            ...sale,
+            saleDateObject,
+            totalAmount,
+            totalPaid: safeNumber(totalPaid),
+            balance: Math.max(safeNumber(balance), 0),
+            profit,
+            itemsCount,
+            productNames,
+            containers,
+            paymentMethods,
+            paymentStructure: getPaymentStructureKey(sale),
+            clientName: sale?.client?.name || 'Client comptoir',
+          };
+        })
+        .sort((left, right) => right.saleDateObject.getTime() - left.saleDateObject.getTime()),
+    [sales]
+  );
+
+  const activeDateRange = useMemo(
+    () => getDateRange(rangePreset, startDate, endDate),
+    [rangePreset, startDate, endDate]
+  );
+
+  const filteredSales = useMemo(() => {
+    const normalizedQuery = deferredSearch.trim().toLowerCase();
+
+    return normalizedSales.filter((sale) => {
+      const saleTime = sale.saleDateObject.getTime();
+
+      if (activeDateRange.start && saleTime < activeDateRange.start.getTime()) {
+        return false;
+      }
+
+      if (activeDateRange.end && saleTime > activeDateRange.end.getTime()) {
+        return false;
+      }
+
+      if (status !== 'all' && sale.status !== status) {
+        return false;
+      }
+
+      if (saleType !== 'all') {
+        const targetType = sale.saleType === 'wholesale' ? 'wholesale' : 'retail';
+        if (targetType !== saleType) {
+          return false;
+        }
+      }
+
+      if (paymentStructure !== 'all' && sale.paymentStructure !== paymentStructure) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const searchableText = [
+        sale.clientName,
+        sale.productNames.join(' '),
+        sale.containers.join(' '),
+        sale.paymentMethods.join(' '),
+        sale._id,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [activeDateRange.end, activeDateRange.start, deferredSearch, normalizedSales, paymentStructure, saleType, status]);
+
+  const analytics = useMemo(() => {
+    const initial = {
+      totalSales: filteredSales.length,
+      totalAmount: 0,
+      totalPaid: 0,
+      outstandingAmount: 0,
+      totalProfit: 0,
+      totalItems: 0,
+      totalPayments: 0,
+      activeDays: 0,
+      averageTicket: 0,
+      averageItemsPerSale: 0,
+      collectionRate: 0,
+      marginRate: 0,
+      wholesale: { count: 0, amount: 0 },
+      fullPayment: { count: 0, amount: 0 },
+      multiplePayments: { count: 0, amount: 0 },
+      pendingPayments: { count: 0, amount: 0 },
+      bestClient: null,
+      topProduct: null,
+      bestMonth: null,
+      busiestDay: null,
+      favoritePaymentMethod: null,
+      largestSale: null,
+      statusBreakdown: [],
+      paymentStructureBreakdown: [],
+      paymentMethodBreakdown: [],
+      topClients: [],
+      topProducts: [],
     };
-    // eslint-disable-next-line no-unused-vars -- paymentEntries for payment chart
-    const paymentEntries = Object.entries(stats?.paymentMethods || {});
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const salesResponse = await api.get(`/sales/user/${userId}`);
-                const { user, sales } = salesResponse.data;
+    if (!filteredSales.length) {
+      return initial;
+    }
 
-                setUser(user);
-                setSales(sales);
-                setLoading(false);
-            } catch (err) {
-                setError('Échec du chargement des données');
-                setLoading(false);
-            }
-        };
+    const clientMap = new Map();
+    const productMap = new Map();
+    const monthMap = new Map();
+    const dayMap = new Map();
+    const paymentMethodMap = new Map();
+    const statusMap = new Map();
+    const paymentStructureMap = new Map();
 
-        if (auth.isLoading) {
-            return;
-        }
-        if (auth.isAdmin || isOwner) {
-            fetchData();
-        }
-    }, [userId, auth.isAdmin, auth.isLoading, isOwner]);
+    filteredSales.forEach((sale) => {
+      initial.totalAmount += sale.totalAmount;
+      initial.totalPaid += sale.totalPaid;
+      initial.outstandingAmount += sale.balance;
+      initial.totalProfit += sale.profit;
+      initial.totalItems += sale.itemsCount;
+      initial.totalPayments += Array.isArray(sale.payments) ? sale.payments.length : 0;
 
-    // Données pour le graphique des ventes
-    const getSalesChartData = () => {
-        if (!stats) return null;
+      if (sale.saleType === 'wholesale') {
+        initial.wholesale.count += 1;
+        initial.wholesale.amount += sale.totalAmount;
+      }
 
-        let labels = [];
-        let data = [];
-        let backgroundColors = [];
+      if (sale.paymentStructure === 'full_payment') {
+        initial.fullPayment.count += 1;
+        initial.fullPayment.amount += sale.totalAmount;
+      } else if (sale.paymentStructure === 'multiple_payments') {
+        initial.multiplePayments.count += 1;
+        initial.multiplePayments.amount += sale.totalAmount;
+      } else {
+        initial.pendingPayments.count += 1;
+        initial.pendingPayments.amount += sale.totalAmount;
+      }
 
-        switch (timeFilter) {
-            case 'day':
-                labels = Object.keys(stats.salesByDay).map(date =>
-                    format(new Date(date), 'dd MMM', { locale: fr })
-                );
-                data = Object.values(stats.salesByDay);
-                backgroundColors = Array(labels.length).fill('rgba(54, 162, 235, 0.5)');
-                break;
+      const clientEntry = clientMap.get(sale.clientName) || { name: sale.clientName, sales: 0, amount: 0 };
+      clientEntry.sales += 1;
+      clientEntry.amount += sale.totalAmount;
+      clientMap.set(sale.clientName, clientEntry);
 
-            case 'month':
-                labels = Object.keys(stats.salesByMonth).map(month =>
-                    format(new Date(`${month}-01`), 'MMM yyyy', { locale: fr })
-                );
-                data = Object.values(stats.salesByMonth);
-                backgroundColors = Array(labels.length).fill('rgba(75, 192, 192, 0.5)');
-                break;
-
-            case 'year':
-                labels = Object.keys(stats.salesByYear);
-                data = Object.values(stats.salesByYear);
-                backgroundColors = Array(labels.length).fill('rgba(153, 102, 255, 0.5)');
-                break;
-
-            default:
-                break;
+      (Array.isArray(sale.products) ? sale.products : []).forEach((item) => {
+        const productName = item?.product?.name || item?.productName;
+        if (!productName) {
+          return;
         }
 
-        return {
-            labels,
-            datasets: [
-                {
-                    label: `Chiffre d'affaires (${timeFilter === 'day' ? 'par jour' : timeFilter === 'month' ? 'par mois' : 'par an'})`,
-                    data,
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('0.5', '1')),
-                    borderWidth: 1,
-                }
-            ]
-        };
-    };
+        const quantity = safeNumber(item?.quantity) || 1;
+        const productEntry = productMap.get(productName) || { name: productName, quantity: 0, amount: 0 };
+        productEntry.quantity += quantity;
+        productEntry.amount += quantity * safeNumber(item?.priceAtSale);
+        productMap.set(productName, productEntry);
+      });
 
-    const salesChartData = getSalesChartData();
+      const monthKey = format(sale.saleDateObject, 'yyyy-MM');
+      const monthEntry = monthMap.get(monthKey) || {
+        label: format(sale.saleDateObject, 'MMMM yyyy', { locale: fr }),
+        amount: 0,
+      };
+      monthEntry.amount += sale.totalAmount;
+      monthMap.set(monthKey, monthEntry);
 
-    // Données pour le graphique des méthodes de paiement
-    const paymentChartData = stats ? {
-        labels: Object.keys(stats.paymentMethods),
-        datasets: [
-            {
-                data: Object.values(stats.paymentMethods),
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.5)',
-                    'rgba(75, 192, 192, 0.5)',
-                    'rgba(153, 102, 255, 0.5)',
-                    'rgba(255, 159, 64, 0.5)',
-                    'rgba(255, 99, 132, 0.5)',
-                ].slice(0, Object.keys(stats.paymentMethods).length),
-                borderColor: [
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)',
-                    'rgba(255, 99, 132, 1)',
-                ].slice(0, Object.keys(stats.paymentMethods).length),
-                borderWidth: 1,
-            }
-        ]
-    } : null;
+      const dayKey = format(sale.saleDateObject, 'yyyy-MM-dd');
+      const dayEntry = dayMap.get(dayKey) || {
+        label: format(sale.saleDateObject, 'dd MMM yyyy', { locale: fr }),
+        amount: 0,
+        sales: 0,
+      };
+      dayEntry.amount += sale.totalAmount;
+      dayEntry.sales += 1;
+      dayMap.set(dayKey, dayEntry);
 
-    // Données pour le graphique des statuts de vente
-    const statusChartData = stats ? {
-        labels: ['Complétées', 'Partiellement payées', 'En attente', 'Annulées'],
-        datasets: [
-            {
-                data: [
-                    stats.completedSales,
-                    stats.partialSales,
-                    stats.pendingSales,
-                    stats.cancelledSales
-                ],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.5)',
-                    'rgba(99, 102, 241, 0.5)',
-                    'rgba(255, 206, 86, 0.5)',
-                    'rgba(255, 99, 132, 0.5)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(99, 102, 241, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(255, 99, 132, 1)'
-                ],
-                borderWidth: 1,
-            }
-        ]
-    } : null;
+      const normalizedStatus = sale.status || 'pending';
+      statusMap.set(normalizedStatus, (statusMap.get(normalizedStatus) || 0) + 1);
+      paymentStructureMap.set(sale.paymentStructure, (paymentStructureMap.get(sale.paymentStructure) || 0) + 1);
 
-    useResponsiveTable(topProductsTableRef, [stats?.topProducts]);
-    useResponsiveTable(salesTableRef, [sales]);
+      (Array.isArray(sale.payments) ? sale.payments : []).forEach((payment) => {
+        const method = payment?.method || 'Non renseigné';
+        paymentMethodMap.set(method, (paymentMethodMap.get(method) || 0) + safeNumber(payment?.amount));
+      });
 
-    if (auth.isLoading) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <AppLoader fullScreen={false} text="Chargement…" />
-            </div>
-        );
+      if (!initial.largestSale || sale.totalAmount > initial.largestSale.totalAmount) {
+        initial.largestSale = sale;
+      }
+    });
+
+    initial.activeDays = dayMap.size;
+    initial.averageTicket = initial.totalAmount / filteredSales.length;
+    initial.averageItemsPerSale = initial.totalItems / filteredSales.length;
+    initial.collectionRate = initial.totalAmount ? (initial.totalPaid / initial.totalAmount) * 100 : 0;
+    initial.marginRate = initial.totalAmount ? (initial.totalProfit / initial.totalAmount) * 100 : 0;
+    initial.bestClient = [...clientMap.values()].sort((left, right) => right.amount - left.amount)[0] || null;
+    initial.topProduct = [...productMap.values()].sort((left, right) => right.quantity - left.quantity)[0] || null;
+    initial.bestMonth = [...monthMap.values()].sort((left, right) => right.amount - left.amount)[0] || null;
+    initial.busiestDay =
+      [...dayMap.values()].sort((left, right) => right.amount - left.amount || right.sales - left.sales)[0] || null;
+    initial.favoritePaymentMethod =
+      [...paymentMethodMap.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .map(([method, amount]) => ({ method, amount }))[0] || null;
+    initial.topClients = [...clientMap.values()].sort((left, right) => right.amount - left.amount).slice(0, 5);
+    initial.topProducts = [...productMap.values()].sort((left, right) => right.quantity - left.quantity).slice(0, 5);
+    initial.statusBreakdown = [...statusMap.entries()].map(([key, count]) => ({
+      key,
+      label: getStatusText(key),
+      count,
+    }));
+    initial.paymentStructureBreakdown = [...paymentStructureMap.entries()].map(([key, count]) => ({
+      key,
+      label: PAYMENT_STRUCTURE_META[key]?.label || key,
+      count,
+      color: PAYMENT_STRUCTURE_META[key]?.chartColor || '#64748b',
+    }));
+    initial.paymentMethodBreakdown = [...paymentMethodMap.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .map(([method, amount], index) => ({
+        method,
+        amount,
+        color: PAYMENT_METHOD_COLORS[index % PAYMENT_METHOD_COLORS.length],
+      }));
+
+    return initial;
+  }, [filteredSales]);
+
+  const trendChart = useMemo(
+    () => buildTrendData(filteredSales, rangePreset, activeDateRange),
+    [activeDateRange, filteredSales, rangePreset]
+  );
+
+  const historySales = useMemo(() => {
+    const query = deferredHistorySearch.trim().toLowerCase();
+
+    const filteredHistory = filteredSales.filter((sale) => {
+      if (historyView === 'outstanding' && sale.balance <= 0) {
+        return false;
+      }
+
+      if (historyView === 'wholesale' && sale.saleType !== 'wholesale') {
+        return false;
+      }
+
+      if (historyView === 'multiple_payments' && sale.paymentStructure !== 'multiple_payments') {
+        return false;
+      }
+
+      if (historyView === 'high_profit' && sale.profit <= 0) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const searchableText = [
+        sale.clientName,
+        sale.productNames.join(' '),
+        sale.containers.join(' '),
+        sale.paymentMethods.join(' '),
+        sale._id,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
+
+    return [...filteredHistory].sort((left, right) => {
+      switch (historySort) {
+        case 'oldest':
+          return left.saleDateObject.getTime() - right.saleDateObject.getTime();
+        case 'amount_desc':
+          return right.totalAmount - left.totalAmount;
+        case 'paid_desc':
+          return right.totalPaid - left.totalPaid;
+        case 'profit_desc':
+          return right.profit - left.profit;
+        case 'recent':
+        default:
+          return right.saleDateObject.getTime() - left.saleDateObject.getTime();
+      }
+    });
+  }, [deferredHistorySearch, filteredSales, historySort, historyView]);
+
+  const filterEntries = useMemo(
+    () => buildFilterEntries({ rangePreset, startDate, endDate, search, status, saleType, paymentStructure }),
+    [endDate, paymentStructure, rangePreset, saleType, search, startDate, status]
+  );
+
+  const resetFilters = () => {
+    setRangePreset('90days');
+    setStartDate('');
+    setEndDate('');
+    setSearch('');
+    setStatus('all');
+    setSaleType('all');
+    setPaymentStructure('all');
+    setHistorySearch('');
+    setHistoryView('all');
+    setHistorySort('recent');
+  };
+
+  const exportFileBase = useMemo(() => {
+    const dateLabel = format(new Date(), 'yyyyMMdd');
+    return `ventes-${sanitizeFilePart(user?.name)}-${dateLabel}`;
+  }, [user?.name]);
+
+  const handleExportExcel = async () => {
+    if (!filteredSales.length) {
+      return;
     }
 
-    if (isUnauthorized) {
-        return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg mt-10">
-                <div className="text-center py-12">
-                    <div className="bg-red-100 p-4 rounded-full inline-block mb-4">
-                        <svg className="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Accès non autorisé</h2>
-                    <p className="text-gray-600 mb-6">Vous n'avez pas les permissions nécessaires pour accéder à cette page</p>
-                    <Link to="/" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Retour à l'accueil
-                    </Link>
-                </div>
-            </div>
-        );
+    try {
+      setExporting('excel');
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.utils.book_new();
+
+      const statsSheet = XLSX.utils.aoa_to_sheet([
+        ['Utilisateur', user?.name || 'Utilisateur'],
+        ['Email', user?.email || ''],
+        ['Ventes filtrées', analytics.totalSales],
+        ['Chiffre d’affaires', analytics.totalAmount],
+        ['Encaissements', analytics.totalPaid],
+        ['Reste à encaisser', analytics.outstandingAmount],
+        ['Bénéfice', analytics.totalProfit],
+        ['Ventes en gros', analytics.wholesale.count],
+        ['Paiement unique', analytics.fullPayment.count],
+        ['Paiements multiples', analytics.multiplePayments.count],
+      ]);
+
+      const filtersSheet = XLSX.utils.aoa_to_sheet(filterEntries);
+      const salesSheet = XLSX.utils.json_to_sheet(
+        filteredSales.map((sale) => ({
+          Date: formatDateLabel(sale.saleDateObject),
+          Client: sale.clientName,
+          Produits: sale.productNames.join(', '),
+          Conteneurs: sale.containers.join(', '),
+          Type: getSaleTypeText(sale.saleType),
+          Statut: getStatusText(sale.status),
+          'Structure paiement': PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure,
+          'Montant total': sale.totalAmount,
+          Encaisse: sale.totalPaid,
+          Reste: sale.balance,
+          Benefice: sale.profit,
+          'Nb articles': sale.itemsCount,
+          'Methodes paiement': sale.paymentMethods.join(', '),
+        }))
+      );
+
+      XLSX.utils.book_append_sheet(workbook, statsSheet, 'Statistiques');
+      XLSX.utils.book_append_sheet(workbook, filtersSheet, 'Filtres');
+      XLSX.utils.book_append_sheet(workbook, salesSheet, 'Ventes');
+      XLSX.writeFile(workbook, `${exportFileBase}.xlsx`);
+    } finally {
+      setExporting('');
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!filteredSales.length) {
+      return;
     }
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <AppLoader fullScreen={false} text="Chargement…" />
-            </div>
-        );
-    }
+    try {
+      setExporting('pdf');
+      const [jsPDFModule, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default;
+      const autoTable = autoTableModule.default || autoTableModule;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
-    if (error) {
-        return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg mt-10">
-                <div className="text-center py-12 text-red-500">
-                    <p>{error}</p>
-                </div>
-            </div>
-        );
-    }
+      doc.setFontSize(18);
+      doc.text('Statistiques utilisateur', 40, 42);
+      doc.setFontSize(11);
+      doc.text(`${user?.name || 'Utilisateur'} • ${user?.email || ''}`, 40, 62);
 
-    if (!user) {
-        return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg mt-10">
-                <div className="text-center py-12">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Utilisateur introuvable</h2>
-                    <Link to="/users/stats" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Retour à la liste des utilisateurs
-                    </Link>
-                </div>
-            </div>
-        );
-    }
+      let currentY = 86;
+      filterEntries.forEach(([label, value]) => {
+        doc.text(`${label}: ${value}`, 40, currentY);
+        currentY += 16;
+      });
 
+      autoTable(doc, {
+        startY: currentY + 8,
+        head: [['KPI', 'Valeur']],
+        body: [
+          ['Ventes filtrées', `${analytics.totalSales}`],
+          ['Chiffre d’affaires', formatCFA(analytics.totalAmount)],
+          ['Encaissements', formatCFA(analytics.totalPaid)],
+          ['Reste à encaisser', formatCFA(analytics.outstandingAmount)],
+          ['Bénéfice', formatCFA(analytics.totalProfit)],
+          ['Ventes en gros', `${analytics.wholesale.count} (${formatCFA(analytics.wholesale.amount)})`],
+          ['Paiement unique', `${analytics.fullPayment.count} (${formatCFA(analytics.fullPayment.amount)})`],
+          [
+            'Paiements multiples',
+            `${analytics.multiplePayments.count} (${formatCFA(analytics.multiplePayments.amount)})`,
+          ],
+        ],
+        styles: { fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [15, 23, 42] },
+      });
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [[
+          'Date',
+          'Client',
+          'Produits',
+          'Type',
+          'Statut',
+          'Paiement',
+          'Total',
+          'Encaisse',
+          'Reste',
+        ]],
+        body: filteredSales.map((sale) => [
+          formatDateLabel(sale.saleDateObject),
+          sale.clientName,
+          sale.productNames.join(', '),
+          getSaleTypeText(sale.saleType),
+          getStatusText(sale.status),
+          PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure,
+          formatCFA(sale.totalAmount),
+          formatCFA(sale.totalPaid),
+          formatCFA(sale.balance),
+        ]),
+        styles: { fontSize: 8, cellPadding: 5, valign: 'top' },
+        headStyles: { fillColor: [15, 118, 110] },
+        columnStyles: {
+          2: { cellWidth: 170 },
+        },
+      });
+
+      doc.save(`${exportFileBase}.pdf`);
+    } finally {
+      setExporting('');
+    }
+  };
+
+  if (auth?.isLoading) {
     return (
-        <div>
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                    <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Tableau de bord des ventes
-                </h1>
-
-                <div className="flex items-center gap-2">
-                    <Link to={`/users/stats`} className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                        </svg>
-                        Retour aux utilisateurs
-                    </Link>
-                </div>
-            </div>
-
-            {/* Entête utilisateur */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-                <div className="flex items-center gap-4">
-                    <div className="bg-indigo-100 p-3 rounded-full">
-                        <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold">{user.name}</h2>
-                        <p className="text-gray-600">{user.email}</p>
-                        <p className="text-sm text-gray-500">
-                            {user.isAdmin ? 'Administrateur' : 'Utilisateur'} • Inscrit le {format(new Date(user.createdAt), 'dd/MM/yyyy', { locale: fr })}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Cartes de statistiques */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100">
-                    <div className="flex items-center">
-                        <div className="p-3 bg-blue-100 rounded-lg mr-4">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Ventes totales</p>
-                            <p className="text-2xl font-bold">{stats ? stats.totalSales : 0}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-green-100">
-                    <div className="flex items-center">
-                        <div className="p-3 bg-green-100 rounded-lg mr-4">
-                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Chiffre d'affaires</p>
-                            <p className="text-2xl font-bold">
-                                {stats ? formatCFA(stats.totalAmount) : formatCFA(0)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-purple-100">
-                    <div className="flex items-center">
-                        <div className="p-3 bg-purple-100 rounded-lg mr-4">
-                            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Bénéfice total</p>
-                            <p className="text-2xl font-bold">
-                                {stats ? formatCFA(stats.totalProfit) : formatCFA(0)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-yellow-100">
-                    <div className="flex items-center">
-                        <div className="p-3 bg-yellow-100 rounded-lg mr-4">
-                            <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Total encaissé</p>
-                            <p className="text-2xl font-bold">
-                                {stats ? formatCFA(stats.totalPaid) : formatCFA(0)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Graphiques */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Graphique des ventes */}
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold">Évolution des ventes</h3>
-                        <div className="flex gap-2">
-                            <button
-                                className={`px-3 py-1 rounded ${timeFilter === 'day' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}
-                                onClick={() => setTimeFilter('day')}
-                            >
-                                Jour
-                            </button>
-                            <button
-                                className={`px-3 py-1 rounded ${timeFilter === 'month' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}
-                                onClick={() => setTimeFilter('month')}
-                            >
-                                Mois
-                            </button>
-                            <button
-                                className={`px-3 py-1 rounded ${timeFilter === 'year' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}
-                                onClick={() => setTimeFilter('year')}
-                            >
-                                Année
-                            </button>
-                        </div>
-                    </div>
-                    {salesChartData ? (
-                        <Bar
-                            data={salesChartData}
-                            options={{
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function (context) {
-                                                return formatCFA(context.parsed.y);
-                                            }
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    y: {
-                                        ticks: {
-                                            callback: function (value) {
-                                                return formatCFA(value);
-                                            }
-                                        }
-                                    }
-                                }
-                            }}
-                        />
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            Aucune donnée de vente disponible
-                        </div>
-                    )}
-                </div>
-
-                {/* Graphique des méthodes de paiement */}
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-semibold mb-4">Répartition des paiements</h3>
-                    {paymentChartData && Object.keys(stats.paymentMethods).length > 0 ? (
-                        <div className="flex flex-col items-center">
-                            <div className="w-64 h-64">
-                                <Pie
-                                    data={paymentChartData}
-                                    options={{
-                                        plugins: {
-                                            tooltip: {
-                                                callbacks: {
-                                                    label: function (context) {
-                                                        return `${context.label}: ${formatCFA(context.raw)}`;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }}
-                                />
-                            </div>
-                            <div className="mt-4 grid grid-cols-3 gap-4 w-full">
-                                {Object.entries(stats.paymentMethods).map(([method, amount], index) => (
-                                    <div key={index} className="text-center p-2 bg-blue-50 rounded">
-                                        <p className="font-medium">{method}</p>
-                                        <p>{formatCFA(amount)}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            Aucune donnée de paiement disponible
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                {/* Statut des ventes */}
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-semibold mb-4">Statut des ventes</h3>
-                    {statusChartData ? (
-                        <div className="flex flex-col items-center">
-                            <div className="w-48 h-48">
-                                <Pie data={statusChartData} />
-                            </div>
-                            <div className="mt-4 w-full space-y-2">
-                                <StatusRow color="bg-green-500" label="Complétées" value={stats.completedSales} />
-                                <StatusRow color="bg-indigo-500" label="Partiellement payées" value={stats.partialSales} />
-                                <StatusRow color="bg-yellow-500" label="En attente" value={stats.pendingSales} />
-                                <StatusRow color="bg-red-500" label="Annulées" value={stats.cancelledSales} />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            Aucune donnée de statut disponible
-                        </div>
-                    )}
-                </div>
-
-                {/* Produits les plus vendus */}
-                <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-2">
-                    <h3 className="text-lg font-semibold mb-4">Produits les plus vendus</h3>
-                    {stats && stats.topProducts.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table ref={topProductsTableRef} className="responsive-table min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chiffre d'affaires</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bénéfice</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {stats.topProducts.map((product, index) => (
-                                        <tr key={index}>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{product.quantity}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{formatCFA(product.totalSales)}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{formatCFA(product.profit)}</div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            Aucun produit vendu
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Dernières ventes */}
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-800">Dernières ventes</h2>
-                </div>
-
-                {sales.length === 0 ? (
-                    <div className="text-center py-12">
-                        <div className="bg-gray-100 p-4 rounded-full inline-block mb-4">
-                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">Aucune vente trouvée</h3>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table ref={salesTableRef} className="responsive-table min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produits</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {sales.slice(0, 10).map((sale) => (
-                                    <tr key={sale._id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {format(new Date(sale.saleDate), 'dd/MM/yyyy', { locale: fr })}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">{sale.client?.name || 'Non spécifié'}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">{sale.products.length} produits</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {formatCFA(sale.totalAmount || 0)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${sale.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                    sale.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {sale.status === 'completed' ? 'Complétée' :
-                                                    sale.status === 'pending' ? 'En attente' :
-                                                        sale.status === 'cancelled' ? 'Annulée' : sale.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <Link
-                                                to={`/sales/${sale._id}`}
-                                                className="text-indigo-600 hover:text-indigo-900"
-                                            >
-                                                Voir détails
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <AppLoader fullScreen={false} text="Chargement..." />
+      </div>
     );
+  }
+
+  if (isUnauthorized) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+        <EmptyState
+          title="Accès non autorisé"
+          helper="Cette page est réservée à l'administrateur ou au propriétaire du compte."
+          action={
+            <Link
+              to="/"
+              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              Retour à l'accueil
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <AppLoader fullScreen={false} text="Chargement..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+        <EmptyState
+          title="Chargement impossible"
+          helper={error}
+          action={
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              Recharger
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+        <EmptyState
+          title="Utilisateur introuvable"
+          helper="Le profil demandé n'existe pas ou n'est plus disponible."
+          action={
+            <Link
+              to={isAdmin ? '/users/stats' : '/profile'}
+              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              Retour
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-teal-950 to-emerald-900 text-white shadow-xl">
+          <div className="flex flex-col gap-6 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Link
+                to={isAdmin ? '/users/stats' : '/profile'}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur"
+              >
+                <span aria-hidden="true">←</span>
+                {isAdmin ? 'Retour aux utilisateurs' : 'Retour au profil'}
+              </Link>
+              <div className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100">
+                Dashboard commercial
+              </div>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[1.4fr_0.9fr]">
+              <div>
+                <p className="text-sm uppercase tracking-[0.28em] text-emerald-200/80">Vue utilisateur</p>
+                <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{user.name}</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
+                  Toutes les statistiques, les insights commerciaux, les exportations et l'historique de ventes
+                  suivent les filtres actifs ci-dessous. L'interface est pensée d'abord pour mobile puis s'étend en
+                  cartes sur les grands écrans.
+                </p>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                    <p className="text-sm text-emerald-100/80">Email</p>
+                    <p className="mt-2 text-sm font-medium text-white">{user.email || 'Non renseigné'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                    <p className="text-sm text-emerald-100/80">Dernière connexion</p>
+                    <p className="mt-2 text-sm font-medium text-white">{formatDateTimeLabel(user.lastLogin)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                    <p className="text-sm text-emerald-100/80">Inscrit le</p>
+                    <p className="mt-2 text-sm font-medium text-white">{formatDateLabel(user.createdAt)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <DashboardStatCard
+                  label="Encaissement"
+                  value={formatCFA(analytics.totalPaid)}
+                  helper={`${formatPercent(analytics.collectionRate)} du chiffre d'affaires filtré`}
+                  tone="teal"
+                />
+                <DashboardStatCard
+                  label="Reste à encaisser"
+                  value={formatCFA(analytics.outstandingAmount)}
+                  helper={`${analytics.pendingPayments.count} vente(s) encore ouvertes`}
+                  tone="amber"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">Filtres et export</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Les statistiques, les graphiques et les exports PDF/Excel suivent uniquement les ventes filtrées.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={!filteredSales.length || exporting.length > 0}
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  disabled={!filteredSales.length || exporting.length > 0}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {RANGE_OPTIONS.map((option) => (
+                <FilterChip
+                  key={option.value}
+                  active={rangePreset === option.value}
+                  label={option.label}
+                  onClick={() => setRangePreset(option.value)}
+                />
+              ))}
+            </div>
+
+            {rangePreset === 'custom' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span>Date de début</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span>Date de fin</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(event) => setEndDate(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-2 text-sm text-slate-600">
+                <span>Recherche</span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Client, produit, conteneur..."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                />
+              </label>
+
+              <label className="space-y-2 text-sm text-slate-600">
+                <span>Statut</span>
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm text-slate-600">
+                <span>Type de vente</span>
+                <select
+                  value={saleType}
+                  onChange={(event) => setSaleType(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                >
+                  {SALE_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm text-slate-600">
+                <span>Structure de paiement</span>
+                <select
+                  value={paymentStructure}
+                  onChange={(event) => setPaymentStructure(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                >
+                  {PAYMENT_STRUCTURE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+              <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+                {filterEntries.map(([label, value]) => (
+                  <span key={label} className="rounded-full bg-white px-3 py-1 shadow-sm">
+                    <strong className="font-medium text-slate-900">{label}:</strong> {value}
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
+              >
+                Réinitialiser
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <DashboardStatCard
+            label="Ventes filtrées"
+            value={`${analytics.totalSales}`}
+            helper={`${filteredSales.length} sur ${normalizedSales.length} vente(s)`}
+            tone="slate"
+          />
+          <DashboardStatCard
+            label="Chiffre d'affaires"
+            value={formatCFA(analytics.totalAmount)}
+            helper={`Ticket moyen ${formatCFA(analytics.averageTicket)}`}
+            tone="teal"
+          />
+          <DashboardStatCard
+            label="Bénéfice"
+            value={formatCFA(analytics.totalProfit)}
+            helper={`Marge moyenne ${formatPercent(analytics.marginRate)}`}
+            tone="sky"
+          />
+          <DashboardStatCard
+            label="Articles vendus"
+            value={formatCompactNumber(analytics.totalItems)}
+            helper={`${analytics.averageItemsPerSale.toFixed(1)} article(s) par vente`}
+            tone="amber"
+          />
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">Performance commerciale</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Chiffre d'affaires et encaissements par {trendChart.granularity}.
+                </p>
+              </div>
+            </div>
+
+            {trendChart.data.length ? (
+              <div className="mt-4 h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trendChart.data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#475569' }} />
+                    <YAxis tick={{ fontSize: 12, fill: '#475569' }} tickFormatter={formatCompactNumber} />
+                    <RechartsTooltip
+                      formatter={(value) => formatCFA(value)}
+                      contentStyle={{ borderRadius: 16, borderColor: '#e2e8f0' }}
+                    />
+                    <Bar dataKey="revenue" radius={[10, 10, 0, 0]} fill="#0f766e" name="Chiffre d'affaires" />
+                    <Bar dataKey="paid" radius={[10, 10, 0, 0]} fill="#0f172a" name="Encaissements" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <EmptyState
+                  title="Aucune vente à tracer"
+                  helper="Ajustez les filtres pour afficher une tendance commerciale."
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="text-xl font-semibold text-slate-900">Structures de paiement</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Paiement unique, paiements multiples et ventes encore ouvertes.
+            </p>
+
+            {analytics.paymentStructureBreakdown.length ? (
+              <>
+                <div className="mt-4 h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analytics.paymentStructureBreakdown}
+                        innerRadius={62}
+                        outerRadius={92}
+                        paddingAngle={3}
+                        dataKey="count"
+                        nameKey="label"
+                      >
+                        {analytics.paymentStructureBreakdown.map((entry) => (
+                          <Cell key={entry.key} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(value, _name, item) => [`${value} vente(s)`, item.payload.label]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                  <MiniInsightCard
+                    title="Paiement unique"
+                    value={`${analytics.fullPayment.count}`}
+                    helper={formatCFA(analytics.fullPayment.amount)}
+                    accent="text-emerald-700"
+                  />
+                  <MiniInsightCard
+                    title="Paiements multiples"
+                    value={`${analytics.multiplePayments.count}`}
+                    helper={formatCFA(analytics.multiplePayments.amount)}
+                    accent="text-sky-700"
+                  />
+                  <MiniInsightCard
+                    title="Encore ouverts"
+                    value={`${analytics.pendingPayments.count}`}
+                    helper={formatCFA(analytics.pendingPayments.amount)}
+                    accent="text-amber-700"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="mt-4">
+                <EmptyState
+                  title="Aucune structure de paiement"
+                  helper="Aucune vente filtrée disponible pour la répartition."
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          <MiniInsightCard
+            title="Vente en gros"
+            value={`${analytics.wholesale.count}`}
+            helper={`${formatCFA(analytics.wholesale.amount)} sur la sélection`}
+            accent="text-fuchsia-700"
+          />
+          <MiniInsightCard
+            title="Meilleur client"
+            value={analytics.bestClient?.name || 'Aucun'}
+            helper={analytics.bestClient ? formatCFA(analytics.bestClient.amount) : 'Pas encore de donnée'}
+            accent="text-slate-900"
+          />
+          <MiniInsightCard
+            title="Produit dominant"
+            value={analytics.topProduct?.name || 'Aucun'}
+            helper={
+              analytics.topProduct
+                ? `${analytics.topProduct.quantity} article(s) • ${formatCFA(analytics.topProduct.amount)}`
+                : 'Pas encore de donnée'
+            }
+            accent="text-teal-700"
+          />
+          <MiniInsightCard
+            title="Meilleur mois"
+            value={analytics.bestMonth?.label || 'Aucun'}
+            helper={analytics.bestMonth ? formatCFA(analytics.bestMonth.amount) : 'Pas encore de donnée'}
+            accent="text-sky-700"
+          />
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="text-xl font-semibold text-slate-900">Synthèse intelligente</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Quelques signaux directement utiles pour piloter l'activité de cet utilisateur.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Méthode de paiement dominante</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">
+                  {analytics.favoritePaymentMethod?.method || 'Aucune'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {analytics.favoritePaymentMethod ? formatCFA(analytics.favoritePaymentMethod.amount) : 'Aucune donnée'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Jour le plus fort</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">{analytics.busiestDay?.label || 'Aucun'}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {analytics.busiestDay
+                    ? `${formatCFA(analytics.busiestDay.amount)} • ${analytics.busiestDay.sales} vente(s)`
+                    : 'Aucune donnée'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Plus grosse vente</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">
+                  {analytics.largestSale ? formatCFA(analytics.largestSale.totalAmount) : 'Aucune'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {analytics.largestSale
+                    ? `${analytics.largestSale.clientName} • ${formatDateLabel(analytics.largestSale.saleDateObject)}`
+                    : 'Aucune donnée'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Rythme d'activité</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">{analytics.activeDays} jour(s) actifs</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {formatPercent(analytics.collectionRate)} de recouvrement • {analytics.totalPayments} paiement(s)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <h2 className="text-xl font-semibold text-slate-900">Top clients</h2>
+              <div className="mt-4 space-y-3">
+                {analytics.topClients.length ? (
+                  analytics.topClients.map((client, index) => (
+                    <div key={`${client.name}-${index}`} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                      <div>
+                        <p className="font-medium text-slate-900">{client.name}</p>
+                        <p className="text-sm text-slate-500">{client.sales} vente(s)</p>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">{formatCFA(client.amount)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">Aucun client sur la sélection.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <h2 className="text-xl font-semibold text-slate-900">Top produits</h2>
+              <div className="mt-4 space-y-3">
+                {analytics.topProducts.length ? (
+                  analytics.topProducts.map((product, index) => (
+                    <div
+                      key={`${product.name}-${index}`}
+                      className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium text-slate-900">{product.name}</p>
+                        <p className="text-sm text-slate-500">{product.quantity} article(s)</p>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">{formatCFA(product.amount)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">Aucun produit sur la sélection.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">Historique filtré</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {historySales.length} vente(s) affichée(s) sur {filteredSales.length} vente(s) déjà retenues par les
+                filtres globaux. Chaque carte reprend les
+                indicateurs utiles sans forcer le passage sur desktop.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+            <label className="space-y-2 text-sm text-slate-600">
+              <span>Recherche dans l'historique</span>
+              <input
+                type="text"
+                value={historySearch}
+                onChange={(event) => setHistorySearch(event.target.value)}
+                placeholder="Client, produit, conteneur..."
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm text-slate-600">
+              <span>Vue rapide</span>
+              <select
+                value={historyView}
+                onChange={(event) => setHistoryView(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+              >
+                {HISTORY_VIEW_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm text-slate-600">
+              <span>Trier par</span>
+              <select
+                value={historySort}
+                onChange={(event) => setHistorySort(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+              >
+                {HISTORY_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
+            <span className="rounded-full bg-slate-100 px-3 py-1">
+              <strong className="font-medium text-slate-900">Vue:</strong>{' '}
+              {HISTORY_VIEW_OPTIONS.find((option) => option.value === historyView)?.label || 'Toutes les cartes'}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1">
+              <strong className="font-medium text-slate-900">Tri:</strong>{' '}
+              {HISTORY_SORT_OPTIONS.find((option) => option.value === historySort)?.label || 'Plus récentes'}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1">
+              <strong className="font-medium text-slate-900">Recherche:</strong>{' '}
+              {historySearch.trim() || 'Aucune'}
+            </span>
+          </div>
+
+          {historySales.length ? (
+            <div className="mt-5 grid gap-4">
+              {historySales.map((sale) => (
+                <article key={sale._id} className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <SaleBadge className={getStatusClass(sale.status)} label={getStatusText(sale.status)} />
+                        <SaleBadge
+                          className={sale.saleType === 'wholesale' ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-cyan-100 text-cyan-700'}
+                          label={getSaleTypeText(sale.saleType)}
+                        />
+                        <SaleBadge
+                          className={PAYMENT_STRUCTURE_META[sale.paymentStructure]?.accent || 'bg-slate-100 text-slate-700'}
+                          label={PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure}
+                        />
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">{sale.clientName}</h3>
+                        <p className="text-sm text-slate-500">{formatDateTimeLabel(sale.saleDateObject)}</p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Produits</p>
+                          <p className="mt-2 text-sm text-slate-700">
+                            {sale.productNames.length ? sale.productNames.join(', ') : 'Aucun produit'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Conteneurs / paiements</p>
+                          <p className="mt-2 text-sm text-slate-700">
+                            {[...sale.containers, ...sale.paymentMethods].filter(Boolean).join(' • ') || 'Aucun détail'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:w-[22rem]">
+                      <div className="rounded-2xl bg-white p-4 shadow-sm">
+                        <p className="text-sm text-slate-500">Montant total</p>
+                        <p className="mt-2 text-lg font-semibold text-slate-900">{formatCFA(sale.totalAmount)}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white p-4 shadow-sm">
+                        <p className="text-sm text-slate-500">Encaisse</p>
+                        <p className="mt-2 text-lg font-semibold text-emerald-700">{formatCFA(sale.totalPaid)}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white p-4 shadow-sm">
+                        <p className="text-sm text-slate-500">Reste</p>
+                        <p className="mt-2 text-lg font-semibold text-amber-700">{formatCFA(sale.balance)}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white p-4 shadow-sm">
+                        <p className="text-sm text-slate-500">Bénéfice</p>
+                        <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5">
+              <EmptyState
+                title="Aucune vente pour ce filtre d'historique"
+                helper="Essayez une autre vue, retirez la recherche locale ou utilisez la réinitialisation."
+                action={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistorySearch('');
+                      setHistoryView('all');
+                      setHistorySort('recent');
+                    }}
+                    className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+                  >
+                    Réinitialiser l'historique
+                  </button>
+                }
+              />
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
 };
 
 export default UserSalesDashboard;
-
-const StatusRow = ({ color, label, value }) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center">
-      <div className={`w-3 h-3 rounded-full mr-2 ${color}`}></div>
-      <span>{label}</span>
-    </div>
-    <span>{value}</span>
-  </div>
-);

@@ -1,6 +1,9 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
-const { isPushConfigured } = require('../utils/pushNotifications');
+const {
+  isPushConfigured,
+  notifyAdminsWeeklyReport,
+} = require('../utils/pushNotifications');
 
 const getPublicKey = asyncHandler(async (req, res) => {
   if (!process.env.VAPID_PUBLIC_KEY) {
@@ -95,8 +98,47 @@ const unsubscribe = asyncHandler(async (req, res) => {
   res.json({ message: 'Subscription removed' });
 });
 
+const sendWeeklyReportReminder = asyncHandler(async (req, res) => {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ message: 'Non autorisé' });
+  }
+
+  if (!isPushConfigured()) {
+    return res.status(503).json({
+      message: 'Les notifications push ne sont pas configurées sur ce serveur.',
+    });
+  }
+
+  const {
+    rangeLabel = 'Semaine',
+    totalRevenue = 0,
+    totalBalance = 0,
+    sellersCount = 0,
+  } = req.body || {};
+
+  await notifyAdminsWeeklyReport({
+    actorName: req.user?.name || 'Un administrateur',
+    rangeLabel,
+    totalRevenue,
+    totalBalance,
+    sellersCount,
+  });
+
+  await User.updateOne(
+    { _id: req.user._id },
+    {
+      $set: {
+        'adminPreferences.weeklyReportLastSentAt': new Date(),
+      },
+    }
+  );
+
+  res.json({ message: 'Rappel hebdomadaire envoyé aux administrateurs abonnés.' });
+});
+
 module.exports = {
   getPublicKey,
   subscribe,
+  sendWeeklyReportReminder,
   unsubscribe
 };

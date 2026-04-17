@@ -26,7 +26,12 @@ const PartiallyPaidPurchases = () => {
   const [search, setSearch] = useState("");
 
   const fetchSales = useCallback(async () => {
-    const { data } = await api.get("/sales");
+    const { data } = await api.get("/sales", {
+      params: {
+        status: "partially_paid",
+        summary: "compact",
+      },
+    });
     setSales(data || []);
   }, []);
 
@@ -37,7 +42,6 @@ const PartiallyPaidPurchases = () => {
   const partiallyPaid = useMemo(
     () =>
       (sales || [])
-        .filter((s) => s.status === "partially_paid")
         .filter((s) => {
           if (!search.trim()) return true;
           const hay =

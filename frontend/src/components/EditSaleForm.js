@@ -4,6 +4,16 @@ import api from '../services/api';
 import { FormActionsSticky } from './FormLayout';
 import { getSaleTypeText } from '../utils/saleUtils';
 
+const normalizeCollection = (value, nestedKeys = []) => {
+    if (Array.isArray(value)) return value;
+    for (const key of nestedKeys) {
+        if (Array.isArray(value?.[key])) {
+            return value[key];
+        }
+    }
+    return [];
+};
+
 const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
     const [products, setProducts] = useState([]);
     const [selectedProducts, setSelectedProducts] = useState([]);
@@ -18,9 +28,10 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
         const fetchProducts = async () => {
             try {
                 const response = await api.get('/products');
-                setProducts(response.data);
+                const normalizedProducts = normalizeCollection(response.data, ['products', 'data']);
+                setProducts(normalizedProducts);
                 const stockData = {};
-                response.data.forEach(product => {
+                normalizedProducts.forEach(product => {
                     stockData[product._id] = {
                         stock: product.stock,
                         costPrice: product.costPrice
@@ -48,13 +59,18 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
         }
     }, [sale]);
 
-    const getFilteredProducts = (searchTerm) => {
+    const getFilteredProducts = (searchTerm, selectedProductId = '') => {
         const safeTerm = (searchTerm || '').toLowerCase();
         return products.filter((product) => {
             const containerValue = (product.container || '').toLowerCase();
+            const hasStock = Number(product.stock) > 0;
+            const isCurrentSelection = product._id === selectedProductId;
             return (
-                product.name.toLowerCase().includes(safeTerm) ||
-                containerValue.includes(safeTerm)
+                (
+                    product.name.toLowerCase().includes(safeTerm) ||
+                    containerValue.includes(safeTerm)
+                ) &&
+                (hasStock || isCurrentSelection)
             );
         });
     };
@@ -293,7 +309,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                                 aria-describedby={errors[index] ? `product-error-${index}` : undefined}
                                             >
                                                 <option value="">Sélectionner un produit</option>
-                                                {getFilteredProducts(productSearchTerms[index] || '').map(product => (
+                                                {getFilteredProducts(productSearchTerms[index] || '', item.product).map(product => (
                                                     <option
                                                         key={product._id}
                                                         value={product._id}

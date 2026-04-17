@@ -40,4 +40,6 @@ const expenseSchema = mongoose.Schema(
   }
 );
 
+expenseSchema.index({ date: -1 });
+
 module.exports = mongoose.model('Expense', expenseSchema);

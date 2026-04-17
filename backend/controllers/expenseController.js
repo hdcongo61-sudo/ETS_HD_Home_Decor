@@ -60,6 +60,7 @@ const createExpense = async (req, res) => {
 const getExpensesByDateRange = asyncHandler(async (req, res) => {
   const startDate = new Date(req.query.startDate);
   const endDate = new Date(req.query.endDate);
+  const summaryMode = String(req.query.summary || '').trim().toLowerCase();
 
   let expenseQuery = Expense.find({
     date: {
@@ -68,7 +69,9 @@ const getExpensesByDateRange = asyncHandler(async (req, res) => {
     }
   }).sort('date');
 
-  if (req.user && req.user.isAdmin) {
+  if (summaryMode === 'dashboard') {
+    expenseQuery = expenseQuery.select('_id description amount category supplier date createdAt');
+  } else if (req.user && req.user.isAdmin) {
     expenseQuery = expenseQuery
       .select('+createdBy +updatedBy')
       .populate('createdBy', 'name email')

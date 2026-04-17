@@ -16,16 +16,9 @@ const getClients = async (req, res) => {
       ];
     }
 
-    let query = Client.find(searchQuery)
-      .select('name slug email phone gender totalPurchases purchaseCount lastPurchaseDate createdAt updatedAt')
+    const query = Client.find(searchQuery)
+      .select('name slug email phone address gender createdAt updatedAt')
       .sort({ createdAt: -1 });
-
-    if (req.user && req.user.isAdmin) {
-      query = query
-        .select('+createdBy +updatedBy')
-        .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email');
-    }
 
     const clients = await query.lean();
 
@@ -155,66 +148,84 @@ const deleteClient = async (req, res) => {
  */
 const getClientStats = async (req, res) => {
   try {
-    // Total de clients
-    const totalClients = await Client.countDocuments();
-
-    // Total dépensé et moyenne par client
-    const sales = await Sale.aggregate([
-      { $group: { _id: '$client', totalSpent: { $sum: '$totalAmount' } } }
-    ]);
-
-    const totalSpent = sales.reduce((sum, s) => sum + (s.totalSpent || 0), 0);
-    const avgSpent = sales.length ? totalSpent / sales.length : 0;
-
-    // Nouveaux clients du mois
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const newThisMonth = await Client.countDocuments({
-      createdAt: { $gte: startOfMonth }
-    });
-
-    // Top 5 clients pour graphique
-    const topClients = await Sale.aggregate([
-      {
-        $group: {
-          _id: '$client',
-          totalSpent: { $sum: '$totalAmount' },
-          totalSales: { $sum: 1 }
+    const [
+      totalClients,
+      salesAgg,
+      newThisMonth,
+      genderAggregation
+    ] = await Promise.all([
+      Client.countDocuments(),
+      Sale.aggregate([
+        {
+          $match: {
+            client: { $ne: null }
+          }
+        },
+        {
+          $group: {
+            _id: '$client',
+            totalSpent: { $sum: '$totalAmount' },
+            totalSales: { $sum: 1 }
+          }
+        },
+        {
+          $facet: {
+            totals: [
+              {
+                $group: {
+                  _id: null,
+                  totalSpent: { $sum: '$totalSpent' },
+                  activeClients: { $sum: 1 }
+                }
+              }
+            ],
+            topClients: [
+              { $sort: { totalSpent: -1, totalSales: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: 'clients',
+                  localField: '_id',
+                  foreignField: '_id',
+                  as: 'clientInfo'
+                }
+              },
+              { $unwind: '$clientInfo' },
+              {
+                $project: {
+                  name: '$clientInfo.name',
+                  totalSpent: 1,
+                  totalSales: 1,
+                  clientId: '$_id',
+                  slug: '$clientInfo.slug'
+                }
+              }
+            ]
+          }
         }
-      },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 5 },
-      {
-        $lookup: {
-          from: 'clients',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'clientInfo'
-        }
-      },
-      { $unwind: '$clientInfo' },
-      {
-        $project: {
-          name: '$clientInfo.name',
-          totalSpent: 1,
-          totalSales: 1,
-          clientId: '$_id',
-          slug: '$clientInfo.slug'
-        }
-      }
+      ]),
+      Client.countDocuments({
+        createdAt: { $gte: startOfMonth }
+      }),
+      Client.aggregate([
+        {
+          $group: {
+            _id: { $ifNull: ['$gender', 'other'] },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } }
+      ])
     ]);
 
-    const genderAggregation = await Client.aggregate([
-      {
-        $group: {
-          _id: { $ifNull: ['$gender', 'other'] },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { count: -1 } }
-    ]);
+    const totalSpent = Number(salesAgg[0]?.totals?.[0]?.totalSpent) || 0;
+    const activeClients = Number(salesAgg[0]?.totals?.[0]?.activeClients) || 0;
+    const avgSpent = activeClients ? totalSpent / activeClients : 0;
+    const topClients = salesAgg[0]?.topClients || [];
 
     const genderDistribution = genderAggregation.map((item) => ({
       gender: item._id,

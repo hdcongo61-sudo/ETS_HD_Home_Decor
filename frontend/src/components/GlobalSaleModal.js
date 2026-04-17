@@ -16,6 +16,7 @@ const GlobalSaleModal = () => {
   const [selectedClient, setSelectedClient] = useState('');
   const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [totalAmount, setTotalAmount] = useState(0);
   const [errors, setErrors] = useState([]);
   const [formError, setFormError] = useState('');
@@ -27,6 +28,7 @@ const GlobalSaleModal = () => {
   const [reminderNote, setReminderNote] = useState('');
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
+  const [markAsDelivered, setMarkAsDelivered] = useState(false);
 
   const isOpen = activeModal === 'sale';
   const safeClients = Array.isArray(clients) ? clients : [];
@@ -35,8 +37,13 @@ const GlobalSaleModal = () => {
   const filteredClients = safeClients.filter((c) =>
     (c.name || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase())
   );
-  const getFilteredProducts = (term) =>
-    safeProducts.filter((p) => (p.name || '').toLowerCase().includes((term || '').toLowerCase()));
+  const getFilteredProducts = (term, selectedProductId = '') =>
+    safeProducts.filter((product) => {
+      const matchesSearch = (product.name || '').toLowerCase().includes((term || '').toLowerCase());
+      const hasStock = Number(product.stock) > 0;
+      const isCurrentSelection = product._id === selectedProductId;
+      return matchesSearch && (hasStock || isCurrentSelection);
+    });
 
   const resetForm = () => {
     setSelectedProducts([{ product: '', quantity: 1, price: 0 }]);
@@ -45,6 +52,7 @@ const GlobalSaleModal = () => {
     setClientSearchTerm('');
     setSaleType('normal');
     setPaymentMethod('cash');
+    setPaymentAmount('');
     setTotalAmount(0);
     setErrors([]);
     setFormError('');
@@ -53,6 +61,7 @@ const GlobalSaleModal = () => {
     setSetReminder(false);
     setReminderDate('');
     setReminderNote('');
+    setMarkAsDelivered(false);
   };
 
   const fetchClients = async () => {
@@ -128,6 +137,24 @@ const GlobalSaleModal = () => {
     const total = selectedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     setTotalAmount(total);
   }, [selectedProducts]);
+
+  const normalizedPaymentAmount = Math.max(0, Number(paymentAmount) || 0);
+  const remainingBalance = Math.max(0, totalAmount - normalizedPaymentAmount);
+  const isFullyPaid = totalAmount > 0 && normalizedPaymentAmount === totalAmount;
+
+  useEffect(() => {
+    if (!isFullyPaid && markAsDelivered) {
+      setMarkAsDelivered(false);
+    }
+  }, [isFullyPaid, markAsDelivered]);
+
+  useEffect(() => {
+    if (isFullyPaid && setReminder) {
+      setSetReminder(false);
+      setReminderDate('');
+      setReminderNote('');
+    }
+  }, [isFullyPaid, setReminder]);
 
   const validatePrices = () => {
     const newErrors = selectedProducts.map((item, index) => {
@@ -209,16 +236,23 @@ const GlobalSaleModal = () => {
       return;
     }
 
+    if (normalizedPaymentAmount > totalAmount) {
+      setFormError('Le montant payé ne peut pas dépasser le total de la vente');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       await api.post('/sales', {
         client: selectedClient,
         products: selectedProducts.filter(p => p.product !== ''),
         saleType,
         paymentMethod,
-        totalAmount,
+        initialPaymentAmount: normalizedPaymentAmount,
+        markAsDelivered: isFullyPaid && markAsDelivered,
         note,
-        reminderDate: setReminder && reminderDate ? reminderDate : undefined,
-        reminderNote: setReminder && reminderNote ? reminderNote : undefined
+        reminderDate: setReminder && !isFullyPaid && reminderDate ? reminderDate : undefined,
+        reminderNote: setReminder && !isFullyPaid && reminderNote ? reminderNote : undefined
       });
 
       closeModal();
@@ -373,7 +407,7 @@ const GlobalSaleModal = () => {
                         onChange={(e) => handleProductChange(index, e.target.value)}
                       >
                         <option value="">Sélectionner...</option>
-                        {getFilteredProducts(productSearchTerms[index]).map(product => (
+                        {getFilteredProducts(productSearchTerms[index], item.product).map(product => (
                           <option
                             key={product._id}
                             value={product._id}
@@ -519,6 +553,7 @@ const GlobalSaleModal = () => {
                   id="setReminder"
                   checked={setReminder}
                   onChange={(e) => setSetReminder(e.target.checked)}
+                  disabled={isFullyPaid}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="setReminder" className="text-sm text-gray-700">
@@ -526,7 +561,13 @@ const GlobalSaleModal = () => {
                 </label>
               </div>
 
-              {setReminder && (
+              {isFullyPaid && (
+                <div className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  La vente est soldée. Le rappel de paiement est désactivé.
+                </div>
+              )}
+
+              {setReminder && !isFullyPaid && (
                 <div className="space-y-3 p-4 bg-orange-50 rounded-xl border border-orange-200">
                   <div className="space-y-1">
                     <label className="block text-xs font-medium text-gray-600">Date et heure du rappel *</label>
@@ -591,6 +632,60 @@ const GlobalSaleModal = () => {
                     </span>
                   </label>
                 ))}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Montant payé maintenant</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={totalAmount || undefined}
+                      step="0.01"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentAmount(totalAmount > 0 ? String(totalAmount) : '')}
+                    className="min-h-[44px] px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
+                  >
+                    Paiement total
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                    <p className="text-gray-500">Total vente</p>
+                    <p className="font-semibold text-gray-900">{totalAmount.toLocaleString('fr-FR')} CFA</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                    <p className="text-gray-500">Payé</p>
+                    <p className="font-semibold text-green-700">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+                    <p className="text-gray-500">Reste</p>
+                    <p className="font-semibold text-amber-700">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
+                  </div>
+                </div>
+
+                {isFullyPaid && (
+                  <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={markAsDelivered}
+                      onChange={(e) => setMarkAsDelivered(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm font-medium text-green-800">
+                      Confirmer la livraison immédiatement
+                    </span>
+                  </label>
+                )}
               </div>
             </div>
 

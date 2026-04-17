@@ -66,10 +66,11 @@ const getLastPaymentDate = (payments = []) => {
   return last;
 };
 
-const RemindersPanel = ({ overdue = [], upcoming = [] }) => {
+const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [partialAgeFilter, setPartialAgeFilter] = useState("10");
+  const [neverPaidAgeFilter, setNeverPaidAgeFilter] = useState("7");
 
   const all = useMemo(() => [...overdue, ...upcoming], [overdue, upcoming]);
 
@@ -96,9 +97,17 @@ const RemindersPanel = ({ overdue = [], upcoming = [] }) => {
     { key: "20", label: "20 jours +", minDays: 20 },
     { key: "30", label: "30 jours et +", minDays: 30 },
   ];
+  const neverPaidAgeOptions = [
+    { key: "3", label: "3 jours +", minDays: 3 },
+    { key: "7", label: "7 jours +", minDays: 7 },
+    { key: "15", label: "15 jours +", minDays: 15 },
+    { key: "30", label: "30 jours et +", minDays: 30 },
+  ];
 
   const partialAgeMin =
     partialAgeOptions.find((opt) => opt.key === partialAgeFilter)?.minDays || 10;
+  const neverPaidAgeMin =
+    neverPaidAgeOptions.find((opt) => opt.key === neverPaidAgeFilter)?.minDays || 7;
 
   const partialOrders = useMemo(() => {
     const now = Date.now();
@@ -139,6 +148,41 @@ const RemindersPanel = ({ overdue = [], upcoming = [] }) => {
     }
     return data.sort((a, b) => b.daysSincePayment - a.daysSincePayment);
   }, [partialAgeMin, partialOrders, search]);
+
+  const neverPaidOrders = useMemo(() => {
+    const now = Date.now();
+    return (neverPaid || [])
+      .map((sale) => {
+        const totalPaid =
+          sale.totalPaid ??
+          (sale.payments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
+        if (totalPaid > 0) return null;
+        const saleDate = sale.saleDate ? new Date(sale.saleDate) : null;
+        if (!saleDate || Number.isNaN(saleDate.getTime())) return null;
+        const daysWithoutPayment = Math.max(
+          0,
+          Math.floor((now - saleDate.getTime()) / (1000 * 60 * 60 * 24))
+        );
+        return {
+          ...sale,
+          totalPaid,
+          balance: sale.balance ?? Math.max(0, (sale.totalAmount || 0) - totalPaid),
+          daysWithoutPayment,
+        };
+      })
+      .filter(Boolean);
+  }, [neverPaid]);
+
+  const neverPaidFiltered = useMemo(() => {
+    let data = neverPaidOrders.filter((sale) => sale.daysWithoutPayment >= neverPaidAgeMin);
+    if (search.trim()) {
+      const query = search.toLowerCase();
+      data = data.filter((s) =>
+        (s.client?.name || "").toLowerCase().includes(query)
+      );
+    }
+    return data.sort((a, b) => b.daysWithoutPayment - a.daysWithoutPayment);
+  }, [neverPaidAgeMin, neverPaidOrders, search]);
 
   const getColor = (type) =>
     type === "overdue"
@@ -341,6 +385,78 @@ const RemindersPanel = ({ overdue = [], upcoming = [] }) => {
           ) : (
             <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
               Aucune vente partiellement payée pour ce délai
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Filter size={16} className="text-rose-500" />
+              Ventes sans paiement
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Filtrer par délai depuis la création de la vente sans aucun paiement
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={neverPaidAgeFilter}
+              onChange={(e) => setNeverPaidAgeFilter(e.target.value)}
+              className="px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              aria-label="Filtre délai sans paiement"
+            >
+              {neverPaidAgeOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {neverPaidFiltered.length > 0 ? (
+            neverPaidFiltered.map((sale) => (
+              <Link key={sale._id} to={`/sales/${sale._id}`} className="group">
+                <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                        {sale.client?.name || "Client inconnu"}
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Vente créée le{" "}
+                        {sale.saleDate
+                          ? new Date(sale.saleDate).toLocaleDateString("fr-FR", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Montant :{" "}
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {sale.totalAmount?.toLocaleString("fr-FR")} CFA
+                        </span>
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">
+                      {sale.daysWithoutPayment} j
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 group-hover:underline">
+                    Voir la vente
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+              Aucune vente sans paiement pour ce délai
             </div>
           )}
         </div>

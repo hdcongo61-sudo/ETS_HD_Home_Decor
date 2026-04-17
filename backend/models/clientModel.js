@@ -67,6 +67,9 @@ const clientSchema = mongoose.Schema(
   }
 );
 
+clientSchema.index({ createdAt: -1 });
+clientSchema.index({ totalPurchases: -1, purchaseCount: -1 });
+
 // Virtual to automatically update purchase metrics
 clientSchema.virtual('purchaseDetails', {
   ref: 'Sale',

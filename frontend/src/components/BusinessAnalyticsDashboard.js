@@ -44,13 +44,13 @@ const BusinessAnalyticsDashboard = ({
 
   // === Calculs financiers de la semaine ===
   const weeklySales = sales.filter((s) =>
-    isWithinInterval(new Date(s.createdAt), currentWeek)
+    isWithinInterval(new Date(s.saleDate || s.createdAt), currentWeek)
   );
   const weeklyPayments = payments.filter((p) =>
     isWithinInterval(new Date(p.paymentDate || p.createdAt), currentWeek)
   );
   const weeklyExpenses = expenses.filter((e) =>
-    isWithinInterval(new Date(e.createdAt), currentWeek)
+    isWithinInterval(new Date(e.date || e.createdAt), currentWeek)
   );
 
   const totalSales = useMemo(
@@ -104,6 +104,47 @@ const BusinessAnalyticsDashboard = ({
     };
   }, [weeklySales]);
 
+  const commerceHighlights = useMemo(() => {
+    const paymentMap = new Map();
+
+    weeklyPayments.forEach((payment) => {
+      const saleId = payment?.saleId;
+      if (!saleId) return;
+      const key = String(saleId);
+      const current = paymentMap.get(key) || { count: 0, total: 0 };
+      current.count += 1;
+      current.total += Number(payment.amount) || 0;
+      paymentMap.set(key, current);
+    });
+
+    const result = {
+      wholesale: { count: 0, totalAmount: 0 },
+      singlePayment: { count: 0, totalAmount: 0 },
+      multiplePayments: { count: 0, totalAmount: 0 },
+    };
+
+    weeklySales.forEach((sale) => {
+      const saleTotal = Number(sale?.totalAmount || 0);
+      const saleId = String(sale?._id || "");
+      const paymentInfo = paymentMap.get(saleId) || { count: 0, total: 0 };
+
+      if ((sale?.saleType || "normal") === "wholesale") {
+        result.wholesale.count += 1;
+        result.wholesale.totalAmount += saleTotal;
+      }
+
+      if (paymentInfo.count === 1) {
+        result.singlePayment.count += 1;
+        result.singlePayment.totalAmount += saleTotal;
+      } else if (paymentInfo.count > 1) {
+        result.multiplePayments.count += 1;
+        result.multiplePayments.totalAmount += saleTotal;
+      }
+    });
+
+    return result;
+  }, [weeklyPayments, weeklySales]);
+
   // === Synthèse intelligente en français ===
   const insightSummary = `
 Cette semaine (${format(currentWeek.start, "dd MMM", {
@@ -117,6 +158,10 @@ Cette semaine (${format(currentWeek.start, "dd MMM", {
 
 🛒 Produits analysés : ${productStats.total}  
 👥 Clients actifs : ${clientStats.total}
+
+📦 Ventes en gros : ${commerceHighlights.wholesale.count} (${commerceHighlights.wholesale.totalAmount.toLocaleString("fr-FR")} CFA)
+💳 Paiement unique : ${commerceHighlights.singlePayment.count} (${commerceHighlights.singlePayment.totalAmount.toLocaleString("fr-FR")} CFA)
+🧾 Paiements multiples : ${commerceHighlights.multiplePayments.count} (${commerceHighlights.multiplePayments.totalAmount.toLocaleString("fr-FR")} CFA)
 
 🔝 **Top Produits :** ${productStats.top
     .map((p) => `${p.name} (${p.revenue.toLocaleString("fr-FR")} CFA)`)
@@ -265,6 +310,44 @@ ${
           >
             <CalendarDays size={14} /> Voir les détails
           </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div className="rounded-2xl border border-fuchsia-200 bg-white/80 p-4 dark:border-fuchsia-900/60 dark:bg-gray-900/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700 dark:text-fuchsia-300">
+              Ventes en gros
+            </p>
+            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
+              {commerceHighlights.wholesale.count}
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {commerceHighlights.wholesale.totalAmount.toLocaleString("fr-FR")} CFA
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-white/80 p-4 dark:border-emerald-900/60 dark:bg-gray-900/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+              Paiement unique
+            </p>
+            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
+              {commerceHighlights.singlePayment.count}
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {commerceHighlights.singlePayment.totalAmount.toLocaleString("fr-FR")} CFA
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-white/80 p-4 dark:border-amber-900/60 dark:bg-gray-900/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Paiements multiples
+            </p>
+            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
+              {commerceHighlights.multiplePayments.count}
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {commerceHighlights.multiplePayments.totalAmount.toLocaleString("fr-FR")} CFA
+            </p>
+          </div>
         </div>
 
         <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
