@@ -593,6 +593,7 @@ const getProductDashboard = async (req, res) => {
       return acc;
     }, {});
     const salesTrendMap = {};
+    const allProductSalesMap = {};
 
     for (const sale of sales) {
       const dateKey = new Date(sale.saleDate).toLocaleDateString('fr-FR', {
@@ -637,6 +638,26 @@ const getProductDashboard = async (req, res) => {
         productSalesMap[id].sold += quantity;
         productSalesMap[id].revenue += priceAtSale * quantity;
         productSalesMap[id].profit += (priceAtSale - costPrice) * quantity;
+
+        if (!allProductSalesMap[id]) {
+          allProductSalesMap[id] = {
+            sold: 0,
+            revenue: 0,
+            profit: 0,
+            lastSaleDate: null,
+          };
+        }
+
+        allProductSalesMap[id].sold += quantity;
+        allProductSalesMap[id].revenue += priceAtSale * quantity;
+        allProductSalesMap[id].profit += (priceAtSale - costPrice) * quantity;
+        if (
+          sale.saleDate &&
+          (!allProductSalesMap[id].lastSaleDate ||
+            new Date(sale.saleDate) > new Date(allProductSalesMap[id].lastSaleDate))
+        ) {
+          allProductSalesMap[id].lastSaleDate = sale.saleDate;
+        }
       }
     }
 
@@ -799,6 +820,131 @@ const supplierStats = Object.values(supplierStatsMap).sort(
       (a, b) => b.totalRevenue - a.totalRevenue
     );
 
+    const daysInRange = Math.max(
+      1,
+      Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    );
+
+    const buildProductActionSuggestions = () => {
+      const suggestions = [];
+
+      for (const product of products) {
+        const productId = product._id?.toString?.() || product._id;
+        const currentSales = allProductSalesMap[productId] || {
+          sold: 0,
+          revenue: 0,
+          profit: 0,
+          lastSaleDate: null,
+        };
+        const stock = Number(product.stock || 0);
+        const price = Number(product.price || 0);
+        const costPrice = Number(product.costPrice || 0);
+        const stockValue = stock * price;
+        const marginRate =
+          costPrice > 0 && price > 0 ? ((price - costPrice) / price) * 100 : null;
+        const sellThroughRate =
+          currentSales.sold + stock > 0
+            ? (currentSales.sold / (currentSales.sold + stock)) * 100
+            : 0;
+        const dailyVelocity = currentSales.sold / daysInRange;
+        const daysSinceLastSale = currentSales.lastSaleDate
+          ? Math.floor(
+              (now.getTime() - new Date(currentSales.lastSaleDate).getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
+          : null;
+        const actions = [];
+        let score = 0;
+
+        if (stock <= 0 || product.isActive === false) {
+          continue;
+        }
+
+        if (currentSales.sold === 0) {
+          score += 45;
+          actions.push('Mettre ce produit en avant sur la page d’accueil ou en boutique.');
+          actions.push('Tester une remise courte de 10 % à 15 % pendant 7 jours.');
+          actions.push('Vérifier la photo, le nom et la description du produit.');
+        } else if (sellThroughRate < 12 && stock >= 5) {
+          score += 30;
+          actions.push('Créer une promotion ciblée pour accélérer l’écoulement du stock.');
+          actions.push('Placer le produit près des articles les plus vendus.');
+        }
+
+        if (stock >= 10) {
+          score += 12;
+          actions.push('Faire une offre groupée avec un produit complémentaire.');
+        }
+
+        if (stockValue >= 100000) {
+          score += 10;
+          actions.push('Limiter les nouveaux achats de ce produit avant amélioration des ventes.');
+        }
+
+        if (marginRate !== null && marginRate >= 18 && price > 0) {
+          const discountRate = currentSales.sold === 0 ? 12 : 8;
+          const suggestedPrice = Math.max(
+            costPrice,
+            Math.round((price * (1 - discountRate / 100)) / 100) * 100
+          );
+
+          if (suggestedPrice < price) {
+            score += 18;
+            actions.unshift(
+              `Essayer un prix autour de ${suggestedPrice.toLocaleString('fr-FR')} CFA au lieu de ${price.toLocaleString('fr-FR')} CFA.`
+            );
+          }
+        } else if (price > 0) {
+          score += 8;
+          actions.push('Comparer le prix avec les produits similaires avant de baisser fortement.');
+        }
+
+        if (Number(product.viewsCount || 0) > 20 && Number(product.conversionRate || 0) < 2) {
+          score += 15;
+          actions.push('Beaucoup de vues mais peu d’achats : revoir le prix, les photos ou la mise en rayon.');
+        }
+
+        if (Number(product.returnsCount || 0) > 0) {
+          score += 8;
+          actions.push('Contrôler la qualité et les motifs de retour avant promotion.');
+        }
+
+        if (actions.length === 0) continue;
+
+        suggestions.push({
+          _id: productId,
+          name: product.name,
+          category: product.category || 'Non catégorisé',
+          supplierName: product.supplierName || 'Inconnu',
+          price,
+          costPrice,
+          stock,
+          stockValue: Number(stockValue.toFixed(2)),
+          sold: currentSales.sold,
+          revenue: Number(currentSales.revenue.toFixed(2)),
+          profit: Number(currentSales.profit.toFixed(2)),
+          marginRate: marginRate !== null ? Number(marginRate.toFixed(1)) : null,
+          sellThroughRate: Number(sellThroughRate.toFixed(1)),
+          dailyVelocity: Number(dailyVelocity.toFixed(2)),
+          daysSinceLastSale,
+          priority:
+            score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low',
+          score,
+          highlight:
+            currentSales.sold === 0
+              ? 'Aucune vente sur la période'
+              : `Seulement ${currentSales.sold} unité(s) vendue(s)`,
+          actions: Array.from(new Set(actions)).slice(0, 4),
+        });
+      }
+
+      return suggestions
+        .sort((a, b) => b.score - a.score || b.stockValue - a.stockValue)
+        .slice(0, 12);
+    };
+
+    const productActionSuggestions = buildProductActionSuggestions();
+
 // ✅ Ajout au JSON final
 res.json({
   totalProducts,
@@ -810,6 +956,7 @@ res.json({
   outOfStockProducts,
   topSellingProducts,
   salesTrend,
+  productActionSuggestions,
   supplierStats, 
   containerStats,
   warehouseStats,

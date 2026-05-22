@@ -62,6 +62,10 @@ import {
   ShoppingCart,
   TrendingUp,
   Package,
+  BadgePercent,
+  Lightbulb,
+  AlertTriangle,
+  ArrowRight,
   Wand2,   // 🔹 lissage
   Download // 🔹 export stats ventes
 } from "lucide-react";
@@ -181,6 +185,7 @@ const Dashboard = () => {
   // ===== 🔹 STATISTIQUES DES VENTES (nouvelle section) =====
   const [salesStatsRange, setSalesStatsRange] = useState("30days"); // 7days|30days|90days|all
   const [salesStatsData, setSalesStatsData] = useState(null);
+  const [productActionSuggestions, setProductActionSuggestions] = useState([]);
   const [bestDaysRanges, setBestDaysRanges] = useState({});
   const [nonCriticalReady, setNonCriticalReady] = useState(false);
   // 🔹 Switch lissage (persisté)
@@ -646,6 +651,20 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!isAdmin || !nonCriticalReady) return;
+    const run = async () => {
+      try {
+        const res = await api.get("/products/dashboard?range=month");
+        setProductActionSuggestions(res.data?.productActionSuggestions || []);
+      } catch (e) {
+        console.error("Erreur chargement suggestions produits:", e);
+        setProductActionSuggestions([]);
+      }
+    };
+    run();
+  }, [isAdmin, nonCriticalReady]);
+
+  useEffect(() => {
+    if (!isAdmin || !nonCriticalReady) return;
     const ranges = [
       { key: "7days", label: "7 jours" },
       { key: "30days", label: "30 jours" },
@@ -764,6 +783,24 @@ const Dashboard = () => {
       month: "short",
       year: "numeric",
     }).format(parsed);
+  };
+
+  const highPriorityProductSuggestions = productActionSuggestions.filter(
+    (item) => item.priority === "high"
+  ).length;
+  const productSuggestionStockValue = productActionSuggestions.reduce(
+    (sum, item) => sum + Number(item.stockValue || 0),
+    0
+  );
+  const priorityStyles = {
+    high: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50",
+    medium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50",
+    low: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/50",
+  };
+  const priorityLabel = {
+    high: "Priorité haute",
+    medium: "Priorité moyenne",
+    low: "À surveiller",
   };
 
   const encaissementHighlights = useMemo(() => {
@@ -1396,6 +1433,150 @@ const Dashboard = () => {
             </section>
           )}
         </div>
+
+        {isAdmin && nonCriticalReady && (
+          <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    <Lightbulb size={20} />
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Suggestions pour vendre les produits lents
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Produits avec peu ou pas de ventes sur les 30 derniers jours.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+                  <p className="text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
+                    À traiter
+                  </p>
+                  <p className="mt-0.5 text-lg font-bold text-gray-900 dark:text-white">
+                    {productActionSuggestions.length}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-900/50 dark:bg-rose-950/30">
+                  <p className="text-[11px] font-medium uppercase text-rose-600 dark:text-rose-300">
+                    Urgent
+                  </p>
+                  <p className="mt-0.5 text-lg font-bold text-rose-700 dark:text-rose-300">
+                    {highPriorityProductSuggestions}
+                  </p>
+                </div>
+                <div className="col-span-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+                  <p className="text-[11px] font-medium uppercase text-indigo-600 dark:text-indigo-300">
+                    Stock concerné
+                  </p>
+                  <p className="mt-0.5 text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                    {Math.round(productSuggestionStockValue).toLocaleString("fr-FR")} CFA
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {productActionSuggestions.length > 0 ? (
+              <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
+                {productActionSuggestions.slice(0, 6).map((product) => (
+                  <article
+                    key={product._id}
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {product.name}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {product.category} • Stock {product.stock}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                          priorityStyles[product.priority] || priorityStyles.low
+                        }`}
+                      >
+                        {priorityLabel[product.priority] || priorityLabel.low}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
+                        <p className="text-gray-500 dark:text-gray-400">Vendus</p>
+                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                          {product.sold}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
+                        <p className="text-gray-500 dark:text-gray-400">Écoulement</p>
+                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                          {product.sellThroughRate}%
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
+                        <p className="text-gray-500 dark:text-gray-400">Marge</p>
+                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                          {product.marginRate == null ? "N/A" : `${product.marginRate}%`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                        <BadgePercent size={14} />
+                        {product.highlight}
+                      </p>
+                      <ul className="mt-2 space-y-1.5">
+                        {(product.actions || []).slice(0, 3).map((action) => (
+                          <li
+                            key={action}
+                            className="flex gap-2 text-xs leading-5 text-gray-700 dark:text-gray-300"
+                          >
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
+                            <span>{action}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        {Math.round(product.price || 0).toLocaleString("fr-FR")} CFA
+                      </span>
+                      <Link
+                        to={`/products/${product._id}`}
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
+                      >
+                        Voir produit <ArrowRight size={15} />
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                Aucun produit lent détecté sur les 30 derniers jours.
+              </div>
+            )}
+
+            {productActionSuggestions.length > 6 && (
+              <div className="mt-4 flex justify-end">
+                <Link
+                  to="/product-dashboard"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                >
+                  Voir tout le dashboard produits <ArrowRight size={16} />
+                </Link>
+              </div>
+            )}
+          </section>
+        )}
 
         {isAdmin && nonCriticalReady && (
         <AccordionSection title="📊 Statistiques des ventes" defaultOpenDesktop={true}>

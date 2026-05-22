@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X } from "lucide-react";
+import { Search, X, Menu } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
@@ -131,21 +131,21 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="surface-bar sticky top-0 z-50 nav-safe-top border-b border-gray-200/50">
-      <div className="container mx-auto px-4 py-2.5">
-        <div className="flex justify-between items-center gap-3">
+    <nav className="surface-bar sticky top-0 z-50 nav-safe-top border-b border-gray-200/70 shadow-sm">
+      <div className="mx-auto max-w-[1600px] px-3 py-2 sm:px-4">
+        <div className="flex min-h-[58px] items-center gap-3">
           {/* === Logo === */}
           <Link
             to="/"
-            className="flex items-center space-x-2.5"
+            className="flex min-w-0 shrink-0 items-center gap-2.5 rounded-xl px-1.5 py-1 transition-colors hover:bg-gray-100/70"
             onClick={closeMenu}
           >
             <img
               src={logoUrl}
               alt={branding.shortName || branding.appName}
-              className="w-10 h-10 rounded-apple object-contain border border-gray-200/80 shadow-apple-sm bg-white"
+              className="h-10 w-10 shrink-0 rounded-xl border border-gray-200/80 bg-white object-contain shadow-apple-sm"
             />
-            <div className="hidden min-w-0 md:block">
+            <div className="hidden min-w-0 lg:block">
               <span className="block truncate text-[17px] font-semibold tracking-tight text-gray-900">
                 {branding.appName}
               </span>
@@ -158,16 +158,21 @@ const Navigation = () => {
           </Link>
 
           {/* === Menu desktop === */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-visible px-1 md:flex">
             {renderNavigationLinks(auth, handleLogout, closeMenu, false, false, autresOpen, setAutresOpen)}
           </div>
 
           {/* === Profil & Actions === */}
-          <div className="flex items-center space-x-3">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {auth.isAuthenticated && (
               <>
-                <Link to="/profile" className="block" onClick={closeMenu}>
-                  <div className="bg-gray-100 border border-gray-200/80 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition-colors duration-apple ease-apple overflow-hidden min-w-[44px] min-h-[44px]">
+                <Link
+                  to="/profile"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200/80 bg-gray-50 transition-colors duration-apple ease-apple hover:bg-gray-100"
+                  onClick={closeMenu}
+                  aria-label="Profil"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-100">
                     {auth.user?.photo ? (
                       <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
                     ) : (
@@ -183,26 +188,14 @@ const Navigation = () => {
             {!isDesktop && (
               <button
                 onClick={toggleMenu}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center -m-2 text-gray-600 focus:outline-none hover:text-gray-900 transition-colors duration-apple ease-apple rounded-apple active:bg-gray-100"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 transition-colors duration-apple ease-apple hover:bg-gray-50 hover:text-gray-900 focus:outline-none active:bg-gray-100"
                 aria-label="Toggle menu"
                 aria-expanded={isMenuOpen}
               >
                 {isMenuOpen ? (
                   <X className="w-6 h-6" />
                 ) : (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
+                  <Menu className="h-6 w-6" />
                 )}
               </button>
             )}
@@ -210,13 +203,13 @@ const Navigation = () => {
         </div>
 
         {showSearchBar && (
-          <div className="hidden md:block mt-3">
+          <div className="mt-2 hidden md:block">
             <GlobalSearchBar
               query={query}
               setQuery={setQuery}
               results={results}
               onSelectResult={handleSelectResult}
-              className="w-full"
+              className="mx-auto w-full max-w-3xl"
             />
           </div>
         )}
@@ -299,12 +292,12 @@ const MobileMenuSection = ({ title, children }) => (
 // === Liens du menu (desktop + mobile) ===
 const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
   const linkClass = isMobile
-    ? "flex items-center min-h-[48px] px-3.5 py-2.5 text-[15px] text-gray-800 hover:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors w-full touch-manipulation font-medium"
-    : "flex flex-col items-center p-2 text-gray-700 hover:text-gray-900 rounded-md transition-all duration-200 group";
+    ? "group/nav flex min-h-[48px] w-full items-center rounded-lg px-3.5 py-2.5 text-[15px] font-medium text-gray-800 transition-colors hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
+    : "group/nav relative flex h-[58px] min-w-[72px] max-w-[96px] items-center justify-center rounded-xl px-2 text-gray-600 transition-colors duration-200 hover:bg-gray-100/80 hover:text-gray-950";
 
   const iconClass = isMobile
-    ? "w-5 h-5 mr-3 text-gray-500 shrink-0"
-    : "w-5 h-5 text-gray-500 group-hover:text-gray-700";
+    ? "h-5 w-5 shrink-0 text-gray-500"
+    : "h-5 w-5 shrink-0 text-gray-500 transition-colors group-hover/nav:text-gray-800";
 
   const showPrimaryTabs = !(isMobile && hidePrimaryTabsOnMobile);
 
@@ -331,22 +324,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         isMobile={isMobile}
         openInNewTab={!isMobile}
       />
-      {!isMobile && (
-        <NavIcon
-          to="/sales#sale-form"
-          icon={
-            <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          }
-          label="Ajouter une vente"
-          className={linkClass}
-          onClick={closeMenu}
-          isMobile={isMobile}
-          openInNewTab={!isMobile}
-        />
-      )}
-
       <NavIcon
         to="/bank"
         icon={
@@ -430,26 +407,26 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               <button
                 type="button"
                 onClick={() => setAutresOpen((o) => !o)}
-                className={linkClass}
+                className={`${linkClass} ${autresOpen ? "bg-gray-100 text-gray-950" : ""}`}
                 aria-expanded={autresOpen}
                 aria-haspopup="true"
               >
-                <div className="flex flex-col items-center">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
                   <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  <span className="text-xs mt-1 text-gray-500 group-hover:text-gray-700">Autres</span>
+                  <span className="max-w-full truncate text-[11px] font-medium leading-tight text-gray-500 group-hover/nav:text-gray-800">Autres</span>
                 </div>
               </button>
               <AnimatePresence>
                 {autresOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" aria-hidden onClick={() => setAutresOpen(false)} />
+                    <div className="fixed inset-0 z-[55]" aria-hidden onClick={() => setAutresOpen(false)} />
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
-                      className="absolute right-0 top-full z-50 mt-1 w-[min(95vw,560px)] rounded-xl border border-gray-200 bg-white shadow-xl py-3 px-4"
+                      className="absolute right-0 top-full z-[60] mt-2 w-[min(95vw,560px)] rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-xl"
                     >
                       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                         {/* Colonne gauche */}
@@ -503,6 +480,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                           <div className="space-y-0.5">
                             <Link to="/bank" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Caisse</Link>
                             <Link to="/expenses" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>
+                            {auth.isAdmin && <Link to="/expenses/monthly-plan" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Objectif mensuel</Link>}
                           </div>
                           {auth.isAdmin && (
                             <>
@@ -545,6 +523,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
           <MobileMenuSection title="Caisse & Dépenses">
             <NavIcon to="/bank" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M5 10V7l7-4 7 4v3M5 10v8m4-8v8m4-8v8m4-8v8M3 18h18" /></svg>} label="Caisse" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
+            {auth.isAdmin && <NavIcon to="/expenses/monthly-plan" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 3a1 1 0 012 0v1.07A8.001 8.001 0 112.07 15H1a1 1 0 110-2h2a1 1 0 011 1 6 6 0 106-6 1 1 0 01-1-1V3zm1 5a1 1 0 011 1v3.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0112 13V9a1 1 0 011-1z" /></svg>} label="Objectif mensuel" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
           </MobileMenuSection>
           <MobileMenuSection title="Clients">
             <NavIcon to="/clients" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} label="Liste des clients" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -675,24 +654,49 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
 };
 
 // === Composant lien icône ===
-const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab = false }) => (
-  <Link
-    to={to}
-    className={className}
-    onClick={onClick}
-    aria-label={label}
-    target={openInNewTab ? "_blank" : undefined}
-    rel={openInNewTab ? "noopener noreferrer" : undefined}
-  >
-    <div className={`flex ${isMobile ? "flex-row items-center" : "flex-col items-center"}`}>
-      {icon}
-      {isMobile && <span className="ml-3">{label}</span>}
-      {!isMobile && (
-        <span className="text-xs mt-1 text-gray-500 group-hover:text-gray-700">{label}</span>
+const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab = false }) => {
+  const location = useLocation();
+  const target = String(to || "");
+  const cleanPath = target.split(/[?#]/)[0];
+  const currentWithSearch = `${location.pathname}${location.search}`;
+  const currentWithHash = `${location.pathname}${location.hash}`;
+  const isActive = target.includes("?")
+    ? currentWithSearch === target
+    : target.includes("#")
+    ? currentWithHash === target
+    : location.pathname === cleanPath;
+  const activeClass = isMobile
+    ? "bg-indigo-50 text-indigo-700"
+    : "bg-gray-100 text-gray-950";
+
+  return (
+    <Link
+      to={to}
+      className={`${className} ${isActive ? activeClass : ""}`}
+      onClick={onClick}
+      aria-label={label}
+      aria-current={isActive ? "page" : undefined}
+      title={label}
+      target={openInNewTab ? "_blank" : undefined}
+      rel={openInNewTab ? "noopener noreferrer" : undefined}
+    >
+      <div className={`flex w-full ${isMobile ? "flex-row items-center" : "h-full flex-col items-center justify-center gap-1 text-center"}`}>
+        <span className={isMobile ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100/80" : "flex h-6 w-6 items-center justify-center"}>
+          {icon}
+        </span>
+        {isMobile && <span className="ml-3 min-w-0 flex-1 truncate">{label}</span>}
+        {!isMobile && (
+          <span className="max-w-full truncate text-[11px] font-medium leading-tight text-gray-500 transition-colors group-hover/nav:text-gray-800">
+            {label}
+          </span>
+        )}
+      </div>
+      {!isMobile && isActive && (
+        <span className="absolute bottom-1.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-indigo-500" />
       )}
-    </div>
-  </Link>
-);
+    </Link>
+  );
+};
 
 const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className = "", isMobile = false }) => (
   <div className={`relative ${className}`}>

@@ -41,6 +41,7 @@ const SalesArchive = lazy(() => import('./pages/SalesArchive'));
 const DeletedSales = lazy(() => import('./pages/DeletedSales'));
 const Clients = lazy(() => import('./pages/Clients'));
 const Expenses = lazy(() => import('./pages/Expenses'));
+const MonthlySpendingPlan = lazy(() => import('./pages/MonthlySpendingPlan'));
 const ClientProfile = lazy(() => import('./pages/ClientProfile'));
 const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const ProductDashboard = lazy(() => import('./pages/ProductDashboard'));
@@ -306,6 +307,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Expenses />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/expenses/monthly-plan"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <MonthlySpendingPlan />
                     </ProtectedRoute>
                   }
                 />
