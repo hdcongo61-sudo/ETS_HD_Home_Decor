@@ -119,6 +119,18 @@ const userSchema = mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      manualSaleDateEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      manualExpenseDateEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      manualPaymentDateEnabled: {
+        type: Boolean,
+        default: false,
+      },
       weeklyReportLastSentAt: {
         type: Date,
         default: null,

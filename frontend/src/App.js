@@ -13,6 +13,7 @@ import AppLayout from './components/AppLayout';
 import BottomTabBar from './components/BottomTabBar';
 import AppLoader from './components/AppLoader';
 import ScrollToTop from './components/ScrollToTop';
+import { AppSettingsProvider } from './context/AppSettingsContext';
 
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
@@ -62,16 +63,17 @@ const Settings = lazy(() => import('./pages/Settings'));
 function App() {
   return (
     <ModalProvider>
-      <AuthProvider>
-        <Router>
-          <ScrollToTop />
-          <div className="min-h-screen flex flex-col bg-[#f2f2f7]">
-            <Navigation />
-            <OfflineIndicator />
-            <Suspense fallback={<AppLoader />}>
-              <main className="flex-1 min-h-0 main-with-tab-bar">
-                <AppLayout>
-                  <Routes>
+      <AppSettingsProvider>
+        <AuthProvider>
+          <Router>
+            <ScrollToTop />
+            <div className="min-h-screen flex flex-col bg-[#f2f2f7]">
+              <Navigation />
+              <OfflineIndicator />
+              <Suspense fallback={<AppLoader />}>
+                <main className="flex-1 min-h-0 main-with-tab-bar">
+                  <AppLayout>
+                    <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/access-restricted" element={<AccessRestricted />} />
                 <Route
@@ -411,18 +413,19 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-              </Routes>
-                </AppLayout>
-          </main>
-        </Suspense>
-        <SiteFooter />
-        <GlobalModals />
-        <PushNotificationManager />
-        <PwaInstallPrompt />
-        <BottomTabBar />
-      </div>
-        </Router>
-      </AuthProvider>
+                    </Routes>
+                  </AppLayout>
+                </main>
+              </Suspense>
+              <SiteFooter />
+              <GlobalModals />
+              <PushNotificationManager />
+              <PwaInstallPrompt />
+              <BottomTabBar />
+            </div>
+          </Router>
+        </AuthProvider>
+      </AppSettingsProvider>
     </ModalProvider>
   );
 }

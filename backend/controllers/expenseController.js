@@ -1,5 +1,47 @@
 const Expense = require('../models/expenseModel');
 const asyncHandler = require('express-async-handler');
+
+const parseOptionalExpenseDate = (value) => {
+  if (value === undefined || value === null) {
+    return { value: null };
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return { value: null };
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return { error: 'Format de date de dépense invalide' };
+  }
+
+  return { value: parsed };
+};
+
+const buildDateRangeFilter = (startDate, endDate) => {
+  const dateFilter = {};
+
+  if (startDate) {
+    const start = new Date(startDate);
+    if (Number.isNaN(start.getTime())) {
+      return { error: 'Date de début invalide' };
+    }
+    start.setHours(0, 0, 0, 0);
+    dateFilter.$gte = start;
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+    if (Number.isNaN(end.getTime())) {
+      return { error: 'Date de fin invalide' };
+    }
+    end.setHours(23, 59, 59, 999);
+    dateFilter.$lte = end;
+  }
+
+  return { value: Object.keys(dateFilter).length > 0 ? dateFilter : null };
+};
 // @desc    Get all expenses with search
 // @route   GET /api/expenses
 // @access  Private/Admin
@@ -9,11 +51,12 @@ const getExpenses = asyncHandler(async (req, res) => {
   const query = {};
   
   // Filtrage
-  if (filters.startDate && filters.endDate) {
-    query.date = {
-      $gte: new Date(filters.startDate),
-      $lte: new Date(filters.endDate)
-    };
+  const dateRange = buildDateRangeFilter(filters.startDate, filters.endDate);
+  if (dateRange.error) {
+    return res.status(400).json({ message: dateRange.error });
+  }
+  if (dateRange.value) {
+    query.date = dateRange.value;
   }
   if (filters.category) query.category = filters.category;
   
@@ -42,8 +85,14 @@ const getExpenses = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const createExpense = async (req, res) => {
   try {
+    const parsedExpenseDate = parseOptionalExpenseDate(req.body.date);
+    if (parsedExpenseDate.error) {
+      return res.status(400).json({ message: parsedExpenseDate.error });
+    }
+
     const expense = new Expense({
       ...req.body,
+      date: parsedExpenseDate.value || new Date(),
       createdBy: req.user ? req.user._id : undefined,
       updatedBy: req.user ? req.user._id : undefined
     });
@@ -58,16 +107,14 @@ const createExpense = async (req, res) => {
 // @route   GET /api/expenses/date-range
 // @access  Private
 const getExpensesByDateRange = asyncHandler(async (req, res) => {
-  const startDate = new Date(req.query.startDate);
-  const endDate = new Date(req.query.endDate);
+  const dateRange = buildDateRangeFilter(req.query.startDate, req.query.endDate);
   const summaryMode = String(req.query.summary || '').trim().toLowerCase();
 
-  let expenseQuery = Expense.find({
-    date: {
-      $gte: startDate,
-      $lte: endDate
-    }
-  }).sort('date');
+  if (dateRange.error) {
+    return res.status(400).json({ message: dateRange.error });
+  }
+
+  let expenseQuery = Expense.find(dateRange.value ? { date: dateRange.value } : {}).sort('date');
 
   if (summaryMode === 'dashboard') {
     expenseQuery = expenseQuery.select('_id description amount category supplier date createdAt');
@@ -110,10 +157,16 @@ const updateExpense = asyncHandler(async (req, res) => {
     throw new Error('Dépense non trouvée');
   }
 
+  const parsedExpenseDate = parseOptionalExpenseDate(req.body.date);
+  if (parsedExpenseDate.error) {
+    return res.status(400).json({ message: parsedExpenseDate.error });
+  }
+
   const updatedExpense = await Expense.findByIdAndUpdate(
     req.params.id,
     {
       ...req.body,
+      date: parsedExpenseDate.value || expense.date,
       updatedBy: req.user ? req.user._id : undefined
     },
     { new: true, runValidators: true }

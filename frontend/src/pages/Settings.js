@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import api from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
+import AuthContext from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
 
 const TABS = [
   { key: 'categories', label: 'Catégories', endpoint: '/lookups/categories' },
@@ -12,8 +15,163 @@ const TABS = [
 const sortByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
 
+const buildBrandingForm = (branding = {}) => ({
+  appName: branding.appName || '',
+  shortName: branding.shortName || '',
+  tagline: branding.tagline || '',
+  logoUrl: branding.logoUrl || '',
+  primaryColor: branding.primaryColor || '#2563EB',
+  loginTitle: branding.loginTitle || '',
+  loginSubtitle: branding.loginSubtitle || '',
+  footerText: branding.footerText || '',
+  supportPhone: branding.supportPhone || '',
+  supportEmail: branding.supportEmail || '',
+  removeLogo: false,
+});
+
 const Settings = () => {
+  const { auth, setAuth } = useContext(AuthContext);
+  const { appSettings, setAppSettings } = useAppSettings();
   const [activeTab, setActiveTab] = useState('categories');
+  const isAdmin = Boolean(auth?.user?.isAdmin);
+  const [brandingSettings, setBrandingSettings] = useState(() => buildBrandingForm(appSettings?.branding));
+  const [brandingLogoFile, setBrandingLogoFile] = useState(null);
+  const [brandingLogoPreview, setBrandingLogoPreview] = useState('');
+  const [savingBrandingSettings, setSavingBrandingSettings] = useState(false);
+  const [dateSettings, setDateSettings] = useState({
+    manualSaleDateEnabled: false,
+    manualExpenseDateEnabled: false,
+    manualPaymentDateEnabled: false,
+  });
+  const [savingDateSettings, setSavingDateSettings] = useState(false);
+
+  useEffect(() => {
+    setDateSettings({
+      manualSaleDateEnabled: Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled),
+      manualExpenseDateEnabled: Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled),
+      manualPaymentDateEnabled: Boolean(auth?.user?.adminPreferences?.manualPaymentDateEnabled),
+    });
+  }, [auth?.user?.adminPreferences?.manualExpenseDateEnabled, auth?.user?.adminPreferences?.manualPaymentDateEnabled, auth?.user?.adminPreferences?.manualSaleDateEnabled]);
+
+  useEffect(() => {
+    setBrandingSettings(buildBrandingForm(appSettings?.branding));
+    setBrandingLogoFile(null);
+    setBrandingLogoPreview('');
+  }, [appSettings]);
+
+  useEffect(() => () => {
+    if (brandingLogoPreview) {
+      URL.revokeObjectURL(brandingLogoPreview);
+    }
+  }, [brandingLogoPreview]);
+
+  const handleBrandingFieldChange = (key, value) => {
+    setBrandingSettings((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleBrandingLogoChange = (event) => {
+    const nextFile = event.target.files?.[0] || null;
+
+    if (brandingLogoPreview) {
+      URL.revokeObjectURL(brandingLogoPreview);
+    }
+
+    setBrandingLogoFile(nextFile);
+    setBrandingLogoPreview(nextFile ? URL.createObjectURL(nextFile) : '');
+    setBrandingSettings((prev) => ({
+      ...prev,
+      removeLogo: false,
+    }));
+  };
+
+  const handleResetBrandingSettings = () => {
+    if (brandingLogoPreview) {
+      URL.revokeObjectURL(brandingLogoPreview);
+    }
+
+    setBrandingSettings(buildBrandingForm(appSettings?.branding));
+    setBrandingLogoFile(null);
+    setBrandingLogoPreview('');
+  };
+
+  const handleSaveBrandingSettings = async (event) => {
+    event.preventDefault();
+    if (!isAdmin) return;
+
+    try {
+      setSavingBrandingSettings(true);
+
+      const payload = new FormData();
+      payload.append('appName', brandingSettings.appName.trim());
+      payload.append('shortName', brandingSettings.shortName.trim());
+      payload.append('tagline', brandingSettings.tagline.trim());
+      payload.append('logoUrl', brandingSettings.logoUrl.trim());
+      payload.append('primaryColor', brandingSettings.primaryColor.trim());
+      payload.append('loginTitle', brandingSettings.loginTitle.trim());
+      payload.append('loginSubtitle', brandingSettings.loginSubtitle.trim());
+      payload.append('footerText', brandingSettings.footerText.trim());
+      payload.append('supportPhone', brandingSettings.supportPhone.trim());
+      payload.append('supportEmail', brandingSettings.supportEmail.trim());
+      payload.append('removeLogo', String(Boolean(brandingSettings.removeLogo)));
+
+      if (brandingLogoFile) {
+        payload.append('logoFile', brandingLogoFile);
+      }
+
+      const { data } = await api.put('/app-settings', payload);
+      setAppSettings(data);
+      toast.success('Personnalisation enregistrée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
+    } finally {
+      setSavingBrandingSettings(false);
+    }
+  };
+
+  const previewLogo = brandingLogoPreview || resolveAppLogo(brandingSettings.removeLogo ? '' : brandingSettings.logoUrl);
+  const previewColor = brandingSettings.primaryColor || '#2563EB';
+  const previewSurface = mixHexColors(previewColor, 0.9);
+
+  const handleDateSettingToggle = async (key, value) => {
+    if (!auth?.user?._id || !isAdmin) return;
+
+    const nextDateSettings = {
+      ...dateSettings,
+      [key]: value,
+    };
+
+    try {
+      setSavingDateSettings(true);
+      setDateSettings(nextDateSettings);
+
+      const currentAdminPreferences = auth?.user?.adminPreferences || {};
+      const { data } = await api.put(`/users/${auth.user._id}`, {
+        adminPreferences: {
+          ...currentAdminPreferences,
+          ...nextDateSettings,
+        },
+      });
+
+      setAuth((prev) => ({
+        ...prev,
+        user: data,
+        isAdmin: Boolean(data?.isAdmin),
+      }));
+      toast.success('Préférence enregistrée');
+    } catch (err) {
+      setDateSettings({
+        manualSaleDateEnabled: Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled),
+        manualExpenseDateEnabled: Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled),
+        manualPaymentDateEnabled: Boolean(auth?.user?.adminPreferences?.manualPaymentDateEnabled),
+      });
+      toast.error(err.response?.data?.message || 'Erreur de sauvegarde');
+    } finally {
+      setSavingDateSettings(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
@@ -21,6 +179,309 @@ const Settings = () => {
       <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl tracking-tight mb-6">
         Paramètres
       </h1>
+
+      {isAdmin && (
+        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Identité de l'application</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Personnalisez le nom, le logo, la couleur principale et les textes clés pour rendre l’application plus professionnelle.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+              Visible dans la navigation, la page de connexion, le footer et le titre du navigateur.
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveBrandingSettings} className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_320px]">
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <BrandingField
+                  label="Nom de l'application"
+                  description="Le nom principal visible dans la barre du haut et le titre du navigateur."
+                >
+                  <input
+                    type="text"
+                    value={brandingSettings.appName}
+                    onChange={(e) => handleBrandingFieldChange('appName', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ex: HD Gestion Pro"
+                    required
+                  />
+                </BrandingField>
+
+                <BrandingField
+                  label="Nom court"
+                  description="Utilisé pour les versions compactes et les invites d'installation."
+                >
+                  <input
+                    type="text"
+                    value={brandingSettings.shortName}
+                    onChange={(e) => handleBrandingFieldChange('shortName', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ex: HD Pro"
+                    required
+                  />
+                </BrandingField>
+              </div>
+
+              <BrandingField
+                label="Signature"
+                description="Une courte phrase pour donner du contexte et renforcer l'image professionnelle."
+              >
+                <input
+                  type="text"
+                  value={brandingSettings.tagline}
+                  onChange={(e) => handleBrandingFieldChange('tagline', e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Ex: Ventes, stock et encaissements en un seul endroit"
+                  required
+                />
+              </BrandingField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <BrandingField
+                  label="Logo"
+                  description="Importez un logo carré propre pour l’en-tête et l’écran de connexion."
+                >
+                  <div className="space-y-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBrandingLogoChange}
+                      className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700"
+                    />
+                    <input
+                      type="url"
+                      value={brandingSettings.logoUrl}
+                      onChange={(e) => handleBrandingFieldChange('logoUrl', e.target.value)}
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ou collez l'URL d'un logo"
+                    />
+                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={brandingSettings.removeLogo}
+                        onChange={(e) => handleBrandingFieldChange('removeLogo', e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Retirer le logo personnalisé et revenir au logo par défaut
+                    </label>
+                  </div>
+                </BrandingField>
+
+                <BrandingField
+                  label="Couleur principale"
+                  description="Une seule couleur forte suffit pour personnaliser les points de contact clés."
+                >
+                  <div className="flex items-center gap-3 rounded-xl border border-gray-300 bg-white px-3 py-2">
+                    <input
+                      type="color"
+                      value={brandingSettings.primaryColor}
+                      onChange={(e) => handleBrandingFieldChange('primaryColor', e.target.value)}
+                      className="h-11 w-14 cursor-pointer rounded-lg border border-gray-200 bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={brandingSettings.primaryColor}
+                      onChange={(e) => handleBrandingFieldChange('primaryColor', e.target.value)}
+                      className="flex-1 border-0 bg-transparent text-sm font-medium text-gray-700 focus:outline-none focus:ring-0"
+                      placeholder="#2563EB"
+                    />
+                  </div>
+                </BrandingField>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <BrandingField
+                  label="Titre de connexion"
+                  description="Le grand titre affiché sur la page de connexion."
+                >
+                  <input
+                    type="text"
+                    value={brandingSettings.loginTitle}
+                    onChange={(e) => handleBrandingFieldChange('loginTitle', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Connexion"
+                    required
+                  />
+                </BrandingField>
+
+                <BrandingField
+                  label="Sous-titre de connexion"
+                  description="Le message d'accueil juste sous le titre."
+                >
+                  <input
+                    type="text"
+                    value={brandingSettings.loginSubtitle}
+                    onChange={(e) => handleBrandingFieldChange('loginSubtitle', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Accédez à votre espace professionnel"
+                    required
+                  />
+                </BrandingField>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <BrandingField
+                  label="Téléphone support"
+                  description="Affiché en bas de la page de connexion et dans le footer."
+                >
+                  <input
+                    type="text"
+                    value={brandingSettings.supportPhone}
+                    onChange={(e) => handleBrandingFieldChange('supportPhone', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="+242 06 00 00 00"
+                  />
+                </BrandingField>
+
+                <BrandingField
+                  label="Email support"
+                  description="Pratique pour un contact plus formel depuis le footer."
+                >
+                  <input
+                    type="email"
+                    value={brandingSettings.supportEmail}
+                    onChange={(e) => handleBrandingFieldChange('supportEmail', e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="contact@entreprise.com"
+                  />
+                </BrandingField>
+              </div>
+
+              <BrandingField
+                label="Texte du footer"
+                description="La ligne institutionnelle en bas de l'application."
+              >
+                <input
+                  type="text"
+                  value={brandingSettings.footerText}
+                  onChange={(e) => handleBrandingFieldChange('footerText', e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Entreprise. Tous droits réservés."
+                  required
+                />
+              </BrandingField>
+
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResetBrandingSettings}
+                  disabled={savingBrandingSettings}
+                  className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70"
+                >
+                  Réinitialiser
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingBrandingSettings}
+                  className="rounded-xl px-4 py-3 text-sm font-medium text-white transition hover:opacity-95 disabled:opacity-70"
+                  style={{ backgroundColor: previewColor }}
+                >
+                  {savingBrandingSettings ? 'Enregistrement...' : 'Enregistrer la personnalisation'}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Aperçu rapide</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Vérifiez le rendu de base avant d’enregistrer.
+                </p>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3" style={{ backgroundColor: previewSurface }}>
+                  <img
+                    src={previewLogo}
+                    alt={brandingSettings.shortName || brandingSettings.appName}
+                    className="h-11 w-11 rounded-xl border border-white/70 bg-white object-contain p-1 shadow-sm"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">{brandingSettings.appName}</p>
+                    <p className="truncate text-xs text-gray-500">{brandingSettings.tagline}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 px-4 py-5">
+                  <div className="text-center">
+                    <div
+                      className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: previewSurface }}
+                    >
+                      <img
+                        src={previewLogo}
+                        alt={brandingSettings.shortName || brandingSettings.appName}
+                        className="h-9 w-9 rounded-xl bg-white object-contain p-1 shadow-sm"
+                      />
+                    </div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: previewColor }}>
+                      {brandingSettings.shortName || brandingSettings.appName}
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-gray-900">{brandingSettings.loginTitle}</p>
+                    <p className="mt-1 text-sm text-gray-500">{brandingSettings.loginSubtitle}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="w-full rounded-xl px-4 py-3 text-sm font-medium text-white"
+                    style={{ backgroundColor: previewColor }}
+                  >
+                    Bouton principal
+                  </button>
+
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                    <p className="font-medium text-gray-700">{brandingSettings.footerText}</p>
+                    {(brandingSettings.supportPhone || brandingSettings.supportEmail) && (
+                      <p className="mt-1">
+                        {[brandingSettings.supportPhone, brandingSettings.supportEmail].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Dates Manuelles</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Activez ou masquez la saisie manuelle des dates pour rattraper des ventes ou dépenses notées sur papier.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <PreferenceToggle
+              label="Date manuelle des ventes"
+              description="Autorise la saisie ou la correction manuelle de la date réelle d'une vente."
+              checked={dateSettings.manualSaleDateEnabled}
+              disabled={savingDateSettings}
+              onChange={(checked) => handleDateSettingToggle('manualSaleDateEnabled', checked)}
+            />
+            <PreferenceToggle
+              label="Date manuelle des dépenses"
+              description="Autorise la saisie ou la correction manuelle de la date réelle d'une dépense."
+              checked={dateSettings.manualExpenseDateEnabled}
+              disabled={savingDateSettings}
+              onChange={(checked) => handleDateSettingToggle('manualExpenseDateEnabled', checked)}
+            />
+            <PreferenceToggle
+              label="Date manuelle des paiements"
+              description="Autorise la saisie ou la correction manuelle de la date réelle d'un paiement sur une vente."
+              checked={dateSettings.manualPaymentDateEnabled}
+              disabled={savingDateSettings}
+              onChange={(checked) => handleDateSettingToggle('manualPaymentDateEnabled', checked)}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
@@ -52,6 +513,41 @@ const Settings = () => {
     </div>
   );
 };
+
+const BrandingField = ({ label, description, children }) => (
+  <label className="block">
+    <div className="mb-2">
+      <div className="text-sm font-medium text-gray-900">{label}</div>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+    {children}
+  </label>
+);
+
+const PreferenceToggle = ({ label, description, checked, disabled, onChange }) => (
+  <label className={`flex items-start justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3 transition ${disabled ? 'opacity-70' : 'hover:border-gray-300'}`}>
+    <div className="min-w-0">
+      <div className="text-sm font-medium text-gray-900">{label}</div>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${
+        checked ? 'bg-indigo-600' : 'bg-gray-300'
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  </label>
+);
 
 /* ============================================================ */
 /* Generic Lookup Tab (Categories, Containers, Warehouses)       */

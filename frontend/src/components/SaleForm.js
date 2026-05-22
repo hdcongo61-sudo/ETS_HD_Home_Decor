@@ -17,6 +17,7 @@ const normalizeCollection = (value, nestedKeys = []) => {
 const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const manualSaleDateEnabled = isAdmin && Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled);
   const safeClients = useMemo(() => normalizeCollection(clients, ['clients', 'data']), [clients]);
   const normalizedInitialProducts = useMemo(
     () => normalizeCollection(initialProducts, ['products', 'data']),
@@ -33,6 +34,7 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [note, setNote] = useState('');
+  const [saleDate, setSaleDate] = useState('');
   const [setReminder, setSetReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [reminderNote, setReminderNote] = useState('');
@@ -167,6 +169,7 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
     setPaymentMethod('cash');
     setPaymentAmount('');
     setNote('');
+    setSaleDate('');
     setSetReminder(false);
     setReminderDate('');
     setReminderNote('');
@@ -209,6 +212,7 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
         initialPaymentAmount: normalizedPaymentAmount,
         markAsDelivered: isFullyPaid && markAsDelivered,
         note,
+        saleDate: manualSaleDateEnabled && saleDate ? saleDate : undefined,
         reminderDate: setReminder && !isFullyPaid ? reminderDate : undefined,
         reminderNote: setReminder && !isFullyPaid ? reminderNote : undefined,
       };
@@ -410,6 +414,26 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
             aria-describedby="sale-form-note"
           />
         </section>
+
+        {manualSaleDateEnabled && (
+          <section className="space-y-3" aria-labelledby="sale-form-date">
+            <h4 id="sale-form-date" className={sectionTitleClass}>
+              Date réelle de vente
+            </h4>
+            <div className="rounded-xl border border-sky-200/80 bg-sky-50/60 p-4 space-y-2">
+              <input
+                type="datetime-local"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                className={`${inputBase} bg-white`}
+                aria-label="Date réelle de la vente"
+              />
+              <p className="text-xs text-sky-700">
+                Optionnel. Utilisez ce champ pour rattraper des ventes notées sur papier avec leur vraie date.
+              </p>
+            </div>
+          </section>
+        )}
 
         {isAdmin && (
           <section className="space-y-3" aria-labelledby="sale-form-type">

@@ -5,9 +5,12 @@ import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
+import { useAppSettings } from "../context/AppSettingsContext";
+import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
 
 const Navigation = () => {
   const { auth, setAuth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [autresOpen, setAutresOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -16,6 +19,9 @@ const Navigation = () => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
   });
+  const branding = appSettings.branding;
+  const logoUrl = resolveAppLogo(branding.logoUrl);
+  const brandTint = mixHexColors(branding.primaryColor, 0.88);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
   const location = useLocation();
@@ -135,13 +141,20 @@ const Navigation = () => {
             onClick={closeMenu}
           >
             <img
-              src={`${process.env.PUBLIC_URL || ''}/logo.png`}
-              alt="ETS HD Logo"
+              src={logoUrl}
+              alt={branding.shortName || branding.appName}
               className="w-10 h-10 rounded-apple object-contain border border-gray-200/80 shadow-apple-sm bg-white"
             />
-            <span className="text-gray-900 text-[17px] font-semibold hidden md:block tracking-tight">
-              ETS HD-Gestion
-            </span>
+            <div className="hidden min-w-0 md:block">
+              <span className="block truncate text-[17px] font-semibold tracking-tight text-gray-900">
+                {branding.appName}
+              </span>
+              {branding.tagline && (
+                <span className="block truncate text-[11px] text-gray-500">
+                  {branding.tagline}
+                </span>
+              )}
+            </div>
           </Link>
 
           {/* === Menu desktop === */}
@@ -246,7 +259,10 @@ const Navigation = () => {
             }}
           >
             {auth.isAuthenticated && (
-              <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl min-h-[56px] bg-white/95 border border-gray-200/60 shadow-sm">
+              <div
+                className="mb-3 flex min-h-[56px] items-center gap-3 rounded-xl border border-gray-200/60 px-4 py-3 shadow-sm"
+                style={{ backgroundColor: brandTint }}
+              >
                 <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
                   {auth.user?.photo ? (
                     <img src={auth.user.photo} alt={auth.user.name || 'Profil'} className="w-full h-full object-cover" />

@@ -1,6 +1,6 @@
 import React from 'react';
-
-const logoUrl = `${process.env.PUBLIC_URL || ''}/logo.png`;
+import { useAppSettings } from '../context/AppSettingsContext';
+import { resolveAppLogo } from '../utils/appBranding';
 
 /**
  * Unified app loader with animated logo. Use as Suspense fallback or inside overlays.
@@ -9,11 +9,14 @@ const logoUrl = `${process.env.PUBLIC_URL || ''}/logo.png`;
  * @param {string} textClassName - Optional class for the text (e.g. "text-white" for overlays).
  */
 export default function AppLoader({ fullScreen = true, text = 'Chargement...', textClassName = 'text-gray-500' }) {
+  const { appSettings } = useAppSettings();
+  const logoUrl = resolveAppLogo(appSettings.branding.logoUrl);
+
   const content = (
     <div className="flex flex-col items-center justify-center gap-4">
       <img
         src={logoUrl}
-        alt="ETS HD"
+        alt={appSettings.branding.shortName || appSettings.branding.appName}
         className="app-loader-logo w-14 h-14 md:w-16 md:h-16 rounded-xl object-contain border border-gray-200 shadow-md bg-white"
       />
       {text && (

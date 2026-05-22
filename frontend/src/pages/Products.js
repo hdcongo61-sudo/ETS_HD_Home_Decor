@@ -540,7 +540,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   };
 
   const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
-  const filterInputClass = 'w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+  const filterInputClass = 'w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-base text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
   const actionButtonClass = 'inline-flex items-center justify-center min-h-[40px] rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50';
   const comparisonOptions = [
     { value: '', label: 'Toutes' },

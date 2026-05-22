@@ -79,6 +79,68 @@ const formatGroupedSummary = (rows = [], expectedKeys = []) => {
   }, {});
 };
 
+const parseOptionalSaleDate = (value) => {
+  if (value === undefined || value === null) {
+    return { value: null };
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return { value: null };
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return { error: 'Format de date de vente invalide' };
+  }
+
+  return { value: parsed };
+};
+
+const recalculateClientPurchaseMetrics = async (clientId, session) => {
+  const normalizedClientId = normalizeObjectId(clientId);
+
+  if (!normalizedClientId || !mongoose.Types.ObjectId.isValid(normalizedClientId)) {
+    return null;
+  }
+
+  const aggregateQuery = Sale.aggregate([
+    {
+      $match: {
+        client: new mongoose.Types.ObjectId(normalizedClientId)
+      }
+    },
+    {
+      $group: {
+        _id: '$client',
+        totalPurchases: { $sum: '$totalAmount' },
+        purchaseCount: { $sum: 1 },
+        lastPurchaseDate: { $max: '$saleDate' }
+      }
+    }
+  ]);
+
+  if (session) {
+    aggregateQuery.session(session);
+  }
+
+  const [summary] = await aggregateQuery;
+
+  await Client.findByIdAndUpdate(
+    normalizedClientId,
+    {
+      $set: {
+        totalPurchases: Number(summary?.totalPurchases) || 0,
+        purchaseCount: Number(summary?.purchaseCount) || 0,
+        lastPurchaseDate: summary?.lastPurchaseDate || null
+      }
+    },
+    { session }
+  );
+
+  return summary || null;
+};
+
 // @desc    Get all sales with filters
 // @route   GET /api/sales
 // @access  Private (admin: all sales, user: own sales)
@@ -354,7 +416,8 @@ const createSale = asyncHandler(async (req, res) => {
     reminderNote,
     saleType,
     initialPaymentAmount,
-    markAsDelivered
+    markAsDelivered,
+    saleDate
   } = req.body;
 
   let session;
@@ -436,6 +499,16 @@ const createSale = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'La livraison immédiate nécessite un paiement complet' });
     }
 
+    const parsedSaleDate = parseOptionalSaleDate(saleDate);
+    if (parsedSaleDate.error) {
+      return res.status(400).json({ message: parsedSaleDate.error });
+    }
+    if (parsedSaleDate.value && !isAdminUser(req.user)) {
+      return res.status(403).json({ message: 'Seul un administrateur peut definir une date de vente manuelle' });
+    }
+
+    const effectiveSaleDate = parsedSaleDate.value || new Date();
+
     // Create sale with reminder data
     const resolvedSaleType = isAdminUser(req.user)
       ? normalizeSaleType(saleType)
@@ -448,6 +521,7 @@ const createSale = asyncHandler(async (req, res) => {
       saleType: resolvedSaleType,
       paymentMethod,
       note,
+      saleDate: effectiveSaleDate,
       user: req.user._id,
       // Stock is deducted explicitly below in the controller.
       stockDeducted: true
@@ -457,14 +531,14 @@ const createSale = asyncHandler(async (req, res) => {
       saleData.payments = [{
         amount: normalizedInitialPayment,
         method: paymentMethod,
-        paymentDate: new Date(),
+        paymentDate: effectiveSaleDate,
         user: req.user._id
       }];
     }
 
     if (markAsDelivered && normalizedInitialPayment >= totalAmount) {
       saleData.deliveryStatus = 'delivered';
-      saleData.deliveryDate = new Date();
+      saleData.deliveryDate = effectiveSaleDate;
     }
 
     // Add reminder if provided
@@ -489,23 +563,19 @@ const createSale = asyncHandler(async (req, res) => {
 
     const [sale] = await Sale.create([saleData], { session });
 
-    const [updatedClient] = await Promise.all([
-      Client.findByIdAndUpdate(
-        client,
-        {
-          $push: { purchases: sale._id },
-          $inc: {
-            totalPurchases: totalAmount,
-            purchaseCount: 1
-          },
-          $set: { lastPurchaseDate: new Date() }
-        },
-        { new: true, select: 'name', session }
-      ),
-      stockOperations.length > 0
-        ? Product.bulkWrite(stockOperations, { session })
-        : Promise.resolve()
-    ]);
+    const updatedClient = await Client.findByIdAndUpdate(
+      client,
+      {
+        $addToSet: { purchases: sale._id }
+      },
+      { new: true, select: 'name', session }
+    );
+
+    if (stockOperations.length > 0) {
+      await Product.bulkWrite(stockOperations, { session });
+    }
+
+    await recalculateClientPurchaseMetrics(client, session);
 
     await session.commitTransaction();
     session.endSession();
@@ -541,7 +611,7 @@ const createSale = asyncHandler(async (req, res) => {
 // @access  Private
 const addPayment = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { amount, method } = req.body;
+  const { amount, method, paymentDate, markAsDelivered } = req.body;
 
   try {
     const sale = await Sale.findById(id);
@@ -554,20 +624,44 @@ const addPayment = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'Impossible d\'ajouter un paiement à une vente annulée' });
     }
 
+    const parsedPaymentDate = parseOptionalSaleDate(paymentDate);
+    if (parsedPaymentDate.error) {
+      return res.status(400).json({ message: 'Format de date de paiement invalide' });
+    }
+    if (parsedPaymentDate.value) {
+      if (!isAdminUser(req.user)) {
+        return res.status(403).json({ message: 'Seul un administrateur peut definir une date de paiement manuelle' });
+      }
+      if (!req.user?.adminPreferences?.manualPaymentDateEnabled) {
+        return res.status(403).json({ message: 'La date de paiement manuelle est désactivée dans les paramètres' });
+      }
+    }
+
+    const effectivePaymentDate = parsedPaymentDate.value || new Date();
+
     sale.payments.push({
       amount,
       method,
-      paymentDate: new Date(),
+      paymentDate: effectivePaymentDate,
       user: req.user._id // Inclure l'utilisateur
     });
 
+    const updatedTotalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const saleTotalAmount = Number(sale.totalAmount) || 0;
+    const remainingBalance = Math.max(saleTotalAmount - updatedTotalPaid, 0);
+
+    if (markAsDelivered) {
+      if (remainingBalance > 0) {
+        return res.status(400).json({ message: 'La vente doit être entièrement payée pour être marquée comme livrée' });
+      }
+
+      sale.deliveryStatus = 'delivered';
+      sale.deliveryDate = effectivePaymentDate;
+    }
+
     await sale.save();
 
-    const totalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-    const saleTotalAmount = Number(sale.totalAmount) || 0;
-
     await sale.populate('client', 'name');
-    const remainingBalance = Math.max(saleTotalAmount - totalPaid, 0);
 
     notifyPaymentRecorded({
       saleId: sale._id,
@@ -1777,7 +1871,7 @@ const getUserSalesStats = asyncHandler(async (req, res) => {
 
 const updateSale = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { products, note, saleType } = req.body;
+  const { products, note, saleType, saleDate } = req.body;
   const user = req.user;
 
   // Validation de l'ID
@@ -1815,7 +1909,22 @@ const updateSale = asyncHandler(async (req, res) => {
       });
     }
 
+    const hasSaleDateOverride = Object.prototype.hasOwnProperty.call(req.body, 'saleDate');
+    const parsedSaleDate = parseOptionalSaleDate(saleDate);
+    if (parsedSaleDate.error || (hasSaleDateOverride && !parsedSaleDate.value)) {
+      return res.status(400).json({
+        message: parsedSaleDate.error || 'La date de vente est requise'
+      });
+    }
+
     const clientId = existingSale.client?._id || existingSale.client || null;
+    const previousSaleDate = existingSale.saleDate ? new Date(existingSale.saleDate) : null;
+    const nextSaleDate = parsedSaleDate.value || previousSaleDate;
+    const saleDateChanged = Boolean(
+      nextSaleDate &&
+      previousSaleDate &&
+      nextSaleDate.getTime() !== previousSaleDate.getTime()
+    );
 
     // Sauvegarde des anciennes valeurs pour restauration des stocks
     const oldProductQuantities = existingSale.products.map(item => ({
@@ -1918,11 +2027,14 @@ const updateSale = asyncHandler(async (req, res) => {
         balance < newTotalAmount ? 'partially_paid' : 'pending';
 
       // 4. Créer l'historique de modification
+      const saleDateNote = saleDateChanged
+        ? `Date de vente ajustée du ${previousSaleDate.toLocaleString('fr-FR')} au ${nextSaleDate.toLocaleString('fr-FR')}`
+        : '';
       const modificationEntry = {
         user: user._id,
         date: new Date(),
-        note: note || '',
-        changeType: 'products_updated',
+        note: [note || '', saleDateNote].filter(Boolean).join(' | '),
+        changeType: saleDateChanged ? 'sale_updated' : 'products_updated',
         changes: {
           products: existingSale.products.map(oldItem => {
             const newItem = products.find(p =>
@@ -1943,6 +2055,7 @@ const updateSale = asyncHandler(async (req, res) => {
       existingSale.products = updatedProducts;
       existingSale.totalAmount = newTotalAmount;
       existingSale.status = newStatus;
+      existingSale.saleDate = nextSaleDate;
       if (!Array.isArray(existingSale.modificationHistory)) {
         existingSale.modificationHistory = [];
       }
@@ -1954,15 +2067,7 @@ const updateSale = asyncHandler(async (req, res) => {
 
       // 6. Mettre à jour le client si nécessaire
       if (clientId) {
-        await Client.findByIdAndUpdate(
-          clientId,
-          {
-            $inc: {
-              totalPurchases: newTotalAmount - oldTotalAmount
-            }
-          },
-          { session }
-        );
+        await recalculateClientPurchaseMetrics(clientId, session);
       }
 
       await session.commitTransaction();
@@ -2057,12 +2162,9 @@ const deleteSale = asyncHandler(async (req, res) => {
     if (sale.client) {
       const clientId = sale.client?._id || sale.client;
       await Client.findByIdAndUpdate(clientId, {
-        $pull: { purchases: sale._id },
-        $inc: {
-          totalPurchases: -sale.totalAmount,
-          purchaseCount: -1
-        }
+        $pull: { purchases: sale._id }
       }, { session });
+      await recalculateClientPurchaseMetrics(clientId, session);
     }
 
     // 3. Supprimer la vente

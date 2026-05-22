@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
 import { FormActionsSticky } from './FormLayout';
 import { getSaleTypeText } from '../utils/saleUtils';
+import AuthContext from '../context/AuthContext';
 
 const normalizeCollection = (value, nestedKeys = []) => {
     if (Array.isArray(value)) return value;
@@ -14,10 +15,24 @@ const normalizeCollection = (value, nestedKeys = []) => {
     return [];
 };
 
+const toDateTimeLocalValue = (value) => {
+    if (!value) return '';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const pad = (part) => String(part).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
+    const { auth } = useContext(AuthContext);
+    const manualSaleDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled);
     const [products, setProducts] = useState([]);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [modificationNote, setModificationNote] = useState('');
+    const [saleDate, setSaleDate] = useState('');
     const [errors, setErrors] = useState([]);
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +71,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             setSelectedProducts(prefilledProducts);
             setProductSearchTerms(prefilledProducts.map(() => ''));
             setErrors(prefilledProducts.map(() => null));
+            setSaleDate(toDateTimeLocalValue(sale.saleDate || sale.createdAt));
         }
     }, [sale]);
 
@@ -180,7 +196,8 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     quantity: Number(item.quantity),
                     price: Number(item.price) || 0
                 })),
-                note: modificationNote.trim()
+                note: modificationNote.trim(),
+                saleDate: manualSaleDateEnabled ? saleDate : undefined
             });
         } catch (error) {
             setFormError(error.response?.data?.message || 'Erreur lors de la mise à jour de la vente');
@@ -218,8 +235,8 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                             <p className="mt-0.5 font-semibold text-gray-900">{sale.client?.name || '—'}</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date originale</p>
-                            <p className="mt-0.5 text-gray-700">{new Date(sale.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date de vente</p>
+                            <p className="mt-0.5 text-gray-700">{new Date(sale.saleDate || sale.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div>
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Montant original</p>
@@ -237,6 +254,26 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     </div>
                 </div>
             </section>
+
+            {manualSaleDateEnabled && (
+                <section className="rounded-2xl border border-sky-200 bg-sky-50/60 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-sky-200 bg-white/70">
+                        <h3 className="text-sm font-semibold text-sky-900">Date réelle de la vente</h3>
+                    </div>
+                    <div className="p-4 md:p-5 space-y-3">
+                        <input
+                            type="datetime-local"
+                            value={saleDate}
+                            onChange={(e) => setSaleDate(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors text-gray-900 bg-white"
+                            required
+                        />
+                        <p className="text-xs text-sky-800">
+                            Ajustez cette date si la vente a d'abord ete notee sur papier puis saisie plus tard dans l'application.
+                        </p>
+                    </div>
+                </section>
+            )}
 
             {/* Modification reason */}
             <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">

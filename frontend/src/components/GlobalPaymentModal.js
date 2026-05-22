@@ -1,15 +1,20 @@
 // components/GlobalPaymentModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
 import Modal from './Modal';
+import AuthContext from '../context/AuthContext';
 
 const GlobalPaymentModal = () => {
   const { activeModal, closeModal } = useModal();
+  const { auth } = useContext(AuthContext);
+  const manualPaymentDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualPaymentDateEnabled);
   const [sales, setSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,6 +23,7 @@ const GlobalPaymentModal = () => {
   useEffect(() => {
     if (isOpen) {
       fetchPendingSales();
+      setMarkAsDelivered(false);
     }
   }, [isOpen]);
 
@@ -34,6 +40,21 @@ const GlobalPaymentModal = () => {
     const totalPaid = sale.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
     return sale.totalAmount - totalPaid;
   };
+
+  const selectedSaleData = sales.find((sale) => sale._id === selectedSale);
+  const selectedSaleBalance = selectedSaleData ? calculateBalance(selectedSaleData) : 0;
+  const enteredAmount = Number.parseFloat(amount);
+  const canMarkAsDelivered = Boolean(selectedSaleData)
+    && selectedSaleData.deliveryStatus !== 'delivered'
+    && Number.isFinite(enteredAmount)
+    && enteredAmount > 0
+    && enteredAmount >= selectedSaleBalance - 0.009;
+
+  useEffect(() => {
+    if (!canMarkAsDelivered && markAsDelivered) {
+      setMarkAsDelivered(false);
+    }
+  }, [canMarkAsDelivered, markAsDelivered]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,12 +85,16 @@ const GlobalPaymentModal = () => {
     try {
       await api.post(`/sales/${selectedSale}/payments`, {
         amount: paymentAmount,
-        method
+        method,
+        paymentDate: manualPaymentDateEnabled && paymentDate ? paymentDate : undefined,
+        markAsDelivered,
       });
 
       closeModal();
       setSelectedSale('');
       setAmount('');
+      setPaymentDate('');
+      setMarkAsDelivered(false);
       setError('');
       
       // Rafraîchir la page si nécessaire
@@ -151,6 +176,37 @@ const GlobalPaymentModal = () => {
           />
         </div>
 
+        {canMarkAsDelivered && (
+          <button
+            type="button"
+            onClick={() => setMarkAsDelivered((current) => !current)}
+            className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+              markAsDelivered
+                ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+                : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-gray-500'
+            }`}
+            aria-pressed={markAsDelivered}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Marquer comme livrée automatiquement
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Cette vente sera marquée livrée dès que ce paiement solde le total.
+                </p>
+              </div>
+              <span
+                className={`mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  markAsDelivered ? 'bg-green-500 justify-end' : 'bg-gray-300 dark:bg-gray-600 justify-start'
+                }`}
+              >
+                <span className="mx-1 h-4 w-4 rounded-full bg-white shadow-sm" />
+              </span>
+            </div>
+          </button>
+        )}
+
         {/* Payment Method */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Méthode</label>
@@ -172,6 +228,23 @@ const GlobalPaymentModal = () => {
             ))}
           </div>
         </div>
+
+        {manualPaymentDateEnabled && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Date réelle du paiement
+            </label>
+            <input
+              type="datetime-local"
+              value={paymentDate}
+              onChange={(e) => {
+                setPaymentDate(e.target.value);
+                setError('');
+              }}
+              className="w-full min-h-[44px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 touch-manipulation"
+            />
+          </div>
+        )}
 
         {error && (
           <div className="text-red-600 dark:text-red-400 text-sm p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">

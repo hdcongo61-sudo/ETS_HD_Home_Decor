@@ -91,7 +91,7 @@ clientSchema.pre('save', async function (next) {
       this.purchaseCount = sales.length;
       this.totalPurchases = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
       this.lastPurchaseDate = sales.length
-        ? new Date(Math.max(...sales.map(s => new Date(s.createdAt))))
+        ? new Date(Math.max(...sales.map(s => new Date(s.saleDate || s.createdAt))))
         : null;
     } catch (err) {
       return next(err);

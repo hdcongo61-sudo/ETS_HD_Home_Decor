@@ -10,6 +10,7 @@ const GlobalSaleModal = () => {
   const { activeModal, closeModal } = useModal();
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const manualSaleDateEnabled = isAdmin && Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled);
   const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: 1, price: 0 }]);
@@ -22,6 +23,7 @@ const GlobalSaleModal = () => {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [note, setNote] = useState('');
+  const [saleDate, setSaleDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [setReminder, setSetReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
@@ -58,6 +60,7 @@ const GlobalSaleModal = () => {
     setFormError('');
     setIsSubmitting(false);
     setNote('');
+    setSaleDate('');
     setSetReminder(false);
     setReminderDate('');
     setReminderNote('');
@@ -251,6 +254,7 @@ const GlobalSaleModal = () => {
         initialPaymentAmount: normalizedPaymentAmount,
         markAsDelivered: isFullyPaid && markAsDelivered,
         note,
+        saleDate: manualSaleDateEnabled && saleDate ? saleDate : undefined,
         reminderDate: setReminder && !isFullyPaid && reminderDate ? reminderDate : undefined,
         reminderNote: setReminder && !isFullyPaid && reminderNote ? reminderNote : undefined
       });
@@ -500,6 +504,21 @@ const GlobalSaleModal = () => {
                 {note.length}/500 caractères
               </div>
             </div>
+
+            {manualSaleDateEnabled && (
+              <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50/70 p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date réelle de vente</label>
+                <input
+                  type="datetime-local"
+                  value={saleDate}
+                  onChange={(e) => setSaleDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base bg-white"
+                />
+                <p className="mt-2 text-xs text-sky-700">
+                  Optionnel. Pratique pour rattraper des ventes anciennes notées sur papier.
+                </p>
+              </div>
+            )}
 
             {isAdmin && (
               <div className="mb-6">

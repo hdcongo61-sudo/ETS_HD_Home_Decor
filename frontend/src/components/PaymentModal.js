@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from './Modal';
+import AuthContext from '../context/AuthContext';
 
 const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
+  const { auth } = useContext(AuthContext);
+  const manualPaymentDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualPaymentDateEnabled);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -11,6 +16,8 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
     if (show) {
       setAmount('');
       setMethod('cash');
+      setPaymentDate('');
+      setMarkAsDelivered(false);
       setError('');
       setIsSubmitting(false);
     }
@@ -19,14 +26,15 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const paymentAmount = parseFloat(amount);
+    const currentBalance = Number(sale?.balance ?? 0);
 
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
       setError('Montant invalide');
       return;
     }
 
-    if (paymentAmount > sale.balance) {
-      setError(`Le montant ne peut pas dépasser le solde restant (${sale.balance.toFixed(2)} CFA)`);
+    if (paymentAmount > currentBalance) {
+      setError(`Le montant ne peut pas dépasser le solde restant (${currentBalance.toFixed(2)} CFA)`);
       return;
     }
 
@@ -34,7 +42,12 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
     setError('');
 
     try {
-      await onAddPayment({ amount: paymentAmount, method });
+      await onAddPayment({
+        amount: paymentAmount,
+        method,
+        paymentDate: manualPaymentDateEnabled && paymentDate ? paymentDate : undefined,
+        markAsDelivered,
+      });
     } catch (submissionError) {
       const fallbackMessage = "Impossible d'ajouter le paiement. Veuillez réessayer.";
       const apiMessage =
@@ -45,10 +58,21 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
     }
   };
 
-  if (!sale) return null;
+  const totalPaid = sale?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+  const balance = Math.max((Number(sale?.totalAmount) || 0) - totalPaid, 0);
+  const enteredAmount = Number.parseFloat(amount);
+  const canMarkAsDelivered = sale?.deliveryStatus !== 'delivered'
+    && Number.isFinite(enteredAmount)
+    && enteredAmount > 0
+    && enteredAmount >= balance - 0.009;
 
-  const totalPaid = sale.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-  const balance = (Number(sale.totalAmount) || 0) - totalPaid;
+  useEffect(() => {
+    if (!canMarkAsDelivered && markAsDelivered) {
+      setMarkAsDelivered(false);
+    }
+  }, [canMarkAsDelivered, markAsDelivered]);
+
+  if (!sale) return null;
 
   return (
     <Modal
@@ -163,6 +187,26 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
 
               {/* Payment Form */}
               <form id="sale-payment-form" onSubmit={handleSubmit} className="space-y-5">
+                {manualPaymentDateEnabled && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date réelle du paiement
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={paymentDate}
+                      onChange={(e) => {
+                        setPaymentDate(e.target.value);
+                        setError('');
+                      }}
+                      className="w-full min-h-[44px] px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      Optionnel. Utilisez-la pour rattraper un paiement encaissé plus tôt.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Montant à payer
@@ -187,6 +231,37 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
                     </span>
                   </div>
                 </div>
+
+                {canMarkAsDelivered && (
+                  <button
+                    type="button"
+                    onClick={() => setMarkAsDelivered((current) => !current)}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                      markAsDelivered
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                    aria-pressed={markAsDelivered}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Marquer comme livrée automatiquement
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Cette vente sera marquée livrée dès que ce paiement solde le total.
+                        </p>
+                      </div>
+                      <span
+                        className={`mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          markAsDelivered ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'
+                        }`}
+                      >
+                        <span className="mx-1 h-4 w-4 rounded-full bg-white shadow-sm" />
+                      </span>
+                    </div>
+                  </button>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">

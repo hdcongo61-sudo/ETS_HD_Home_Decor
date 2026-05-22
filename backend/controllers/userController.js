@@ -84,6 +84,18 @@ const sanitizeUser = (userDoc) => {
         typeof rest.adminPreferences?.collectionAlertsEnabled === 'boolean'
           ? rest.adminPreferences.collectionAlertsEnabled
           : true,
+      manualSaleDateEnabled:
+        typeof rest.adminPreferences?.manualSaleDateEnabled === 'boolean'
+          ? rest.adminPreferences.manualSaleDateEnabled
+          : false,
+      manualExpenseDateEnabled:
+        typeof rest.adminPreferences?.manualExpenseDateEnabled === 'boolean'
+          ? rest.adminPreferences.manualExpenseDateEnabled
+          : false,
+      manualPaymentDateEnabled:
+        typeof rest.adminPreferences?.manualPaymentDateEnabled === 'boolean'
+          ? rest.adminPreferences.manualPaymentDateEnabled
+          : false,
       weeklyReportLastSentAt: rest.adminPreferences?.weeklyReportLastSentAt || null,
     },
   };
@@ -374,17 +386,7 @@ const getCurrentUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const userObject = user.toObject();
-    const { loginAttempts, lockUntil, ...safeUser } = userObject;
-    res.json({
-      ...safeUser,
-      phone: safeUser.phone || '',
-      photo: safeUser.photo || '',
-      lastLogin: safeUser.lastLogin || null,
-      accessControlEnabled: Boolean(safeUser.accessControlEnabled),
-      accessStart: safeUser.accessStart || null,
-      accessEnd: safeUser.accessEnd || null,
-    });
+    res.json(sanitizeUser(user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -588,6 +590,24 @@ const updateUser = async (req, res) => {
             : typeof user.adminPreferences?.collectionAlertsEnabled === 'boolean'
               ? user.adminPreferences.collectionAlertsEnabled
               : true,
+        manualSaleDateEnabled:
+          typeof req.body.adminPreferences.manualSaleDateEnabled === 'boolean'
+            ? req.body.adminPreferences.manualSaleDateEnabled
+            : typeof user.adminPreferences?.manualSaleDateEnabled === 'boolean'
+              ? user.adminPreferences.manualSaleDateEnabled
+              : false,
+        manualExpenseDateEnabled:
+          typeof req.body.adminPreferences.manualExpenseDateEnabled === 'boolean'
+            ? req.body.adminPreferences.manualExpenseDateEnabled
+            : typeof user.adminPreferences?.manualExpenseDateEnabled === 'boolean'
+              ? user.adminPreferences.manualExpenseDateEnabled
+              : false,
+        manualPaymentDateEnabled:
+          typeof req.body.adminPreferences.manualPaymentDateEnabled === 'boolean'
+            ? req.body.adminPreferences.manualPaymentDateEnabled
+            : typeof user.adminPreferences?.manualPaymentDateEnabled === 'boolean'
+              ? user.adminPreferences.manualPaymentDateEnabled
+              : false,
         weeklyReportLastSentAt:
           parseDateOrNull(req.body.adminPreferences.weeklyReportLastSentAt) ||
           user.adminPreferences?.weeklyReportLastSentAt ||

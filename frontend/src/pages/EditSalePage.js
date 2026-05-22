@@ -44,7 +44,8 @@ const EditSalePage = () => {
         try {
             await api.put(`/sales/${sale._id}`, {
                 products: updateData.products,
-                note: updateData.note
+                note: updateData.note,
+                saleDate: updateData.saleDate
             });
             navigate(`/sales/${sale._id}`, {
                 state: { message: 'Vente mise à jour avec succès' }
@@ -156,7 +157,7 @@ const EditSalePage = () => {
                     Modifier la vente
                 </h1>
                 <p className="mt-1 text-gray-500 text-sm md:text-base">
-                    Ajustez les lignes et enregistrez une note de modification.
+                    Ajustez les lignes, corrigez la date reelle si besoin et enregistrez une note de modification.
                 </p>
             </header>
 

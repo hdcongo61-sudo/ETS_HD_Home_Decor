@@ -53,13 +53,17 @@ const Expenses = () => {
   const matchesExpenseFilter = (expense) => {
     if (!expense) return false;
     const expenseDate = expense.date ? new Date(expense.date) : null;
+    const startDate = filter.startDate ? new Date(filter.startDate) : null;
+    const endDate = filter.endDate ? new Date(filter.endDate) : null;
+    if (startDate) startDate.setHours(0, 0, 0, 0);
+    if (endDate) endDate.setHours(23, 59, 59, 999);
     const search = filter.search.trim().toLowerCase();
     const searchMatch = !search || [expense.description, expense.paymentMethod]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(search));
     const categoryMatch = !filter.category || expense.category === filter.category;
-    const startMatch = !filter.startDate || (expenseDate && expenseDate >= new Date(filter.startDate));
-    const endMatch = !filter.endDate || (expenseDate && expenseDate <= new Date(filter.endDate));
+    const startMatch = !startDate || (expenseDate && expenseDate >= startDate);
+    const endMatch = !endDate || (expenseDate && expenseDate <= endDate);
     return searchMatch && categoryMatch && startMatch && endMatch;
   };
 
@@ -450,7 +454,7 @@ const Expenses = () => {
                     {expenses.map((expense) => (
                       <tr key={expense._id} className="hover:bg-gray-50">
                         <td data-title="Date" className="px-4 sm:px-6 py-4 text-sm text-gray-900">
-                          {new Date(expense.date).toLocaleDateString('fr-FR')}
+                          {formatDateTime(expense.date)}
                         </td>
                         <td data-title="Description" className="px-4 sm:px-6 py-4">
                           <div className="text-sm sm:text-base text-gray-900 font-medium">{expense.description}</div>

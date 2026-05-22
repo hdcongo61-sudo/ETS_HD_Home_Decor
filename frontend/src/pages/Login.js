@@ -2,6 +2,8 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
 
 const Login = () => {
   const [loginId, setLoginId] = useState(''); // téléphone ou email
@@ -11,7 +13,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lockout, setLockout] = useState(null);
   const { setAuth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
   const navigate = useNavigate();
+  const branding = appSettings.branding;
+  const logoUrl = resolveAppLogo(branding.logoUrl);
+  const brandSoft = mixHexColors(branding.primaryColor, 0.88);
+  const brandDark = mixHexColors(branding.primaryColor, 0.14, '#000000');
 
   const isEmail = (value) => typeof value === 'string' && value.includes('@');
   const loginPayload = () => {
@@ -119,23 +126,26 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200/80 p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-5 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-sm">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+          <div
+            className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl shadow-sm"
+            style={{ backgroundColor: brandSoft }}
+          >
+            <img
+              src={logoUrl}
+              alt={branding.shortName || branding.appName}
+              className="h-12 w-12 rounded-2xl object-contain bg-white p-1.5 shadow-sm"
+            />
           </div>
-          <h2 className="text-3xl font-semibold text-gray-900 mb-2">Connexion</h2>
-          <p className="text-gray-600">Accédez à votre espace professionnel</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: branding.primaryColor }}>
+            {branding.appName}
+          </p>
+          <h2 className="text-3xl font-semibold text-gray-900 mb-2">{branding.loginTitle}</h2>
+          <p className="text-gray-600">{branding.loginSubtitle}</p>
+          {branding.supportPhone && (
+            <p className="mt-3 text-xs text-gray-500">
+              Assistance: <span style={{ color: brandDark }}>{branding.supportPhone}</span>
+            </p>
+          )}
         </div>
 
         {lockoutTime && (
@@ -256,8 +266,9 @@ const Login = () => {
             type="submit"
             className={`w-full flex items-center justify-center gap-2 py-4 px-4 text-white rounded-xl transition-all duration-200 font-medium ${lockoutTime
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-[0.98]'
+              : 'hover:opacity-95 active:scale-[0.98]'
               }`}
+            style={lockoutTime ? undefined : { backgroundColor: branding.primaryColor }}
             disabled={isLoading || !!lockoutTime}
           >
             {isLoading ? (

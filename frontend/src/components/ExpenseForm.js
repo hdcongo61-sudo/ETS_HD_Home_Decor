@@ -1,9 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
 import { FormActionsSticky } from './FormLayout';
+import AuthContext from '../context/AuthContext';
 
-const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
+const toDateTimeLocalValue = (value) => {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (part) => String(part).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false }) => {
+  const { auth } = useContext(AuthContext);
+  const manualExpenseDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled);
   const [formData, setFormData] = useState({
     date: '',
     description: '',
@@ -17,11 +31,19 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
   useEffect(() => {
     if (initialData) {
       setFormData({
-        date: new Date(initialData.date).toISOString().split('T')[0],
+        date: toDateTimeLocalValue(initialData.date),
         description: initialData.description,
         amount: initialData.amount,
         category: initialData.category,
         paymentMethod: initialData.paymentMethod
+      });
+    } else {
+      setFormData({
+        date: toDateTimeLocalValue(new Date()),
+        description: '',
+        amount: '',
+        category: '',
+        paymentMethod: 'cash'
       });
     }
   }, [initialData]);
@@ -41,6 +63,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
     if (Object.keys(validationErrors).length === 0) {
       const sanitizedData = {
         ...formData,
+        date: manualExpenseDateEnabled ? formData.date : undefined,
         description: DOMPurify.sanitize(formData.description)
       };
       onSubmit(sanitizedData);
@@ -49,7 +72,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
           description: '',
           amount: '',
           category: '',
-          date: new Date().toISOString().split('T')[0],
+          date: toDateTimeLocalValue(new Date()),
           paymentMethod: 'cash'
         });
       }
@@ -60,7 +83,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.date) errors.date = 'La date est requise';
+    if (manualExpenseDateEnabled && !formData.date) errors.date = 'La date est requise';
     if (!formData.description.trim()) errors.description = 'La description est requise';
     if (!formData.amount || formData.amount <= 0) errors.amount = 'Montant invalide';
     if (!formData.category) errors.category = 'Catégorie requise';
@@ -70,24 +93,27 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Date Field */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            className={`w-full p-2 border rounded-lg ${errors.date ? 'border-red-500' : 'border-gray-200'
-              } focus:ring-2 focus:ring-blue-500`}
-            required
-          />
-          {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
-        </div>
+        {manualExpenseDateEnabled && (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Date réelle de dépense <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded-lg ${errors.date ? 'border-red-500' : 'border-gray-200'
+                } focus:ring-2 focus:ring-blue-500`}
+              required
+            />
+            <p className="text-xs text-gray-500">
+              Utilisez la date et l'heure réelles si la dépense a été notée plus tôt sur papier.
+            </p>
+            {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+          </div>
+        )}
 
-        {/* Amount Field */}
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">
             Montant (CFA) <span className="text-red-500">*</span>
@@ -176,7 +202,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, submitting = false }) => {
         {initialData && (
           <button
             type="button"
-            onClick={() => onSubmit(null)}
+            onClick={() => (typeof onCancel === 'function' ? onCancel() : onSubmit(null))}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
             Annuler
@@ -216,6 +242,7 @@ ExpenseForm.propTypes = {
     paymentMethod: PropTypes.string
   }),
   onSubmit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func,
   submitting: PropTypes.bool
 };
 

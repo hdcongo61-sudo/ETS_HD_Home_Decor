@@ -40,7 +40,7 @@ const getClientById = async (req, res) => {
     let query = Client.findById(req.params.id)
       .populate({
         path: 'purchases',
-        options: { sort: { createdAt: -1 } }
+        options: { sort: { saleDate: -1, createdAt: -1 } }
       });
 
     if (req.user && req.user.isAdmin) {
@@ -60,7 +60,7 @@ const getClientById = async (req, res) => {
 
       const purchaseCount = client.purchases.length;
       const lastPurchaseDate = purchaseCount > 0
-        ? client.purchases[0].createdAt
+        ? (client.purchases[0].saleDate || client.purchases[0].createdAt)
         : null;
 
       res.json({
