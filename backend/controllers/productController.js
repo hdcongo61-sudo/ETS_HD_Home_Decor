@@ -15,7 +15,14 @@ const normaliseId = (value) => {
 // @access  Private
 const getProducts = async (req, res) => {
   try {
-    const query = Product.find({}).sort({ stock: -1 });
+    const summaryMode = String(req.query.summary || '').trim().toLowerCase();
+    let query = Product.find({}).sort({ stock: -1 });
+
+    if (summaryMode === 'list') {
+      query = query.select(
+        'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku isActive minStockLevel'
+      );
+    }
 
     const products = await query.lean();
     res.json(products);

@@ -1,14 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Banknote,
+  BriefcaseBusiness,
+  CalendarClock,
+  Edit3,
+  FileText,
+  Filter,
+  HandCoins,
+  Mail,
+  Plus,
+  Search,
+  Trash2,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 import api from '../services/api';
-import { employeeAdvancesPath, employeeBasePath, employeeEditPath, employeePayrollPath } from '../utils/paths';
+import {
+  employeeAdvancesPath,
+  employeeBasePath,
+  employeeEditPath,
+  employeePayrollPath,
+  employeePayrollNewPath,
+} from '../utils/paths';
 import AppLoader from './AppLoader';
+
+const formatCurrency = (value) =>
+  `${new Intl.NumberFormat('fr-FR').format(Number(value || 0))} CFA`;
+
+const normalizeText = (value) => String(value || '').toLowerCase().trim();
+
+const hasPaySlipForCurrentMonth = (employee) => {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  return (employee.paySlips || []).some((slip) => slip.month === month && slip.year === year);
+};
 
 const EmployeeList = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [payrollFilter, setPayrollFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -35,11 +71,64 @@ const EmployeeList = () => {
     }
   };
 
-  const filteredEmployees = employees.filter(employee =>
-    employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const departments = useMemo(
+    () =>
+      [...new Set(employees.map((employee) => employee.department).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })),
+    [employees]
   );
+
+  const dashboardStats = useMemo(() => {
+    const totalSalary = employees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
+    const payrollReady = employees.filter(hasPaySlipForCurrentMonth).length;
+    const missingPayroll = Math.max(employees.length - payrollReady, 0);
+
+    return {
+      totalEmployees: employees.length,
+      totalSalary,
+      averageSalary: employees.length ? totalSalary / employees.length : 0,
+      payrollReady,
+      missingPayroll,
+    };
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    const search = normalizeText(searchTerm);
+
+    return employees
+      .filter((employee) => {
+        const matchesSearch =
+          !search ||
+          normalizeText(employee.name).includes(search) ||
+          normalizeText(employee.position).includes(search) ||
+          normalizeText(employee.email).includes(search) ||
+          normalizeText(employee.phone).includes(search);
+        const matchesDepartment =
+          !departmentFilter || employee.department === departmentFilter;
+        const payrollDone = hasPaySlipForCurrentMonth(employee);
+        const matchesPayroll =
+          payrollFilter === 'all' ||
+          (payrollFilter === 'ready' && payrollDone) ||
+          (payrollFilter === 'missing' && !payrollDone);
+
+        return matchesSearch && matchesDepartment && matchesPayroll;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'salary_desc') return Number(b.salary || 0) - Number(a.salary || 0);
+        if (sortBy === 'salary_asc') return Number(a.salary || 0) - Number(b.salary || 0);
+        if (sortBy === 'hireDate_desc') return new Date(b.hireDate || 0) - new Date(a.hireDate || 0);
+        return (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' });
+      });
+  }, [employees, searchTerm, departmentFilter, payrollFilter, sortBy]);
+
+  const hasActiveFilters = searchTerm || departmentFilter || payrollFilter !== 'all' || sortBy !== 'name';
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setDepartmentFilter('');
+    setPayrollFilter('all');
+    setSortBy('name');
+  };
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
@@ -59,60 +148,109 @@ const EmployeeList = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+            <div className="bg-blue-600 p-2 rounded-xl text-white">
+              <UsersRound className="w-6 h-6" />
             </div>
             Gestion des Employés
           </h1>
-          <p className="text-gray-600 mt-2">Gérez tous les employés de votre entreprise</p>
+          <p className="text-gray-600 mt-2">Vue claire des employés, salaires, paie du mois et actions rapides.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          {/* Barre de recherche */}
-          <div className="relative flex-1 md:w-64">
-            <input
-              type="text"
-              placeholder="Rechercher un employé..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-            <svg
-              className="w-4 h-4 absolute left-3 top-3 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-
-          {/* Bouton Nouvel Employé */}
-          <Link 
+          <Link
             to="/employees/new" 
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm shadow-sm"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="w-4 h-4" />
             Nouvel Employé
           </Link>
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <MetricCard icon={<UsersRound className="w-5 h-5" />} label="Employés" value={dashboardStats.totalEmployees} />
+        <MetricCard icon={<Banknote className="w-5 h-5" />} label="Masse salariale" value={formatCurrency(dashboardStats.totalSalary)} />
+        <MetricCard icon={<BriefcaseBusiness className="w-5 h-5" />} label="Salaire moyen" value={formatCurrency(dashboardStats.averageSalary)} />
+        <MetricCard icon={<FileText className="w-5 h-5" />} label="Paie créée" value={`${dashboardStats.payrollReady}/${dashboardStats.totalEmployees}`} tone="green" />
+        <MetricCard icon={<CalendarClock className="w-5 h-5" />} label="Paie à préparer" value={dashboardStats.missingPayroll} tone={dashboardStats.missingPayroll > 0 ? 'amber' : 'green'} />
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <label className="flex-1 min-w-[220px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recherche</span>
+            <div className="relative mt-1">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Nom, poste, email, téléphone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </label>
+
+          <label className="min-w-[180px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Département</span>
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            >
+              <option value="">Tous</option>
+              {departments.map((department) => (
+                <option key={department} value={department}>{department}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="min-w-[190px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Paie du mois</span>
+            <select
+              value={payrollFilter}
+              onChange={(e) => setPayrollFilter(e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            >
+              <option value="all">Tous</option>
+              <option value="missing">À préparer</option>
+              <option value="ready">Créée</option>
+            </select>
+          </label>
+
+          <label className="min-w-[190px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tri</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            >
+              <option value="name">Nom A-Z</option>
+              <option value="hireDate_desc">Plus récent</option>
+              <option value="salary_desc">Salaire élevé</option>
+              <option value="salary_asc">Salaire bas</option>
+            </select>
+          </label>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
+            >
+              <Filter className="w-4 h-4" />
+              Réinitialiser
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Version desktop */}
-      <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200">
+      <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -133,12 +271,7 @@ const EmployeeList = () => {
                 </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2  2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  Email
-                </div>
+                Département
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
@@ -148,12 +281,15 @@ const EmployeeList = () => {
                   Salaire
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paie</th>
+              <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredEmployees.length > 0 ? (
-              filteredEmployees.map(employee => (
+              filteredEmployees.map(employee => {
+                const payrollReady = hasPaySlipForCurrentMonth(employee);
+                return (
                 <tr key={employee._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
@@ -175,57 +311,61 @@ const EmployeeList = () => {
                       </div>
                     </Link>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.position}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.position || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.department || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                    {new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA
+                    {formatCurrency(employee.salary)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${payrollReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>
+                      {payrollReady ? 'Créée' : 'À préparer'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex justify-end gap-2">
                       <Link
                         to={employeeBasePath(employee)}
-                        className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
-                        title="Voir"
+                        className="text-gray-600 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50 inline-flex items-center"
+                        title="Profil"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3  0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <UserRound className="w-4 h-4" />
                       </Link>
                       <Link
-                        to={employeeEditPath(employee)}
-                        className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
-                        title="Modifier"
+                        to={employeePayrollNewPath(employee)}
+                        className="text-gray-600 hover:text-green-700 p-2 rounded-lg hover:bg-green-50 inline-flex items-center"
+                        title="Créer fiche de paie"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                        <FileText className="w-4 h-4" />
                       </Link>
                       <Link
                         to={employeeAdvancesPath(employee)}
-                        className="text-gray-600 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 inline-flex items-center"
+                        className="text-gray-600 hover:text-indigo-700 p-2 rounded-lg hover:bg-indigo-50 inline-flex items-center"
                         title="Avances"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4 4-6-6" />
-                        </svg>
+                        <HandCoins className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        to={employeeEditPath(employee)}
+                        className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 inline-flex items-center"
+                        title="Modifier"
+                      >
+                        <Edit3 className="w-4 h-4" />
                       </Link>
                       <button
                         onClick={() => handleDelete(employee._id)}
-                        className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 inline-flex items-center"
+                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 inline-flex items-center"
                         title="Supprimer"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+              })
             ) : (
               <tr>
-                <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -242,7 +382,9 @@ const EmployeeList = () => {
       {/* Version mobile */}
       <div className="md:hidden space-y-4">
         {filteredEmployees.length > 0 ? (
-          filteredEmployees.map(employee => (
+          filteredEmployees.map(employee => {
+            const payrollReady = hasPaySlipForCurrentMonth(employee);
+            return (
             <div key={employee._id} className="bg-white p-5 rounded-2xl border border-gray-200">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-3">
@@ -261,9 +403,13 @@ const EmployeeList = () => {
                     </Link>
                     <div className="text-sm text-gray-600 mt-1">{employee.position}</div>
                     <div className="text-sm text-gray-600">{employee.email}</div>
+                    <div className="text-sm text-gray-500">{employee.department || 'N/A'}</div>
                     <div className="mt-2 text-sm font-semibold text-gray-900">
-                      {new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA
+                      {formatCurrency(employee.salary)}
                     </div>
+                    <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${payrollReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>
+                      Paie du mois : {payrollReady ? 'créée' : 'à préparer'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex space-x-1">
@@ -287,28 +433,39 @@ const EmployeeList = () => {
                   </button>
                 </div>
               </div>
-              <div className="flex justify-between pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-2 pt-4 border-t border-gray-100">
+                <Link
+                  to={employeeBasePath(employee)}
+                  className="text-sm text-gray-600 hover:text-blue-700 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-blue-50"
+                >
+                  <UserRound className="w-4 h-4" />
+                  Profil
+                </Link>
                 <Link
                   to={employeePayrollPath(employee)}
-                  className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                  className="text-sm text-gray-600 hover:text-green-700 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-green-50"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
-                  </svg>
-                  Fiche de paie
+                  <FileText className="w-4 h-4" />
+                  Paie
                 </Link>
                 <Link
                   to={employeeAdvancesPath(employee)}
-                  className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                  className="text-sm text-gray-600 hover:text-indigo-700 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-indigo-50"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4 4-6-6" />
-                  </svg>
+                  <HandCoins className="w-4 h-4" />
                   Avances
                 </Link>
+                <a
+                  href={`mailto:${employee.email}`}
+                  className="text-sm text-gray-600 hover:text-gray-800 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-gray-100"
+                >
+                  <Mail className="w-4 h-4" />
+                  Email
+                </a>
               </div>
             </div>
-          ))
+          );
+          })
         ) : (
           <div className="bg-white p-6 rounded-2xl border border-gray-200 text-center text-gray-500">
             <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,5 +478,21 @@ const EmployeeList = () => {
     </div>
   );
 };
+
+const metricTones = {
+  blue: 'bg-blue-50 text-blue-700',
+  green: 'bg-green-50 text-green-700',
+  amber: 'bg-amber-50 text-amber-700',
+};
+
+const MetricCard = ({ icon, label, value, tone = 'blue' }) => (
+  <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${metricTones[tone] || metricTones.blue}`}>
+      {icon}
+    </div>
+    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+    <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">{value}</p>
+  </div>
+);
 
 export default EmployeeList;

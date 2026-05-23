@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Edit3, FileText, HandCoins, Mail, Phone, Plus, UserRound } from 'lucide-react';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import {
@@ -205,7 +206,8 @@ const EmployeeDetail = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Profile Header */}
-        <div className="p-8 flex items-center gap-6 border-b border-gray-100">
+        <div className="p-8 flex flex-col gap-6 border-b border-gray-100 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-6">
           <button
             type="button"
             onClick={() => employee.photo && setIsPhotoOpen(true)}
@@ -232,6 +234,56 @@ const EmployeeDetail = () => {
               </svg>
               {employee.position}
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+              {employee.department && (
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 font-medium">
+                  {employee.department}
+                </span>
+              )}
+              {employee.email && (
+                <a href={`mailto:${employee.email}`} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 hover:bg-blue-100">
+                  <Mail className="w-3.5 h-3.5" />
+                  Email
+                </a>
+              )}
+              {employee.phone && (
+                <a href={`tel:${employee.phone}`} className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 font-medium text-green-700 hover:bg-green-100">
+                  <Phone className="w-3.5 h-3.5" />
+                  Appeler
+                </a>
+              )}
+            </div>
+          </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+            <Link
+              to={employeePayrollNewPath(employeeReference)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Fiche de paie
+            </Link>
+            <Link
+              to={employeeAdvancesNewPath(employeeReference)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              <HandCoins className="w-4 h-4" />
+              Avance
+            </Link>
+            <Link
+              to={employeePayrollPath(employeeReference)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+            >
+              <FileText className="w-4 h-4" />
+              Paie
+            </Link>
+            <Link
+              to={employeeEditPath(employeeReference)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+            >
+              <Edit3 className="w-4 h-4" />
+              Modifier
+            </Link>
           </div>
         </div>
 
@@ -292,23 +344,21 @@ const EmployeeDetail = () => {
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 px-8">
-          <nav className="flex -mb-px">
+          <nav className="flex -mb-px overflow-x-auto">
             <button
               onClick={() => setActiveTab('details')}
-              className={`py-4 px-6 flex items-center gap-2 font-medium text-sm ${activeTab === 'details'
+              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'details'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <UserRound className="w-5 h-5" />
               Détails
             </button>
 
             <button
               onClick={() => setActiveTab('payslips')}
-              className={`py-4 px-6 flex items-center gap-2 font-medium text-sm ${activeTab === 'payslips'
+              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'payslips'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500 hover:text-gray-700'
                 }`}
@@ -321,7 +371,7 @@ const EmployeeDetail = () => {
 
             <button
               onClick={() => setActiveTab('advances')}
-              className={`py-4 px-6 flex items-center gap-2 font-medium text-sm ${activeTab === 'advances'
+              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'advances'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500 hover:text-gray-700'
                 }`}

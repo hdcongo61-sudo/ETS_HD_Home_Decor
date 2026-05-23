@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { clientPath } from '../utils/paths';
+import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
@@ -380,11 +380,28 @@ const SaleDetailPage = () => {
         }
     };
 
+    const getUserRole = (user) => {
+        if (!user) return null;
+        if (user.isAdmin) return 'admin';
+        return user.role || 'user';
+    };
+
+    const getPaymentUser = (payment) => {
+        if (payment?.user && typeof payment.user === 'object') {
+            return payment.user;
+        }
+        if (sale?.user && typeof sale.user === 'object') {
+            return sale.user;
+        }
+        return null;
+    };
+
     const getRoleBadge = (role) => {
         switch (role) {
             case 'admin': return <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">Admin</span>;
             case 'manager': return <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Manager</span>;
             case 'cashier': return <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Caissier</span>;
+            case 'user': return <span className="bg-slate-100 text-slate-800 text-xs px-2 py-1 rounded-full">Utilisateur</span>;
             default: return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">Utilisateur</span>;
         }
     };
@@ -424,6 +441,32 @@ const SaleDetailPage = () => {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const getHistoryProductName = (change) => {
+        const productId = change.product && typeof change.product === 'object'
+            ? (change.product._id || change.product.toString?.())
+            : change.product;
+        return (change.product && change.product.name)
+            || (productId ? productNames[productId.toString()] : null)
+            || 'Produit inconnu';
+    };
+
+    const formatHistoryPrice = (value) =>
+        `${(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
+
+    const getHistoryProductStatus = (change) => {
+        const oldQuantity = Number(change.oldQuantity || 0);
+        const newQuantity = Number(change.newQuantity || 0);
+        if (oldQuantity > 0 && newQuantity === 0) return 'removed';
+        if (oldQuantity === 0 && newQuantity > 0) return 'added';
+        if (
+            oldQuantity !== newQuantity ||
+            Number(change.oldPrice || 0) !== Number(change.newPrice || 0)
+        ) {
+            return 'changed';
+        }
+        return 'unchanged';
     };
 
     if (loading) {
@@ -941,11 +984,21 @@ const SaleDetailPage = () => {
                                 {sale.products.map((item, index) => {
                                     const profit = getProductProfit(item);
                                     const costPrice = item.product?.costPrice || 0;
+                                    const product = item.product;
                                     return (
                                         <div key={`mobile-product-${index}`} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
                                             <div className="flex justify-between items-start gap-4">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-gray-900">{item.product?.name || 'Produit supprimé'}</p>
+                                                    {product?._id ? (
+                                                        <Link
+                                                            to={productPath(product)}
+                                                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                        >
+                                                            {product.name || 'Produit'}
+                                                        </Link>
+                                                    ) : (
+                                                        <p className="text-sm font-semibold text-gray-900">Produit supprimé</p>
+                                                    )}
                                                     <p className="text-xs text-gray-500">
                                                         Prix unitaire : <span className="font-medium text-gray-900">{item.priceAtSale?.toFixed(0)} CFA</span>
                                                     </p>
@@ -1015,12 +1068,22 @@ const SaleDetailPage = () => {
                                             {sale.products.map((item, index) => {
                                                 const profit = getProductProfit(item);
                                                 const costPrice = item.product?.costPrice || 0;
+                                                const product = item.product;
                                                 return (
                                                     <tr key={index}>
                                                         <td className="px-4 py-4 whitespace-nowrap">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {item.product?.name || 'Produit supprimé'}
-                                                            </div>
+                                                            {product?._id ? (
+                                                                <Link
+                                                                    to={productPath(product)}
+                                                                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                                >
+                                                                    {product.name || 'Produit'}
+                                                                </Link>
+                                                            ) : (
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    Produit supprimé
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                             {item.priceAtSale?.toFixed(0)} CFA
@@ -1149,7 +1212,9 @@ const SaleDetailPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {sale.payments.map((payment, index) => (
+                                            {sale.payments.map((payment, index) => {
+                                                const paymentUser = getPaymentUser(payment);
+                                                return (
                                                 <tr key={index}>
                                                     <td className="px-4 py-4 whitespace-nowrap">
                                                         <div className="text-sm text-gray-900">{payment.formattedDate}</div>
@@ -1163,17 +1228,17 @@ const SaleDetailPage = () => {
                                                     <td className="px-4 py-4 whitespace-nowrap">
                                                         <div className="flex flex-col">
                                                             <span className="text-sm font-medium text-gray-900">
-                                                                {payment.user?.name || "Inconnu"}
+                                                                {paymentUser?.name || "Inconnu"}
                                                             </span>
-                                                            {payment.user?.email && (
+                                                            {paymentUser?.email && (
                                                                 <span className="text-xs text-gray-500">
-                                                                    {payment.user.email}
+                                                                    {paymentUser.email}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4 whitespace-nowrap">
-                                                        {payment.user ? getRoleBadge(payment.user.role) : "Non spécifié"}
+                                                        {paymentUser ? getRoleBadge(getUserRole(paymentUser)) : "Non spécifié"}
                                                     </td>
                                                     {isAdmin && (
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
@@ -1190,7 +1255,8 @@ const SaleDetailPage = () => {
                                                         </td>
                                                     )}
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1387,49 +1453,136 @@ const SaleDetailPage = () => {
                                                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                                                                 Modifications produits
                                                             </h4>
-                                                            {hasProducts ? (
-                                                                <div className="space-y-3">
-                                                                    {history.changes.products.map((change, idx) => {
-                                                                        const productId = change.product && typeof change.product === 'object'
-                                                                            ? (change.product._id || change.product.toString?.())
-                                                                            : change.product;
-                                                                        const productName = (change.product && change.product.name)
-                                                                            || (productId ? productNames[productId.toString()] : null)
-                                                                            || "Produit inconnu";
-                                                                        return (
-                                                                            <div
-                                                                                key={idx}
-                                                                                className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-700/50 p-3 sm:p-4"
-                                                                            >
-                                                                                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-                                                                                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{productName}</p>
-                                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                                                                                        {formatModificationDate(history.date)}
-                                                                                    </span>
+                                                            {hasProducts ? (() => {
+                                                                const productChanges = history.changes.products;
+                                                                const removedProducts = productChanges.filter(
+                                                                    (change) => getHistoryProductStatus(change) === 'removed'
+                                                                );
+                                                                const activeProducts = productChanges.filter(
+                                                                    (change) => getHistoryProductStatus(change) !== 'removed'
+                                                                );
+                                                                const renderChangeCard = (change, idx, mode) => {
+                                                                    const status = getHistoryProductStatus(change);
+                                                                    const productName = getHistoryProductName(change);
+                                                                    const oldQuantity = Number(change.oldQuantity || 0);
+                                                                    const newQuantity = Number(change.newQuantity || 0);
+                                                                    const oldPrice = Number(change.oldPrice || 0);
+                                                                    const newPrice = Number(change.newPrice || 0);
+                                                                    const statusLabel =
+                                                                        status === 'removed'
+                                                                            ? 'Retiré'
+                                                                            : status === 'added'
+                                                                                ? 'Ajouté'
+                                                                                : status === 'changed'
+                                                                                    ? 'Modifié'
+                                                                                    : 'Inchangé';
+                                                                    const statusClass =
+                                                                        status === 'removed'
+                                                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                                                            : status === 'added'
+                                                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                                                                : status === 'changed'
+                                                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                                                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+
+                                                                    return (
+                                                                        <div
+                                                                            key={`${mode}-${idx}`}
+                                                                            className={`rounded-lg border p-3 sm:p-4 ${
+                                                                                mode === 'removed'
+                                                                                    ? 'border-red-200 bg-red-50/80 dark:border-red-900/60 dark:bg-red-900/15'
+                                                                                    : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-700/50'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                                                                                <p className={`text-sm font-semibold ${
+                                                                                    mode === 'removed'
+                                                                                        ? 'text-red-700 dark:text-red-300'
+                                                                                        : 'text-blue-600 dark:text-blue-400'
+                                                                                }`}>
+                                                                                    {productName}
+                                                                                </p>
+                                                                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass}`}>
+                                                                                    {statusLabel}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                                                                                <div className="rounded-lg bg-white/80 p-3 dark:bg-gray-800/60">
+                                                                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                                                                        Avant
+                                                                                    </p>
+                                                                                    <div className="mt-2 space-y-1 tabular-nums text-gray-900 dark:text-white">
+                                                                                        <p>Qté: <span className="font-semibold">{oldQuantity}</span></p>
+                                                                                        <p>Prix: <span className="font-semibold">{formatHistoryPrice(oldPrice)}</span></p>
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div className="space-y-2 text-sm">
-                                                                                    {change.oldQuantity !== undefined && change.newQuantity !== undefined && (
-                                                                                        <div className="flex flex-wrap justify-between items-baseline gap-2">
-                                                                                            <span className="text-gray-500 dark:text-gray-400">Quantité</span>
-                                                                                            <span className="tabular-nums text-gray-900 dark:text-white">
-                                                                                                {change.oldQuantity} → <span className="font-semibold text-green-600 dark:text-green-400">{change.newQuantity}</span>
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {change.oldPrice !== undefined && change.newPrice !== undefined && (
-                                                                                        <div className="flex flex-wrap justify-between items-baseline gap-2">
-                                                                                            <span className="text-gray-500 dark:text-gray-400">Prix</span>
-                                                                                            <span className="tabular-nums text-gray-900 dark:text-white">
-                                                                                                {(change.oldPrice || 0).toLocaleString('fr-FR')} → <span className="font-semibold text-green-600 dark:text-green-400">{(change.newPrice || 0).toLocaleString('fr-FR')} CFA</span>
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    )}
+                                                                                <div className={`rounded-lg p-3 ${
+                                                                                    mode === 'removed'
+                                                                                        ? 'bg-red-100/70 dark:bg-red-900/25'
+                                                                                        : 'bg-green-50 dark:bg-green-900/15'
+                                                                                }`}>
+                                                                                    <p className={`text-xs font-semibold uppercase tracking-wide ${
+                                                                                        mode === 'removed'
+                                                                                            ? 'text-red-600 dark:text-red-300'
+                                                                                            : 'text-green-600 dark:text-green-300'
+                                                                                    }`}>
+                                                                                        Après
+                                                                                    </p>
+                                                                                    <div className="mt-2 space-y-1 tabular-nums text-gray-900 dark:text-white">
+                                                                                        <p>Qté: <span className="font-semibold">{newQuantity}</span></p>
+                                                                                        <p>Prix: <span className="font-semibold">{formatHistoryPrice(newPrice)}</span></p>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            ) : (
+                                                                        </div>
+                                                                    );
+                                                                };
+
+                                                                return (
+                                                                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                                                        <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 dark:border-red-900/60 dark:bg-red-900/10">
+                                                                            <div className="mb-3 flex items-center justify-between gap-2">
+                                                                                <h5 className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
+                                                                                    Produits retirés
+                                                                                </h5>
+                                                                                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-gray-800 dark:text-red-300">
+                                                                                    {removedProducts.length}
+                                                                                </span>
+                                                                            </div>
+                                                                            {removedProducts.length > 0 ? (
+                                                                                <div className="space-y-3">
+                                                                                    {removedProducts.map((change, idx) => renderChangeCard(change, idx, 'removed'))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <p className="rounded-lg border border-dashed border-red-200 bg-white/70 p-3 text-sm text-red-600/80 dark:border-red-900/50 dark:bg-gray-800/40 dark:text-red-300/80">
+                                                                                    Aucun produit retiré.
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/10">
+                                                                            <div className="mb-3 flex items-center justify-between gap-2">
+                                                                                <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                                                                                    Produits après modification
+                                                                                </h5>
+                                                                                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-gray-800 dark:text-emerald-300">
+                                                                                    {activeProducts.length}
+                                                                                </span>
+                                                                            </div>
+                                                                            {activeProducts.length > 0 ? (
+                                                                                <div className="space-y-3">
+                                                                                    {activeProducts.map((change, idx) => renderChangeCard(change, idx, 'active'))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <p className="rounded-lg border border-dashed border-emerald-200 bg-white/70 p-3 text-sm text-emerald-700/80 dark:border-emerald-900/50 dark:bg-gray-800/40 dark:text-emerald-300/80">
+                                                                                    Aucun produit restant dans cette modification.
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })() : (
                                                                 <p className="text-sm text-gray-500 dark:text-gray-400">Aucun détail de modification produit pour cette entrée.</p>
                                                             )}
                                                         </section>

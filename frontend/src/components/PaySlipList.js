@@ -18,6 +18,7 @@ const PaySlipList = () => {
     const [employee, setEmployee] = useState(null);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedStatus, setSelectedStatus] = useState('all');
     const [showSummary, setShowSummary] = useState(true);
     const [reloadToken, setReloadToken] = useState(0);
     const employeeReference = employee || { _id: id };
@@ -60,9 +61,12 @@ const PaySlipList = () => {
         navigate(employeePayrollPayslipPrintPath(employeeReference, payslipId));
     };
 
-    const filteredPaySlips = paySlips.filter(slip =>
-        slip.month === selectedMonth && slip.year === selectedYear
-    );
+    const filteredPaySlips = paySlips.filter((slip) => {
+        const matchesMonth = selectedMonth === 'all' || slip.month === selectedMonth;
+        const matchesYear = slip.year === selectedYear;
+        const matchesStatus = selectedStatus === 'all' || slip.status === selectedStatus;
+        return matchesMonth && matchesYear && matchesStatus;
+    });
 
     const statusStyles = {
         pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
@@ -165,14 +169,15 @@ const PaySlipList = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Mois</label>
                         <select
                             value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
                             className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
+                            <option value="all">Tous les mois</option>
                             {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
                                 <option key={month} value={month}>
                                     {new Date(2000, month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })}
@@ -192,6 +197,19 @@ const PaySlipList = () => {
                             ))}
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option value="all">Tous les statuts</option>
+                            <option value="pending">En attente</option>
+                            <option value="paid">Payé</option>
+                            <option value="cancelled">Annulé</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -201,7 +219,9 @@ const PaySlipList = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-gray-900 text-lg">Résumé du mois</h3>
                         <div className="text-sm text-gray-600">
-                            {new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                            {selectedMonth === 'all'
+                                ? selectedYear
+                                : new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -270,7 +290,9 @@ const PaySlipList = () => {
                             </svg>
                             <h4 className="mt-4 text-gray-700 font-medium">Aucune fiche de paie</h4>
                             <p className="text-gray-500 mt-2">
-                                Aucune fiche de paie trouvée pour {new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                Aucune fiche de paie trouvée pour {selectedMonth === 'all'
+                                    ? `l'année ${selectedYear}`
+                                    : new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                             </p>
                             <Link
                                 to={employeePayrollNewPath(employeeReference)}

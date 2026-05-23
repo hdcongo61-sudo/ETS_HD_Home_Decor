@@ -661,7 +661,13 @@ const addPayment = asyncHandler(async (req, res) => {
 
     await sale.save();
 
-    await sale.populate('client', 'name');
+    await sale.populate([
+      { path: 'client', select: 'name email phone' },
+      { path: 'products.product', select: 'name price costPrice slug' },
+      { path: 'payments.user', select: 'name email isAdmin role' },
+      { path: 'modificationHistory.user', select: 'name email isAdmin role' },
+      { path: 'user', select: 'name email isAdmin role' }
+    ]);
 
     notifyPaymentRecorded({
       saleId: sale._id,
@@ -673,7 +679,17 @@ const addPayment = asyncHandler(async (req, res) => {
       console.error('Push notification error (payment recorded):', error);
     });
 
-    res.status(200).json(sale);
+    const saleObject = sale.toObject();
+    const responseTotalPaid = (saleObject.payments || []).reduce(
+      (sum, payment) => sum + (Number(payment.amount) || 0),
+      0
+    );
+
+    res.status(200).json({
+      ...saleObject,
+      totalPaid: responseTotalPaid,
+      balance: (Number(saleObject.totalAmount) || 0) - responseTotalPaid
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -1645,20 +1661,20 @@ const getSaleById = asyncHandler(async (req, res) => {
       .populate('client', 'name email phone')
       .populate({
         path: 'products.product',
-        select: 'name price costPrice',
+        select: 'name price costPrice slug',
         model: 'Product'
       })
       .populate({
         path: 'payments.user',
-        select: 'name email role',
+        select: 'name email isAdmin role',
         model: 'User'
       })
       .populate({
         path: 'modificationHistory.user',
-        select: 'name email isAdmin',
+        select: 'name email isAdmin role',
         model: 'User'
       })
-      .populate('user', 'name email')
+      .populate('user', 'name email isAdmin role')
       .lean();
 
     const access = assertSaleAccess(sale, req.user);
@@ -2030,24 +2046,39 @@ const updateSale = asyncHandler(async (req, res) => {
       const saleDateNote = saleDateChanged
         ? `Date de vente ajustée du ${previousSaleDate.toLocaleString('fr-FR')} au ${nextSaleDate.toLocaleString('fr-FR')}`
         : '';
+      const oldProductChangeRows = existingSale.products.map(oldItem => {
+        const oldProductId = oldItem.product._id.toString();
+        const newItem = products.find(p => p.product === oldProductId);
+
+        return {
+          product: oldItem.product._id,
+          oldQuantity: oldItem.quantity,
+          newQuantity: newItem?.quantity || 0,
+          oldPrice: oldItem.priceAtSale,
+          newPrice: newItem?.price || 0
+        };
+      });
+
+      const oldProductIds = new Set(
+        existingSale.products.map(oldItem => oldItem.product._id.toString())
+      );
+      const addedProductChangeRows = products
+        .filter(newItem => !oldProductIds.has(newItem.product))
+        .map(newItem => ({
+          product: newItem.product,
+          oldQuantity: 0,
+          newQuantity: newItem.quantity || 0,
+          oldPrice: 0,
+          newPrice: newItem.price || 0
+        }));
+
       const modificationEntry = {
         user: user._id,
         date: new Date(),
         note: [note || '', saleDateNote].filter(Boolean).join(' | '),
         changeType: saleDateChanged ? 'sale_updated' : 'products_updated',
         changes: {
-          products: existingSale.products.map(oldItem => {
-            const newItem = products.find(p =>
-              p.product === oldItem.product._id.toString()
-            );
-            return {
-              product: oldItem.product._id,
-              oldQuantity: oldItem.quantity,
-              newQuantity: newItem?.quantity || 0,
-              oldPrice: oldItem.priceAtSale,
-              newPrice: newItem?.price || 0
-            };
-          })
+          products: [...oldProductChangeRows, ...addedProductChangeRows]
         }
       };
 
@@ -2076,14 +2107,14 @@ const updateSale = asyncHandler(async (req, res) => {
       const populatedSale = await Sale.findById(updatedSaleDoc._id)
         .populate('client')
         .populate('products.product')
-        .populate('user')
+        .populate('user', 'name email isAdmin role')
         .populate({
           path: 'payments.user',
-          select: 'name email role'
+          select: 'name email isAdmin role'
         })
         .populate({
           path: 'modificationHistory.user',
-          select: 'name email isAdmin'
+          select: 'name email isAdmin role'
         });
 
       const saleObject = populatedSale.toObject();
@@ -2240,6 +2271,14 @@ const deletePayment = asyncHandler(async (req, res) => {
     }
 
     await sale.save();
+
+    await sale.populate([
+      { path: 'client', select: 'name email phone' },
+      { path: 'products.product', select: 'name price costPrice slug' },
+      { path: 'payments.user', select: 'name email isAdmin role' },
+      { path: 'modificationHistory.user', select: 'name email isAdmin role' },
+      { path: 'user', select: 'name email isAdmin role' }
+    ]);
 
     res.status(200).json({
       message: 'Paiement supprimé',

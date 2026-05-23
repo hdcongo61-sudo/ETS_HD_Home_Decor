@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -25,8 +25,24 @@ const formatCurrency = (value) =>
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('fr-FR');
 
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const parseFilterNumber = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const SupplierProducts = () => {
   const [range, setRange] = useState('month');
+  const [supplierFilter, setSupplierFilter] = useState('');
+  const [productFilters, setProductFilters] = useState({
+    search: '',
+    category: '',
+    minUnits: '',
+    minRevenue: '',
+    minProfit: '',
+  });
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [totals, setTotals] = useState(defaultTotals);
@@ -89,6 +105,90 @@ const SupplierProducts = () => {
     },
   ];
 
+  const supplierOptions = useMemo(
+    () =>
+      suppliers
+        .map((supplier) => supplier.supplierName || 'Inconnu')
+        .filter((supplierName, index, names) => names.indexOf(supplierName) === index)
+        .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })),
+    [suppliers]
+  );
+
+  const categoryOptions = useMemo(() => {
+    const categories = suppliers.flatMap((supplier) =>
+      (supplier.products || [])
+        .map((product) => product.category)
+        .filter(Boolean)
+    );
+
+    return [...new Set(categories)].sort((a, b) =>
+      a.localeCompare(b, 'fr', { sensitivity: 'base' })
+    );
+  }, [suppliers]);
+
+  const hasProductFilters = Object.values(productFilters).some(
+    (value) => String(value).trim() !== ''
+  );
+
+  const visibleSuppliers = useMemo(() => {
+    const supplierScoped = supplierFilter
+      ? suppliers.filter((supplier) => (supplier.supplierName || 'Inconnu') === supplierFilter)
+      : suppliers;
+
+    if (!hasProductFilters) return supplierScoped;
+
+    const search = normalizeText(productFilters.search);
+    const category = normalizeText(productFilters.category);
+    const minUnits = parseFilterNumber(productFilters.minUnits);
+    const minRevenue = parseFilterNumber(productFilters.minRevenue);
+    const minProfit = parseFilterNumber(productFilters.minProfit);
+
+    return supplierScoped
+      .map((supplier) => ({
+        ...supplier,
+        products: (supplier.products || []).filter((product) => {
+          const matchesSearch =
+            !search ||
+            normalizeText(product.name).includes(search) ||
+            normalizeText(product.sku).includes(search);
+          const matchesCategory =
+            !category || normalizeText(product.category) === category;
+          const matchesUnits =
+            minUnits === null || Number(product.sold || 0) >= minUnits;
+          const matchesRevenue =
+            minRevenue === null || Number(product.revenue || 0) >= minRevenue;
+          const matchesProfit =
+            minProfit === null || Number(product.profit || 0) >= minProfit;
+
+          return (
+            matchesSearch &&
+            matchesCategory &&
+            matchesUnits &&
+            matchesRevenue &&
+            matchesProfit
+          );
+        }),
+      }))
+      .filter((supplier) => supplier.products.length > 0);
+  }, [suppliers, supplierFilter, productFilters, hasProductFilters]);
+
+  const updateProductFilter = (key, value) => {
+    setProductFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const resetProductFilters = () => {
+    setProductFilters({
+      search: '',
+      category: '',
+      minUnits: '',
+      minRevenue: '',
+      minProfit: '',
+    });
+  };
+
   const renderGeneratedAt = () => {
     if (!generatedAt) return null;
     try {
@@ -101,10 +201,39 @@ const SupplierProducts = () => {
     }
   };
 
+  const supplierMetricCards = (supplier) => [
+    {
+      label: 'Revenu',
+      value: formatCurrency(supplier.totalRevenue),
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    },
+    {
+      label: 'Profit',
+      value: formatCurrency(supplier.totalProfit),
+      className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+    },
+    {
+      label: 'Unités vendues',
+      value: formatNumber(supplier.totalUnitsSold),
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    },
+    {
+      label: 'Marge moy.',
+      value: `${Number(supplier.averageMargin || 0).toFixed(1)} %`,
+      className: 'border-sky-200 bg-sky-50 text-sky-700',
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
+          <button
+            onClick={() => navigate('/product-dashboard')}
+            className="mb-3 inline-flex items-center px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition shadow-sm"
+          >
+            ← Retour
+          </button>
           <h1 className="text-3xl font-bold text-gray-800">
             Produits par Fournisseur
           </h1>
@@ -115,28 +244,42 @@ const SupplierProducts = () => {
             <p className="text-xs text-gray-400 mt-2">{renderGeneratedAt()}</p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/product-dashboard')}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition shadow-sm"
-          >
-            ← Retour
-          </button>
-          <label htmlFor="range" className="text-sm font-medium text-gray-600">
-            Période
-          </label>
-          <select
-            id="range"
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-          >
-            {rangeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="range" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Période
+            </label>
+            <select
+              id="range"
+              value={range}
+              onChange={(e) => setRange(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            >
+              {rangeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="supplier-filter" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Fournisseur
+            </label>
+            <select
+              id="supplier-filter"
+              value={supplierFilter}
+              onChange={(e) => setSupplierFilter(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            >
+              <option value="">Tous les fournisseurs</option>
+              {supplierOptions.map((supplierName) => (
+                <option key={supplierName} value={supplierName}>
+                  {supplierName}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -172,8 +315,146 @@ const SupplierProducts = () => {
             ))}
           </motion.div>
 
+          <section className="bg-white rounded-3xl shadow-md border border-gray-100 p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Filtres des produits
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Filtre les lignes affichées dans chaque fournisseur.
+                </p>
+              </div>
+              {hasProductFilters && (
+                <button
+                  type="button"
+                  onClick={resetProductFilters}
+                  className="self-start sm:self-auto px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
+                >
+                  Réinitialiser
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Produit ou SKU
+                <input
+                  type="search"
+                  value={productFilters.search}
+                  onChange={(e) => updateProductFilter('search', e.target.value)}
+                  placeholder="Rechercher..."
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Catégorie
+                <select
+                  value={productFilters.category}
+                  onChange={(e) => updateProductFilter('category', e.target.value)}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
+                >
+                  <option value="">Toutes les catégories</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Ventes min.
+                <input
+                  type="number"
+                  min="0"
+                  value={productFilters.minUnits}
+                  onChange={(e) => updateProductFilter('minUnits', e.target.value)}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Revenu min.
+                <input
+                  type="number"
+                  min="0"
+                  value={productFilters.minRevenue}
+                  onChange={(e) => updateProductFilter('minRevenue', e.target.value)}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Profit min.
+                <input
+                  type="number"
+                  min="0"
+                  value={productFilters.minProfit}
+                  onChange={(e) => updateProductFilter('minProfit', e.target.value)}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Résumé par fournisseur
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Comparaison rapide du revenu, profit, unités vendues et marge moyenne.
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                  <tr>
+                    <th className="py-3 px-4 text-left">Fournisseur</th>
+                    <th className="py-3 px-4 text-right">Revenu</th>
+                    <th className="py-3 px-4 text-right">Profit</th>
+                    <th className="py-3 px-4 text-right">Unités vendues</th>
+                    <th className="py-3 px-4 text-right">Marge moy.</th>
+                    <th className="py-3 px-4 text-right">Produits</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {visibleSuppliers.map((supplier) => (
+                    <tr key={`summary-${supplier.supplierName}`} className="hover:bg-indigo-50/30">
+                      <td className="py-3 px-4 font-semibold text-gray-800">
+                        <Link
+                          to={`/suppliers/${encodeURIComponent(supplier.supplierName || 'Inconnu')}`}
+                          className="text-indigo-700 hover:text-indigo-900 hover:underline"
+                        >
+                          {supplier.supplierName}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-600">
+                        {formatCurrency(supplier.totalRevenue)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-indigo-600">
+                        {formatCurrency(supplier.totalProfit)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-amber-700">
+                        {formatNumber(supplier.totalUnitsSold)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-sky-700">
+                        {`${Number(supplier.averageMargin || 0).toFixed(1)} %`}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">
+                        {formatNumber(supplier.totalProducts)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+                  {visibleSuppliers.length === 0 && (
+                <div className="px-4 py-8 text-center text-gray-500">
+                  Aucun fournisseur à comparer avec ce filtre.
+                </div>
+              )}
+            </div>
+          </section>
+
           <div className="space-y-6">
-            {suppliers.map((supplier) => (
+            {visibleSuppliers.map((supplier) => (
               <motion.div
                 key={supplier.supplierName}
                 className="bg-white p-6 rounded-3xl shadow-md border border-gray-100"
@@ -199,7 +480,19 @@ const SupplierProducts = () => {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {supplierMetricCards(supplier).map((metric) => (
+                      <div
+                        key={`${supplier.supplierName}-${metric.label}`}
+                        className={`rounded-xl p-3 sm:p-4 border min-h-[78px] flex flex-col justify-center ${metric.className}`}
+                      >
+                        <p className="text-xs sm:text-sm opacity-80">{metric.label}</p>
+                        <p className="text-base sm:text-xl font-bold mt-0.5">{metric.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
                       <p className="text-xs sm:text-sm text-gray-500">Produits</p>
                       <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatNumber(supplier.totalProducts)}</p>
@@ -209,20 +502,12 @@ const SupplierProducts = () => {
                       <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatCurrency(supplier.totalStockValue)}</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Revenu</p>
-                      <p className="text-base sm:text-lg font-semibold text-emerald-600 mt-0.5">{formatCurrency(supplier.totalRevenue)}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Stock critique</p>
+                      <p className="text-base sm:text-lg font-semibold text-amber-700 mt-0.5">{formatNumber(supplier.lowStockCount)}</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Profit</p>
-                      <p className="text-base sm:text-lg font-semibold text-indigo-600 mt-0.5">{formatCurrency(supplier.totalProfit)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Unités vendues</p>
-                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatNumber(supplier.totalUnitsSold)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Marge moy.</p>
-                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{`${Number(supplier.averageMargin || 0).toFixed(1)} %`}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Rupture</p>
+                      <p className="text-base sm:text-lg font-semibold text-red-600 mt-0.5">{formatNumber(supplier.outOfStockCount)}</p>
                     </div>
                   </div>
                 </div>
@@ -300,7 +585,7 @@ const SupplierProducts = () => {
               </motion.div>
             ))}
 
-            {suppliers.length === 0 && !error && (
+            {visibleSuppliers.length === 0 && !error && (
               <div className="bg-white border border-dashed border-gray-200 p-10 rounded-3xl text-center text-gray-500">
                 Aucun fournisseur à afficher pour la période sélectionnée.
               </div>

@@ -1,5 +1,5 @@
 // src/pages/Products.jsx
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
@@ -11,6 +11,8 @@ import Modal from '../components/Modal';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
+
+const PRODUCT_PAGE_SIZE = 80;
 
 const Products = () => {
   const { auth } = useContext(AuthContext);
@@ -49,7 +51,7 @@ const Products = () => {
     const { showLoading = true } = options;
     try {
       if (showLoading) setLoading(true);
-      const response = await api.get('/products');
+      const response = await api.get('/products?summary=list');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -395,6 +397,66 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
 /* ===================================================== */
 /* 🧮 LISTE DES PRODUITS */
 /* ===================================================== */
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+const parseNumericValue = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const getEffectiveNumericOperator = (operator, primaryValue, secondaryValue) => {
+  if (operator) return operator;
+  const primary = parseNumericValue(primaryValue);
+  const secondary = parseNumericValue(secondaryValue);
+  if (primary !== null || secondary !== null) {
+    return secondary !== null ? 'between' : 'eq';
+  }
+  return '';
+};
+const formatNumberForExport = (value) => {
+  const numeric = parseNumericValue(value);
+  if (numeric === null) return '0';
+  const rounded = Math.round(numeric * 100) / 100;
+  const [integerPart, decimalPart] = String(rounded).split('.');
+  const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return decimalPart ? `${groupedInteger}.${decimalPart}` : groupedInteger;
+};
+const matchesNumericFilter = (value, operator, primaryValue, secondaryValue) => {
+  const effectiveOperator = getEffectiveNumericOperator(operator, primaryValue, secondaryValue);
+  if (!effectiveOperator) return true;
+  const numericValue = parseNumericValue(value);
+  if (numericValue === null) return false;
+
+  const primary = parseNumericValue(primaryValue);
+  const secondary = parseNumericValue(secondaryValue);
+
+  if (effectiveOperator === 'between') {
+    if (primary === null && secondary === null) return true;
+    if (primary !== null && secondary === null) return numericValue >= primary;
+    if (primary === null && secondary !== null) return numericValue <= secondary;
+    return numericValue >= Math.min(primary, secondary) && numericValue <= Math.max(primary, secondary);
+  }
+
+  if (primary === null) return true;
+
+  switch (effectiveOperator) {
+    case 'eq':
+      return numericValue === primary;
+    case 'gt':
+      return numericValue > primary;
+    case 'gte':
+      return numericValue >= primary;
+    case 'lt':
+      return numericValue < primary;
+    case 'lte':
+      return numericValue <= primary;
+    default:
+      return true;
+  }
+};
+const getFilterOptions = (items, accessor) =>
+  [...new Set(items.map(accessor).map((value) => String(value || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const [filters, setFilters] = useState({
     product: '',
@@ -410,6 +472,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     supplier: '',
   });
   const [exporting, setExporting] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(min-width: 768px)').matches;
@@ -438,70 +501,22 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     ? { target: '_blank', rel: 'noopener noreferrer' }
     : {};
 
-  const normalizeText = (value) => String(value || '').trim().toLowerCase();
-  const parseNumericValue = (value) => {
-    if (value === '' || value === null || value === undefined) return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-  const getEffectiveNumericOperator = (operator, primaryValue, secondaryValue) => {
-    if (operator) return operator;
-    const primary = parseNumericValue(primaryValue);
-    const secondary = parseNumericValue(secondaryValue);
-    if (primary !== null || secondary !== null) {
-      return secondary !== null ? 'between' : 'eq';
-    }
-    return '';
-  };
-  const formatNumberForExport = (value) => {
-    const numeric = parseNumericValue(value);
-    if (numeric === null) return '0';
-    const rounded = Math.round(numeric * 100) / 100;
-    const [integerPart, decimalPart] = String(rounded).split('.');
-    const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    return decimalPart ? `${groupedInteger}.${decimalPart}` : groupedInteger;
-  };
-  const matchesNumericFilter = (value, operator, primaryValue, secondaryValue) => {
-    const effectiveOperator = getEffectiveNumericOperator(operator, primaryValue, secondaryValue);
-    if (!effectiveOperator) return true;
-    const numericValue = parseNumericValue(value);
-    if (numericValue === null) return false;
-
-    const primary = parseNumericValue(primaryValue);
-    const secondary = parseNumericValue(secondaryValue);
-
-    if (effectiveOperator === 'between') {
-      if (primary === null && secondary === null) return true;
-      if (primary !== null && secondary === null) return numericValue >= primary;
-      if (primary === null && secondary !== null) return numericValue <= secondary;
-      return numericValue >= Math.min(primary, secondary) && numericValue <= Math.max(primary, secondary);
-    }
-
-    if (primary === null) return true;
-
-    switch (effectiveOperator) {
-      case 'eq':
-        return numericValue === primary;
-      case 'gt':
-        return numericValue > primary;
-      case 'gte':
-        return numericValue >= primary;
-      case 'lt':
-        return numericValue < primary;
-      case 'lte':
-        return numericValue <= primary;
-      default:
-        return true;
-    }
-  };
-  const getFilterOptions = (items, accessor) =>
-    [...new Set(items.map(accessor).map((value) => String(value || '').trim()).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
-
-  const categoryOptions = getFilterOptions(products, (product) => product.category);
-  const containerOptions = getFilterOptions(products, (product) => product.container);
-  const warehouseOptions = getFilterOptions(products, (product) => product.warehouse);
-  const supplierOptions = getFilterOptions(products, (product) => product.supplierName);
+  const categoryOptions = useMemo(
+    () => getFilterOptions(products, (product) => product.category),
+    [products]
+  );
+  const containerOptions = useMemo(
+    () => getFilterOptions(products, (product) => product.container),
+    [products]
+  );
+  const warehouseOptions = useMemo(
+    () => getFilterOptions(products, (product) => product.warehouse),
+    [products]
+  );
+  const supplierOptions = useMemo(
+    () => getFilterOptions(products, (product) => product.supplierName),
+    [products]
+  );
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => {
@@ -560,33 +575,43 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     between: 'entre',
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <AppLoader fullScreen={false} text="Chargement des produits…" />
-      </div>
-    );
-  }
+  const filtered = useMemo(() => {
+    const productFilter = normalizeText(filters.product);
+    const categoryFilter = normalizeText(filters.category);
+    const containerFilter = normalizeText(filters.container);
+    const warehouseFilter = normalizeText(filters.warehouse);
+    const supplierFilter = normalizeText(filters.supplier);
 
-  const filtered = products.filter((product) => {
-    const normalizedProductName = normalizeText(product.name);
-    const normalizedCategory = normalizeText(product.category);
-    const normalizedContainer = normalizeText(product.container);
-    const normalizedWarehouse = normalizeText(product.warehouse);
-    const normalizedSupplier = normalizeText(product.supplierName);
+    return products.filter((product) => {
+      const normalizedProductName = normalizeText(product.name);
+      const normalizedCategory = normalizeText(product.category);
+      const normalizedContainer = normalizeText(product.container);
+      const normalizedWarehouse = normalizeText(product.warehouse);
+      const normalizedSupplier = normalizeText(product.supplierName);
 
-    return (
-      (!normalizeText(filters.product) || normalizedProductName.includes(normalizeText(filters.product))) &&
-      (!normalizeText(filters.category) || normalizedCategory === normalizeText(filters.category)) &&
-      (!normalizeText(filters.container) || normalizedContainer === normalizeText(filters.container)) &&
-      (!normalizeText(filters.warehouse) || normalizedWarehouse === normalizeText(filters.warehouse)) &&
-      matchesNumericFilter(product.price, filters.priceOperator, filters.price, filters.priceMax) &&
-      matchesNumericFilter(product.stock, filters.stockOperator, filters.stock, filters.stockMax) &&
-      (!normalizeText(filters.supplier) || normalizedSupplier === normalizeText(filters.supplier))
-    );
-  });
+      return (
+        (!productFilter || normalizedProductName.includes(productFilter)) &&
+        (!categoryFilter || normalizedCategory === categoryFilter) &&
+        (!containerFilter || normalizedContainer === containerFilter) &&
+        (!warehouseFilter || normalizedWarehouse === warehouseFilter) &&
+        matchesNumericFilter(product.price, filters.priceOperator, filters.price, filters.priceMax) &&
+        matchesNumericFilter(product.stock, filters.stockOperator, filters.stock, filters.stockMax) &&
+        (!supplierFilter || normalizedSupplier === supplierFilter)
+      );
+    });
+  }, [filters, products]);
 
-  const exportRows = filtered.map((product, index) => ({
+  useEffect(() => {
+    setVisibleCount(PRODUCT_PAGE_SIZE);
+  }, [filters, products.length]);
+
+  const visibleProducts = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount]
+  );
+  const hasMoreProducts = visibleCount < filtered.length;
+
+  const exportRows = useMemo(() => filtered.map((product, index) => ({
     '#': index + 1,
     Produit: product.name || '—',
     Catégorie: product.category || '—',
@@ -597,7 +622,15 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     Fournisseur: product.supplierName || '—',
     Téléphone: product.supplierPhone || '—',
     Description: product.description || '—',
-  }));
+  })), [filtered]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <AppLoader fullScreen={false} text="Chargement des produits…" />
+      </div>
+    );
+  }
 
   const activeFilterEntries = [
     ['Produit', filters.product],
@@ -913,13 +946,29 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     </div>
   );
 
+  const renderLoadMore = () =>
+    hasMoreProducts ? (
+      <div className="border-t border-gray-100 bg-white px-4 py-4 text-center">
+        <p className="mb-3 text-sm text-gray-500">
+          {visibleProducts.length} sur {filtered.length} produits affichés
+        </p>
+        <button
+          type="button"
+          onClick={() => setVisibleCount((count) => count + PRODUCT_PAGE_SIZE)}
+          className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+        >
+          Afficher plus de produits
+        </button>
+      </div>
+    ) : null;
+
   if (!isAdmin) {
     return (
       <div>
         {renderFilterPanel()}
 
         <div className="divide-y divide-gray-100 bg-white lg:divide-y-0 lg:p-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6">
-          {filtered.map((p) => (
+          {visibleProducts.map((p) => (
             <Link
               key={p._id}
               to={productPath(p)}
@@ -942,6 +991,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             </Link>
           ))}
         </div>
+
+        {renderLoadMore()}
 
         {filtered.length === 0 && (
           <div className="text-center py-12 lg:py-16 text-gray-500">
@@ -1165,7 +1216,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filtered.map((p) => (
+            {visibleProducts.map((p) => (
               <tr key={p._id} className="hover:bg-indigo-50/50 transition-colors" onClick={() => document.activeElement?.blur?.()}>
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
                   <div className="flex flex-col gap-2 items-center">
@@ -1238,7 +1289,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
       {/* Mobile cards (admin) */}
       <div className="md:hidden space-y-4 p-4">
-        {filtered.map((p) => (
+        {visibleProducts.map((p) => (
           <div key={p._id} className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white" onClick={() => document.activeElement?.blur?.()}>
             <div className="flex gap-3">
               {p.image ? (
@@ -1298,6 +1349,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </div>
         ))}
       </div>
+
+      {renderLoadMore()}
 
       {filtered.length === 0 && (
         <div className="text-center py-12 lg:py-16 text-gray-500">
