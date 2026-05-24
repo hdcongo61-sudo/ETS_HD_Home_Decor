@@ -14,7 +14,13 @@ const normalizeCollection = (value, nestedKeys = []) => {
   return [];
 };
 
-const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) => {
+const SaleForm = ({
+  clients = [],
+  products: initialProducts = [],
+  onSubmit,
+  formId = 'sale-form',
+  hideSubmit = false,
+}) => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const manualSaleDateEnabled = isAdmin && Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled);
@@ -234,6 +240,7 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
   /** UI **/
   return (
     <form
+      id={formId}
       onSubmit={handleSubmit}
       className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden"
     >
@@ -616,18 +623,19 @@ const SaleForm = ({ clients = [], products: initialProducts = [], onSubmit }) =>
           </span>
         </div>
 
-        {/* SUBMIT */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`w-full min-h-[48px] py-3 rounded-xl font-semibold text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
-            isSubmitting
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-indigo-600 hover:bg-indigo-700'
-          }`}
-        >
-          {isSubmitting ? 'Enregistrement…' : 'Enregistrer la vente'}
-        </button>
+        {!hideSubmit && (
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full min-h-[48px] py-3 rounded-xl font-semibold text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
+              isSubmitting
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
+          >
+            {isSubmitting ? 'Enregistrement…' : 'Enregistrer la vente'}
+          </button>
+        )}
 
         {formError && (
           <div
@@ -662,6 +670,8 @@ SaleForm.propTypes = {
     PropTypes.object,
   ]),
   onSubmit: PropTypes.func.isRequired,
+  formId: PropTypes.string,
+  hideSubmit: PropTypes.bool,
 };
 
 export default SaleForm;

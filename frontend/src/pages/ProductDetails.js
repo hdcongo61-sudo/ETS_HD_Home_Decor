@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import QRCode from 'react-qr-code';
 import { Line } from 'react-chartjs-2';
@@ -39,6 +39,7 @@ const buildStatsSkeleton = (p = {}) => ({
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [product, setProduct] = useState(null);
   const [stats, setStats] = useState(buildStatsSkeleton());
   const [loading, setLoading] = useState(true);
@@ -100,6 +101,7 @@ const ProductDetails = () => {
     product?.costPrice && product?.price ? product.price - product.costPrice : 0;
 
   const productUrl = `${window.location.origin}${productPath(product || id)}`;
+  const returnToProducts = location.state?.returnToProducts || '/products';
 
   const openBuyersModal = async () => {
     setBuyersModalOpen(true);
@@ -164,7 +166,7 @@ const ProductDetails = () => {
       <div className="text-center py-16">
         <h2 className="text-gray-600">Produit introuvable</h2>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate(returnToProducts)}
           className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600"
         >
           Retour à la liste
@@ -245,7 +247,7 @@ const getActivityIcon = (type) => {
         {/* 🧭 HEADER */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <button
-            onClick={() => navigate('/products')}
+            onClick={() => navigate(returnToProducts)}
             className="inline-flex w-fit items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition hover:text-gray-800 hover:ring-gray-300"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

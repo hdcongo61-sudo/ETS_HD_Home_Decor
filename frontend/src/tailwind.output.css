@@ -2598,11 +2598,6 @@ video {
   background-color: rgb(254 215 170 / var(--tw-bg-opacity, 1));
 }
 
-.bg-orange-50 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(255 247 237 / var(--tw-bg-opacity, 1));
-}
-
 .bg-orange-50\/70 {
   background-color: rgb(255 247 237 / 0.7);
 }
@@ -2698,10 +2693,6 @@ video {
 
 .bg-sky-50\/60 {
   background-color: rgb(240 249 255 / 0.6);
-}
-
-.bg-sky-50\/70 {
-  background-color: rgb(240 249 255 / 0.7);
 }
 
 .bg-sky-500 {
@@ -5059,11 +5050,6 @@ button:focus {
   border-color: rgb(209 213 219 / var(--tw-border-opacity, 1));
 }
 
-.hover\:border-gray-400:hover {
-  --tw-border-opacity: 1;
-  border-color: rgb(156 163 175 / var(--tw-border-opacity, 1));
-}
-
 .hover\:border-red-200:hover {
   --tw-border-opacity: 1;
   border-color: rgb(254 202 202 / var(--tw-border-opacity, 1));
@@ -6962,11 +6948,6 @@ button:focus {
     border-color: rgb(31 41 55 / var(--tw-border-opacity, 1));
   }
 
-  .dark\:border-green-700 {
-    --tw-border-opacity: 1;
-    border-color: rgb(21 128 61 / var(--tw-border-opacity, 1));
-  }
-
   .dark\:border-green-800 {
     --tw-border-opacity: 1;
     border-color: rgb(22 101 52 / var(--tw-border-opacity, 1));
@@ -7543,11 +7524,6 @@ button:focus {
   .dark\:text-yellow-300 {
     --tw-text-opacity: 1;
     color: rgb(253 224 71 / var(--tw-text-opacity, 1));
-  }
-
-  .dark\:hover\:border-gray-500:hover {
-    --tw-border-opacity: 1;
-    border-color: rgb(107 114 128 / var(--tw-border-opacity, 1));
   }
 
   .dark\:hover\:border-rose-700:hover {

@@ -14,6 +14,49 @@ const sortProductsByName = (items) =>
 
 const PRODUCT_PAGE_SIZE = 80;
 
+const DEFAULT_PRODUCT_FILTERS = {
+  product: '',
+  category: '',
+  container: '',
+  warehouse: '',
+  priceOperator: '',
+  price: '',
+  priceMax: '',
+  stockOperator: '',
+  stock: '',
+  stockMax: '',
+  supplier: '',
+};
+
+const PRODUCT_FILTER_QUERY_KEYS = Object.keys(DEFAULT_PRODUCT_FILTERS);
+
+const readProductFiltersFromSearch = (search) => {
+  const params = new URLSearchParams(search || '');
+  return PRODUCT_FILTER_QUERY_KEYS.reduce(
+    (acc, key) => ({
+      ...acc,
+      [key]: params.get(key) || '',
+    }),
+    { ...DEFAULT_PRODUCT_FILTERS }
+  );
+};
+
+const buildSearchFromProductFilters = (currentSearch, filters) => {
+  const params = new URLSearchParams(currentSearch || '');
+
+  PRODUCT_FILTER_QUERY_KEYS.forEach((key) => {
+    const value = String(filters[key] || '').trim();
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+  });
+
+  const next = params.toString();
+  return next ? `?${next}` : '';
+};
+
 const Products = () => {
   const { auth } = useContext(AuthContext);
   const location = useLocation();
@@ -458,19 +501,9 @@ const getFilterOptions = (items, accessor) =>
     .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
 
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
-  const [filters, setFilters] = useState({
-    product: '',
-    category: '',
-    container: '',
-    warehouse: '',
-    priceOperator: '',
-    price: '',
-    priceMax: '',
-    stockOperator: '',
-    stock: '',
-    stockMax: '',
-    supplier: '',
-  });
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState(() => readProductFiltersFromSearch(location.search));
   const [exporting, setExporting] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -497,6 +530,26 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     };
   }, []);
 
+  useEffect(() => {
+    setFilters(readProductFiltersFromSearch(location.search));
+  }, [location.search]);
+
+  const updateFiltersInUrl = useCallback(
+    (nextFilters) => {
+      const nextSearch = buildSearchFromProductFilters(location.search, nextFilters);
+      if (nextSearch !== location.search) {
+        navigate(
+          {
+            pathname: location.pathname,
+            search: nextSearch,
+          },
+          { replace: true }
+        );
+      }
+    },
+    [location.pathname, location.search, navigate]
+  );
+
   const desktopLinkProps = isDesktop
     ? { target: '_blank', rel: 'noopener noreferrer' }
     : {};
@@ -520,38 +573,34 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => {
+      let nextFilters;
       if (name === 'priceOperator') {
-        return {
+        nextFilters = {
           ...prev,
           priceOperator: value,
           priceMax: value === 'between' ? prev.priceMax : '',
         };
+        updateFiltersInUrl(nextFilters);
+        return nextFilters;
       }
       if (name === 'stockOperator') {
-        return {
+        nextFilters = {
           ...prev,
           stockOperator: value,
           stockMax: value === 'between' ? prev.stockMax : '',
         };
+        updateFiltersInUrl(nextFilters);
+        return nextFilters;
       }
-      return { ...prev, [name]: value };
+      nextFilters = { ...prev, [name]: value };
+      updateFiltersInUrl(nextFilters);
+      return nextFilters;
     });
   };
 
   const resetFilters = () => {
-    setFilters({
-      product: '',
-      category: '',
-      container: '',
-      warehouse: '',
-      priceOperator: '',
-      price: '',
-      priceMax: '',
-      stockOperator: '',
-      stock: '',
-      stockMax: '',
-      supplier: '',
-    });
+    setFilters({ ...DEFAULT_PRODUCT_FILTERS });
+    updateFiltersInUrl(DEFAULT_PRODUCT_FILTERS);
   };
 
   const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
@@ -655,6 +704,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const filterSummary = activeFilterEntries.length > 0
     ? activeFilterEntries.map(([label, value]) => `${label}: ${value}`).join(' | ')
     : 'Aucun filtre appliqué';
+
+  const productsReturnPath = `${location.pathname}${location.search}`;
+  const productLinkState = { returnToProducts: productsReturnPath };
 
   const handleExportExcel = async () => {
     if (filtered.length === 0) {
@@ -972,6 +1024,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             <Link
               key={p._id}
               to={productPath(p)}
+              state={productLinkState}
               {...desktopLinkProps}
               onClick={() => typeof document !== 'undefined' && document.activeElement?.blur?.()}
               className="block p-4 flex flex-col gap-1 hover:bg-gray-50 transition-colors lg:p-5 lg:rounded-2xl lg:border lg:border-gray-200 lg:shadow-sm lg:hover:shadow-md lg:hover:border-indigo-200"
@@ -1222,6 +1275,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                   <div className="flex flex-col gap-2 items-center">
                     <Link
                       to={productPath(p)}
+                      state={productLinkState}
                       className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition line-clamp-2 text-center w-full"
                       {...desktopLinkProps}
                     >
@@ -1300,6 +1354,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
               <div className="flex-1 min-w-0">
                 <Link
                   to={productPath(p)}
+                  state={productLinkState}
                   className="text-base font-semibold text-indigo-600 hover:underline"
                   {...desktopLinkProps}
                 >

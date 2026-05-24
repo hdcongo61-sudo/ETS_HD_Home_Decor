@@ -1162,6 +1162,40 @@ const Sales = () => {
     fetchDashboardData(timeRange, dateFilter);
   }, [timeRange, dateFilter, isAdmin, fetchDashboardData]);
 
+  useEffect(() => {
+    const refreshAfterGlobalMutation = async () => {
+      try {
+        const [salesData] = await Promise.all([
+          fetchSales(),
+          fetchProducts(),
+        ]);
+        await hydrateDeliveryStats(salesData);
+        if (isAdmin) {
+          await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
+        }
+      } catch {
+        setMessage("Erreur de mise à jour des ventes");
+      }
+    };
+
+    window.addEventListener("saleCreated", refreshAfterGlobalMutation);
+    window.addEventListener("paymentCreated", refreshAfterGlobalMutation);
+
+    return () => {
+      window.removeEventListener("saleCreated", refreshAfterGlobalMutation);
+      window.removeEventListener("paymentCreated", refreshAfterGlobalMutation);
+    };
+  }, [
+    dateFilter,
+    fetchDashboardData,
+    fetchProducts,
+    fetchSales,
+    hydrateDeliveryStats,
+    isAdmin,
+    setMessage,
+    timeRange,
+  ]);
+
   /* ========= Dérivés & filtres ========= */
   const salesWithProfit = useMemo(
     () =>
