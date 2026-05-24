@@ -1213,6 +1213,10 @@ video {
   min-height: 50vh;
 }
 
+.min-h-\[52px\] {
+  min-height: 52px;
+}
+
 .min-h-\[56px\] {
   min-height: 56px;
 }

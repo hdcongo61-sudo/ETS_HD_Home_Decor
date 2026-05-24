@@ -620,11 +620,21 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
       {/* === Déconnexion === */}
       <button
         onClick={handleLogout}
-        className={`${linkClass} text-red-600 hover:bg-red-50/80 active:bg-red-100/60`}
+        className={
+          isMobile
+            ? "mt-3 flex min-h-[52px] w-full items-center rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-[15px] font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 active:bg-red-100 touch-manipulation"
+            : `${linkClass} text-red-600 hover:bg-red-50/80 active:bg-red-100/60`
+        }
         aria-label="Déconnexion"
       >
-        <div className={`flex ${isMobile ? "flex-row items-center" : "flex-col items-center"}`}>
-          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`flex w-full ${isMobile ? "flex-row items-center gap-3" : "flex-col items-center"}`}>
+          <span className={isMobile ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-red-600" : ""}>
+          <svg
+            className={isMobile ? "h-5 w-5 shrink-0" : iconClass}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -632,7 +642,8 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
             />
           </svg>
-          {isMobile && <span>Déconnexion</span>}
+          </span>
+          {isMobile && <span className="min-w-0 flex-1 text-left">Déconnexion</span>}
         </div>
       </button>
     </>
