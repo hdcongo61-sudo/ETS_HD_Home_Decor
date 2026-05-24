@@ -188,7 +188,7 @@ const getSales = asyncHandler(async (req, res) => {
         .populate('client', 'name email');
     } else if (isListSummary) {
       query = query
-        .select('_id client products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory')
+        .select('_id client products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
         .populate('client', 'name email')
         .populate({
           path: 'products.product',

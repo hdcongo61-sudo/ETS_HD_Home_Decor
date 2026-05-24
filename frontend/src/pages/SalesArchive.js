@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import {
+  Banknote,
+  Boxes,
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
+  PackageCheck,
+  TrendingUp,
+  WalletCards,
+} from "lucide-react";
 import api from "../services/api";
 import {
   calculateSaleTotals,
@@ -18,6 +28,16 @@ import {
 import { SalesFiltersBar, SaleCard } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
 
+const formatCurrency = (value) =>
+  `${Number(value || 0).toLocaleString("fr-FR")} CFA`;
+
+const formatNumber = (value) => Number(value || 0).toLocaleString("fr-FR");
+
+const formatPercent = (value) => `${Number(value || 0).toFixed(1)} %`;
+
+const INITIAL_VISIBLE_SALES = 40;
+const VISIBLE_SALES_STEP = 40;
+
 const SalesArchive = () => {
   const location = useLocation();
   const [sales, setSales] = useState([]);
@@ -33,6 +53,7 @@ const SalesArchive = () => {
   const [containerFilter, setContainerFilter] = useState("");
   const [containers, setContainers] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_SALES);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -49,7 +70,7 @@ const SalesArchive = () => {
       setLoading(true);
       try {
         const [salesRes, clientsRes, containersRes] = await Promise.all([
-          api.get("/sales"),
+          api.get("/sales", { params: { summary: "list" } }),
           api.get("/clients"),
           api.get("/lookups/containers"),
         ]);
@@ -68,6 +89,18 @@ const SalesArchive = () => {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_SALES);
+  }, [
+    statusFilter,
+    clientFilter,
+    saleTypeFilter,
+    paymentStructureFilter,
+    dateFilter,
+    deliveryFilter,
+    containerFilter,
+  ]);
 
   const salesWithMetrics = useMemo(
     () =>
@@ -104,6 +137,123 @@ const SalesArchive = () => {
 
   const hasActiveFilters =
     !!statusFilter || !!clientFilter || !!saleTypeFilter || !!paymentStructureFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
+
+  const visibleSales = useMemo(
+    () => filteredSales.slice(0, visibleCount),
+    [filteredSales, visibleCount]
+  );
+
+  const hasMoreSales = visibleCount < filteredSales.length;
+
+  const filteredStats = useMemo(() => {
+    const initial = {
+      totalSales: filteredSales.length,
+      totalAmount: 0,
+      totalPaid: 0,
+      totalBalance: 0,
+      totalProfit: 0,
+      totalItems: 0,
+      completedSales: 0,
+      partiallyPaidSales: 0,
+      pendingSales: 0,
+      deliveredSales: 0,
+      modifiedSales: 0,
+      multiplePaymentSales: 0,
+    };
+
+    filteredSales.forEach((sale) => {
+      const { totalPaid, balance } = calculateSaleTotals(sale);
+      const itemCount = (sale.products || []).reduce(
+        (sum, item) => sum + Number(item.quantity || 0),
+        0
+      );
+
+      initial.totalAmount += Number(sale.totalAmount || 0);
+      initial.totalPaid += totalPaid;
+      initial.totalBalance += Math.max(balance, 0);
+      initial.totalProfit += Number(sale.computedProfit || 0);
+      initial.totalItems += itemCount;
+
+      if (sale.status === "completed") initial.completedSales += 1;
+      if (sale.status === "partially_paid") initial.partiallyPaidSales += 1;
+      if (sale.status === "pending") initial.pendingSales += 1;
+      if (sale.deliveryStatus === "delivered") initial.deliveredSales += 1;
+      if (
+        Number(sale.modificationCount || 0) > 0 ||
+        (Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0)
+      ) {
+        initial.modifiedSales += 1;
+      }
+      if (getPaymentStructureKey(sale) === "multiple_payments") {
+        initial.multiplePaymentSales += 1;
+      }
+    });
+
+    initial.averageTicket = initial.totalSales ? initial.totalAmount / initial.totalSales : 0;
+    initial.averageMargin = initial.totalAmount ? (initial.totalProfit / initial.totalAmount) * 100 : 0;
+    initial.collectionRate = initial.totalAmount ? (initial.totalPaid / initial.totalAmount) * 100 : 0;
+
+    return initial;
+  }, [filteredSales]);
+
+  const statsCards = [
+    {
+      label: "Ventes filtrées",
+      value: formatNumber(filteredStats.totalSales),
+      helper: hasActiveFilters ? "Selon les filtres actifs" : "Vue complète",
+      icon: <ClipboardList className="w-5 h-5" />,
+      tone: "indigo",
+    },
+    {
+      label: "Chiffre d'affaires",
+      value: formatCurrency(filteredStats.totalAmount),
+      helper: `Ticket moyen: ${formatCurrency(filteredStats.averageTicket)}`,
+      icon: <Banknote className="w-5 h-5" />,
+      tone: "emerald",
+    },
+    {
+      label: "Montant encaissé",
+      value: formatCurrency(filteredStats.totalPaid),
+      helper: `Taux encaissé: ${formatPercent(filteredStats.collectionRate)}`,
+      icon: <CreditCard className="w-5 h-5" />,
+      tone: "green",
+    },
+    {
+      label: "Solde restant",
+      value: formatCurrency(filteredStats.totalBalance),
+      helper: `${formatNumber(filteredStats.partiallyPaidSales + filteredStats.pendingSales)} vente(s) non soldée(s)`,
+      icon: <WalletCards className="w-5 h-5" />,
+      tone: filteredStats.totalBalance > 0 ? "rose" : "slate",
+    },
+    {
+      label: "Profit estimé",
+      value: formatCurrency(filteredStats.totalProfit),
+      helper: `Marge moyenne: ${formatPercent(filteredStats.averageMargin)}`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      tone: "violet",
+    },
+    {
+      label: "Unités vendues",
+      value: formatNumber(filteredStats.totalItems),
+      helper: `${formatNumber(filteredStats.multiplePaymentSales)} paiement(s) multiples`,
+      icon: <Boxes className="w-5 h-5" />,
+      tone: "amber",
+    },
+    {
+      label: "Ventes payées",
+      value: formatNumber(filteredStats.completedSales),
+      helper: `${formatNumber(filteredStats.deliveredSales)} livrée(s)`,
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      tone: "green",
+    },
+    {
+      label: "Ventes modifiées",
+      value: formatNumber(filteredStats.modifiedSales),
+      helper: "Avec historique de modification",
+      icon: <PackageCheck className="w-5 h-5" />,
+      tone: "sky",
+    },
+  ];
 
   const handleResetFilters = () => {
     setStatusFilter("");
@@ -210,6 +360,30 @@ const SalesArchive = () => {
           </div>
         ) : (
           <>
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Statistiques des filtres sélectionnés
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Ces chiffres sont calculés uniquement sur les ventes actuellement affichées.
+                  </p>
+                </div>
+                {hasActiveFilters && (
+                  <span className="self-start rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 sm:self-auto">
+                    Filtres actifs
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {statsCards.map((card) => (
+                  <StatCard key={card.label} {...card} />
+                ))}
+              </div>
+            </section>
+
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600">
                 <span className="font-semibold text-gray-900">{filteredSales.length}</span>
@@ -225,10 +399,11 @@ const SalesArchive = () => {
                 </div>
               ) : (
                 <>
-                  {filteredSales.map((sale, index) => {
+                  {visibleSales.map((sale, index) => {
                     const { totalPaid, balance } = calculateSaleTotals(sale);
                     const isModified =
-                      Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0;
+                      Number(sale.modificationCount || 0) > 0 ||
+                      (Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0);
                     return (
                       <motion.div
                         key={sale._id}
@@ -253,6 +428,22 @@ const SalesArchive = () => {
                       </motion.div>
                     );
                   })}
+
+                  {hasMoreSales && (
+                    <div className="flex justify-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleCount((current) =>
+                            Math.min(current + VISIBLE_SALES_STEP, filteredSales.length)
+                          )
+                        }
+                        className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                      >
+                        Afficher plus ({formatNumber(visibleSales.length)} sur {formatNumber(filteredSales.length)})
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -262,5 +453,35 @@ const SalesArchive = () => {
     </div>
   );
 };
+
+const statTones = {
+  indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  green: "bg-green-50 text-green-700 border-green-100",
+  rose: "bg-rose-50 text-rose-700 border-rose-100",
+  violet: "bg-violet-50 text-violet-700 border-violet-100",
+  amber: "bg-amber-50 text-amber-700 border-amber-100",
+  sky: "bg-sky-50 text-sky-700 border-sky-100",
+  slate: "bg-slate-50 text-slate-700 border-slate-100",
+};
+
+const StatCard = ({ label, value, helper, icon, tone = "indigo" }) => (
+  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          {label}
+        </p>
+        <p className="mt-1 break-words text-xl font-bold text-gray-900 tabular-nums">
+          {value}
+        </p>
+      </div>
+      <div className={`shrink-0 rounded-xl border p-2.5 ${statTones[tone] || statTones.indigo}`}>
+        {icon}
+      </div>
+    </div>
+    <p className="mt-3 text-xs text-gray-500">{helper}</p>
+  </div>
+);
 
 export default SalesArchive;
