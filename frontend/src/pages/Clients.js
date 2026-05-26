@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
 import api from '../services/api';
@@ -29,11 +29,26 @@ const GENDER_COLORS = {
 const GENDER_ORDER = ['male', 'female', 'other', 'unknown'];
 const sortClientsByCreatedAt = (list) =>
   [...list].sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
+const isCanceledRequest = (err) =>
+  err?.name === 'AbortError' || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED';
+const readClientSearchFromUrl = (search) => new URLSearchParams(search || '').get('search') || '';
+const buildClientSearchUrl = (currentSearch, searchTerm) => {
+  const params = new URLSearchParams(currentSearch || '');
+  const value = String(searchTerm || '').trim();
+  if (value) {
+    params.set('search', value);
+  } else {
+    params.delete('search');
+  }
+  const next = params.toString();
+  return next ? `?${next}` : '';
+};
 
 const Clients = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = auth.user?.isAdmin || false;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const printRef = useRef();
   const tableRef = useRef(null);
@@ -47,7 +62,7 @@ const Clients = () => {
     minSpent: '',
     maxSpent: '',
   });
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => readClientSearchFromUrl(location.search));
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line no-unused-vars -- filtering state for applyFilters
   const [filtering, setFiltering] = useState(false);
@@ -87,9 +102,8 @@ const Clients = () => {
       const list = data && (Array.isArray(data.clients) ? data.clients : Array.isArray(data) ? data : []);
       setClients(list);
     } catch (err) {
-      if (err.name !== 'AbortError') {
+      if (!isCanceledRequest(err)) {
         console.error('Erreur clients:', err);
-        setClients([]);
         const msg = err.isHtmlResponse ? err.message : 'Erreur lors du chargement des clients';
         toast.error(msg);
       }
@@ -97,6 +111,21 @@ const Clients = () => {
       if (showLoading && !signal?.aborted) setLoading(false);
     }
   }, [searchTerm]);
+
+  useEffect(() => {
+    const nextSearchTerm = readClientSearchFromUrl(location.search);
+    setSearchTerm((current) => (current === nextSearchTerm ? current : nextSearchTerm));
+  }, [location.search]);
+
+  useEffect(() => {
+    const nextSearch = buildClientSearchUrl(location.search, searchTerm);
+    if (nextSearch !== location.search) {
+      navigate(
+        { pathname: location.pathname, search: nextSearch },
+        { replace: true, state: location.state }
+      );
+    }
+  }, [location.pathname, location.search, location.state, navigate, searchTerm]);
 
   // --- Apply filters --- (kept for future use / UI)
   // eslint-disable-next-line no-unused-vars
@@ -119,7 +148,9 @@ const Clients = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchClients(controller.signal);
+    const fetchTimeoutId = window.setTimeout(() => {
+      fetchClients(controller.signal, { showLoading: !searchTerm.trim() });
+    }, searchTerm.trim() ? 250 : 0);
     let statsTimeoutId = null;
     if (isAdmin) {
       statsTimeoutId = window.setTimeout(() => {
@@ -127,12 +158,13 @@ const Clients = () => {
       }, 250);
     }
     return () => {
+      window.clearTimeout(fetchTimeoutId);
       controller.abort();
       if (statsTimeoutId !== null) {
         window.clearTimeout(statsTimeoutId);
       }
     };
-  }, [fetchClients, fetchStats, isAdmin]);
+  }, [fetchClients, fetchStats, isAdmin, searchTerm]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -227,10 +259,12 @@ const Clients = () => {
 
   const openClientDetails = (client) => {
     const path = clientPath(client);
+    const returnToClients = `${location.pathname}${location.search}`;
+    const detailSearch = `?returnToClients=${encodeURIComponent(returnToClients)}`;
     if (isDesktop && typeof window !== 'undefined') {
-      window.open(path, '_blank', 'noopener,noreferrer');
+      window.open(`${path}${detailSearch}`, '_blank', 'noopener,noreferrer');
     } else {
-      navigate(path);
+      navigate(`${path}${detailSearch}`, { state: { returnToClients } });
     }
   };
 
@@ -511,7 +545,8 @@ const Clients = () => {
                   {stats.topClients.map((client, index) => (
                     <Link
                       key={`${client.clientId || client._id || index}-link`}
-                      to={clientPath({ _id: client.clientId || client._id, slug: client.slug })}
+                      to={`${clientPath({ _id: client.clientId || client._id, slug: client.slug })}?returnToClients=${encodeURIComponent(`${location.pathname}${location.search}`)}`}
+                      state={{ returnToClients: `${location.pathname}${location.search}` }}
                       className="flex items-center justify-between min-h-[44px] px-3 py-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 active:bg-blue-100 transition touch-manipulation"
                     >
                       <div className="flex items-center gap-2 min-w-0">

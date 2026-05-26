@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getCategories, createCategory, updateCategory, deleteCategory,
+  getExpenseCategories, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory,
   getContainers, createContainer, updateContainer, deleteContainer,
   getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier,
@@ -15,6 +16,14 @@ router.route('/categories')
 router.route('/categories/:id')
   .put(protect, admin, updateCategory)
   .delete(protect, admin, deleteCategory);
+
+// Expense categories
+router.route('/expense-categories')
+  .get(protect, getExpenseCategories)
+  .post(protect, admin, createExpenseCategory);
+router.route('/expense-categories/:id')
+  .put(protect, admin, updateExpenseCategory)
+  .delete(protect, admin, deleteExpenseCategory);
 
 // Containers
 router.route('/containers')

@@ -20,10 +20,13 @@ const SaleCard = ({
   profitCategory,
   isModified,
   desktopLinkProps = {},
+  linkState,
+  returnTo,
   actions,
   className = "",
 }) => {
-  const linkTo = `/sales/${sale._id}`;
+  const returnSearch = returnTo ? `?returnToSales=${encodeURIComponent(returnTo)}` : "";
+  const linkTo = `/sales/${sale._id}${returnSearch}`;
   const hasProducts = Array.isArray(sale.products) && sale.products.length > 0;
 
   return (
@@ -39,6 +42,7 @@ const SaleCard = ({
           <div className="min-w-0">
             <Link
               to={linkTo}
+              state={linkState}
               className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors text-base sm:text-base touch-manipulation"
               {...desktopLinkProps}
             >

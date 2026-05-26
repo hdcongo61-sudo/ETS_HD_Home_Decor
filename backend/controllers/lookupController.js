@@ -1,4 +1,5 @@
 const Category = require('../models/categoryModel');
+const ExpenseCategory = require('../models/expenseCategoryModel');
 const Container = require('../models/containerModel');
 const Warehouse = require('../models/warehouseModel');
 const Supplier = require('../models/supplierModel');
@@ -60,6 +61,11 @@ module.exports = {
   createCategory: create(Category),
   updateCategory: update(Category),
   deleteCategory: remove(Category),
+
+  getExpenseCategories: getAll(ExpenseCategory),
+  createExpenseCategory: create(ExpenseCategory),
+  updateExpenseCategory: update(ExpenseCategory),
+  deleteExpenseCategory: remove(ExpenseCategory),
 
   getContainers: getAll(Container),
   createContainer: create(Container),

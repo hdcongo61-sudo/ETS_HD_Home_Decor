@@ -550,6 +550,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
           </MobileMenuSection>
           {auth.isAdmin && (
             <MobileMenuSection title="Administration">
+              <NavIcon to="/settings" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.757.426 1.757 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.757-2.924 1.757-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.757-.426-1.757-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} label="Paramètres" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
               <NavIcon to="/admin/users" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} label="Gestion utilisateurs" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
               <NavIcon to="/users/login-stats" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>} label="Historique connexions" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
               <NavIcon to="/documents" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Documents entreprise" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -757,9 +758,16 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
                       {item.type === "client" ? "👤" : item.type === "employee" ? "👥" : "📄"}
                     </div>
                   )}
-                  <span className="font-medium text-gray-800">
-                    {item.name || item.clientName || item.title}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="block truncate font-medium text-gray-800">
+                      {item.name || item.clientName || item.title}
+                    </span>
+                    {isProduct && (
+                      <span className="block text-xs text-gray-500">
+                        Stock: {Number(item.stock || 0).toLocaleString("fr-FR")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-xs text-gray-500 capitalize">{item.type}</span>
               </li>

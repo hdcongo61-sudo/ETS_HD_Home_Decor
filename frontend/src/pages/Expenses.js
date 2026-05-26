@@ -5,10 +5,35 @@ import useResponsiveTable from '../hooks/useResponsiveTable';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 
+const legacyCategoryLabels = {
+  rent: 'Loyer',
+  utilities: 'Services',
+  salaries: 'Salaires',
+  supplies: 'Fournitures',
+  delivery: 'Livraison',
+  other: 'Autre'
+};
+const categoryPalette = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#a855f7', '#14b8a6', '#f97316'];
+const categoryDotClasses = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-indigo-500', 'bg-purple-500', 'bg-teal-500', 'bg-orange-500'];
+const categoryBadgeClasses = ['bg-red-100 text-red-800', 'bg-blue-100 text-blue-800', 'bg-green-100 text-green-800', 'bg-amber-100 text-amber-800', 'bg-indigo-100 text-indigo-800', 'bg-purple-100 text-purple-800', 'bg-teal-100 text-teal-800', 'bg-orange-100 text-orange-800'];
+const categoryIndex = (category) => {
+  const normalized = String(category || '');
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash = (hash + normalized.charCodeAt(i)) % categoryPalette.length;
+  }
+  return hash;
+};
+const getCategoryLabel = (category) => legacyCategoryLabels[category] || category || 'Non catégorisé';
+const getCategoryColor = (category) => categoryPalette[categoryIndex(category)];
+const getCategoryDotClass = (category) => categoryDotClasses[categoryIndex(category)];
+const getCategoryBadgeClass = (category) => categoryBadgeClasses[categoryIndex(category)] || 'bg-gray-100 text-gray-800';
+
 const Expenses = () => {
   const tableRef = useRef(null);
   const formSectionRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
   const [filter, setFilter] = useState({
     search: '',
     startDate: '',
@@ -24,6 +49,19 @@ const Expenses = () => {
     fetchExpenses();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpenses uses filter
   }, [filter]);
+
+  useEffect(() => {
+    const fetchExpenseCategories = async () => {
+      try {
+        const { data } = await api.get('/lookups/expense-categories');
+        setExpenseCategories(Array.isArray(data) ? data : []);
+      } catch {
+        setExpenseCategories([]);
+      }
+    };
+
+    fetchExpenseCategories();
+  }, []);
 
   const fetchExpenses = async () => {
     try {
@@ -163,31 +201,13 @@ const Expenses = () => {
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('fr-FR');
   };
 
-  // Couleurs pour les catégories
-  const categoryColors = {
-    rent: 'bg-red-500',
-    utilities: 'bg-blue-500',
-    salaries: 'bg-green-500',
-    supplies: 'bg-yellow-500',
-    other: 'bg-purple-500'
-  };
-
-  const categoryBarColors = {
-    rent: '#ef4444',
-    utilities: '#3b82f6',
-    salaries: '#10b981',
-    supplies: '#f59e0b',
-    other: '#a855f7'
-  };
-
-  // Labels pour les catégories
-  const categoryLabels = {
-    rent: 'Loyer',
-    utilities: 'Services',
-    salaries: 'Salaires',
-    supplies: 'Fournitures',
-    other: 'Autre'
-  };
+  const categoryFilterOptions = useMemo(() => {
+    const names = expenseCategories.map((category) => category.name).filter(Boolean);
+    const usedCategories = expenses.map((expense) => expense.category).filter(Boolean);
+    return [...new Set([...names, ...usedCategories])].sort((a, b) =>
+      getCategoryLabel(a).localeCompare(getCategoryLabel(b), 'fr', { sensitivity: 'base' })
+    );
+  }, [expenseCategories, expenses]);
 
   useResponsiveTable(tableRef, [expenses]);
 
@@ -275,14 +295,6 @@ const Expenses = () => {
                       sum + (val / dashboardData.total) * 100, 0
                     );
 
-                    const colors = {
-                      rent: '#EF4444',
-                      utilities: '#3B82F6',
-                      salaries: '#10B981',
-                      supplies: '#F59E0B',
-                      other: '#8B5CF6'
-                    };
-
                     return (
                       <circle
                         key={category}
@@ -290,7 +302,7 @@ const Expenses = () => {
                         cy="50"
                         r="45"
                         fill="transparent"
-                        stroke={colors[category] || '#9CA3AF'}
+                        stroke={getCategoryColor(category)}
                         strokeWidth="10"
                         strokeDasharray={`${percentage} ${100 - percentage}`}
                         strokeDashoffset={-offset}
@@ -317,11 +329,11 @@ const Expenses = () => {
 
                   return (
                     <div key={category} className="flex items-center">
-                      <div className={`w-4 h-4 rounded-full ${categoryColors[category] || 'bg-gray-500'} mr-3`}></div>
+                      <div className={`w-4 h-4 rounded-full ${getCategoryDotClass(category)} mr-3`}></div>
                       <div className="flex-1">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="font-medium text-gray-900">
-                            {categoryLabels[category] || category}
+                            {getCategoryLabel(category)}
                           </span>
                           <span className="font-semibold text-gray-900">{total.toLocaleString('fr-FR')} CFA</span>
                         </div>
@@ -330,7 +342,7 @@ const Expenses = () => {
                             className="h-2 rounded-full"
                             style={{
                               width: `${percentage}%`,
-                              backgroundColor: categoryBarColors[category] || '#9ca3af'
+                              backgroundColor: getCategoryColor(category)
                             }}
                           ></div>
                         </div>
@@ -399,11 +411,11 @@ const Expenses = () => {
                 className="p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">Toutes catégories</option>
-                <option value="rent">Loyer</option>
-                <option value="utilities">Services publics</option>
-                <option value="salaries">Salaires</option>
-                <option value="supplies">Fournitures</option>
-                <option value="other">Autre</option>
+                {categoryFilterOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {getCategoryLabel(category)}
+                  </option>
+                ))}
               </select>
               <button
                 onClick={() => setFilter({ search: '', startDate: '', endDate: '', category: '' })}
@@ -473,14 +485,8 @@ const Expenses = () => {
                           {expense.amount.toLocaleString('fr-FR')} CFA
                         </td>
                         <td data-title="Catégorie" className="px-4 sm:px-6 py-4">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${expense.category === 'rent' ? 'bg-red-100 text-red-800' :
-                            expense.category === 'salaries' ? 'bg-blue-100 text-blue-800' :
-                              expense.category === 'utilities' ? 'bg-sky-100 text-sky-800' :
-                                expense.category === 'supplies' ? 'bg-amber-100 text-amber-800' :
-                                  expense.category === 'other' ? 'bg-purple-100 text-purple-800' :
-                                    'bg-gray-100 text-gray-800'
-                            }`}>
-                            {categoryLabels[expense.category] || expense.category}
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getCategoryBadgeClass(expense.category)}`}>
+                            {getCategoryLabel(expense.category)}
                           </span>
                         </td>
                         <td data-title="Paiement" className="px-4 sm:px-6 py-4 text-sm text-gray-900 capitalize">

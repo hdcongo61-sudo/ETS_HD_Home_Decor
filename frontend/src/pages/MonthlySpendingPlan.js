@@ -18,6 +18,7 @@ const categoryLabels = {
   utilities: 'Services',
   salaries: 'Salaires',
   supplies: 'Fournitures',
+  delivery: 'Livraison',
   other: 'Autre',
 };
 
@@ -53,6 +54,7 @@ const MonthlySpendingPlan = () => {
   const [desiredProfit, setDesiredProfit] = useState(0);
   const [targetMargin, setTargetMargin] = useState(25);
   const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -91,6 +93,25 @@ const MonthlySpendingPlan = () => {
 
     fetchData();
   }, [month]);
+
+  useEffect(() => {
+    const fetchExpenseCategories = async () => {
+      try {
+        const { data } = await api.get('/lookups/expense-categories');
+        setExpenseCategories(Array.isArray(data) ? data : []);
+      } catch {
+        setExpenseCategories([]);
+      }
+    };
+
+    fetchExpenseCategories();
+  }, []);
+
+  const getCategoryLabel = (category) => {
+    if (!category) return 'Non catégorisé';
+    const configured = expenseCategories.find((item) => item.name === category);
+    return configured?.name || categoryLabels[category] || category;
+  };
 
   const summary = useMemo(() => {
     const { start, end } = getMonthBounds(month);
@@ -314,7 +335,7 @@ const MonthlySpendingPlan = () => {
                 <div key={category}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-medium text-gray-700">
-                      {categoryLabels[category] || category}
+                      {getCategoryLabel(category)}
                     </span>
                     <span className="text-gray-500">{formatCFA(total)}</span>
                   </div>
@@ -377,7 +398,7 @@ const MonthlySpendingPlan = () => {
                     {expense.description}
                   </td>
                   <td className="px-3 py-3 text-gray-600">
-                    {categoryLabels[expense.category] || expense.category}
+                    {getCategoryLabel(expense.category)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-gray-900">
                     {formatCFA(expense.amount)}

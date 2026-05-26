@@ -6,7 +6,8 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
 
 const TABS = [
-  { key: 'categories', label: 'Catégories', endpoint: '/lookups/categories' },
+  { key: 'categories', label: 'Catégories produits', endpoint: '/lookups/categories' },
+  { key: 'expenseCategories', label: 'Catégories dépenses', endpoint: '/lookups/expense-categories' },
   { key: 'containers', label: 'Conteneurs', endpoint: '/lookups/containers' },
   { key: 'warehouses', label: 'Entrepôts', endpoint: '/lookups/warehouses' },
   { key: 'suppliers', label: 'Fournisseurs', endpoint: '/lookups/suppliers' },
@@ -484,20 +485,22 @@ const Settings = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
+      <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:mb-6 sm:rounded-xl sm:bg-gray-100 sm:p-1">
+        <div className="flex min-w-max gap-2 sm:min-w-0 sm:gap-1">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 min-w-0 px-4 py-2.5 rounded-lg text-sm font-medium transition whitespace-nowrap ${
+            className={`min-h-[44px] rounded-xl px-4 py-2.5 text-sm font-semibold transition whitespace-nowrap sm:flex-1 sm:min-w-0 sm:rounded-lg ${
               activeTab === tab.key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-gray-900 text-white shadow-sm sm:bg-white sm:text-gray-900'
+                : 'bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 hover:text-gray-900 sm:bg-transparent sm:shadow-none sm:ring-0'
             }`}
           >
             {tab.label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -628,20 +631,20 @@ const LookupTab = ({ endpoint, label }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       {/* Add form */}
-      <form onSubmit={handleAdd} className="flex gap-3 p-4 border-b border-gray-100 bg-gray-50/50">
+      <form onSubmit={handleAdd} className="border-b border-gray-100 bg-gray-50/70 p-3 sm:flex sm:gap-3 sm:p-4">
         <input
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder={`Nouveau nom...`}
-          className="flex-1 px-4 py-2.5 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder={`Nouveau ${label.toLowerCase()}...`}
+          className="min-h-[46px] w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:flex-1 sm:text-sm"
         />
         <button
           type="submit"
           disabled={submitting || !newName.trim()}
-          className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"
+          className="mt-3 min-h-[46px] w-full rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50 sm:mt-0 sm:w-auto"
         >
           Ajouter
         </button>
@@ -653,16 +656,16 @@ const LookupTab = ({ endpoint, label }) => {
           Aucun élément. Ajoutez-en un ci-dessus.
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="space-y-2 bg-gray-50/40 p-3 sm:space-y-0 sm:divide-y sm:divide-gray-100 sm:bg-white sm:p-0">
           {items.map((item) => (
-            <div key={item._id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+            <div key={item._id} className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm transition hover:bg-gray-50 sm:flex sm:items-center sm:gap-3 sm:rounded-none sm:border-0 sm:px-4 sm:shadow-none">
               {editingId === item._id ? (
-                <>
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:flex-1 sm:text-sm"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleUpdate(item._id);
@@ -672,7 +675,8 @@ const LookupTab = ({ endpoint, label }) => {
                   <button
                     onClick={() => handleUpdate(item._id)}
                     disabled={submitting}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                    className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-green-50 px-3 py-2 text-green-700 transition hover:bg-green-100 sm:flex-none sm:bg-transparent sm:p-2 sm:text-green-600"
+                    aria-label="Enregistrer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -680,19 +684,21 @@ const LookupTab = ({ endpoint, label }) => {
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition"
+                    className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-gray-100 px-3 py-2 text-gray-600 transition hover:bg-gray-200 sm:flex-none sm:p-2 sm:text-gray-400"
+                    aria-label="Annuler"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                </>
+                </div>
               ) : (
-                <>
-                  <span className="flex-1 text-sm text-gray-900 font-medium">{item.name}</span>
+                <div className="flex w-full items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-gray-900 sm:text-sm">{item.name}</span>
                   <button
                     onClick={() => { setEditingId(item._id); setEditName(item.name); }}
-                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100 sm:bg-transparent sm:text-gray-400"
+                    aria-label="Modifier"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -700,20 +706,21 @@ const LookupTab = ({ endpoint, label }) => {
                   </button>
                   <button
                     onClick={() => handleDelete(item._id)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 sm:bg-transparent sm:text-gray-400"
+                    aria-label="Supprimer"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                </>
+                </div>
               )}
             </div>
           ))}
         </div>
       )}
 
-      <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-100 text-xs text-gray-500">
+      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 text-xs text-gray-500">
         {items.length} élément{items.length !== 1 ? 's' : ''}
       </div>
     </div>
@@ -803,27 +810,27 @@ const SupplierTab = ({ endpoint }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       {/* Add form */}
-      <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3 p-4 border-b border-gray-100 bg-gray-50/50">
+      <form onSubmit={handleAdd} className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/70 p-3 sm:flex-row sm:p-4">
         <input
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="Nom du fournisseur"
-          className="flex-1 px-4 py-2.5 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="min-h-[46px] w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:flex-1 sm:text-sm"
         />
         <input
           type="text"
           value={newPhone}
           onChange={(e) => setNewPhone(e.target.value)}
           placeholder="Téléphone"
-          className="sm:w-48 px-4 py-2.5 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="min-h-[46px] w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:w-48 sm:text-sm"
         />
         <button
           type="submit"
           disabled={submitting || !newName.trim()}
-          className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"
+          className="min-h-[46px] w-full rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50 sm:w-auto"
         >
           Ajouter
         </button>
@@ -835,16 +842,16 @@ const SupplierTab = ({ endpoint }) => {
           Aucun fournisseur. Ajoutez-en un ci-dessus.
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="space-y-2 bg-gray-50/40 p-3 sm:space-y-0 sm:divide-y sm:divide-gray-100 sm:bg-white sm:p-0">
           {items.map((item) => (
-            <div key={item._id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+            <div key={item._id} className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm transition hover:bg-gray-50 sm:flex sm:items-center sm:gap-3 sm:rounded-none sm:border-0 sm:px-4 sm:shadow-none">
               {editingId === item._id ? (
-                <>
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:flex-1 sm:text-sm"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleUpdate(item._id);
@@ -856,7 +863,7 @@ const SupplierTab = ({ endpoint }) => {
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     placeholder="Téléphone"
-                    className="w-36 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:w-36 sm:text-sm"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleUpdate(item._id);
                       if (e.key === 'Escape') setEditingId(null);
@@ -865,7 +872,8 @@ const SupplierTab = ({ endpoint }) => {
                   <button
                     onClick={() => handleUpdate(item._id)}
                     disabled={submitting}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                    className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-green-50 px-3 py-2 text-green-700 transition hover:bg-green-100 sm:flex-none sm:bg-transparent sm:p-2 sm:text-green-600"
+                    aria-label="Enregistrer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -873,22 +881,24 @@ const SupplierTab = ({ endpoint }) => {
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition"
+                    className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-gray-100 px-3 py-2 text-gray-600 transition hover:bg-gray-200 sm:flex-none sm:p-2 sm:text-gray-400"
+                    aria-label="Annuler"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                </>
+                </div>
               ) : (
-                <>
+                <div className="flex w-full items-center gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    {item.phone && <div className="text-xs text-gray-500">{item.phone}</div>}
+                    <div className="truncate text-[15px] font-semibold text-gray-900 sm:text-sm">{item.name}</div>
+                    {item.phone && <div className="mt-0.5 truncate text-xs text-gray-500">{item.phone}</div>}
                   </div>
                   <button
                     onClick={() => { setEditingId(item._id); setEditName(item.name); setEditPhone(item.phone || ''); }}
-                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100 sm:bg-transparent sm:text-gray-400"
+                    aria-label="Modifier"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -896,13 +906,14 @@ const SupplierTab = ({ endpoint }) => {
                   </button>
                   <button
                     onClick={() => handleDelete(item._id)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 sm:bg-transparent sm:text-gray-400"
+                    aria-label="Supprimer"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                </>
+                </div>
               )}
             </div>
           ))}

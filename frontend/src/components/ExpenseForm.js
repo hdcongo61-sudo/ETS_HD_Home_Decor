@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
 import { FormActionsSticky } from './FormLayout';
 import AuthContext from '../context/AuthContext';
+import api from '../services/api';
 
 const toDateTimeLocalValue = (value) => {
   if (!value) return '';
@@ -13,6 +14,15 @@ const toDateTimeLocalValue = (value) => {
   const pad = (part) => String(part).padStart(2, '0');
 
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const legacyCategoryLabels = {
+  rent: 'Loyer',
+  utilities: 'Services publics',
+  salaries: 'Salaires',
+  supplies: 'Fournitures',
+  delivery: 'Livraison',
+  other: 'Autre',
 };
 
 const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false }) => {
@@ -27,6 +37,20 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   });
 
   const [errors, setErrors] = useState({});
+  const [expenseCategories, setExpenseCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchExpenseCategories = async () => {
+      try {
+        const { data } = await api.get('/lookups/expense-categories');
+        setExpenseCategories(Array.isArray(data) ? data : []);
+      } catch {
+        setExpenseCategories([]);
+      }
+    };
+
+    fetchExpenseCategories();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -89,6 +113,12 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     if (!formData.category) errors.category = 'Catégorie requise';
     return errors;
   };
+
+  const categoryOptions = expenseCategories.map((category) => category.name).filter(Boolean);
+  const selectedCategory = formData.category;
+  if (selectedCategory && !categoryOptions.includes(selectedCategory)) {
+    categoryOptions.push(selectedCategory);
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -169,12 +199,17 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             required
           >
             <option value="">Sélectionner une catégorie</option>
-            <option value="rent">Loyer</option>
-            <option value="utilities">Services publics</option>
-            <option value="salaries">Salaires</option>
-            <option value="supplies">Fournitures</option>
-            <option value="other">Autre</option>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>
+                {legacyCategoryLabels[category] || category}
+              </option>
+            ))}
           </select>
+          {categoryOptions.length === 0 && (
+            <p className="text-xs text-amber-600">
+              Ajoutez les catégories dans Paramètres &gt; Catégories dépenses.
+            </p>
+          )}
           {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
@@ -35,6 +35,9 @@ const SaleDetailPage = () => {
     const { auth } = useContext(AuthContext);
     const isAdmin = auth.user?.isAdmin || false;
     const navigate = useNavigate();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const returnToSales = location.state?.returnToSales || queryParams.get('returnToSales') || '/sales';
     const [sale, setSale] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -47,6 +50,8 @@ const SaleDetailPage = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
     const [showProfitSections, setShowProfitSections] = useState(true);
+    const [paymentStartDate, setPaymentStartDate] = useState('');
+    const [paymentEndDate, setPaymentEndDate] = useState('');
 
     useAutoClearMessage(message, setMessage);
     const [reminderDate, setReminderDate] = useState('');
@@ -496,18 +501,52 @@ const SaleDetailPage = () => {
 
     const totalProfit = calculateTotalProfit();
     const profitMargin = calculateProfitMargin();
+    const payments = Array.isArray(sale.payments) ? sale.payments : [];
+    const filteredPayments = payments.filter((payment) => {
+        const rawDate = payment?.paymentDate || payment?.createdAt;
+        if (!rawDate) return !paymentStartDate && !paymentEndDate;
+
+        const paymentDate = new Date(rawDate);
+        if (Number.isNaN(paymentDate.getTime())) return !paymentStartDate && !paymentEndDate;
+
+        if (paymentStartDate) {
+            const start = new Date(`${paymentStartDate}T00:00:00`);
+            if (paymentDate < start) return false;
+        }
+
+        if (paymentEndDate) {
+            const end = new Date(`${paymentEndDate}T23:59:59.999`);
+            if (paymentDate > end) return false;
+        }
+
+        return true;
+    });
+    const filteredPaymentsTotal = filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
 
     // Chart data for payment history
     const paymentChartData = {
-        labels: sale.payments.map((_, index) => `Paiement ${index + 1}`),
+        labels: filteredPayments.map((_, index) => `Paiement ${index + 1}`),
         datasets: [
             {
                 label: 'Montant (CFA)',
-                data: sale.payments.map(p => p.amount),
+                data: filteredPayments.map(p => p.amount),
                 backgroundColor: 'rgba(0, 122, 255, 0.8)',
                 borderRadius: 6,
             }
         ]
+    };
+    const hasPaymentDateFilter = Boolean(paymentStartDate || paymentEndDate);
+    const handlePaymentStartDateChange = (value) => {
+        setPaymentStartDate(value);
+        if (value && paymentEndDate && paymentEndDate < value) {
+            setPaymentEndDate(value);
+        }
+    };
+    const handlePaymentEndDateChange = (value) => {
+        setPaymentEndDate(value);
+        if (value && paymentStartDate && paymentStartDate > value) {
+            setPaymentStartDate(value);
+        }
     };
 
     return (
@@ -517,7 +556,7 @@ const SaleDetailPage = () => {
                 <header className="flex flex-col gap-4">
                     <button
                         type="button"
-                        onClick={() => navigate('/sales')}
+                        onClick={() => navigate(returnToSales)}
                         className="inline-flex w-fit items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition hover:text-indigo-700 hover:ring-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1160,44 +1199,80 @@ const SaleDetailPage = () => {
 
                     {/* Historique des paiements */}
                     <div className={`${mobileHistoryTab === 'payments' ? 'block' : 'hidden'} md:block`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <div className="bg-green-100 p-1.5 rounded-lg">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                </div>
-                                Historique des Paiements
-                            </h3>
+                        <div className="mb-4 space-y-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <div className="bg-green-100 p-1.5 rounded-lg">
+                                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </div>
+                                    Historique des Paiements
+                                </h3>
 
-                            <div className="text-sm text-gray-500">
-                                {sale.payments?.length || 0} paiement(s) effectué(s)
+                                <div className="text-sm text-gray-500">
+                                    {filteredPayments.length} / {payments.length} paiement(s) · {filteredPaymentsTotal.toLocaleString('fr-FR')} CFA
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Date début</span>
+                                    <input
+                                        type="date"
+                                        value={paymentStartDate}
+                                        max={paymentEndDate || undefined}
+                                        onChange={(e) => handlePaymentStartDateChange(e.target.value)}
+                                        className="min-h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Date fin</span>
+                                    <input
+                                        type="date"
+                                        value={paymentEndDate}
+                                        min={paymentStartDate || undefined}
+                                        onChange={(e) => handlePaymentEndDateChange(e.target.value)}
+                                        className="min-h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPaymentStartDate('');
+                                        setPaymentEndDate('');
+                                    }}
+                                    disabled={!hasPaymentDateFilter}
+                                    className="min-h-[42px] rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Réinitialiser
+                                </button>
                             </div>
                         </div>
 
-                        {sale.payments && sale.payments.length > 0 ? (
+                        {payments.length > 0 ? (
                             <div className="space-y-6">
-                                {/* Graphique des paiements */}
+                                {filteredPayments.length > 0 ? (
+                                    <>
                                 <div className="bg-white p-4 rounded-xl border border-gray-200">
-                                    <Bar
-                                        data={paymentChartData}
-                                        options={{
-                                            responsive: true,
-                                            plugins: {
-                                                legend: {
-                                                    position: 'top',
+                                        <Bar
+                                            data={paymentChartData}
+                                            options={{
+                                                responsive: true,
+                                                plugins: {
+                                                    legend: {
+                                                        position: 'top',
+                                                    },
+                                                    title: {
+                                                        display: true,
+                                                        text: 'Montant des paiements'
+                                                    },
                                                 },
-                                                title: {
-                                                    display: true,
-                                                    text: 'Montant des paiements'
-                                                },
-                                            },
-                                        }}
-                                    />
-                                </div>
+                                            }}
+                                        />
+                                    </div>
 
-                                {/* Liste des paiements */}
-                                <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
@@ -1212,7 +1287,7 @@ const SaleDetailPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {sale.payments.map((payment, index) => {
+                                            {filteredPayments.map((payment, index) => {
                                                 const paymentUser = getPaymentUser(payment);
                                                 return (
                                                 <tr key={index}>
@@ -1260,6 +1335,12 @@ const SaleDetailPage = () => {
                                         </tbody>
                                     </table>
                                 </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
+                                        <p className="text-gray-500 text-sm">Aucun paiement pour les dates choisies</p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">

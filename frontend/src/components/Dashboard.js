@@ -179,6 +179,9 @@ const Dashboard = () => {
   const [overdueReminders, setOverdueReminders] = useState([]);
   const [neverPaidReminders, setNeverPaidReminders] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState("");
+  const [exportEndDate, setExportEndDate] = useState("");
+  const [isExportingDashboard, setIsExportingDashboard] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -591,6 +594,28 @@ const Dashboard = () => {
     };
   }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
 
+  useEffect(() => {
+    if (!showExportMenu) return;
+    setExportStartDate((current) => current || exportDescriptor.startValue);
+    setExportEndDate((current) => current || exportDescriptor.endValue);
+  }, [exportDescriptor.endValue, exportDescriptor.startValue, showExportMenu]);
+
+  const handleExportStartDateChange = useCallback((value) => {
+    setExportStartDate(value);
+    setExportEndDate((current) => {
+      if (!current || !value) return current;
+      return current < value ? value : current;
+    });
+  }, []);
+
+  const handleExportEndDateChange = useCallback((value) => {
+    setExportEndDate(value);
+    setExportStartDate((current) => {
+      if (!current || !value) return current;
+      return current > value ? value : current;
+    });
+  }, []);
+
   const hasCompare = compareMode !== "none";
   const trendBase = hasCompare ? prevPeriodTotals : { sales: prevWeekStats.s, paid: prevWeekStats.p, expenses: prevWeekStats.e, profit: prevWeekStats.pr };
   const salesTrend = pct(totalSales, trendBase.sales);
@@ -599,29 +624,78 @@ const Dashboard = () => {
 
   // ===== EXPORT principal (tableau combiné) =====
   const exportToExcel = async () => {
-    const XLSX = await loadXlsx();
-    const summaryRows = [
-      {
-        Filtre: exportDescriptor.label,
-        "Date début": exportDescriptor.startValue,
-        "Date fin": exportDescriptor.endValue,
-        "Lignes exportées": combinedData.length,
-      },
-    ];
-    const rows = combinedData.map((d) => ({
-      Date: format(new Date(d.date), "dd/MM/yyyy"),
-      Ventes: d.sales,
-      Encaissements: d.paid,
-      Dépenses: d.expenses,
-      Profit: d.paid - d.expenses,
-    }));
-    const wb = XLSX.utils.book_new();
-    const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
-    const ws = XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, summarySheet, "Filtre");
-    XLSX.utils.book_append_sheet(wb, ws, "Données");
-    XLSX.writeFile(wb, `dashboard-${exportDescriptor.fileSuffix}.xlsx`);
-    setShowExportMenu(false);
+    const startValue = exportStartDate || exportDescriptor.startValue;
+    const endValue = exportEndDate || exportDescriptor.endValue;
+    const start = startOfDay(new Date(`${startValue}T00:00:00`));
+    const end = endOfDay(new Date(`${endValue}T00:00:00`));
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      alert("Choisissez une date de début et une date de fin valides.");
+      return;
+    }
+
+    if (start > end) {
+      alert("La date de début doit être avant la date de fin.");
+      return;
+    }
+
+    setIsExportingDashboard(true);
+    try {
+      const XLSX = await loadXlsx();
+      const [salesRes, expensesRes, paymentsRes] = await Promise.all([
+        api.get(
+          `/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
+        ),
+        api.get(
+          `/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
+        ),
+        api.get(
+          `/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
+        ),
+      ]);
+
+      const exportCombinedData = processCombinedData(
+        salesRes.data || [],
+        expensesRes.data || [],
+        paymentsRes.data || []
+      );
+      const exportTotalSales = exportCombinedData.reduce((sum, row) => sum + (row.sales || 0), 0);
+      const exportTotalPaid = exportCombinedData.reduce((sum, row) => sum + (row.paid || 0), 0);
+      const exportTotalExpenses = exportCombinedData.reduce((sum, row) => sum + (row.expenses || 0), 0);
+      const exportProfit = exportTotalPaid - exportTotalExpenses;
+
+      const summaryRows = [
+        {
+          Filtre: "Période personnalisée",
+          "Date début": startValue,
+          "Date fin": endValue,
+          "Total ventes": exportTotalSales,
+          "Total encaissements": exportTotalPaid,
+          "Total dépenses": exportTotalExpenses,
+          Profit: exportProfit,
+          "Lignes exportées": exportCombinedData.length,
+        },
+      ];
+      const rows = exportCombinedData.map((d) => ({
+        Date: format(new Date(d.date), "dd/MM/yyyy"),
+        Ventes: d.sales,
+        Encaissements: d.paid,
+        Dépenses: d.expenses,
+        Profit: d.paid - d.expenses,
+      }));
+      const wb = XLSX.utils.book_new();
+      const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Filtre");
+      XLSX.utils.book_append_sheet(wb, ws, "Données");
+      XLSX.writeFile(wb, `dashboard-${startValue}_to_${endValue}.xlsx`);
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error("Export dashboard échoué:", error);
+      alert("Impossible de générer l'export du dashboard.");
+    } finally {
+      setIsExportingDashboard(false);
+    }
   };
 
   // ===== MODAL Jour =====
@@ -1182,7 +1256,11 @@ const Dashboard = () => {
 
             {isAdmin && (
               <button
-                onClick={() => setShowExportMenu(true)}
+                onClick={() => {
+                  setExportStartDate(exportDescriptor.startValue);
+                  setExportEndDate(exportDescriptor.endValue);
+                  setShowExportMenu(true);
+                }}
                 className="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
               >
                 <Download size={18} />
@@ -2059,8 +2137,11 @@ const Dashboard = () => {
             onClose={() => setShowExportMenu(false)}
             onExport={exportToExcel}
             filterLabel={exportDescriptor.label}
-            startDate={exportDescriptor.startValue}
-            endDate={exportDescriptor.endValue}
+            startDate={exportStartDate || exportDescriptor.startValue}
+            endDate={exportEndDate || exportDescriptor.endValue}
+            onStartDateChange={handleExportStartDateChange}
+            onEndDateChange={handleExportEndDateChange}
+            exporting={isExportingDashboard}
           />
         </Suspense>
 

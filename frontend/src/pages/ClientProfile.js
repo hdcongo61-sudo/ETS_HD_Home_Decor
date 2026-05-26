@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import AppLoader from '../components/AppLoader';
 import {
@@ -32,6 +32,9 @@ const formatGenderLabel = (gender) => PROFILE_GENDER_LABELS[gender] || PROFILE_G
 const ClientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const returnToClients = location.state?.returnToClients || queryParams.get('returnToClients') || '/clients';
   const [client, setClient] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -306,7 +309,7 @@ const ClientProfile = () => {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <p className="text-red-600 font-semibold mb-4">{error || "Client introuvable"}</p>
-        <Link to="/clients" className="text-blue-600 hover:underline">
+        <Link to={returnToClients} className="text-blue-600 hover:underline">
           ← Retour à la liste des clients
         </Link>
       </div>
@@ -335,7 +338,7 @@ const ClientProfile = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Link to="/clients" className="p-2 rounded-full hover:bg-gray-100">
+          <Link to={returnToClients} className="p-2 rounded-full hover:bg-gray-100">
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>

@@ -70,6 +70,27 @@ const PaymentModal = lazy(() => import("../components/PaymentModal"));
    =============================== */
 const getTodayFilterValue = () => new Date().toLocaleDateString("fr-CA");
 
+const buildSalesReturnSearch = ({
+  statusFilter,
+  clientFilter,
+  saleTypeFilter,
+  paymentStructureFilter,
+  dateFilter,
+  deliveryFilter,
+  containerFilter,
+}) => {
+  const params = new URLSearchParams();
+  if (statusFilter) params.set("status", statusFilter);
+  if (clientFilter) params.set("client", clientFilter);
+  if (saleTypeFilter) params.set("saleType", saleTypeFilter);
+  if (paymentStructureFilter) params.set("paymentStructure", paymentStructureFilter);
+  if (dateFilter) params.set("date", dateFilter);
+  if (deliveryFilter) params.set("delivery", deliveryFilter);
+  if (containerFilter) params.set("container", containerFilter);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
+
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
   for (const key of nestedKeys) {
@@ -936,6 +957,9 @@ const Sales = () => {
     if (params.has("delivery")) {
       setDeliveryFilter(params.get("delivery") || "");
     }
+    if (params.has("container")) {
+      setContainerFilter(params.get("container") || "");
+    }
   }, [location.search]);
 
   // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
@@ -1319,6 +1343,22 @@ const Sales = () => {
   }, [clients, products]);
 
   const hasActiveFilters = Boolean(statusFilter || clientFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
+
+  const salesReturnSearch = useMemo(
+    () =>
+      buildSalesReturnSearch({
+        statusFilter,
+        clientFilter,
+        saleTypeFilter,
+        paymentStructureFilter,
+        dateFilter,
+        deliveryFilter,
+        containerFilter,
+      }),
+    [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]
+  );
+  const salesReturnPath = `/sales${salesReturnSearch}`;
+  const saleLinkState = useMemo(() => ({ returnToSales: salesReturnPath }), [salesReturnPath]);
 
   const historyLinkSearch = useMemo(() => {
     const params = new URLSearchParams();
@@ -1811,6 +1851,8 @@ const Sales = () => {
                           getStatusText={getStatusText}
                           isModified={isModified}
                           desktopLinkProps={desktopLinkProps}
+                          linkState={saleLinkState}
+                          returnTo={salesReturnPath}
                           actions={
                             <>
                               {sale.status !== "completed" && sale.status !== "cancelled" && (
@@ -2745,6 +2787,8 @@ const Sales = () => {
                             profitCategory={profitCategory}
                             isModified={isModified}
                             desktopLinkProps={desktopLinkProps}
+                            linkState={saleLinkState}
+                            returnTo={salesReturnPath}
                             actions={
                               <>
                                 {sale.status === "completed" && (
