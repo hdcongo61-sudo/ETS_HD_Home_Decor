@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Edit3, FileText, HandCoins, Mail, Phone, Plus, UserRound } from 'lucide-react';
+import { Edit3, FileText, Mail, Phone, Plus, UserRound } from 'lucide-react';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import {
-  employeeAdvancesNewPath,
   employeeEditPath,
   employeePayrollNewPath,
   employeePayrollPath,
@@ -15,12 +14,6 @@ const statusStyles = {
   pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
   paid: { label: 'Payé', classes: 'bg-green-100 text-green-800' },
   cancelled: { label: 'Annulé', classes: 'bg-red-100 text-red-800' }
-};
-
-const advanceStatusStyles = {
-  pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-800' },
-  approved: { label: 'Approuvée', classes: 'bg-green-100 text-green-800' },
-  rejected: { label: 'Rejetée', classes: 'bg-red-100 text-red-800' }
 };
 
 const formatPeriod = (month, year) =>
@@ -34,10 +27,8 @@ const EmployeeDetail = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('details');
   const [paySlips, setPaySlips] = useState([]);
-  const [advances, setAdvances] = useState([]);
   const [stats, setStats] = useState({
     totalPaid: 0,
-    totalAdvances: 0,
     balance: 0
   });
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
@@ -57,20 +48,12 @@ const EmployeeDetail = () => {
         const { data: paySlipsData } = await api.get(`/employees/${id}/payroll`);
         setPaySlips(paySlipsData);
 
-        // Fetch advances
-        const { data: advancesData } = await api.get(`/employees/${id}/advances`);
-        setAdvances(advancesData);
-
         // Calculate stats
         const totalPaid = paySlipsData.reduce((sum, slip) => sum + slip.netSalary, 0);
-        const totalAdvances = advancesData
-          .filter(adv => adv.status === 'approved')
-          .reduce((sum, adv) => sum + adv.amount, 0);
 
         setStats({
           totalPaid,
-          totalAdvances,
-          balance: totalPaid - totalAdvances
+          balance: totalPaid
         });
 
         setError('');
@@ -83,27 +66,6 @@ const EmployeeDetail = () => {
 
     fetchData();
   }, [id, reloadToken]);
-
-  const handleDeleteAdvance = async (advanceId) => {
-    if (window.confirm('Confirmer la suppression de cette avance ?')) {
-      try {
-        await api.delete(`/employees/${id}/advances/${advanceId}`);
-        setAdvances(advances.filter(adv => adv._id !== advanceId));
-
-        // Update stats
-        const advance = advances.find(a => a._id === advanceId);
-        if (advance && advance.status === 'approved') {
-          setStats(prev => ({
-            ...prev,
-            totalAdvances: prev.totalAdvances - advance.amount,
-            balance: prev.balance + advance.amount
-          }));
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors de la suppression');
-      }
-    }
-  };
 
   const handleDeletePaySlip = async (payslipId) => {
     if (window.confirm('Confirmer la suppression de cette fiche de paie ?')) {
@@ -264,13 +226,6 @@ const EmployeeDetail = () => {
               Fiche de paie
             </Link>
             <Link
-              to={employeeAdvancesNewPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-            >
-              <HandCoins className="w-4 h-4" />
-              Avance
-            </Link>
-            <Link
               to={employeePayrollPath(employeeReference)}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
             >
@@ -369,18 +324,6 @@ const EmployeeDetail = () => {
               Fiches de paie ({paySlips.length})
             </button>
 
-            <button
-              onClick={() => setActiveTab('advances')}
-              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'advances'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Avances ({advances.length})
-            </button>
           </nav>
         </div>
 
@@ -640,148 +583,6 @@ const EmployeeDetail = () => {
             </div>
           )}
 
-          {/* Advances Tab */}
-          {activeTab === 'advances' && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Historique des avances</h3>
-                <Link
-                  to={employeeAdvancesNewPath(employeeReference)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Nouvelle avance
-                </Link>
-              </div>
-
-              {advances.length > 0 ? (
-                <>
-                  <div className="space-y-4 md:hidden">
-                    {advances.map((advance) => {
-                      const status = advanceStatusStyles[advance.status] || advanceStatusStyles.pending;
-                      return (
-                        <div key={advance._id} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {new Date(advance.date).toLocaleDateString('fr-FR')}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Montant :
-                                <span className="ml-1 font-semibold text-blue-600">
-                                  {new Intl.NumberFormat('fr-FR').format(advance.amount)} CFA
-                                </span>
-                              </p>
-                            </div>
-                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
-                              {status.label}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 space-y-3 text-xs text-gray-600">
-                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
-                              <p className="font-medium text-gray-500">Raison</p>
-                              <p className="mt-1 text-sm font-semibold text-gray-900">
-                                {advance.reason || 'Aucune raison fournie'}
-                              </p>
-                            </div>
-                            <div className="rounded-xl bg-white/80 p-3 shadow-inner">
-                              <p className="font-medium text-gray-500">Créée le</p>
-                              <p className="mt-1 text-sm font-semibold text-gray-900">
-                                {advance.createdAt ? new Date(advance.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                            <button
-                              onClick={() => handleDeleteAdvance(advance._id)}
-                              className="flex-1 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-50"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="hidden md:block">
-                    <div className="overflow-hidden border border-gray-200 rounded-2xl">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raison</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créée le</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {advances.map((advance) => {
-                            const status = advanceStatusStyles[advance.status] || advanceStatusStyles.pending;
-                            return (
-                              <tr key={advance._id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {new Date(advance.date).toLocaleDateString('fr-FR')}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {new Intl.NumberFormat('fr-FR').format(advance.amount)} CFA
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                  {advance.reason || '—'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
-                                    {status.label}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {advance.createdAt ? new Date(advance.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <button
-                                    onClick={() => handleDeleteAdvance(advance._id)}
-                                    className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
-                                    title="Supprimer"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-12 border border-dashed border-gray-300 rounded-2xl">
-                  <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h4 className="mt-4 text-gray-700 font-medium">Aucune avance</h4>
-                  <p className="text-gray-500 mt-2 mb-4">Aucune avance trouvée pour cet employé</p>
-                  <Link
-                    to={employeeAdvancesNewPath(employeeReference)}
-                    className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-colors"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Créer une avance
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}

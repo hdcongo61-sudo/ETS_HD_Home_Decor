@@ -3,6 +3,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { employeePayrollPath } from '../utils/paths';
 
+const normalizeText = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+
+const isSalaryCategory = (category) => {
+    const normalized = normalizeText(category);
+    return normalized === 'salaries' || normalized === 'salary' || normalized.includes('salaire');
+};
+
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+
 const PaySlipForm = () => {
     const { id, payslipId } = useParams();
     const navigate = useNavigate();
@@ -18,6 +32,9 @@ const PaySlipForm = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [salaryExpenses, setSalaryExpenses] = useState([]);
+    const [salaryExpensesLoading, setSalaryExpensesLoading] = useState(false);
+    const [salaryExpensesError, setSalaryExpensesError] = useState('');
     const employeeReference = employee || { _id: id };
 
     useEffect(() => {
@@ -47,6 +64,38 @@ const PaySlipForm = () => {
         };
         fetchData();
     }, [id, payslipId]);
+
+    useEffect(() => {
+        if (!employee || isEditMode) return;
+
+        const fetchSalaryExpenses = async () => {
+            try {
+                setSalaryExpensesLoading(true);
+                setSalaryExpensesError('');
+                const { data } = await api.get('/expenses', {
+                    params: {
+                        employee: id,
+                        salaryMonth: formData.month,
+                        salaryYear: formData.year,
+                    },
+                });
+                const list = Array.isArray(data) ? data.filter((expense) => isSalaryCategory(expense.category)) : [];
+                const total = list.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+                setSalaryExpenses(list);
+                setFormData((prev) => ({
+                    ...prev,
+                    deductions: total,
+                }));
+            } catch (err) {
+                setSalaryExpenses([]);
+                setSalaryExpensesError(err.response?.data?.message || 'Impossible de charger les dépenses de salaire');
+            } finally {
+                setSalaryExpensesLoading(false);
+            }
+        };
+
+        fetchSalaryExpenses();
+    }, [employee, formData.month, formData.year, id, isEditMode]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -93,6 +142,7 @@ const PaySlipForm = () => {
     const netSalary = employee
         ? employee.salary + (parseFloat(formData.bonuses) || 0) - (parseFloat(formData.deductions) || 0)
         : 0;
+    const salaryExpensesTotal = salaryExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
     return (
         <div className="max-w-3xl mx-auto p-4">
@@ -226,6 +276,40 @@ const PaySlipForm = () => {
                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                     </svg>
                                     {errors.deductions}
+                                </div>
+                            )}
+                            {!isEditMode && (
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-3 text-sm">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="font-medium text-gray-700">Dépenses salaire du mois</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(salaryExpensesTotal)}</span>
+                                    </div>
+                                    {salaryExpensesLoading && (
+                                        <p className="mt-2 text-xs text-gray-500">Chargement des dépenses liées...</p>
+                                    )}
+                                    {salaryExpensesError && (
+                                        <p className="mt-2 text-xs text-red-600">{salaryExpensesError}</p>
+                                    )}
+                                    {!salaryExpensesLoading && !salaryExpensesError && salaryExpenses.length > 0 && (
+                                        <div className="mt-3 space-y-2">
+                                            {salaryExpenses.map((expense) => (
+                                                <div key={expense._id} className="flex items-start justify-between gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate font-medium text-gray-800">{expense.description}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {expense.date ? new Date(expense.date).toLocaleDateString('fr-FR') : 'Date non définie'}
+                                                        </p>
+                                                    </div>
+                                                    <span className="shrink-0 font-semibold text-red-600">
+                                                        - {formatCurrency(expense.amount)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {!salaryExpensesLoading && !salaryExpensesError && salaryExpenses.length === 0 && (
+                                        <p className="mt-2 text-xs text-gray-500">Aucune dépense de salaire liée à ce mois.</p>
+                                    )}
                                 </div>
                             )}
                         </div>

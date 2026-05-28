@@ -10,6 +10,24 @@ import React, {
 } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  BarChart3,
+  Banknote,
+  Boxes,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  CreditCard,
+  Download,
+  Gem,
+  ReceiptText,
+  Repeat2,
+  TrendingUp,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
 import api from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
 import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
@@ -108,8 +126,8 @@ const GlassCard = ({ children, className = "" }) => (
   <motion.div
     initial={{ opacity: 0, y: 6 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.35 }}
-    className={`rounded-2xl border border-gray-200/70 bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow ${className}`}
+    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+    className={`rounded-[1.5rem] border border-slate-200 bg-white shadow-sm ${className}`}
   >
     {children}
   </motion.div>
@@ -119,19 +137,18 @@ const truncateLabel = (str, max = 14) =>
   typeof str === "string" && str.length > max ? str.slice(0, max) + "…" : str || "";
 const CHART_LABEL_FONT = { size: 10, family: "system-ui" };
 
-const StatCard = ({ title, value, icon, color }) => (
+const StatCard = ({ title, value, icon, color = "bg-slate-100 text-slate-700" }) => (
   <GlassCard className="h-full">
     <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-h-[4.5rem] sm:min-h-0">
       <div
-        className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl text-white ${color}`}
-        style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,.15)" }}
+        className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl ${color}`}
         aria-hidden
       >
-        <span className="text-xl leading-none" aria-hidden>{icon}</span>
+        {React.isValidElement(icon) ? icon : <span className="text-xl leading-none" aria-hidden>{icon}</span>}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs sm:text-sm font-medium text-gray-500 leading-snug mb-0.5">{title}</p>
-        <p className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 tabular-nums break-words leading-snug">
+        <p className="text-xs sm:text-sm font-medium text-slate-500 leading-snug mb-0.5">{title}</p>
+        <p className="text-base sm:text-lg md:text-xl font-semibold text-slate-950 tabular-nums break-words leading-snug">
           {value}
         </p>
       </div>
@@ -144,16 +161,16 @@ const AdvancedMetricCard = ({ title, value, change, icon, color, description }) 
     <div className="p-6">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <h3 className="text-slate-500 text-sm font-medium">{title}</h3>
+          <p className="text-2xl font-semibold text-slate-950 mt-1">{value}</p>
           {change !== undefined && (
             <div
               className={`flex items-center mt-1 text-sm ${
                 change > 0
-                  ? "text-green-600"
+                  ? "text-emerald-700"
                   : change < 0
-                  ? "text-red-600"
-                  : "text-gray-500"
+                  ? "text-rose-700"
+                  : "text-slate-500"
               }`}
             >
               <svg
@@ -173,13 +190,12 @@ const AdvancedMetricCard = ({ title, value, change, icon, color, description }) 
           )}
         </div>
         <div
-          className={`p-3 rounded-xl text-white ${color}`}
-          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.2)" }}
+          className={`p-3 rounded-2xl ${color}`}
         >
           {icon}
         </div>
       </div>
-      {description && <p className="text-xs text-gray-500 mt-2">{description}</p>}
+      {description && <p className="text-xs text-slate-500 mt-2">{description}</p>}
     </div>
   </GlassCard>
 );
@@ -451,26 +467,26 @@ const ProfitAnalysis = () => {
         <StatCard
           title="Bénéfice total"
           value={`${(profitData.generalStats.totalProfit || 0).toLocaleString("fr-FR")} CFA`}
-          icon={<span className="inline-block">💵</span>}
-          color="bg-green-500"
+          icon={<Banknote className="h-5 w-5" />}
+          color="bg-emerald-50 text-emerald-700"
         />
         <StatCard
           title="Marge moyenne"
           value={`${(profitData.generalStats.averageMargin || 0).toFixed(2)}%`}
-          icon={<span className="inline-block">📈</span>}
-          color="bg-blue-500"
+          icon={<TrendingUp className="h-5 w-5" />}
+          color="bg-sky-50 text-sky-700"
         />
         <StatCard
           title="Bénéfice moyen / vente"
           value={`${(profitData.generalStats.averageProfit || 0).toLocaleString("fr-FR")} CFA`}
-          icon={<span className="inline-block">➕</span>}
-          color="bg-purple-500"
+          icon={<BarChart3 className="h-5 w-5" />}
+          color="bg-violet-50 text-violet-700"
         />
         <StatCard
           title="Ventes rentables"
           value={`${profitData.generalStats.profitableSales || 0}/${profitData.generalStats.saleCount || 0}`}
-          icon={<span className="inline-block">✅</span>}
-          color="bg-teal-500"
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          color="bg-teal-50 text-teal-700"
         />
       </div>
 
@@ -1233,15 +1249,16 @@ const Sales = () => {
     [sales]
   );
 
-  const filteredSales = useMemo(() => {
-    const base = salesWithProfit.filter((sale) => {
+  const applySalesFilters = useCallback((source, options = {}) => {
+    const { includeDate = true } = options;
+    const base = source.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
       const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
       const paymentStructureMatch =
         !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
       const d = parseDateSafely(sale.saleDate);
-      const dateMatch = !dateFilter || (d && d.toLocaleDateString("fr-CA") === dateFilter);
+      const dateMatch = !includeDate || !dateFilter || (d && d.toLocaleDateString("fr-CA") === dateFilter);
       const deliveryMatch =
         !deliveryFilter ||
         (sale.status === "completed" &&
@@ -1262,7 +1279,7 @@ const Sales = () => {
       );
     }
     if (quickFilters.recurring) {
-      const byClient = salesWithProfit.reduce((acc, s) => {
+      const byClient = source.reduce((acc, s) => {
         if (s.client) acc[s.client._id] = (acc[s.client._id] || 0) + 1;
         return acc;
       }, {});
@@ -1270,7 +1287,50 @@ const Sales = () => {
     }
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
-  }, [salesWithProfit, statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
+  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
+
+  const filteredSales = useMemo(
+    () => applySalesFilters(salesWithProfit, { includeDate: true }),
+    [applySalesFilters, salesWithProfit]
+  );
+
+  const filteredHistoryStats = useMemo(() => {
+    const salesTotal = filteredSales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
+    const salesCollected = filteredSales.reduce((sum, sale) => sum + (Number(sale.totalPaid) || 0), 0);
+    const remaining = filteredSales.reduce((sum, sale) => {
+      const { balance } = calculateSaleTotals(sale);
+      return sum + (Number(balance) || 0);
+    }, 0);
+
+    const paymentSourceSales = dateFilter
+      ? applySalesFilters(salesWithProfit, { includeDate: false })
+      : filteredSales;
+
+    let paymentsOnSelectedDate = 0;
+    let paymentsOnSelectedDateCount = 0;
+
+    paymentSourceSales.forEach((sale) => {
+      (sale.payments || []).forEach((payment) => {
+        const paymentDate = parseDateSafely(payment.paymentDate || payment.createdAt);
+        if (!paymentDate) return;
+        const matchesDate = dateFilter
+          ? paymentDate.toLocaleDateString("fr-CA") === dateFilter
+          : true;
+        if (!matchesDate) return;
+        paymentsOnSelectedDate += Number(payment.amount) || 0;
+        paymentsOnSelectedDateCount += 1;
+      });
+    });
+
+    return {
+      salesCount: filteredSales.length,
+      salesTotal,
+      salesCollected,
+      remaining,
+      paymentsOnSelectedDate,
+      paymentsOnSelectedDateCount,
+    };
+  }, [applySalesFilters, dateFilter, filteredSales, salesWithProfit]);
 
   const desktopLinkProps = useMemo(
     () => (isDesktop ? { target: "_blank", rel: "noopener noreferrer" } : {}),
@@ -1579,8 +1639,8 @@ const Sales = () => {
       count: dashboardData.saleTypeSummary?.wholesale?.count || 0,
       amount: dashboardData.saleTypeSummary?.wholesale?.totalAmount || 0,
       percentage: dashboardData.saleTypeSummary?.wholesale?.percentage || 0,
-      accent: "from-fuchsia-500 to-pink-500",
-      text: "text-fuchsia-700",
+      accent: "border-violet-200 bg-violet-50",
+      text: "text-violet-700",
     },
     {
       key: "normal",
@@ -1588,8 +1648,8 @@ const Sales = () => {
       count: dashboardData.saleTypeSummary?.normal?.count || 0,
       amount: dashboardData.saleTypeSummary?.normal?.totalAmount || 0,
       percentage: dashboardData.saleTypeSummary?.normal?.percentage || 0,
-      accent: "from-cyan-500 to-sky-500",
-      text: "text-cyan-700",
+      accent: "border-sky-200 bg-sky-50",
+      text: "text-sky-700",
     },
     {
       key: "full_payment",
@@ -1597,7 +1657,7 @@ const Sales = () => {
       count: dashboardData.paymentStructureSummary?.full_payment?.count || 0,
       amount: dashboardData.paymentStructureSummary?.full_payment?.totalAmount || 0,
       percentage: dashboardData.paymentStructureSummary?.full_payment?.percentage || 0,
-      accent: "from-emerald-500 to-green-500",
+      accent: "border-emerald-200 bg-emerald-50",
       text: "text-emerald-700",
       linkTo: "/sales/all?history=1&paymentStructure=full_payment",
     },
@@ -1607,7 +1667,7 @@ const Sales = () => {
       count: dashboardData.paymentStructureSummary?.multiple_payments?.count || 0,
       amount: dashboardData.paymentStructureSummary?.multiple_payments?.totalAmount || 0,
       percentage: dashboardData.paymentStructureSummary?.multiple_payments?.percentage || 0,
-      accent: "from-amber-500 to-orange-500",
+      accent: "border-amber-200 bg-amber-50",
       text: "text-amber-700",
       linkTo: "/sales/all?history=1&paymentStructure=multiple_payments",
     },
@@ -1621,28 +1681,28 @@ const Sales = () => {
     {
       key: "highValue",
       label: "Hautes Valeurs",
-      icon: "💎",
+      icon: Gem,
       active: quickFilters.highValue,
       activeClass: "bg-purple-50 border-purple-400 text-purple-800 ring-1 ring-purple-200",
     },
     {
       key: "latePayments",
       label: "Retards Paiement",
-      icon: "⚠️",
+      icon: Clock3,
       active: quickFilters.latePayments,
       activeClass: "bg-red-50 border-red-400 text-red-800 ring-1 ring-red-200",
     },
     {
       key: "recurring",
       label: "Clients Récurrents",
-      icon: "🔄",
+      icon: Repeat2,
       active: quickFilters.recurring,
       activeClass: "bg-green-50 border-green-400 text-green-800 ring-1 ring-green-200",
     },
     {
       key: "highProfit",
       label: "Hauts Bénéfices",
-      icon: "💰",
+      icon: TrendingUp,
       active: quickFilters.highProfit,
       activeClass: "bg-emerald-50 border-emerald-400 text-emerald-800 ring-1 ring-emerald-200",
     },
@@ -1654,22 +1714,22 @@ const Sales = () => {
     quickFilters.highProfit;
 
   const QuickFilterBar = () => (
-    <div className="rounded-xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-3 sm:p-4 mb-2">
+    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:p-4 mb-2">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-full sm:w-auto sm:mr-1">
+        <span className="text-xs font-medium text-slate-500 uppercase w-full sm:w-auto sm:mr-1">
           Filtres rapides
         </span>
-        {quickFilterConfig.map(({ key, label, icon, active, activeClass }) => (
+        {quickFilterConfig.map(({ key, label, icon: Icon, active, activeClass }) => (
           <button
             key={key}
             type="button"
             onClick={() => setQuickFilters((p) => ({ ...p, [key]: !p[key] }))}
             className={`inline-flex items-center gap-2 min-h-[2.75rem] px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
-              active ? activeClass : "bg-gray-50/80 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300"
+              active ? activeClass : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300"
             }`}
             aria-pressed={active}
           >
-            <span aria-hidden>{icon}</span>
+            <Icon className="h-4 w-4" aria-hidden />
             <span>{label}</span>
           </button>
         ))}
@@ -1684,16 +1744,64 @@ const Sales = () => {
                 highProfit: false,
               })
             }
-            className="inline-flex items-center gap-2 min-h-[2.75rem] px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors sm:ml-auto"
+            className="inline-flex items-center gap-2 min-h-[2.75rem] px-3 py-2 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors sm:ml-auto"
             aria-label="Effacer tous les filtres"
           >
-            <span aria-hidden>✕</span>
+            <X className="h-4 w-4" aria-hidden />
             Effacer
           </button>
         )}
       </div>
     </div>
   );
+
+  const HistoryStatsSummary = () => {
+    const paymentTitle = dateFilter
+      ? "Paiements encaissés ce jour"
+      : "Paiements des ventes filtrées";
+    const paymentHelper = dateFilter
+      ? "Inclut aussi les paiements de ventes plus anciennes payés à cette date."
+      : "Total des paiements liés aux ventes affichées.";
+
+    const cards = [
+      {
+        label: "Ventes filtrées",
+        value: filteredHistoryStats.salesCount.toLocaleString("fr-FR"),
+        helper: `${filteredHistoryStats.salesTotal.toLocaleString("fr-FR")} CFA vendus`,
+        color: "border-indigo-100 bg-indigo-50 text-indigo-700",
+      },
+      {
+        label: "Encaissé sur ventes",
+        value: `${filteredHistoryStats.salesCollected.toLocaleString("fr-FR")} CFA`,
+        helper: "Paiements attachés aux ventes affichées",
+        color: "border-emerald-100 bg-emerald-50 text-emerald-700",
+      },
+      {
+        label: paymentTitle,
+        value: `${filteredHistoryStats.paymentsOnSelectedDate.toLocaleString("fr-FR")} CFA`,
+        helper: `${filteredHistoryStats.paymentsOnSelectedDateCount} paiement(s). ${paymentHelper}`,
+        color: "border-blue-100 bg-blue-50 text-blue-700",
+      },
+      {
+        label: "Reste à encaisser",
+        value: `${filteredHistoryStats.remaining.toLocaleString("fr-FR")} CFA`,
+        helper: "Solde restant des ventes affichées",
+        color: "border-amber-100 bg-amber-50 text-amber-700",
+      },
+    ];
+
+    return (
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <div key={card.label} className={`rounded-2xl border p-4 ${card.color}`}>
+            <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
+            <p className="mt-2 text-lg font-semibold tabular-nums text-slate-950">{card.value}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">{card.helper}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   /* ========= Écrans d’attente / erreur ========= */
   if (loading) {
@@ -1714,16 +1822,29 @@ const Sales = () => {
   // Vue simplifiée pour les utilisateurs non administrateurs
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-              Gestion des ventes
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Enregistrez vos ventes et consultez l'historique en temps réel.
-            </p>
-          </div>
+      <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
+        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
+          <header className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase text-slate-500">Ventes</p>
+                <h1 className="mt-1 text-2xl font-semibold text-slate-950 lg:text-3xl">
+                  Gestion des ventes
+                </h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  Enregistrez une vente, suivez les paiements et les livraisons du jour.
+                </p>
+              </div>
+              <Link
+                to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                {...desktopLinkProps}
+              >
+                <ReceiptText className="h-4 w-4" />
+                {historyLinkLabel}
+              </Link>
+            </div>
+          </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div id="sale-form">
@@ -1740,8 +1861,8 @@ const Sales = () => {
               <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
                   <h2 id="history-heading-main" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
-                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
-                      📚
+                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-700 shrink-0" aria-hidden="true">
+                      <ReceiptText className="h-5 w-5" />
                     </span>
                     Historique des Ventes
                   </h2>
@@ -1781,15 +1902,7 @@ const Sales = () => {
                         Actifs
                       </span>
                     )}
-                    <svg
-                      className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`} aria-hidden />
                   </button>
                   <div
                     id="history-filters-main"
@@ -1830,6 +1943,8 @@ const Sales = () => {
                     </div>
                   </div>
                 </div>
+
+                <HistoryStatsSummary />
 
                 <div className="space-y-4">
                   {filteredSales.length === 0 ? (
@@ -1996,18 +2111,19 @@ const Sales = () => {
   /* ========= Rendu principal ========= */
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white px-4 sm:px-5 md:px-6 py-5 sm:py-6 md:py-8 safe-area-padding">
+    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 md:px-6 sm:py-6 safe-area-padding">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         <Toaster position="top-right" />
         {/* En-tête */}
-        <header className="rounded-2xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden">
+        <header className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="p-4 sm:p-5 lg:p-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
-                Tableau de Bord Commercial
+              <p className="text-xs font-medium uppercase text-slate-500">Ventes</p>
+              <h1 className="mt-1 text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-950">
+                Tableau de bord commercial
               </h1>
-              <p className="text-sm sm:text-base text-gray-500 mt-1">
-                Analyses avancées, encaissements et livraisons
+              <p className="text-sm sm:text-base text-slate-600 mt-1">
+                Suivi opérationnel des ventes, encaissements, marges et livraisons.
               </p>
             </div>
 
@@ -2016,32 +2132,32 @@ const Sales = () => {
                 <>
                   <div className="flex flex-wrap gap-2 sm:gap-2" role="tablist" aria-label="Mode d’affichage">
                     {[
-                      { value: "dashboard", label: "Vue Standard", icon: "📋" },
-                      { value: "analytics", label: "Analytics", icon: "📈" },
-                      { value: "profits", label: "Bénéfices", icon: "💰" },
-                      { value: "clients", label: "Clients", icon: "👥" },
-                    ].map(({ value, label, icon }) => (
+                      { value: "dashboard", label: "Vue Standard", icon: ReceiptText },
+                      { value: "analytics", label: "Analytics", icon: BarChart3 },
+                      { value: "profits", label: "Bénéfices", icon: Banknote },
+                      { value: "clients", label: "Clients", icon: Users },
+                    ].map(({ value, label, icon: Icon }) => (
                       <button
                         key={value}
                         role="tab"
                         aria-selected={viewMode === value}
                         onClick={() => setViewMode(value)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                        className={`inline-flex min-h-[40px] items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
                           viewMode === value
-                            ? "bg-blue-600 text-white shadow-sm"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-slate-900 text-white shadow-sm"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         }`}
                       >
-                        <span aria-hidden>{icon}</span>
+                        <Icon className="h-4 w-4" aria-hidden />
                         <span>{label}</span>
                       </button>
                     ))}
                   </div>
                   <button
                     onClick={() => setShowExportModal(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors whitespace-nowrap"
+                    className="inline-flex min-h-[40px] items-center justify-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors whitespace-nowrap"
                   >
-                    <span aria-hidden>📤</span>
+                    <Download className="h-4 w-4" aria-hidden />
                     Exporter
                   </button>
                 </>
@@ -2112,24 +2228,24 @@ const Sales = () => {
                 title="Prévision 30 jours"
                 value={`${Math.round(predictiveData?.next30Days || 0).toLocaleString("fr-FR")} CFA`}
                 change={predictiveData?.growthRate}
-                icon={<span className="inline-block">📊</span>}
-                color="bg-gradient-to-r from-blue-500 to-purple-600"
+                icon={<BarChart3 className="h-5 w-5" />}
+                color="bg-sky-50 text-sky-700"
                 description={`Confiance: ${predictiveData?.confidence || 0}%`}
               />
               <AdvancedMetricCard
                 title="CLV (Valeur Client)"
                 value={`${Math.round(dashboardData.kpis.customerLifetimeValue).toLocaleString("fr-FR")} CFA`}
                 change={12.5}
-                icon={<span className="inline-block">👥</span>}
-                color="bg-gradient-to-r from-emerald-500 to-teal-600"
+                icon={<Users className="h-5 w-5" />}
+                color="bg-emerald-50 text-emerald-700"
                 description="Valeur moyenne par client"
               />
               <AdvancedMetricCard
                 title="Taux de conversion"
                 value={`${dashboardData.kpis.conversionRate.toFixed(1)}%`}
                 change={8.2}
-                icon={<span className="inline-block">✅</span>}
-                color="bg-gradient-to-r from-orange-500 to-red-600"
+                icon={<CheckCircle2 className="h-5 w-5" />}
+                color="bg-amber-50 text-amber-700"
                 description="Clients actifs / prospects"
               />
             </div>
@@ -2195,19 +2311,20 @@ const Sales = () => {
 
         {viewMode === "profits" && (
           <div className="space-y-4 sm:space-y-6">
-            <header className="rounded-2xl border border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <header className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-semibold text-slate-950">
                   Analyse des Bénéfices
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">Bénéfices, marges et produits les plus rentables</p>
+                <p className="text-sm text-slate-500 mt-0.5">Bénéfices, marges et produits les plus rentables</p>
               </div>
               <button
                 type="button"
                 onClick={() => setViewMode("analytics")}
-                className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors"
+                className="self-start sm:self-auto inline-flex min-h-[42px] items-center gap-2 px-4 py-2.5 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
               >
-                ← Retour aux Analytics
+                <ArrowLeft className="h-4 w-4" />
+                Analytics
               </button>
             </header>
             <ProfitAnalysis />
@@ -2269,9 +2386,9 @@ const Sales = () => {
             {isAdmin && <QuickFilterBar />}
 
             {/* Range & actions */}
-            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4">
-              <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 flex items-center gap-2 min-w-0">
-                <span className="bg-indigo-500 p-1 sm:p-1.5 rounded-lg text-white shrink-0" aria-hidden>📈</span>
+            <div className="flex flex-col rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4">
+              <h2 className="text-base sm:text-lg md:text-xl font-semibold text-slate-950 flex items-center gap-2 min-w-0">
+                <span className="bg-slate-100 p-2 rounded-xl text-slate-700 shrink-0" aria-hidden><TrendingUp className="h-4 w-4" /></span>
                 <span className="break-words">Tableau de bord des ventes</span>
               </h2>
 
@@ -2280,10 +2397,10 @@ const Sales = () => {
                   <button
                     key={r}
                     onClick={() => setTimeRange(r)}
-                    className={`px-3 py-1.5 rounded-lg text-sm ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-full text-sm font-medium transition ${
                       timeRange === r
-                        ? "bg-blue-500 text-white"
-                        : "bg-white text-gray-700 border border-gray-300"
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-50 text-slate-700 border border-slate-200 hover:bg-white"
                     }`}
                   >
                     {r === "7days"
@@ -2312,62 +2429,62 @@ const Sales = () => {
                   <StatCard
                     title="Chiffre d'affaires"
                     value={`${dashboardData.totalSales.toLocaleString("fr-FR")} CFA`}
-                    icon="💶"
-                    color="bg-blue-500"
+                    icon={<Wallet className="h-5 w-5" />}
+                    color="bg-sky-50 text-sky-700"
                   />
                   <StatCard
                     title="Nombre de ventes"
                     value={dashboardData.salesCount}
-                    icon="🧾"
-                    color="bg-green-500"
+                    icon={<ReceiptText className="h-5 w-5" />}
+                    color="bg-emerald-50 text-emerald-700"
                   />
                   <StatCard
                     title="Vente moyenne"
                     value={`${dashboardData.averageSale.toLocaleString("fr-FR")} CFA`}
-                    icon="📏"
-                    color="bg-purple-500"
+                    icon={<BarChart3 className="h-5 w-5" />}
+                    color="bg-violet-50 text-violet-700"
                   />
                   <StatCard
                     title="Produits vendus"
                     value={dashboardData.totalProducts}
-                    icon="📦"
-                    color="bg-amber-500"
+                    icon={<Boxes className="h-5 w-5" />}
+                    color="bg-amber-50 text-amber-700"
                   />
                   <StatCard
                     title="Paiements (nb)"
                     value={dashboardData.paymentsSummary.paymentsCount}
-                    icon="💳"
-                    color="bg-indigo-500"
+                    icon={<CreditCard className="h-5 w-5" />}
+                    color="bg-indigo-50 text-indigo-700"
                   />
                   <StatCard
                     title="Total payé"
                     value={`${dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA`}
-                    icon="✅"
-                    color="bg-emerald-500"
+                    icon={<CheckCircle2 className="h-5 w-5" />}
+                    color="bg-emerald-50 text-emerald-700"
                   />
                 </section>
 
                 <section aria-label="Types de commandes et structures de paiement" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                   {highlightedOrderCards.map((card) => {
                     const cardContent = (
-                      <div className="h-full rounded-[calc(1.5rem-1px)] bg-white p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                      <div className={`h-full rounded-[1.5rem] border p-5 ${card.accent}`}>
+                        <p className="text-xs font-semibold uppercase text-slate-500">
                           {card.title}
                         </p>
-                        <div className={`mt-3 text-3xl font-black tabular-nums ${card.text}`}>
+                        <div className={`mt-3 text-3xl font-semibold tabular-nums ${card.text}`}>
                           {card.count}
                         </div>
-                        <p className="mt-1 text-sm text-gray-600">
+                        <p className="mt-1 text-sm text-slate-600">
                           {card.amount.toLocaleString("fr-FR")} CFA
                         </p>
-                        <div className="mt-3 flex items-center justify-between rounded-2xl bg-gray-50 px-3 py-2 text-xs">
-                          <span className="text-gray-500">Part des ventes</span>
+                        <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 text-xs">
+                          <span className="text-slate-500">Part des ventes</span>
                           <span className={`font-semibold ${card.text}`}>
                             {card.percentage.toFixed(1)}%
                           </span>
                         </div>
                         {card.linkTo && (
-                          <div className="mt-3 text-xs font-medium text-indigo-600">
+                          <div className="mt-3 text-xs font-medium text-slate-700">
                             Voir les ventes
                           </div>
                         )}
@@ -2378,7 +2495,7 @@ const Sales = () => {
                       return (
                         <div
                           key={card.key}
-                          className={`rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
+                          className="rounded-[1.5rem] shadow-sm"
                         >
                           {cardContent}
                         </div>
@@ -2389,7 +2506,7 @@ const Sales = () => {
                       <Link
                         key={card.key}
                         to={card.linkTo}
-                        className={`block rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+                        className="block rounded-[1.5rem] shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500"
                         aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
                       >
                         {cardContent}
@@ -2412,7 +2529,7 @@ const Sales = () => {
                       .
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 p-4">
+                      <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
                         <div className="text-sm text-gray-600">Aujourd’hui</div>
                         <div className="text-xl font-semibold">
                           {(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA
@@ -2421,7 +2538,7 @@ const Sales = () => {
                           {dashboardData.dailySummary.paymentsCount || 0} paiements
                         </div>
                       </div>
-                      <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 p-4">
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                         <div className="text-sm text-gray-600">Moyenne / vente</div>
                         <div className="text-xl font-semibold">
                           {dashboardData.salesCount
@@ -2666,8 +2783,8 @@ const Sales = () => {
                 <section className="p-5 sm:p-6" aria-labelledby="history-heading-admin">
                   <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
                     <h2 id="history-heading-admin" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
-                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
-                        📚
+                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-700 shrink-0" aria-hidden="true">
+                        <ReceiptText className="h-5 w-5" />
                       </span>
                       Historique des Ventes
                     </h2>
@@ -2707,15 +2824,7 @@ const Sales = () => {
                           Actifs
                         </span>
                       )}
-                      <svg
-                        className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${historyFiltersOpen ? "rotate-180" : ""}`} aria-hidden />
                     </button>
                     <div
                       id="history-filters-admin"
@@ -2756,6 +2865,8 @@ const Sales = () => {
                       </div>
                     </div>
                   </div>
+
+                  <HistoryStatsSummary />
 
                   {/* Liste des ventes — une carte par ligne (mobile et desktop) */}
                   <div className="grid grid-cols-1 gap-4">

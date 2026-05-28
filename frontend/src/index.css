@@ -4,14 +4,27 @@
 
 /* === Apple Design System (HIG) tokens === */
 :root {
-  --apple-radius: 12px;
-  --apple-radius-lg: 16px;
-  --apple-radius-xl: 20px;
-  --apple-elevation-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.04);
-  --apple-elevation: 0 2px 8px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-  --apple-elevation-md: 0 4px 12px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+  --apple-radius: 16px;
+  --apple-radius-lg: 20px;
+  --apple-radius-xl: 24px;
+  --apple-elevation-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  --apple-elevation: 0 2px 8px rgba(15, 23, 42, 0.06), 0 16px 36px rgba(15, 23, 42, 0.06);
+  --apple-elevation-md: 0 6px 18px rgba(15, 23, 42, 0.07), 0 24px 56px rgba(15, 23, 42, 0.08);
   --apple-transition: cubic-bezier(0.25, 0.1, 0.25, 1);
   --apple-touch: 44px;
+  --app-bg: #f6f5f2;
+  --app-bg-elevated: #fbfaf8;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f7f7f5;
+  --app-border: rgba(15, 23, 42, 0.09);
+  --app-border-strong: rgba(15, 23, 42, 0.14);
+  --app-text: #171717;
+  --app-text-muted: #667085;
+  --app-accent: #111827;
+  --app-accent-soft: #f0efeb;
+  --app-success: #0f766e;
+  --app-danger: #b42318;
+  --app-warning: #b54708;
 }
 
 /* === PWA safe area (viewport-fit=cover in index.html) === */
@@ -32,10 +45,11 @@ html {
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply text-gray-900 antialiased;
+  background: var(--app-bg);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, Segoe UI, Roboto, "Helvetica Neue", sans-serif;
   line-height: 1.47;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   /* Safe area for notched devices (iOS/Android PWA) */
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
@@ -46,6 +60,21 @@ body {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.app-root-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 22rem),
+    var(--app-bg);
+  color: var(--app-text);
+}
+
+.app-page-frame {
+  isolation: isolate;
+}
+
+.app-page-frame > * {
+  letter-spacing: 0;
 }
 
 /* Touch-friendly tap targets (min 44px) */
@@ -196,19 +225,19 @@ button:focus {
 /* Apple-style surface utilities (cards, bars) */
 @layer components {
   .surface-card {
-    background-color: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: var(--app-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: var(--apple-radius-lg);
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--app-border);
     box-shadow: var(--apple-elevation-sm);
     transition: box-shadow 0.25s var(--apple-transition), border-color 0.25s var(--apple-transition);
   }
   .surface-bar {
-    background-color: rgba(255, 255, 255, 0.72);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: rgba(251, 250, 248, 0.92);
+    backdrop-filter: saturate(135%) blur(14px);
+    -webkit-backdrop-filter: saturate(135%) blur(14px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
   }
   /* Apple-style large title (e.g. page headings) */
   .text-large-title {
@@ -216,6 +245,193 @@ button:focus {
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
+  }
+}
+
+/* === Senior product UI baseline: restrained, mobile-first, non-generic === */
+@layer components {
+  .app-page-frame h1 {
+    color: var(--app-text);
+    letter-spacing: 0;
+  }
+
+  .app-page-frame h2,
+  .app-page-frame h3 {
+    letter-spacing: 0;
+  }
+
+  .app-page-frame .bg-white,
+  .app-page-frame .bg-white\/90,
+  .app-page-frame .bg-white\/95 {
+    border-color: var(--app-border);
+  }
+
+  .app-page-frame .shadow-lg,
+  .app-page-frame .shadow-xl,
+  .app-page-frame .shadow-2xl {
+    box-shadow: var(--apple-elevation-md);
+  }
+
+  .app-page-frame .shadow-md {
+    box-shadow: var(--apple-elevation);
+  }
+
+  .app-page-frame .shadow-sm {
+    box-shadow: var(--apple-elevation-sm);
+  }
+
+  .app-page-frame input,
+  .app-page-frame select,
+  .app-page-frame textarea {
+    min-height: 44px;
+    border-color: var(--app-border);
+    background-color: rgba(255, 255, 255, 0.96);
+    color: var(--app-text);
+    letter-spacing: 0;
+    transition: border-color 0.18s var(--apple-transition), box-shadow 0.18s var(--apple-transition), background-color 0.18s var(--apple-transition);
+  }
+
+  .app-page-frame input:hover,
+  .app-page-frame select:hover,
+  .app-page-frame textarea:hover {
+    border-color: var(--app-border-strong);
+  }
+
+  .app-page-frame input::placeholder,
+  .app-page-frame textarea::placeholder {
+    color: #98a2b3;
+  }
+
+  .app-page-frame button,
+  .app-page-frame a {
+    letter-spacing: 0;
+  }
+
+  .app-page-frame button {
+    transition: transform 0.16s var(--apple-transition), background-color 0.18s var(--apple-transition), border-color 0.18s var(--apple-transition), box-shadow 0.18s var(--apple-transition), opacity 0.18s var(--apple-transition);
+  }
+
+  .app-page-frame button:active {
+    transform: scale(0.985);
+  }
+
+  .app-page-frame table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .app-page-frame thead {
+    background: var(--app-surface-muted);
+  }
+
+  .app-page-frame th {
+    color: #667085;
+    font-weight: 650;
+    letter-spacing: 0;
+  }
+
+  .app-page-frame tbody tr {
+    transition: background-color 0.18s var(--apple-transition);
+  }
+
+  .app-page-frame tbody tr:hover {
+    background-color: rgba(247, 247, 245, 0.8);
+  }
+
+  .app-page-frame .rounded-2xl,
+  .app-page-frame .rounded-3xl {
+    border-radius: var(--apple-radius-lg);
+  }
+
+  .app-page-frame .rounded-xl {
+    border-radius: var(--apple-radius);
+  }
+
+  .app-page-frame .bg-gradient-to-r,
+  .app-page-frame .bg-gradient-to-br,
+  .app-page-frame .bg-gradient-to-b {
+    background-image: none;
+  }
+
+  .app-page-frame .from-indigo-500,
+  .app-page-frame .from-indigo-600,
+  .app-page-frame .from-blue-500,
+  .app-page-frame .from-blue-600,
+  .app-page-frame .from-purple-500,
+  .app-page-frame .from-violet-500,
+  .app-page-frame .from-fuchsia-500,
+  .app-page-frame .from-cyan-500,
+  .app-page-frame .from-sky-500,
+  .app-page-frame .from-teal-600,
+  .app-page-frame .from-emerald-500,
+  .app-page-frame .from-emerald-600,
+  .app-page-frame .from-green-500,
+  .app-page-frame .from-green-600,
+  .app-page-frame .from-yellow-400,
+  .app-page-frame .from-yellow-500,
+  .app-page-frame .from-amber-400,
+  .app-page-frame .from-amber-500,
+  .app-page-frame .from-orange-500,
+  .app-page-frame .from-red-500,
+  .app-page-frame .from-rose-500,
+  .app-page-frame .from-slate-900,
+  .app-page-frame .from-slate-950,
+  .app-page-frame .to-purple-600,
+  .app-page-frame .to-indigo-600,
+  .app-page-frame .to-blue-600 {
+    background-color: var(--app-accent);
+  }
+
+  .app-page-frame .from-emerald-500,
+  .app-page-frame .from-emerald-600,
+  .app-page-frame .from-green-500,
+  .app-page-frame .from-green-600,
+  .app-page-frame .from-teal-600 {
+    background-color: #0f766e;
+  }
+
+  .app-page-frame .from-yellow-400,
+  .app-page-frame .from-yellow-500,
+  .app-page-frame .from-amber-400,
+  .app-page-frame .from-amber-500,
+  .app-page-frame .from-orange-500 {
+    background-color: #b54708;
+  }
+
+  .app-page-frame .from-red-500,
+  .app-page-frame .from-rose-500 {
+    background-color: #b42318;
+  }
+
+  .premium-empty-state {
+    border: 1px dashed var(--app-border-strong);
+    border-radius: var(--apple-radius-lg);
+    background: rgba(255, 255, 255, 0.66);
+    padding: 2rem;
+    text-align: center;
+    color: var(--app-text-muted);
+  }
+
+  .skeleton-line {
+    position: relative;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #ecebe7;
+  }
+
+  .skeleton-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.68), transparent);
+    animation: skeleton-shimmer 1.35s infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 

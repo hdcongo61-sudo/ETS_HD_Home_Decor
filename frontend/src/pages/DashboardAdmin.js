@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   BarChart3,
   BellRing,
@@ -11,7 +12,6 @@ import {
   RefreshCw,
   Save,
   Shield,
-  Sparkles,
   Target,
   TrendingUp,
   Users,
@@ -42,11 +42,17 @@ const SALES_RANGE_OPTIONS = [
 ];
 
 const TAB_OPTIONS = [
-  { id: 'overview', label: 'Vue d’ensemble', icon: Sparkles },
+  { id: 'overview', label: 'Vue d’ensemble', icon: Shield },
   { id: 'sales', label: 'Équipe commerciale', icon: BarChart3 },
   { id: 'connections', label: 'Connexions', icon: LogIn },
   { id: 'users', label: 'Utilisateurs', icon: Users },
 ];
+
+const pageMotion = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+};
 
 const formatCFA = (amount) =>
   new Intl.NumberFormat('fr-FR', {
@@ -595,7 +601,7 @@ const DashboardAdmin = () => {
   if (!auth?.isLoading && !auth?.isAdmin) {
     return (
       <div className="flex min-h-full items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md rounded-[2rem] border border-red-100 bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-md rounded-[1.5rem] border border-red-100 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600">
             <Shield className="h-8 w-8" />
           </div>
@@ -623,31 +629,33 @@ const DashboardAdmin = () => {
   }
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.10),_transparent_35%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_50%,#f8fafc_100%)] px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <section className="overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-xl">
-          <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.3fr_0.9fr]">
+    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 text-slate-900 sm:px-6 lg:px-8">
+      <motion.div {...pageMotion} className="mx-auto max-w-7xl space-y-4 sm:space-y-5">
+        <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1.25fr_0.75fr] lg:p-7">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to="/"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Accueil
                 </Link>
-                <span className="inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-emerald-200">
-                  Admin cockpit
+                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                  Admin
                 </span>
               </div>
 
-              <h1 className="mt-5 text-3xl font-semibold sm:text-4xl">Vue d’ensemble administrateur</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                Page repensée pour charger vite, remonter d’abord les signaux utilisateurs, puis enrichir la lecture
-                avec la performance commerciale de l’équipe sans bloquer l’ouverture.
+              <h1 className="mt-5 text-2xl font-semibold text-slate-950 sm:text-3xl">
+                Pilotage utilisateurs
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                Suivi des accès, activité de l’équipe et performance commerciale. Les données secondaires se chargent
+                séparément pour garder l’écran réactif.
               </p>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <HeroMetric
                   title="Utilisateurs"
                   value={stats.totalUsers}
@@ -685,17 +693,17 @@ const DashboardAdmin = () => {
           </div>
         </section>
 
-        <div className="flex flex-col gap-3 rounded-[2rem] bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <nav className="flex gap-2 overflow-x-auto pb-1">
+        <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white/95 p-2.5 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-3">
+          <nav className="flex gap-2 overflow-x-auto pb-1 sm:pb-0" aria-label="Sections du dashboard utilisateurs">
             {TAB_OPTIONS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`inline-flex min-h-[42px] shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition ${
                   activeTab === id
                     ? 'bg-slate-900 text-white'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    : 'border border-transparent bg-transparent text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -709,7 +717,7 @@ const DashboardAdmin = () => {
               <select
                 value={salesRange}
                 onChange={(event) => setSalesRange(event.target.value)}
-                className="min-h-[44px] rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 outline-none focus:border-slate-400"
+                className="min-h-[42px] flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-400 sm:flex-none"
               >
                 {SALES_RANGE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -722,7 +730,7 @@ const DashboardAdmin = () => {
             <button
               type="button"
               onClick={handleRefresh}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300"
+              className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
               <RefreshCw className="h-4 w-4" />
               Actualiser
@@ -731,10 +739,10 @@ const DashboardAdmin = () => {
         </div>
 
         {error ? (
-          <div className="rounded-[2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         ) : null}
         {adminMessage ? (
-          <div className="rounded-[2rem] border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+          <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
             {adminMessage}
           </div>
         ) : null}
@@ -773,7 +781,7 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h2 className="text-xl font-semibold text-slate-900">Synthèse admin</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Signaux à surveiller pour piloter l’équipe et anticiper les actions administratives.
@@ -815,7 +823,7 @@ const DashboardAdmin = () => {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h2 className="text-xl font-semibold text-slate-900">Pouls commercial</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Chargement séparé pour garder l’ouverture de page rapide.
@@ -865,7 +873,7 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900">Top vendeurs</h2>
@@ -900,7 +908,7 @@ const DashboardAdmin = () => {
                 )}
               </div>
 
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h2 className="text-xl font-semibold text-slate-900">Nouveaux utilisateurs</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Liste courte pour voir rapidement les comptes créés récemment.
@@ -909,7 +917,7 @@ const DashboardAdmin = () => {
                 <div className="mt-4 space-y-3">
                   {stats.recentUsers.length ? (
                     stats.recentUsers.map((user) => (
-                      <div key={user._id} className="flex items-start justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                      <div key={user._id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <p className="font-medium text-slate-900">{user.name}</p>
                           <p className="truncate text-sm text-slate-500">{user.email}</p>
@@ -917,7 +925,7 @@ const DashboardAdmin = () => {
                             Créé le {formatDate(user.createdAt)} • Dernier accès {formatDate(user.lastLogin, true)}
                           </p>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
                           <span className={`rounded-full px-3 py-1 text-xs font-medium ${user.isAdmin ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             {user.isAdmin ? 'Admin' : 'Utilisateur'}
                           </span>
@@ -937,7 +945,7 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl bg-slate-900 p-3 text-white">
                     <Target className="h-5 w-5" />
@@ -1037,7 +1045,7 @@ const DashboardAdmin = () => {
                 )}
               </div>
 
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
                     <Lock className="h-5 w-5" />
@@ -1069,7 +1077,7 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
                     <Wallet className="h-5 w-5" />
@@ -1110,7 +1118,7 @@ const DashboardAdmin = () => {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
                     <BellRing className="h-5 w-5" />
@@ -1268,7 +1276,7 @@ const DashboardAdmin = () => {
             </div>
 
             {salesError ? (
-              <div className="rounded-[2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{salesError}</div>
+              <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{salesError}</div>
             ) : salesLoading ? (
               <div className="flex justify-center py-16">
                 <AppLoader fullScreen={false} text="Chargement commercial..." />
@@ -1276,7 +1284,7 @@ const DashboardAdmin = () => {
             ) : (
               <>
                 <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                  <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h2 className="text-xl font-semibold text-slate-900">Classement vendeurs</h2>
                     <div className="mt-4 h-96">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1322,7 +1330,7 @@ const DashboardAdmin = () => {
                   </div>
                 </div>
 
-                <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+                <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                   <h2 className="text-xl font-semibold text-slate-900">Détail équipe</h2>
                   <div className="mt-4 space-y-3 lg:hidden">
                     {salesSummary.ranking.map((entry) => (
@@ -1354,13 +1362,13 @@ const DashboardAdmin = () => {
                     <table className="min-w-full">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Vendeur</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ventes</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">CA</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Bénéfice</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Encaissement</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Solde</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Panier moyen</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Vendeur</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Ventes</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">CA</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Bénéfice</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Encaissement</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Solde</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Panier moyen</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -1400,50 +1408,50 @@ const DashboardAdmin = () => {
             <UserManagement />
           </Suspense>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
 
 const HeroMetric = ({ title, value, helper }) => (
-  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-    <p className="text-sm text-slate-300">{title}</p>
-    <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-    <p className="mt-1 text-sm text-slate-300">{helper}</p>
+  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <p className="text-sm text-slate-500">{title}</p>
+    <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
+    <p className="mt-1 text-sm text-slate-500">{helper}</p>
   </div>
 );
 
 const PulseCard = ({ icon: Icon, title, value, helper, tone = 'teal' }) => {
   const toneClass = {
-    teal: 'from-teal-500/30 to-emerald-500/10',
-    amber: 'from-amber-400/30 to-orange-500/10',
+    teal: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+    amber: 'border-amber-200 bg-amber-50 text-amber-950',
   }[tone];
 
   return (
-    <div className={`rounded-[1.75rem] border border-white/10 bg-gradient-to-br ${toneClass} p-4`}>
+    <div className={`rounded-[1.5rem] border ${toneClass} p-4`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-300">{title}</p>
-          <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+          <p className="text-sm opacity-75">{title}</p>
+          <p className="mt-2 text-2xl font-semibold">{value}</p>
         </div>
-        <div className="rounded-2xl bg-white/10 p-3 text-white">
+        <div className="rounded-2xl bg-white/70 p-3">
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-3 text-sm text-slate-300">{helper}</p>
+      <p className="mt-3 text-sm opacity-75">{helper}</p>
     </div>
   );
 };
 
 const OverviewCard = ({ icon: Icon, title, value, helper, accent }) => (
-  <article className="rounded-[1.75rem] bg-white p-4 shadow-sm">
+  <article className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
     <div className="flex items-start gap-4">
-      <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+      <div className="shrink-0 rounded-2xl bg-slate-100 p-3 text-slate-700">
         <Icon className="h-5 w-5" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-sm text-slate-500">{title}</p>
-        <p className={`mt-2 text-2xl font-semibold ${accent}`}>{value}</p>
+        <p className={`mt-2 break-words text-2xl font-semibold ${accent}`}>{value}</p>
         <p className="mt-1 text-sm text-slate-500">{helper}</p>
       </div>
     </div>
@@ -1460,23 +1468,23 @@ const SignalCard = ({ title, value, helper, tone = 'slate' }) => {
   }[tone];
 
   return (
-    <div className={`rounded-[1.5rem] p-4 ${toneClasses}`}>
+    <div className={`rounded-[1.35rem] p-4 ${toneClasses}`}>
       <p className="text-sm opacity-75">{title}</p>
-      <p className="mt-2 text-lg font-semibold">{value}</p>
+      <p className="mt-2 break-words text-lg font-semibold">{value}</p>
       <p className="mt-1 text-sm opacity-80">{helper}</p>
     </div>
   );
 };
 
 const MiniMetric = ({ label, value }) => (
-  <div className="rounded-2xl bg-white p-3">
-    <p className="text-xs uppercase tracking-wider text-slate-400">{label}</p>
-    <p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
+  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <p className="text-xs uppercase text-slate-400">{label}</p>
+    <p className="mt-1 break-words text-sm font-medium text-slate-900">{value}</p>
   </div>
 );
 
 const EmptyPanel = ({ text }) => (
-  <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+  <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500 sm:p-8">
     {text}
   </div>
 );

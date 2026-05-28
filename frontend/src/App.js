@@ -22,8 +22,6 @@ const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
 const EmployeeDetails = lazy(() => import('./components/EmployeeDetail'));
 const PaySlipList = lazy(() => import('./components/PaySlipList'));
 const PaySlipForm = lazy(() => import('./components/PaySlipForm'));
-const AdvanceList = lazy(() => import('./components/AdvanceList'));
-const AdvanceForm = lazy(() => import('./components/AdvanceForm'));
 const PaySlipPrint = lazy(() => import('./components/PaySlipPrint'));
 const PaySlipFormEdit = lazy(() => import('./components/PaySlipFormEdit'));
 const NeverSoldProducts = lazy(() => import('./pages/NeverSoldProducts'));
@@ -60,6 +58,7 @@ const EditSalePage = lazy(() => import('./pages/EditSalePage'));
 const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
 const Settings = lazy(() => import('./pages/Settings'));
+const AdminRequests = lazy(() => import('./pages/AdminRequests'));
 
 function App() {
   return (
@@ -68,7 +67,7 @@ function App() {
         <AuthProvider>
           <Router>
             <ScrollToTop />
-            <div className="min-h-screen flex flex-col bg-[#f2f2f7]">
+            <div className="app-root-shell min-h-screen flex flex-col">
               <Navigation />
               <OfflineIndicator />
               <Suspense fallback={<AppLoader />}>
@@ -209,7 +208,7 @@ function App() {
                 <Route
                   path="/products/:id/:slug?"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute>
                       <ProductDetails />
                     </ProtectedRoute>
                   }
@@ -335,6 +334,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/admin-requests"
+                  element={
+                    <ProtectedRoute>
+                      <AdminRequests />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/profile"
                   element={
                     <ProtectedRoute>
@@ -387,22 +394,6 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <PaySlipForm />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/employees/:id/:slug?/advances"
-                  element={
-                    <ProtectedRoute>
-                      <AdvanceList />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/employees/:id/:slug?/advances/new"
-                  element={
-                    <ProtectedRoute>
-                      <AdvanceForm />
                     </ProtectedRoute>
                   }
                 />

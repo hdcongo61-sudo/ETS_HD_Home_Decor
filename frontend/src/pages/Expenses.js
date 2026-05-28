@@ -28,6 +28,13 @@ const getCategoryLabel = (category) => legacyCategoryLabels[category] || categor
 const getCategoryColor = (category) => categoryPalette[categoryIndex(category)];
 const getCategoryDotClass = (category) => categoryDotClasses[categoryIndex(category)];
 const getCategoryBadgeClass = (category) => categoryBadgeClasses[categoryIndex(category)] || 'bg-gray-100 text-gray-800';
+const formatSalaryPeriod = (expense) => {
+  if (!expense?.salaryMonth || !expense?.salaryYear) return '';
+  return new Date(expense.salaryYear, expense.salaryMonth - 1, 1).toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric'
+  });
+};
 
 const Expenses = () => {
   const tableRef = useRef(null);
@@ -96,7 +103,7 @@ const Expenses = () => {
     if (startDate) startDate.setHours(0, 0, 0, 0);
     if (endDate) endDate.setHours(23, 59, 59, 999);
     const search = filter.search.trim().toLowerCase();
-    const searchMatch = !search || [expense.description, expense.paymentMethod]
+    const searchMatch = !search || [expense.description, expense.paymentMethod, expense.employee?.name, expense.employee?.position]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(search));
     const categoryMatch = !filter.category || expense.category === filter.category;
@@ -478,6 +485,12 @@ const Expenses = () => {
                               {expense.updatedBy && (
                                 <div>Modifié par {formatUser(expense.updatedBy)}{formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}</div>
                               )}
+                            </div>
+                          )}
+                          {expense.employee && (
+                            <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-800">
+                              <span className="font-semibold">Salaire :</span> {expense.employee.name}
+                              {formatSalaryPeriod(expense) ? ` · ${formatSalaryPeriod(expense)}` : ''}
                             </div>
                           )}
                         </td>

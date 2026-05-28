@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion } from 'framer-motion';
 import { productPath } from '../utils/paths';
+import { ArrowLeft, Medal, TrendingUp, Trophy, Wallet } from 'lucide-react';
 
 const TopSellingProducts = () => {
   const [data, setData] = useState([]);
@@ -40,30 +41,33 @@ const TopSellingProducts = () => {
 
   return (
     <motion.div
-      className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-3xl p-6 shadow-lg"
+      className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="flex justify-between items-center mb-8">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Produits les Plus Vendus</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-xs font-medium uppercase text-slate-500">Performance produits</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Produits les plus vendus</h1>
+          <p className="text-slate-500 mt-1">
             Classement basé sur les ventes récentes et bénéfices estimés.
           </p>
         </div>
         <button
           onClick={() => navigate('/product-dashboard')}
-          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition"
+          className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
-          ⬅ Retour au Tableau de Bord
+          <ArrowLeft className="h-4 w-4" />
+          Dashboard
         </button>
       </div>
 
       {/* Tableau principal */}
-      <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+      <div className="hidden md:block overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
             <tr>
               {[
                 'Produit',
@@ -77,32 +81,32 @@ const TopSellingProducts = () => {
               ].map((header) => (
                 <th
                   key={header}
-                  className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider"
+                  className="px-6 py-3 text-left font-medium text-slate-500 uppercase"
                 >
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-slate-100">
             {data.map((p, index) => (
               <tr
                 key={p._id || index}
-                className="hover:bg-indigo-50 transition cursor-pointer"
+                className="hover:bg-slate-50 transition cursor-pointer"
                 onClick={() => navigate(productPath(p))}
               >
-                <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
-                <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
-                <td className="px-6 py-4 text-gray-600">{p.supplierName || '—'}</td>
-                <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
-                <td className="px-6 py-4 text-gray-700">{p.sold?.toLocaleString() || 0}</td>
-                <td className="px-6 py-4 text-gray-800 font-semibold">
+                <td className="px-6 py-4 font-semibold text-slate-950">{p.name}</td>
+                <td className="px-6 py-4 text-slate-600">{p.category || '—'}</td>
+                <td className="px-6 py-4 text-slate-600">{p.supplierName || '—'}</td>
+                <td className="px-6 py-4 text-slate-700">{p.price?.toLocaleString() || '—'}</td>
+                <td className="px-6 py-4 text-slate-700">{p.sold?.toLocaleString() || 0}</td>
+                <td className="px-6 py-4 text-slate-950 font-semibold">
                   {p.revenue?.toLocaleString() || '—'} CFA
                 </td>
-                <td className="px-6 py-4 text-green-600 font-semibold">
+                <td className="px-6 py-4 text-emerald-700 font-semibold">
                   {p.profit?.toLocaleString() || '—'} CFA
                 </td>
-                <td className="px-6 py-4 text-indigo-600 font-semibold">
+                <td className="px-6 py-4 text-slate-700 font-semibold">
                   {p.margin ? p.margin.toFixed(1) + '%' : '—'}
                 </td>
               </tr>
@@ -116,27 +120,27 @@ const TopSellingProducts = () => {
         {data.map((p, index) => (
           <div
             key={p._id || index}
-            className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
             onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-base font-semibold text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-500">{p.category || '—'}</p>
+                <p className="text-base font-semibold text-slate-950">{p.name}</p>
+                <p className="text-xs text-slate-500">{p.category || '—'}</p>
               </div>
-              <span className="text-xs text-gray-500">#{index + 1}</span>
+              <span className="text-xs text-slate-500">#{index + 1}</span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Fournisseur : <span className="text-gray-800">{p.supplierName || '—'}</span>
+            <p className="text-sm text-slate-500 mt-1">
+              Fournisseur : <span className="text-slate-800">{p.supplierName || '—'}</span>
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm mt-3">
               <div>
-                <p className="text-xs text-gray-500 uppercase">Unités vendues</p>
-                <p className="font-semibold text-gray-900">{p.sold?.toLocaleString() || 0}</p>
+                <p className="text-xs text-slate-500 uppercase">Unités vendues</p>
+                <p className="font-semibold text-slate-950">{p.sold?.toLocaleString() || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase">Revenu</p>
-                <p className="font-semibold text-green-600">{p.revenue?.toLocaleString() || '—'} CFA</p>
+                <p className="text-xs text-slate-500 uppercase">Revenu</p>
+                <p className="font-semibold text-emerald-700">{p.revenue?.toLocaleString() || '—'} CFA</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Profit</p>
@@ -158,14 +162,14 @@ const TopSellingProducts = () => {
         <StatCard
           title="Revenu Total"
           value={`${data.reduce((sum, p) => sum + (p.revenue || 0), 0).toLocaleString()} CFA`}
-          color="purple"
-          icon="💰"
+          tone="sky"
+          icon={Wallet}
         />
         <StatCard
           title="Profit Total"
           value={`${data.reduce((sum, p) => sum + (p.profit || 0), 0).toLocaleString()} CFA`}
-          color="green"
-          icon="📈"
+          tone="emerald"
+          icon={TrendingUp}
         />
         <StatCard
           title="Marge Moyenne"
@@ -176,32 +180,35 @@ const TopSellingProducts = () => {
                 ).toFixed(1) + '%'
               : '0%'
           }
-          color="yellow"
-          icon="🏆"
+          tone="amber"
+          icon={Trophy}
         />
+      </div>
       </div>
     </motion.div>
   );
 };
 
 // ---- Composant de carte statistique ----
-const StatCard = ({ title, value, color, icon }) => {
-  const colorMap = {
-    purple: 'from-purple-500 to-indigo-500',
-    green: 'from-emerald-500 to-green-500',
-    yellow: 'from-yellow-400 to-orange-400',
-  };
+const toneMap = {
+  sky: 'border-sky-200 bg-sky-50 text-sky-700',
+  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  amber: 'border-amber-200 bg-amber-50 text-amber-700',
+};
+const StatCard = ({ title, value, tone = 'sky', icon: Icon = Medal }) => {
   return (
     <motion.div
-      className={`bg-gradient-to-r ${colorMap[color]} text-white p-5 rounded-2xl shadow-md flex justify-between items-center`}
-      whileHover={{ scale: 1.03 }}
+      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
     >
       <div>
-        <p className="text-sm opacity-90">{title}</p>
-        <h3 className="text-2xl font-bold mt-1">{value}</h3>
+        <p className="text-sm text-slate-500">{title}</p>
+        <h3 className="text-2xl font-semibold mt-1 text-slate-950">{value}</h3>
       </div>
-      <div className="text-3xl opacity-90">{icon}</div>
+      <div className={`rounded-2xl border p-3 ${toneMap[tone] || toneMap.sky}`}>
+        <Icon className="h-5 w-5" />
+      </div>
     </motion.div>
   );
 };

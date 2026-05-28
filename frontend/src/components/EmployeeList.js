@@ -7,7 +7,6 @@ import {
   Edit3,
   FileText,
   Filter,
-  HandCoins,
   Mail,
   Plus,
   Search,
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import {
-  employeeAdvancesPath,
   employeeBasePath,
   employeeEditPath,
   employeePayrollPath,
@@ -338,13 +336,6 @@ const EmployeeList = () => {
                         <FileText className="w-4 h-4" />
                       </Link>
                       <Link
-                        to={employeeAdvancesPath(employee)}
-                        className="text-gray-600 hover:text-indigo-700 p-2 rounded-lg hover:bg-indigo-50 inline-flex items-center"
-                        title="Avances"
-                      >
-                        <HandCoins className="w-4 h-4" />
-                      </Link>
-                      <Link
                         to={employeeEditPath(employee)}
                         className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 inline-flex items-center"
                         title="Modifier"
@@ -447,13 +438,6 @@ const EmployeeList = () => {
                 >
                   <FileText className="w-4 h-4" />
                   Paie
-                </Link>
-                <Link
-                  to={employeeAdvancesPath(employee)}
-                  className="text-sm text-gray-600 hover:text-indigo-700 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-indigo-50"
-                >
-                  <HandCoins className="w-4 h-4" />
-                  Avances
                 </Link>
                 <a
                   href={`mailto:${employee.email}`}

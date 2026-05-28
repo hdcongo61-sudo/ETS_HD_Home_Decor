@@ -18,25 +18,25 @@ const BottomTabBar = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden surface-bar border-t border-gray-200/50 pt-2 touch-manipulation"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none touch-manipulation"
       style={{
         paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
-        paddingLeft: "env(safe-area-inset-left, 0px)",
-        paddingRight: "env(safe-area-inset-right, 0px)",
+        paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
       }}
       aria-label="Navigation principale"
     >
-      <div className="grid grid-cols-4 gap-0 h-14 min-h-[56px]">
+      <div className="pointer-events-auto mx-auto grid h-16 min-h-[64px] max-w-md grid-cols-4 gap-1 rounded-[22px] border border-gray-200/80 bg-white/95 p-1.5 shadow-[0_14px_42px_rgba(15,23,42,0.14)] backdrop-blur-xl">
         {tabs.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path || location.pathname.startsWith(path + "/");
           return (
             <Link
               key={path}
               to={path}
-              className={`flex flex-col items-center justify-center gap-0.5 min-w-0 min-h-[48px] px-2 py-2 transition-colors duration-apple ease-apple rounded-xl active:bg-gray-100/80 ${
+              className={`relative flex min-w-0 min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-2 py-2 transition-all duration-200 ease-apple active:scale-[0.98] ${
                 isActive
-                  ? "text-[#007AFF] font-medium"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50/80"
+                  ? "bg-gray-950 text-white shadow-sm"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
               }`}
               aria-current={isActive ? "page" : undefined}
             >

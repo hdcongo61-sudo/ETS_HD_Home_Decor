@@ -25,6 +25,28 @@ const legacyCategoryLabels = {
   other: 'Autre',
 };
 
+const normalizeText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+const isSalaryCategory = (category) => {
+  const normalized = normalizeText(category);
+  return normalized === 'salaries' || normalized === 'salary' || normalized.includes('salaire');
+};
+
+const toMonthValue = (month, year, fallbackDate) => {
+  if (month && year) {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+
+  const date = fallbackDate ? new Date(fallbackDate) : new Date();
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
 const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false }) => {
   const { auth } = useContext(AuthContext);
   const manualExpenseDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled);
@@ -33,11 +55,14 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     description: '',
     amount: '',
     category: '',
-    paymentMethod: 'cash'
+    paymentMethod: 'cash',
+    employee: '',
+    salaryPeriod: toMonthValue()
   });
 
   const [errors, setErrors] = useState({});
   const [expenseCategories, setExpenseCategories] = useState([]);
+  const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
     const fetchExpenseCategories = async () => {
@@ -53,13 +78,28 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   }, []);
 
   useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const { data } = await api.get('/employees');
+        setEmployees(Array.isArray(data) ? data : []);
+      } catch {
+        setEmployees([]);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  useEffect(() => {
     if (initialData) {
       setFormData({
         date: toDateTimeLocalValue(initialData.date),
         description: initialData.description,
         amount: initialData.amount,
         category: initialData.category,
-        paymentMethod: initialData.paymentMethod
+        paymentMethod: initialData.paymentMethod,
+        employee: initialData.employee?._id || initialData.employee || '',
+        salaryPeriod: toMonthValue(initialData.salaryMonth, initialData.salaryYear, initialData.date)
       });
     } else {
       setFormData({
@@ -67,7 +107,9 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         description: '',
         amount: '',
         category: '',
-        paymentMethod: 'cash'
+        paymentMethod: 'cash',
+        employee: '',
+        salaryPeriod: toMonthValue()
       });
     }
   }, [initialData]);
@@ -76,7 +118,8 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || '' : value
+      [name]: name === 'amount' ? parseFloat(value) || '' : value,
+      ...(name === 'category' && !isSalaryCategory(value) ? { employee: '' } : {})
     }));
   };
 
@@ -85,11 +128,16 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length === 0) {
+      const [salaryYear, salaryMonth] = String(formData.salaryPeriod || '').split('-').map(Number);
       const sanitizedData = {
         ...formData,
         date: manualExpenseDateEnabled ? formData.date : undefined,
-        description: DOMPurify.sanitize(formData.description)
+        description: DOMPurify.sanitize(formData.description),
+        employee: isSalaryCategory(formData.category) ? formData.employee : undefined,
+        salaryMonth: isSalaryCategory(formData.category) ? salaryMonth : undefined,
+        salaryYear: isSalaryCategory(formData.category) ? salaryYear : undefined
       };
+      delete sanitizedData.salaryPeriod;
       onSubmit(sanitizedData);
       if (!initialData) { // Seulement si c'est une nouvelle dépense
         setFormData({
@@ -97,7 +145,9 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           amount: '',
           category: '',
           date: toDateTimeLocalValue(new Date()),
-          paymentMethod: 'cash'
+          paymentMethod: 'cash',
+          employee: '',
+          salaryPeriod: toMonthValue()
         });
       }
     } else {
@@ -111,11 +161,17 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     if (!formData.description.trim()) errors.description = 'La description est requise';
     if (!formData.amount || formData.amount <= 0) errors.amount = 'Montant invalide';
     if (!formData.category) errors.category = 'Catégorie requise';
+    if (isSalaryCategory(formData.category)) {
+      if (!formData.employee) errors.employee = 'Sélectionnez un employé';
+      if (!formData.salaryPeriod) errors.salaryPeriod = 'Sélectionnez le mois concerné';
+    }
     return errors;
   };
 
   const categoryOptions = expenseCategories.map((category) => category.name).filter(Boolean);
   const selectedCategory = formData.category;
+  const salaryCategorySelected = isSalaryCategory(selectedCategory);
+  const selectedEmployee = employees.find((employee) => employee._id === formData.employee);
   if (selectedCategory && !categoryOptions.includes(selectedCategory)) {
     categoryOptions.push(selectedCategory);
   }
@@ -233,6 +289,69 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         </div>
       </div>
 
+      {salaryCategorySelected && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900">Paiement de salaire</h3>
+            <p className="text-xs text-blue-700 mt-1">
+              Le montant sera déduit du salaire mensuel restant de l'employé pour le mois choisi.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Employé <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="employee"
+                value={formData.employee}
+                onChange={handleChange}
+                className={`w-full p-2 border rounded-lg bg-white ${errors.employee ? 'border-red-500' : 'border-gray-200'
+                  } focus:ring-2 focus:ring-blue-500`}
+                required
+              >
+                <option value="">Sélectionner un employé</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.name} {employee.position ? `- ${employee.position}` : ''}
+                  </option>
+                ))}
+              </select>
+              {employees.length === 0 && (
+                <p className="text-xs text-amber-600">Aucun employé disponible.</p>
+              )}
+              {errors.employee && <p className="text-red-500 text-sm">{errors.employee}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Mois du salaire <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="month"
+                name="salaryPeriod"
+                value={formData.salaryPeriod}
+                onChange={handleChange}
+                className={`w-full p-2 border rounded-lg bg-white ${errors.salaryPeriod ? 'border-red-500' : 'border-gray-200'
+                  } focus:ring-2 focus:ring-blue-500`}
+                required
+              />
+              {errors.salaryPeriod && <p className="text-red-500 text-sm">{errors.salaryPeriod}</p>}
+            </div>
+          </div>
+
+          {selectedEmployee && (
+            <div className="rounded-xl bg-white/80 p-3 text-sm text-gray-700 border border-blue-100">
+              Salaire mensuel :
+              <span className="ml-1 font-semibold text-gray-900">
+                {Number(selectedEmployee.salary || 0).toLocaleString('fr-FR')} CFA
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       <FormActionsSticky>
         {initialData && (
           <button
@@ -274,7 +393,18 @@ ExpenseForm.propTypes = {
     description: PropTypes.string,
     amount: PropTypes.number,
     category: PropTypes.string,
-    paymentMethod: PropTypes.string
+    paymentMethod: PropTypes.string,
+    employee: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape({
+        _id: PropTypes.string,
+        name: PropTypes.string,
+        position: PropTypes.string,
+        salary: PropTypes.number
+      })
+    ]),
+    salaryMonth: PropTypes.number,
+    salaryYear: PropTypes.number
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func,

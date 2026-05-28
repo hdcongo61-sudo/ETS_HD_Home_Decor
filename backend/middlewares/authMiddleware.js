@@ -62,4 +62,16 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+const adminOrPermission = (permission) => (req, res, next) => {
+  if (
+    req.user &&
+    (req.user.isAdmin || (Array.isArray(req.user.permissions) && req.user.permissions.includes(permission)))
+  ) {
+    next();
+  } else {
+    res.status(401);
+    throw new Error('Not authorized');
+  }
+};
+
+module.exports = { protect, admin, adminOrPermission };

@@ -8,6 +8,15 @@ import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 import AppLoader from '../components/AppLoader';
+import {
+  ArrowRight,
+  Clock3,
+  Repeat2,
+  ShoppingBag,
+  Trophy,
+  Users,
+  Wallet,
+} from 'lucide-react';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -87,7 +96,7 @@ const ClientDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex h-screen items-center justify-center bg-[#f6f7f9]">
         <AppLoader fullScreen={false} text="Chargement du tableau de bord client…" />
       </div>
     );
@@ -95,9 +104,9 @@ const ClientDashboard = () => {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto py-12 text-center">
-        <p className="text-red-600 font-semibold mb-4">{error}</p>
-        <Link to="/clients" className="text-blue-600 hover:underline">← Retour à la liste des clients</Link>
+      <div className="mx-auto max-w-4xl py-12 text-center">
+        <p className="mb-4 font-semibold text-rose-700">{error}</p>
+        <Link to="/clients" className="text-slate-700 hover:text-slate-950">Retour à la liste des clients</Link>
       </div>
     );
   }
@@ -105,20 +114,22 @@ const ClientDashboard = () => {
   const topClients = stats?.topClients || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
+      <div className="mx-auto max-w-7xl space-y-5">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-3xl text-white shadow-lg flex justify-between items-center">
+        <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <h1 className="text-3xl font-semibold">Tableau de Bord des Clients</h1>
-            <p className="text-white/80 mt-1">Aperçu global de vos clients et de leurs comportements</p>
+            <p className="text-xs font-medium uppercase text-slate-500">Clients</p>
+            <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Tableau de bord clients</h1>
+            <p className="mt-1 text-sm text-slate-600">Aperçu global des clients et de leurs comportements.</p>
           </div>
           <Link
             to="/clients"
-            className="px-5 py-2 bg-white text-blue-700 font-medium rounded-xl shadow hover:scale-105 transition-transform"
+            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Voir la liste complète →
+            Liste complète
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -127,20 +138,25 @@ const ClientDashboard = () => {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: 'Total Clients', value: stats.totalClients, icon: '👥' },
-              { label: 'Achats Cumulés', value: formatCurrency(stats.totalSpent), icon: '💰' },
-              { label: 'Dépense Moyenne', value: formatCurrency(stats.avgSpent), icon: '📊' },
-              { label: 'Rétention Clients', value: `${enhancedMetrics.retentionRate.toFixed(1)}%`, icon: '🔁' },
-              { label: 'Fréquence Moy. Achats', value: `${enhancedMetrics.avgPurchaseFreq.toFixed(1)} jrs`, icon: '⏱️' },
-            ].map((item, idx) => (
+              { label: 'Achats Cumulés', value: formatCurrency(stats.totalSpent), icon: Wallet },
+              { label: 'Dépense Moyenne', value: formatCurrency(stats.avgSpent), icon: ShoppingBag },
+              { label: 'Rétention Clients', value: `${enhancedMetrics.retentionRate.toFixed(1)}%`, icon: Repeat2 },
+              { label: 'Fréquence Moy. Achats', value: `${enhancedMetrics.avgPurchaseFreq.toFixed(1)} jrs`, icon: Clock3 },
+            ].map((item, idx) => {
+              const Icon = typeof item.icon === 'string' ? Users : item.icon;
+              return (
               <div
                 key={idx}
-                className="bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl p-4 text-center shadow hover:shadow-lg transition-all"
+                className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
               >
-                <div className="text-2xl mb-1">{item.icon}</div>
-                <p className="text-sm text-gray-500">{item.label}</p>
-                <h3 className="text-xl font-semibold text-gray-900 mt-1">{item.value}</h3>
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-slate-500">{item.label}</p>
+                <h3 className="mt-1 text-xl font-semibold text-slate-950">{item.value}</h3>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -148,8 +164,8 @@ const ClientDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Pie Chart */}
           {topClients.length > 0 && (
-            <div className="bg-white p-6 rounded-3xl shadow border">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Clients (dépenses)</h2>
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <h2 className="mb-4 text-lg font-semibold text-slate-950">Top 5 Clients (dépenses)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -171,15 +187,15 @@ const ClientDashboard = () => {
           )}
 
           {/* Line Chart - Monthly Signups */}
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Nouveaux Clients par Mois</h2>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-950">Nouveaux Clients par Mois</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={enhancedMetrics.monthlySignups}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2} />
+                <Line type="monotone" dataKey="count" stroke="#0f172a" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -188,49 +204,50 @@ const ClientDashboard = () => {
         {/* Loyalty & Inactivity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Loyalty */}
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Clients Fidèles (nombre d’achats)</h2>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-950">Top Clients Fidèles (nombre d’achats)</h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={enhancedMetrics.loyalClients}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="purchaseCount" fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="purchaseCount" fill="#047857" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Inactive */}
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Clients Inactifs (≥ 60 jours)</h2>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-950">Clients Inactifs (≥ 60 jours)</h2>
             {enhancedMetrics.inactiveClients.length > 0 ? (
-              <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+              <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto">
                 {enhancedMetrics.inactiveClients.map((c) => (
-                  <li key={c._id} className="py-3 flex justify-between items-center">
-                    <span className="text-gray-800 font-medium">{c.name}</span>
-                    <span className="text-sm text-gray-500">
+                  <li key={c._id} className="flex items-center justify-between py-3">
+                    <span className="font-medium text-slate-800">{c.name}</span>
+                    <span className="text-sm text-slate-500">
                       Dernier achat: {c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('fr-FR') : '—'}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-500 text-center py-6">Aucun client inactif 🎉</p>
+              <p className="py-6 text-center text-slate-500">Aucun client inactif</p>
             )}
           </div>
         </div>
 
         {/* Top Clients Table */}
-        <div className="bg-white p-6 rounded-3xl shadow border">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            🥇 Top Clients par Dépenses
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-950">
+            <Trophy className="h-5 w-5 text-amber-600" />
+            Top Clients par Dépenses
           </h2>
           {topClients.length > 0 ? (
             <div className="overflow-x-auto">
               <table ref={tableRef} className="responsive-table w-full text-sm border-separate border-spacing-y-2 min-w-[640px]">
-                <thead className="bg-gray-50">
-                  <tr className="text-left text-gray-700">
+                <thead className="bg-slate-50">
+                  <tr className="text-left text-slate-700">
                     <th className="px-4 py-2 rounded-l-lg">#</th>
                     <th className="px-4 py-2">Nom</th>
                     <th className="px-4 py-2">Total Dépensé</th>
@@ -241,19 +258,19 @@ const ClientDashboard = () => {
                   {topClients.map((client, index) => (
                     <tr
                       key={client._id}
-                      className="transition hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer"
+                      className="cursor-pointer transition hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 font-semibold text-blue-600">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
-                      <td className="px-4 py-3 text-gray-700 font-semibold">
+                      <td className="px-4 py-3 font-semibold text-slate-600">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-slate-950">{client.name}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-700">
                         {formatCurrency(client.totalSpent)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link
                           to={clientPath(client)}
-                          className="text-blue-600 hover:text-indigo-700 font-medium hover:underline"
+                          className="inline-flex items-center justify-end gap-1 font-medium text-slate-700 hover:text-slate-950"
                         >
-                          Voir Profil →
+                          Voir profil <ArrowRight className="h-4 w-4" />
                         </Link>
                       </td>
                     </tr>
@@ -262,7 +279,7 @@ const ClientDashboard = () => {
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">Pas encore assez de données clients.</p>
+            <p className="py-8 text-center text-slate-500">Pas encore assez de données clients.</p>
           )}
         </div>
       </div>

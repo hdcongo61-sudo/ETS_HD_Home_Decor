@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 
 /**
  * AppLayout – Wrapper for consistent mobile/desktop SaaS layout.
@@ -8,12 +10,18 @@ import React from 'react';
  * - Consistent vertical spacing
  */
 const AppLayout = ({ children, className = '', fullWidth = false }) => {
+  const location = useLocation();
+
   return (
-    <div
+    <motion.div
+      key={location.pathname}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className={`
-        w-full mx-auto
+        app-page-frame w-full mx-auto
         px-4 sm:px-5 md:px-6 lg:px-8
-        py-5 sm:py-6 md:py-8
+        py-4 sm:py-6 md:py-8
         safe-area-padding
         ${fullWidth ? 'max-w-full' : 'max-w-[1600px]'}
         ${className}
@@ -25,7 +33,7 @@ const AppLayout = ({ children, className = '', fullWidth = false }) => {
       }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 };
 

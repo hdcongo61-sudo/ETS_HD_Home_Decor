@@ -47,6 +47,12 @@ const ActivityIcon = ({ className }) => (
 
 const CONNECTED_THRESHOLD_MINUTES = 15;
 
+const PERMISSION_LABELS = {
+    view_sensitive_financials: 'Données sensibles',
+    view_supplier_contacts: 'Contacts fournisseurs',
+    approve_admin_requests: 'Validation demandes',
+};
+
 const formatDateTime = (value) => {
     if (!value) return null;
     const date = new Date(value);
@@ -418,6 +424,15 @@ const UserDashboard = () => {
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                                 </span>
+                                                {!user.isAdmin && Array.isArray(user.permissions) && user.permissions.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                        {user.permissions.map((permission) => (
+                                                            <span key={permission} className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                                                {PERMISSION_LABELS[permission] || permission}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500">
                                                 {new Date(user.createdAt).toLocaleDateString('fr-FR')}
@@ -575,6 +590,15 @@ const UserDashboard = () => {
                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                   </span>
                                 </div>
+                                {!user.isAdmin && Array.isArray(user.permissions) && user.permissions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {user.permissions.map((permission) => (
+                                      <span key={permission} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                        {PERMISSION_LABELS[permission] || permission}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                                 <div className="text-sm text-gray-600">
                                   <span className="font-medium text-gray-800">Créé le :</span>{' '}
                                   {new Date(user.createdAt).toLocaleDateString('fr-FR')} • {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -7,6 +7,16 @@ import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 import Modal from '../components/Modal';
+import {
+  BarChart3,
+  Download,
+  Edit3,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Users,
+} from 'lucide-react';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const GENDER_OPTIONS = [
@@ -271,7 +281,7 @@ const Clients = () => {
   useResponsiveTable(tableRef, [clients]);
 
   const renderClientList = () => (
-    <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
+    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
       <h2 className="sr-only">Liste des clients</h2>
       {loading ? (
         <div className="flex justify-center py-12 min-h-[200px] items-center">
@@ -284,22 +294,22 @@ const Clients = () => {
             {clients.map((c) => (
               <article
                 key={c._id}
-                className="rounded-xl border border-gray-200 bg-gray-50/50 shadow-sm overflow-hidden active:bg-gray-100 transition-colors"
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm transition-colors active:bg-slate-100"
               >
                 <button
                   type="button"
-                  className="w-full text-left p-4 min-h-[44px] flex flex-col gap-1 touch-manipulation"
+                  className="flex min-h-[44px] w-full flex-col gap-1 p-4 text-left touch-manipulation"
                   onClick={() => openClientDetails(c)}
                 >
-                  <span className="font-semibold text-gray-900 text-base">{c.name}</span>
-                  <span className="text-sm text-gray-600 truncate">{c.email || '—'}</span>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-500 mt-0.5">
+                  <span className="text-base font-semibold text-slate-950">{c.name}</span>
+                  <span className="truncate text-sm text-slate-600">{c.email || '—'}</span>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-slate-500">
                     <span>{formatGender(c.gender)}</span>
                     <span>{c.phone || '—'}</span>
                   </div>
                 </button>
                 {isAdmin && (
-                  <div className="flex border-t border-gray-200 bg-white px-4 py-3 gap-2">
+                  <div className="flex gap-2 border-t border-slate-200 bg-white px-4 py-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -313,15 +323,17 @@ const Clients = () => {
                         });
                         setIsFormOpen(true);
                       }}
-                      className="flex-1 min-h-[44px] py-2.5 text-sm font-medium text-amber-800 bg-amber-50 rounded-xl active:bg-amber-100 touch-manipulation"
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-slate-100 py-2.5 text-sm font-medium text-slate-700 touch-manipulation active:bg-slate-200"
                     >
+                      <Edit3 className="h-4 w-4" />
                       Modifier
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDelete(c._id)}
-                      className="flex-1 min-h-[44px] py-2.5 text-sm font-medium text-red-700 bg-red-50 rounded-xl active:bg-red-100 touch-manipulation"
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-rose-50 py-2.5 text-sm font-medium text-rose-700 touch-manipulation active:bg-rose-100"
                     >
+                      <Trash2 className="h-4 w-4" />
                       Supprimer
                     </button>
                   </div>
@@ -333,20 +345,20 @@ const Clients = () => {
           {/* Desktop: table */}
           <div className="hidden md:block overflow-x-auto w-full min-w-0">
             <table ref={tableRef} className="responsive-table w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Nom</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Email</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Genre</th>
-                  <th className="px-4 py-3 text-left text-gray-700 font-medium text-sm">Téléphone</th>
-                  {isAdmin && <th className="px-4 py-3 text-right text-gray-700 font-medium text-sm">Actions</th>}
+                  <th className="px-4 py-3 text-left text-slate-600 font-medium text-sm">Nom</th>
+                  <th className="px-4 py-3 text-left text-slate-600 font-medium text-sm">Email</th>
+                  <th className="px-4 py-3 text-left text-slate-600 font-medium text-sm">Genre</th>
+                  <th className="px-4 py-3 text-left text-slate-600 font-medium text-sm">Téléphone</th>
+                  {isAdmin && <th className="px-4 py-3 text-right text-slate-600 font-medium text-sm">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100">
                 {clients.map((c) => (
-                  <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={c._id} className="hover:bg-slate-50 transition-colors">
                     <td
-                      className="px-4 py-3 cursor-pointer text-blue-600 hover:underline font-medium"
+                      className="px-4 py-3 cursor-pointer text-slate-950 hover:text-slate-700 font-medium"
                       onClick={() => openClientDetails(c)}
                       role="button"
                       tabIndex={0}
@@ -354,9 +366,9 @@ const Clients = () => {
                     >
                       {c.name}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{c.email || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatGender(c.gender)}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.phone || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{c.email || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{formatGender(c.gender)}</td>
+                    <td className="px-4 py-3 text-slate-600">{c.phone || '—'}</td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
@@ -374,15 +386,17 @@ const Clients = () => {
                               });
                               setIsFormOpen(true);
                             }}
-                            className="px-3 py-2 text-sm bg-amber-50 text-amber-800 rounded-lg hover:bg-amber-100 font-medium"
+                            className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
                           >
+                            <Edit3 className="h-4 w-4" />
                             Modifier
                           </button>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
-                            className="px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium"
+                            className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
                           >
+                            <Trash2 className="h-4 w-4" />
                             Supprimer
                           </button>
                         </div>
@@ -395,7 +409,7 @@ const Clients = () => {
           </div>
         </>
       ) : (
-        <div className="text-center py-12 px-4 text-gray-500">
+        <div className="px-4 py-12 text-center text-slate-500">
           <p className="text-base">Aucun client trouvé</p>
           <p className="text-sm mt-1">Utilisez la recherche ou ajoutez un nouveau client.</p>
         </div>
@@ -461,22 +475,20 @@ const Clients = () => {
 
   // --- UI (mobile-first) ---
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 md:p-6">
+    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 sm:py-6 md:p-6">
       <Toaster position="top-center" />
-      <div className="max-w-7xl mx-auto space-y-5 md:space-y-8">
+      <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
         {/* Header: compact on mobile */}
-        <header className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+        <header className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2 sm:text-2xl md:text-3xl">
-              <div className="bg-blue-500 p-1.5 rounded-lg sm:p-2 sm:rounded-xl shrink-0">
-                <svg className="w-5 h-5 text-white sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+            <p className="text-xs font-medium uppercase text-slate-500">Relation client</p>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
+              <div className="shrink-0 rounded-2xl bg-slate-100 p-2 text-slate-700">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <span className="truncate">Clients</span>
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5 sm:mt-1">Recherchez et gérez vos clients</p>
+            <p className="mt-1 text-sm text-slate-600">Recherchez, gérez et suivez les profils clients.</p>
           </div>
           <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:w-auto">
             <button
@@ -485,22 +497,25 @@ const Clients = () => {
                 setEditingClient(null);
                 setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
               }}
-              className="min-h-[44px] w-full sm:w-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-4 py-3 rounded-xl touch-manipulation sm:py-2"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-3 font-medium text-white touch-manipulation transition hover:bg-slate-700 sm:w-auto sm:py-2"
             >
-              + Nouveau client
+              <Plus className="h-4 w-4" />
+              Nouveau client
             </button>
             {isAdmin && (
               <>
                 <button
                   onClick={handleExportPdf}
-                  className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 active:bg-gray-100 font-medium touch-manipulation sm:py-2"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 font-medium text-slate-700 touch-manipulation transition hover:bg-slate-50 sm:w-auto sm:py-2"
                 >
+                  <Download className="h-4 w-4" />
                   Exporter PDF
                 </button>
                 <Link
                   to="/clients/dashboard"
-                  className="min-h-[44px] w-full sm:w-auto flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:opacity-95 active:opacity-90 touch-manipulation sm:py-2"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 font-medium text-slate-700 touch-manipulation transition hover:bg-slate-50 sm:w-auto sm:py-2"
                 >
+                  <BarChart3 className="h-4 w-4" />
                   Tableau de bord
                 </Link>
               </>
@@ -518,16 +533,16 @@ const Clients = () => {
                 { label: 'Dépense moy.', value: formatCurrency(stats.avgSpent) },
                 { label: 'Nouveaux (mois)', value: stats.newThisMonth },
               ].map((stat, i) => (
-                <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm md:p-4">
-                  <p className="text-xs text-gray-500 truncate md:text-sm">{stat.label}</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5 truncate md:text-2xl md:mt-1">{String(stat.value)}</p>
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm md:p-4">
+                  <p className="truncate text-xs text-slate-500 md:text-sm">{stat.label}</p>
+                  <p className="mt-0.5 truncate text-lg font-semibold text-slate-950 md:mt-1 md:text-2xl">{String(stat.value)}</p>
                 </div>
               ))}
             </section>
 
             {stats.topClients?.length > 0 && (
-              <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
-                <h2 className="text-base font-semibold text-gray-800 mb-3 md:text-lg md:mb-4">Top 5 clients</h2>
+              <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                <h2 className="mb-3 text-base font-semibold text-slate-950 md:mb-4 md:text-lg">Top 5 clients</h2>
                 <div className="h-56 sm:h-64 md:h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -547,19 +562,19 @@ const Clients = () => {
                       key={`${client.clientId || client._id || index}-link`}
                       to={`${clientPath({ _id: client.clientId || client._id, slug: client.slug })}?returnToClients=${encodeURIComponent(`${location.pathname}${location.search}`)}`}
                       state={{ returnToClients: `${location.pathname}${location.search}` }}
-                      className="flex items-center justify-between min-h-[44px] px-3 py-2.5 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 active:bg-blue-100 transition touch-manipulation"
+                      className="flex min-h-[44px] items-center justify-between rounded-xl border border-slate-100 px-3 py-2.5 transition touch-manipulation hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-semibold text-gray-400 shrink-0">#{index + 1}</span>
+                        <span className="shrink-0 text-xs font-semibold text-slate-400">#{index + 1}</span>
                         <span
                           className={`font-semibold truncate ${
-                            index === 0 ? 'text-emerald-600' : index === 1 ? 'text-indigo-600' : index === 2 ? 'text-amber-600' : 'text-gray-800'
+                            index === 0 ? 'text-emerald-700' : index === 1 ? 'text-slate-900' : index === 2 ? 'text-amber-700' : 'text-slate-800'
                           }`}
                         >
                           {client.name}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-600 shrink-0 ml-2">{client.totalSpent?.toLocaleString('fr-FR')} CFA</span>
+                      <span className="ml-2 shrink-0 text-sm text-slate-600">{client.totalSpent?.toLocaleString('fr-FR')} CFA</span>
                     </Link>
                   ))}
                 </div>
@@ -567,14 +582,14 @@ const Clients = () => {
             )}
 
             {genderStats.length > 0 && (
-              <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 md:p-6">
+              <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 md:text-sm">Répartition par genre</p>
-                    <h3 className="text-lg font-semibold text-gray-900 mt-0.5 md:text-2xl md:mt-1">
+                    <p className="text-xs text-slate-500 md:text-sm">Répartition par genre</p>
+                    <h3 className="mt-0.5 text-lg font-semibold text-slate-950 md:mt-1 md:text-2xl">
                       {totalGenderClients} client{totalGenderClients > 1 ? 's' : ''}
                     </h3>
-                    <p className="text-xs text-gray-600 truncate md:text-sm">
+                    <p className="truncate text-xs text-slate-600 md:text-sm">
                       {genderStats.map((entry) => formatGender(entry.gender)).join(' · ')}
                     </p>
                   </div>
@@ -604,13 +619,13 @@ const Clients = () => {
                   {genderStats.map((entry) => (
                     <div
                       key={entry.gender}
-                      className="flex items-center justify-between min-h-[44px] border border-gray-100 rounded-xl px-3 py-2.5 md:px-4 md:py-3"
+                      className="flex min-h-[44px] items-center justify-between rounded-xl border border-slate-100 px-3 py-2.5 md:px-4 md:py-3"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs text-gray-500 md:text-sm">{formatGender(entry.gender)}</p>
-                        <p className="text-base font-semibold text-gray-900 md:text-lg">{entry.count} clients</p>
+                        <p className="text-xs text-slate-500 md:text-sm">{formatGender(entry.gender)}</p>
+                        <p className="text-base font-semibold text-slate-950 md:text-lg">{entry.count} clients</p>
                       </div>
-                      <span className="text-xs text-gray-600 shrink-0 md:text-sm">{formatPercentage(entry.percentage)}</span>
+                      <span className="shrink-0 text-xs text-slate-600 md:text-sm">{formatPercentage(entry.percentage)}</span>
                     </div>
                   ))}
                 </div>
@@ -620,18 +635,22 @@ const Clients = () => {
         )}
 
         {/* Search: full width, touch-friendly */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-          <input
-            type="text"
-            placeholder="Rechercher un client..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full min-h-[44px] sm:min-h-0 py-3 sm:py-2 px-4 border border-gray-300 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
-          />
+        <div className="flex flex-col gap-2 rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:gap-3">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher un client..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-3 pl-9 text-base text-slate-950 outline-none placeholder:text-slate-400 touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:min-h-0 sm:py-2"
+            />
+          </div>
           <button
             onClick={() => fetchClients()}
-            className="min-h-[44px] w-full sm:w-auto py-3 sm:py-2 px-4 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-xl touch-manipulation"
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-3 font-medium text-white touch-manipulation transition hover:bg-slate-700 sm:w-auto sm:py-2"
           >
+            <RefreshCw className="h-4 w-4" />
             Rechercher
           </button>
         </div>
@@ -660,7 +679,7 @@ const Clients = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+                className="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
             <label className="block">
@@ -670,7 +689,7 @@ const Clients = () => {
                 placeholder="Email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+                className="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
             <label className="block">
@@ -681,7 +700,7 @@ const Clients = () => {
                 placeholder="Téléphone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+                className="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
             <label className="block">
@@ -691,7 +710,7 @@ const Clients = () => {
                 placeholder="Adresse"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation"
+                className="min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
             <label className="block">
@@ -700,7 +719,7 @@ const Clients = () => {
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                 required
-                className="w-full min-h-[44px] py-3 px-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white touch-manipulation"
+                className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none touch-manipulation transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               >
                 {GENDER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -717,13 +736,13 @@ const Clients = () => {
                   setIsFormOpen(false);
                   setEditingClient(null);
                 }}
-                className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 active:bg-gray-300 font-medium touch-manipulation"
+                className="min-h-[44px] w-full rounded-full bg-slate-100 px-4 py-3 font-medium text-slate-700 touch-manipulation hover:bg-slate-200 active:bg-slate-300 sm:w-auto"
               >
                 Annuler
               </button>
               <button
                 type="submit"
-                className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium rounded-xl touch-manipulation"
+                className="min-h-[44px] w-full rounded-full bg-slate-900 px-4 py-3 font-medium text-white touch-manipulation hover:bg-slate-700 active:bg-slate-800 sm:w-auto"
               >
                 {editingClient ? 'Mettre à jour' : 'Enregistrer'}
               </button>

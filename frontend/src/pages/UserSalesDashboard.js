@@ -303,8 +303,27 @@ const UserSalesDashboard = () => {
   const deferredSearch = useDeferredValue(search);
   const deferredHistorySearch = useDeferredValue(historySearch);
   const isAdmin = Boolean(auth?.isAdmin || auth?.user?.isAdmin);
+  const userPermissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
+  const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
   const isOwner = Boolean(auth?.user?._id && auth.user._id === userId);
   const isUnauthorized = !isAdmin && !isOwner;
+  const visibleHistoryViewOptions = useMemo(
+    () => HISTORY_VIEW_OPTIONS.filter((option) => canSeeFinancials || option.value !== 'high_profit'),
+    [canSeeFinancials]
+  );
+  const visibleHistorySortOptions = useMemo(
+    () => HISTORY_SORT_OPTIONS.filter((option) => canSeeFinancials || option.value !== 'profit_desc'),
+    [canSeeFinancials]
+  );
+
+  useEffect(() => {
+    if (!canSeeFinancials && historyView === 'high_profit') {
+      setHistoryView('all');
+    }
+    if (!canSeeFinancials && historySort === 'profit_desc') {
+      setHistorySort('recent');
+    }
+  }, [historySort, historyView, canSeeFinancials]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -670,36 +689,48 @@ const UserSalesDashboard = () => {
       const XLSX = await import('xlsx');
       const workbook = XLSX.utils.book_new();
 
-      const statsSheet = XLSX.utils.aoa_to_sheet([
+      const statsRows = [
         ['Utilisateur', user?.name || 'Utilisateur'],
         ['Email', user?.email || ''],
         ['Ventes filtrées', analytics.totalSales],
         ['Chiffre d’affaires', analytics.totalAmount],
         ['Encaissements', analytics.totalPaid],
         ['Reste à encaisser', analytics.outstandingAmount],
-        ['Bénéfice', analytics.totalProfit],
         ['Ventes en gros', analytics.wholesale.count],
         ['Paiement unique', analytics.fullPayment.count],
         ['Paiements multiples', analytics.multiplePayments.count],
-      ]);
+      ];
+
+      if (canSeeFinancials) {
+        statsRows.splice(6, 0, ['Bénéfice', analytics.totalProfit]);
+      }
+
+      const statsSheet = XLSX.utils.aoa_to_sheet(statsRows);
 
       const filtersSheet = XLSX.utils.aoa_to_sheet(filterEntries);
       const salesSheet = XLSX.utils.json_to_sheet(
-        filteredSales.map((sale) => ({
-          Date: formatDateLabel(sale.saleDateObject),
-          Client: sale.clientName,
-          Produits: sale.productNames.join(', '),
-          Conteneurs: sale.containers.join(', '),
-          Type: getSaleTypeText(sale.saleType),
-          Statut: getStatusText(sale.status),
-          'Structure paiement': PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure,
-          'Montant total': sale.totalAmount,
-          Encaisse: sale.totalPaid,
-          Reste: sale.balance,
-          Benefice: sale.profit,
-          'Nb articles': sale.itemsCount,
-          'Methodes paiement': sale.paymentMethods.join(', '),
-        }))
+        filteredSales.map((sale) => {
+          const row = {
+            Date: formatDateLabel(sale.saleDateObject),
+            Client: sale.clientName,
+            Produits: sale.productNames.join(', '),
+            Conteneurs: sale.containers.join(', '),
+            Type: getSaleTypeText(sale.saleType),
+            Statut: getStatusText(sale.status),
+            'Structure paiement': PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure,
+            'Montant total': sale.totalAmount,
+            Encaisse: sale.totalPaid,
+            Reste: sale.balance,
+            'Nb articles': sale.itemsCount,
+            'Methodes paiement': sale.paymentMethods.join(', '),
+          };
+
+          if (canSeeFinancials) {
+            row.Benefice = sale.profit;
+          }
+
+          return row;
+        })
       );
 
       XLSX.utils.book_append_sheet(workbook, statsSheet, 'Statistiques');
@@ -737,22 +768,27 @@ const UserSalesDashboard = () => {
         currentY += 16;
       });
 
+      const pdfKpiRows = [
+        ['Ventes filtrées', `${analytics.totalSales}`],
+        ['Chiffre d’affaires', formatCFA(analytics.totalAmount)],
+        ['Encaissements', formatCFA(analytics.totalPaid)],
+        ['Reste à encaisser', formatCFA(analytics.outstandingAmount)],
+        ['Ventes en gros', `${analytics.wholesale.count} (${formatCFA(analytics.wholesale.amount)})`],
+        ['Paiement unique', `${analytics.fullPayment.count} (${formatCFA(analytics.fullPayment.amount)})`],
+        [
+          'Paiements multiples',
+          `${analytics.multiplePayments.count} (${formatCFA(analytics.multiplePayments.amount)})`,
+        ],
+      ];
+
+      if (canSeeFinancials) {
+        pdfKpiRows.splice(4, 0, ['Bénéfice', formatCFA(analytics.totalProfit)]);
+      }
+
       autoTable(doc, {
         startY: currentY + 8,
         head: [['KPI', 'Valeur']],
-        body: [
-          ['Ventes filtrées', `${analytics.totalSales}`],
-          ['Chiffre d’affaires', formatCFA(analytics.totalAmount)],
-          ['Encaissements', formatCFA(analytics.totalPaid)],
-          ['Reste à encaisser', formatCFA(analytics.outstandingAmount)],
-          ['Bénéfice', formatCFA(analytics.totalProfit)],
-          ['Ventes en gros', `${analytics.wholesale.count} (${formatCFA(analytics.wholesale.amount)})`],
-          ['Paiement unique', `${analytics.fullPayment.count} (${formatCFA(analytics.fullPayment.amount)})`],
-          [
-            'Paiements multiples',
-            `${analytics.multiplePayments.count} (${formatCFA(analytics.multiplePayments.amount)})`,
-          ],
-        ],
+        body: pdfKpiRows,
         styles: { fontSize: 9, cellPadding: 6 },
         headStyles: { fillColor: [15, 23, 42] },
       });
@@ -934,29 +970,33 @@ const UserSalesDashboard = () => {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Filtres et export</h2>
+                <h2 className="text-xl font-semibold text-slate-900">{isAdmin ? 'Filtres et export' : 'Filtres'}</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Les statistiques, les graphiques et les exports PDF/Excel suivent uniquement les ventes filtrées.
+                  {isAdmin
+                    ? 'Les statistiques, les graphiques et les exports PDF/Excel suivent uniquement les ventes filtrées.'
+                    : 'Les statistiques et les graphiques suivent uniquement les ventes filtrées.'}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportPdf}
-                  disabled={!filteredSales.length || exporting.length > 0}
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  disabled={!filteredSales.length || exporting.length > 0}
-                  className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportPdf}
+                    disabled={!filteredSales.length || exporting.length > 0}
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    disabled={!filteredSales.length || exporting.length > 0}
+                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -1083,12 +1123,14 @@ const UserSalesDashboard = () => {
             helper={`Ticket moyen ${formatCFA(analytics.averageTicket)}`}
             tone="teal"
           />
-          <DashboardStatCard
-            label="Bénéfice"
-            value={formatCFA(analytics.totalProfit)}
-            helper={`Marge moyenne ${formatPercent(analytics.marginRate)}`}
-            tone="sky"
-          />
+          {canSeeFinancials && (
+            <DashboardStatCard
+              label="Bénéfice"
+              value={formatCFA(analytics.totalProfit)}
+              helper={`Marge moyenne ${formatPercent(analytics.marginRate)}`}
+              tone="sky"
+            />
+          )}
           <DashboardStatCard
             label="Articles vendus"
             value={formatCompactNumber(analytics.totalItems)}
@@ -1350,7 +1392,7 @@ const UserSalesDashboard = () => {
                 onChange={(event) => setHistoryView(event.target.value)}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
               >
-                {HISTORY_VIEW_OPTIONS.map((option) => (
+                {visibleHistoryViewOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -1365,7 +1407,7 @@ const UserSalesDashboard = () => {
                 onChange={(event) => setHistorySort(event.target.value)}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
               >
-                {HISTORY_SORT_OPTIONS.map((option) => (
+                {visibleHistorySortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -1377,11 +1419,11 @@ const UserSalesDashboard = () => {
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
             <span className="rounded-full bg-slate-100 px-3 py-1">
               <strong className="font-medium text-slate-900">Vue:</strong>{' '}
-              {HISTORY_VIEW_OPTIONS.find((option) => option.value === historyView)?.label || 'Toutes les cartes'}
+              {visibleHistoryViewOptions.find((option) => option.value === historyView)?.label || 'Toutes les cartes'}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1">
               <strong className="font-medium text-slate-900">Tri:</strong>{' '}
-              {HISTORY_SORT_OPTIONS.find((option) => option.value === historySort)?.label || 'Plus récentes'}
+              {visibleHistorySortOptions.find((option) => option.value === historySort)?.label || 'Plus récentes'}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1">
               <strong className="font-medium text-slate-900">Recherche:</strong>{' '}
@@ -1441,10 +1483,12 @@ const UserSalesDashboard = () => {
                         <p className="text-sm text-slate-500">Reste</p>
                         <p className="mt-2 text-lg font-semibold text-amber-700">{formatCFA(sale.balance)}</p>
                       </div>
-                      <div className="rounded-2xl bg-white p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">Bénéfice</p>
-                        <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.profit)}</p>
-                      </div>
+                      {canSeeFinancials && (
+                        <div className="rounded-2xl bg-white p-4 shadow-sm">
+                          <p className="text-sm text-slate-500">Bénéfice</p>
+                          <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.profit)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </article>

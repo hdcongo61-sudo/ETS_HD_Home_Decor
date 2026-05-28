@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
+import React, { useContext, useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Doughnut } from "react-chartjs-2";
 import {
@@ -8,6 +8,7 @@ import {
   Legend
 } from "chart.js";
 import api from "../services/api";
+import AuthContext from "../context/AuthContext";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -20,6 +21,8 @@ const Glass = ({ children }) => (
 );
 
 const PartiallyPaidPurchases = () => {
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
   const [sales, setSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -143,12 +146,14 @@ const PartiallyPaidPurchases = () => {
               className="w-full sm:flex-1 lg:w-64 px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <button
-                onClick={exportCSV}
-                className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
-              >
-                Exporter CSV
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={exportCSV}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
+                >
+                  Exporter CSV
+                </button>
+              )}
               <Link
                 to="/sales"
                 className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-center"

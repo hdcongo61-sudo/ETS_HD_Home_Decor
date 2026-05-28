@@ -10,6 +10,32 @@ const normaliseId = (value) => {
   if (value.toString) return value.toString();
   return null;
 };
+
+const hasUserPermission = (user, permission) =>
+  Boolean(user?.isAdmin || (Array.isArray(user?.permissions) && user.permissions.includes(permission)));
+
+const stripSensitiveProductFields = (product, user) => {
+  if (!product || user?.isAdmin) return product;
+  const plain = product.toObject ? product.toObject() : { ...product };
+  if (!hasUserPermission(user, 'view_sensitive_financials')) {
+    delete plain.costPrice;
+  }
+  if (!hasUserPermission(user, 'view_supplier_contacts')) {
+    delete plain.supplierPhone;
+  }
+  return plain;
+};
+
+const stripSensitiveProductStats = (stats, user) => {
+  if (!stats || hasUserPermission(user, 'view_sensitive_financials')) return stats;
+  const plain = { ...stats };
+  delete plain.profitThisPeriod;
+  delete plain.totalProfit;
+  delete plain.avgProfitPerUnit;
+  delete plain.avgCostPerUnit;
+  delete plain.lifetimeAvgProfitPerUnit;
+  return plain;
+};
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
@@ -25,7 +51,7 @@ const getProducts = async (req, res) => {
     }
 
     const products = await query.lean();
-    res.json(products);
+    res.json(products.map((product) => stripSensitiveProductFields(product, req.user)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -47,7 +73,7 @@ const getProductById = async (req, res) => {
 
     const product = await query;
     if (product) {
-      res.json(product);
+      res.json(stripSensitiveProductFields(product, req.user));
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
@@ -236,7 +262,7 @@ const getProductStats = async (req, res) => {
 
     const toFixedNumber = (value, decimals = 2) => Number(value.toFixed(decimals));
 
-    res.json({
+    const statsPayload = {
       productId,
       range,
       salesThisPeriod: periodMetrics.units,
@@ -265,7 +291,9 @@ const getProductStats = async (req, res) => {
       activities,
       trend: periodMetrics.dailyTrend
         .sort((a, b) => new Date(a.date) - new Date(b.date))
-    });
+    };
+
+    res.json(stripSensitiveProductStats(statsPayload, req.user));
   } catch (error) {
     res.status(500).json({
       message: 'Error fetching product stats',

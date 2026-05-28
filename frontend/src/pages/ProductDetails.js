@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import QRCode from 'react-qr-code';
@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas';
 import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
 import AppLoader from '../components/AppLoader';
+import AuthContext from '../context/AuthContext';
 
 /* ===================================================== */
 /* 🧩 UTILITAIRES DE FORMATTAGE */
@@ -38,6 +39,9 @@ const buildStatsSkeleton = (p = {}) => ({
 /* ===================================================== */
 const ProductDetails = () => {
   const { id } = useParams();
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
+  const userPermissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
   const navigate = useNavigate();
   const location = useLocation();
   const [product, setProduct] = useState(null);
@@ -54,6 +58,10 @@ const ProductDetails = () => {
   const [buyersLoading, setBuyersLoading] = useState(false);
   const [buyersError, setBuyersError] = useState('');
   const [buyersSales, setBuyersSales] = useState([]);
+  const [requestModal, setRequestModal] = useState(null);
+  const [requestReason, setRequestReason] = useState('');
+  const [requestValue, setRequestValue] = useState('');
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
   const qrCodeRef = useRef();
   const pageRef = useRef();
 
@@ -93,6 +101,8 @@ const ProductDetails = () => {
     fetchSalesHistoryData();
   }, [id]);
 
+  const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
+  const canSeeSupplierContacts = isAdmin || userPermissions.includes('view_supplier_contacts');
   const profitMargin =
     product?.costPrice && product?.price
       ? ((product.price - product.costPrice) / product.costPrice) * 100
@@ -122,6 +132,61 @@ const ProductDetails = () => {
   };
 
   const closeBuyersModal = () => setBuyersModalOpen(false);
+
+  const openAdminRequest = (type) => {
+    setRequestModal(type);
+    setRequestReason('');
+    setRequestValue('');
+  };
+
+  const submitAdminRequest = async () => {
+    if (!requestModal || requestSubmitting) return;
+    if (!requestReason.trim()) {
+      return;
+    }
+
+    const numericValue = requestValue === '' ? null : Number(requestValue);
+    if (requestModal !== 'other' && (numericValue === null || Number.isNaN(numericValue))) {
+      return;
+    }
+
+    const metadata = { productId: product._id };
+    let type = 'other';
+    let targetLabel = product.name;
+    let note = '';
+
+    if (requestModal === 'price') {
+      type = 'product.price_change';
+      metadata.oldPrice = product.price;
+      metadata.newPrice = numericValue;
+      targetLabel = `Prix produit: ${product.name}`;
+      note = `Nouveau prix proposé: ${formatCurrency(numericValue)}`;
+    } else if (requestModal === 'stock') {
+      type = 'stock.adjustment';
+      metadata.currentStock = product.stock;
+      metadata.targetStock = numericValue;
+      targetLabel = `Stock produit: ${product.name}`;
+      note = `Stock cible proposé: ${numericValue}`;
+    }
+
+    try {
+      setRequestSubmitting(true);
+      await api.post('/admin-requests', {
+        type,
+        targetModel: 'Product',
+        targetId: product._id,
+        targetLabel,
+        reason: requestReason.trim(),
+        note,
+        metadata,
+      });
+      setRequestModal(null);
+      setRequestReason('');
+      setRequestValue('');
+    } finally {
+      setRequestSubmitting(false);
+    }
+  };
 
   /* ===================================================== */
   /* 📦 EXPORT PDF */
@@ -257,6 +322,7 @@ const getActivityIcon = (type) => {
           </button>
 
           <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
+            {canSeeFinancials && (
             <button
               onClick={() => setShowProfitSections((prev) => !prev)}
               className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:col-span-1 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
@@ -275,15 +341,18 @@ const getActivityIcon = (type) => {
               <span className="sm:hidden">{showProfitSections ? 'Masquer marge' : 'Afficher marge'}</span>
               <span className="hidden sm:inline">{showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}</span>
             </button>
-            <button
-              onClick={handleExportPDF}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Export PDF
-            </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={handleExportPDF}
+                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Export PDF
+              </button>
+            )}
 
             <button
               onClick={() => setShowQRCode(true)}
@@ -300,6 +369,7 @@ const getActivityIcon = (type) => {
               </svg>
               <span className="sm:hidden">QR Code</span>
             </button>
+            {isAdmin && (
             <button
               onClick={() =>
                 navigate(productEditPath(product || id), {
@@ -313,6 +383,25 @@ const getActivityIcon = (type) => {
               </svg>
               Modifier
             </button>
+            )}
+            {!isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openAdminRequest('price')}
+                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+                >
+                  Demander prix
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAdminRequest('stock')}
+                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+                >
+                  Demander stock
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -324,7 +413,7 @@ const getActivityIcon = (type) => {
               alt={product.name}
               className="rounded-xl object-cover w-full max-h-96 shadow-sm"
             />
-            {showProfitSections && profitMargin > 0 && (
+            {canSeeFinancials && showProfitSections && profitMargin > 0 && (
               <div className="mt-3 inline-flex px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
                 +{profitMargin.toFixed(1)}% marge
               </div>
@@ -340,7 +429,7 @@ const getActivityIcon = (type) => {
                 <span className="text-2xl font-bold text-indigo-600">
                   {formatCurrency(product.price)}
                 </span>
-                {showProfitSections && product.costPrice && (
+                {canSeeFinancials && showProfitSections && product.costPrice && (
                   <span className="text-sm text-gray-500">Coût: {formatCurrency(product.costPrice)}</span>
                 )}
               </div>
@@ -374,7 +463,9 @@ const getActivityIcon = (type) => {
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm">
                   <p className="text-gray-700 font-medium mb-1">Fournisseur :</p>
                   <p className="text-gray-600">{product.supplierName}</p>
-                  <p className="text-gray-500 text-sm">{product.supplierPhone}</p>
+                  {canSeeSupplierContacts && product.supplierPhone && (
+                    <p className="text-gray-500 text-sm">{product.supplierPhone}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -429,7 +520,7 @@ const getActivityIcon = (type) => {
                     }
                   />
                   <Metric label="CA total" value={formatCurrency(stats.totalRevenue)} />
-                  {showProfitSections && (
+                  {canSeeFinancials && showProfitSections && (
                     <Metric label="Bénéfice total" value={formatCurrency(stats.totalProfit)} />
                   )}
                   <Metric label="Valeur du stock" value={formatCurrency(stats.stock.stockValue)} />
@@ -441,7 +532,7 @@ const getActivityIcon = (type) => {
           {activeTab === 'financial' && (
             <div className="grid md:grid-cols-3 gap-5">
               <Card title="Prix de vente">{formatCurrency(product.price)}</Card>
-              {showProfitSections && (
+              {canSeeFinancials && showProfitSections && (
                 <>
                   <Card title="Prix de revient">{formatCurrency(product.costPrice)}</Card>
                   <Card title="Bénéfice unitaire">{formatCurrency(absoluteProfit)}</Card>
@@ -455,7 +546,7 @@ const getActivityIcon = (type) => {
                   </div>
                 </>
               )}
-              {!showProfitSections && (
+              {canSeeFinancials && !showProfitSections && (
                 <div className="md:col-span-2 bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <h4 className="font-semibold text-gray-700 mb-2">Sections bénéfice masquées</h4>
                   <p className="text-gray-600 text-sm">
@@ -681,6 +772,61 @@ const getActivityIcon = (type) => {
           </div>
         </div>
       )}
+
+        {requestModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {requestModal === 'price' ? 'Demander changement de prix' : 'Demander ajustement stock'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">La demande sera envoyée à un administrateur.</p>
+              </div>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-gray-700">
+                    {requestModal === 'price' ? 'Nouveau prix proposé' : 'Stock cible proposé'}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={requestValue}
+                    onChange={(event) => setRequestValue(event.target.value)}
+                    className="min-h-[44px] w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-gray-700">Raison obligatoire</span>
+                  <textarea
+                    value={requestReason}
+                    onChange={(event) => setRequestReason(event.target.value)}
+                    rows={4}
+                    maxLength={600}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Expliquez pourquoi cette modification est nécessaire..."
+                  />
+                </label>
+              </div>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setRequestModal(null)}
+                  className="min-h-[44px] rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={submitAdminRequest}
+                  disabled={requestSubmitting || !requestReason.trim() || requestValue === ''}
+                  className="min-h-[44px] rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {requestSubmitting ? 'Envoi...' : 'Envoyer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

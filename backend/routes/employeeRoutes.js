@@ -11,11 +11,7 @@ const {
   createPaySlip,
   updatePaySlip,
   deletePaySlip,
-  requestAdvance,
-  updateAdvance,
-  deleteAdvance,
   getPaySlip,
-  getEmployeeAdvances,
   getEmployeePaySlips,
   getFinancialSummary,
 } = require('../controllers/payrollController');
@@ -41,15 +37,6 @@ router.route('/:id/payroll/:payslipId')
   .get(protect, admin, getPaySlip) // Route GET pour une fiche spécifique
   .put(protect, admin, updatePaySlip)
   .delete(protect, admin, deletePaySlip);
-
-// Routes pour les avances
-router.route('/:id/advances')
-  .post(protect, admin, requestAdvance)
-  .get(protect, admin, getEmployeeAdvances);
-
-router.route('/:id/advances/:advanceId')
-  .put(protect, admin, updateAdvance)
-  .delete(protect, admin, deleteAdvance);
 
 // Route pour le résumé financier
 router.route('/:id/financial-summary')

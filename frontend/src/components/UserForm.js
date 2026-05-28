@@ -18,6 +18,24 @@ const toIsoStringOrNull = (value) => {
 
 const inputClass = 'w-full min-h-[44px] px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base';
 
+const PERMISSION_OPTIONS = [
+    {
+        value: 'view_sensitive_financials',
+        label: 'Voir coûts, bénéfices et marges',
+        description: 'Autorise les données financières sensibles dans produits et ventes.'
+    },
+    {
+        value: 'view_supplier_contacts',
+        label: 'Voir contacts fournisseurs',
+        description: 'Autorise le téléphone fournisseur dans les fiches produit.'
+    },
+    {
+        value: 'approve_admin_requests',
+        label: 'Valider les demandes admin',
+        description: 'Autorise le traitement des demandes sans donner tous les accès administrateur.'
+    }
+];
+
 const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
     const [formData, setFormData] = useState({
         name: '',
@@ -29,7 +47,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
         accessControlEnabled: false,
         accessStart: '',
         accessEnd: '',
-        photo: ''
+        photo: '',
+        permissions: []
     });
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState('');
@@ -47,7 +66,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 accessControlEnabled: Boolean(user.accessControlEnabled),
                 accessStart: toLocalDateTimeInput(user.accessStart),
                 accessEnd: toLocalDateTimeInput(user.accessEnd),
-                photo: user.photo || ''
+                photo: user.photo || '',
+                permissions: Array.isArray(user.permissions) ? user.permissions : []
             });
             setPhotoPreview(user.photo || '');
         } else {
@@ -61,7 +81,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 accessControlEnabled: false,
                 accessStart: '',
                 accessEnd: '',
-                photo: ''
+                photo: '',
+                permissions: []
             });
             setPhotoPreview('');
         }
@@ -97,6 +118,18 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             return {
                 ...prev,
                 [name]: value
+            };
+        });
+    };
+
+    const handlePermissionChange = (permission, checked) => {
+        setFormData(prev => {
+            const current = Array.isArray(prev.permissions) ? prev.permissions : [];
+            return {
+                ...prev,
+                permissions: checked
+                    ? [...new Set([...current, permission])]
+                    : current.filter((item) => item !== permission)
             };
         });
     };
@@ -169,7 +202,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             accessControlEnabled: formData.accessControlEnabled,
             accessStart: formData.accessControlEnabled ? toIsoStringOrNull(formData.accessStart) : null,
             accessEnd: formData.accessControlEnabled ? toIsoStringOrNull(formData.accessEnd) : null,
-            photo: formData.photo || ''
+            photo: formData.photo || '',
+            permissions: formData.isAdmin ? [] : formData.permissions
         };
 
         // Don't send password if empty (in edit mode)
@@ -184,7 +218,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             payload = new FormData();
             Object.entries(userData).forEach(([key, value]) => {
                 if (value !== undefined && value !== null) {
-                    payload.append(key, value);
+                    payload.append(key, Array.isArray(value) ? JSON.stringify(value) : value);
                 }
             });
             payload.append('photoFile', photoFile);
@@ -252,6 +286,33 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
                 <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">Accès administrateur</label>
             </div>
+
+            {!formData.isAdmin && (
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-800">Permissions utilisateur</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            Donnez uniquement les accès sensibles nécessaires au travail quotidien.
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                        {PERMISSION_OPTIONS.map((permission) => (
+                            <label key={permission.value} className="flex items-start gap-3 rounded-xl bg-white p-3 border border-gray-200 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={(formData.permissions || []).includes(permission.value)}
+                                    onChange={(event) => handlePermissionChange(permission.value, event.target.checked)}
+                                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span>
+                                    <span className="block text-sm font-medium text-gray-800">{permission.label}</span>
+                                    <span className="block text-xs text-gray-500 mt-0.5">{permission.description}</span>
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
                 <div className="flex items-start justify-between gap-3">

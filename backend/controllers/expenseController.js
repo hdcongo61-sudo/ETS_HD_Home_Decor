@@ -1,5 +1,18 @@
 const Expense = require('../models/expenseModel');
+const Employee = require('../models/employeeModel');
 const asyncHandler = require('express-async-handler');
+
+const normalizeText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+const isSalaryCategory = (category) => {
+  const normalized = normalizeText(category);
+  return normalized === 'salaries' || normalized === 'salary' || normalized.includes('salaire');
+};
 
 const parseOptionalExpenseDate = (value) => {
   if (value === undefined || value === null) {
@@ -42,6 +55,99 @@ const buildDateRangeFilter = (startDate, endDate) => {
 
   return { value: Object.keys(dateFilter).length > 0 ? dateFilter : null };
 };
+
+const resolveSalaryPeriod = (body, fallbackDate) => {
+  const month = Number(body.salaryMonth);
+  const year = Number(body.salaryYear);
+
+  if (Number.isInteger(month) && month >= 1 && month <= 12 && Number.isInteger(year) && year >= 2000 && year <= 2100) {
+    return { salaryMonth: month, salaryYear: year };
+  }
+
+  const date = fallbackDate ? new Date(fallbackDate) : new Date();
+  return {
+    salaryMonth: date.getMonth() + 1,
+    salaryYear: date.getFullYear(),
+  };
+};
+
+const buildExpensePayload = (body, expenseDate, userId) => {
+  const category = body.category;
+  const salaryExpense = isSalaryCategory(category);
+  const salaryPeriod = salaryExpense ? resolveSalaryPeriod(body, expenseDate) : { salaryMonth: null, salaryYear: null };
+
+  return {
+    description: body.description,
+    amount: Number(body.amount),
+    category,
+    paymentMethod: body.paymentMethod,
+    date: expenseDate,
+    employee: salaryExpense ? body.employee || body.employeeId || null : null,
+    salaryMonth: salaryPeriod.salaryMonth,
+    salaryYear: salaryPeriod.salaryYear,
+    updatedBy: userId,
+  };
+};
+
+const validateSalaryExpense = async (payload, currentExpenseId = null) => {
+  if (!isSalaryCategory(payload.category)) {
+    return { payload: { ...payload, employee: null, salaryMonth: null, salaryYear: null } };
+  }
+
+  if (!payload.employee) {
+    return { error: 'Sélectionnez un employé pour une dépense de salaire' };
+  }
+
+  const employee = await Employee.findById(payload.employee).select('name salary').lean();
+  if (!employee) {
+    return { error: 'Employé introuvable pour cette dépense de salaire' };
+  }
+
+  if (!payload.salaryMonth || !payload.salaryYear) {
+    return { error: 'Sélectionnez le mois du salaire' };
+  }
+
+  if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+    return { error: 'Montant invalide' };
+  }
+
+  const existingQuery = {
+    employee: payload.employee,
+    salaryMonth: payload.salaryMonth,
+    salaryYear: payload.salaryYear,
+  };
+
+  if (currentExpenseId) {
+    existingQuery._id = { $ne: currentExpenseId };
+  }
+
+  const existingExpenses = await Expense.find(existingQuery).select('amount category').lean();
+  const alreadyPaid = existingExpenses
+    .filter((expense) => isSalaryCategory(expense.category))
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const remainingSalary = Number(employee.salary || 0) - alreadyPaid;
+
+  if (payload.amount > remainingSalary) {
+    return {
+      error: `Montant supérieur au salaire restant de ${employee.name} pour ce mois (${Math.max(remainingSalary, 0).toLocaleString('fr-FR')} CFA restants)`,
+    };
+  }
+
+  return { payload };
+};
+
+const populateExpenseMetadata = (query, req) => {
+  let nextQuery = query.populate('employee', 'name position salary slug');
+
+  if (req.user && req.user.isAdmin) {
+    nextQuery = nextQuery
+      .select('+createdBy +updatedBy')
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email');
+  }
+
+  return nextQuery;
+};
 // @desc    Get all expenses with search
 // @route   GET /api/expenses
 // @access  Private/Admin
@@ -59,23 +165,23 @@ const getExpenses = asyncHandler(async (req, res) => {
     query.date = dateRange.value;
   }
   if (filters.category) query.category = filters.category;
+  if (filters.employee) query.employee = filters.employee;
+  if (filters.salaryMonth) query.salaryMonth = Number(filters.salaryMonth);
+  if (filters.salaryYear) query.salaryYear = Number(filters.salaryYear);
   
   // Recherche
   if (search) {
+    const matchingEmployees = await Employee.find({ name: { $regex: search, $options: 'i' } })
+      .select('_id')
+      .lean();
     query.$or = [
       { description: { $regex: search, $options: 'i' } },
-      { 'paymentMethod': { $regex: search, $options: 'i' } }
+      { 'paymentMethod': { $regex: search, $options: 'i' } },
+      ...(matchingEmployees.length ? [{ employee: { $in: matchingEmployees.map((employee) => employee._id) } }] : [])
     ];
   }
 
-  let expenseQuery = Expense.find(query).sort('-date');
-
-  if (req.user && req.user.isAdmin) {
-    expenseQuery = expenseQuery
-      .select('+createdBy +updatedBy')
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email');
-  }
+  const expenseQuery = populateExpenseMetadata(Expense.find(query).sort('-date'), req);
 
   const expenses = await expenseQuery.lean();
   res.json(expenses);
@@ -90,13 +196,19 @@ const createExpense = async (req, res) => {
       return res.status(400).json({ message: parsedExpenseDate.error });
     }
 
+    const expenseDate = parsedExpenseDate.value || new Date();
+    const payload = buildExpensePayload(req.body, expenseDate, req.user ? req.user._id : undefined);
+    const salaryValidation = await validateSalaryExpense(payload);
+    if (salaryValidation.error) {
+      return res.status(400).json({ message: salaryValidation.error });
+    }
+
     const expense = new Expense({
-      ...req.body,
-      date: parsedExpenseDate.value || new Date(),
+      ...salaryValidation.payload,
       createdBy: req.user ? req.user._id : undefined,
-      updatedBy: req.user ? req.user._id : undefined
     });
-    const createdExpense = await expense.save();
+    const savedExpense = await expense.save();
+    const createdExpense = await populateExpenseMetadata(Expense.findById(savedExpense._id), req).lean();
     res.status(201).json(createdExpense);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -114,10 +226,10 @@ const getExpensesByDateRange = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: dateRange.error });
   }
 
-  let expenseQuery = Expense.find(dateRange.value ? { date: dateRange.value } : {}).sort('date');
+  let expenseQuery = Expense.find(dateRange.value ? { date: dateRange.value } : {}).sort('date').populate('employee', 'name position salary slug');
 
   if (summaryMode === 'dashboard') {
-    expenseQuery = expenseQuery.select('_id description amount category supplier date createdAt');
+    expenseQuery = expenseQuery.select('_id description amount category supplier date createdAt employee salaryMonth salaryYear');
   } else if (req.user && req.user.isAdmin) {
     expenseQuery = expenseQuery
       .select('+createdBy +updatedBy')
@@ -162,18 +274,20 @@ const updateExpense = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: parsedExpenseDate.error });
   }
 
-  const updatedExpense = await Expense.findByIdAndUpdate(
+  const expenseDate = parsedExpenseDate.value || expense.date;
+  const payload = buildExpensePayload(req.body, expenseDate, req.user ? req.user._id : undefined);
+  const salaryValidation = await validateSalaryExpense(payload, req.params.id);
+  if (salaryValidation.error) {
+    return res.status(400).json({ message: salaryValidation.error });
+  }
+
+  await Expense.findByIdAndUpdate(
     req.params.id,
-    {
-      ...req.body,
-      date: parsedExpenseDate.value || expense.date,
-      updatedBy: req.user ? req.user._id : undefined
-    },
+    salaryValidation.payload,
     { new: true, runValidators: true }
-  )
-    .select(req.user && req.user.isAdmin ? '+createdBy +updatedBy' : '')
-    .populate('createdBy', 'name email')
-    .populate('updatedBy', 'name email');
+  );
+
+  const updatedExpense = await populateExpenseMetadata(Expense.findById(req.params.id), req).lean();
 
   res.json(updatedExpense);
 });

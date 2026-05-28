@@ -32,6 +32,10 @@ const userSchema = mongoose.Schema(
       required: true,
       default: false,
     },
+    permissions: {
+      type: [String],
+      default: [],
+    },
     lastLogin: {
       type: Date,
       default: null,

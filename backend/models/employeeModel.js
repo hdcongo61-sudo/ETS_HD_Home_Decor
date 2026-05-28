@@ -39,14 +39,6 @@ const employeeSchema = mongoose.Schema(
       trim: true,
     },
     department: { type: String },
-    advances: [
-      {
-        amount: { type: Number, required: true },
-        date: { type: Date, default: Date.now },
-        reason: String,
-        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
-      },
-    ],
     paySlips: [
       {
         month: { type: Number, required: true },

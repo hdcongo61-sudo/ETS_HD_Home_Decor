@@ -33,7 +33,3 @@ export const employeePayrollPayslipEditPath = (entityOrId, slug, payslipId) =>
   `${employeePayrollPath(entityOrId, slug)}/${payslipId}/edit`;
 export const employeePayrollPayslipPrintPath = (entityOrId, slug, payslipId) =>
   `${employeePayrollPath(entityOrId, slug)}/${payslipId}/print`;
-export const employeeAdvancesPath = (entityOrId, slug) =>
-  buildPath('/employees', entityOrId, slug, '/advances');
-export const employeeAdvancesNewPath = (entityOrId, slug) =>
-  `${employeeAdvancesPath(entityOrId, slug)}/new`;

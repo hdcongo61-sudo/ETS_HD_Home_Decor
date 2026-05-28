@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
+  ArrowLeft,
   Banknote,
   Boxes,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   CreditCard,
   PackageCheck,
@@ -12,6 +14,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import api from "../services/api";
+import AuthContext from "../context/AuthContext";
 import {
   calculateSaleTotals,
   calculateSaleProfit,
@@ -28,6 +31,8 @@ import {
 import { SalesFiltersBar, SaleCard } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
 
+const ExportSalesPdf = lazy(() => import("../components/ExportSalesPdf"));
+
 const formatCurrency = (value) =>
   `${Number(value || 0).toLocaleString("fr-FR")} CFA`;
 
@@ -40,6 +45,10 @@ const VISIBLE_SALES_STEP = 40;
 
 const SalesArchive = () => {
   const location = useLocation();
+  const { auth } = useContext(AuthContext);
+  const canViewSensitiveFinancials = Boolean(
+    auth?.user?.isAdmin || auth?.user?.permissions?.includes("view_sensitive_financials")
+  );
   const [sales, setSales] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,15 +123,16 @@ const SalesArchive = () => {
     [sales]
   );
 
-  const filteredSales = useMemo(() => {
-    const base = salesWithMetrics.filter((sale) => {
+  const applyArchiveFilters = useCallback((source, options = {}) => {
+    const { includeDate = true } = options;
+    const base = source.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
       const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
       const paymentStructureMatch =
         !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
       const saleDate = parseDateSafely(sale.saleDate);
-      const dateMatch = !dateFilter || (saleDate && saleDate.toLocaleDateString("fr-CA") === dateFilter);
+      const dateMatch = !includeDate || !dateFilter || (saleDate && saleDate.toLocaleDateString("fr-CA") === dateFilter);
       const deliveryMatch =
         !deliveryFilter ||
         (sale.status === "completed" &&
@@ -133,7 +143,12 @@ const SalesArchive = () => {
       return statusMatch && clientMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
     return base;
-  }, [salesWithMetrics, statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
+  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
+
+  const filteredSales = useMemo(
+    () => applyArchiveFilters(salesWithMetrics, { includeDate: true }),
+    [applyArchiveFilters, salesWithMetrics]
+  );
 
   const hasActiveFilters =
     !!statusFilter || !!clientFilter || !!saleTypeFilter || !!paymentStructureFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
@@ -159,6 +174,8 @@ const SalesArchive = () => {
       deliveredSales: 0,
       modifiedSales: 0,
       multiplePaymentSales: 0,
+      paymentsOnSelectedDate: 0,
+      paymentsOnSelectedDateCount: 0,
     };
 
     filteredSales.forEach((sale) => {
@@ -193,8 +210,25 @@ const SalesArchive = () => {
     initial.averageMargin = initial.totalAmount ? (initial.totalProfit / initial.totalAmount) * 100 : 0;
     initial.collectionRate = initial.totalAmount ? (initial.totalPaid / initial.totalAmount) * 100 : 0;
 
+    const paymentSourceSales = dateFilter
+      ? applyArchiveFilters(salesWithMetrics, { includeDate: false })
+      : filteredSales;
+
+    paymentSourceSales.forEach((sale) => {
+      (sale.payments || []).forEach((payment) => {
+        const paymentDate = parseDateSafely(payment.paymentDate || payment.createdAt);
+        if (!paymentDate) return;
+        const matchesDate = dateFilter
+          ? paymentDate.toLocaleDateString("fr-CA") === dateFilter
+          : true;
+        if (!matchesDate) return;
+        initial.paymentsOnSelectedDate += Number(payment.amount) || 0;
+        initial.paymentsOnSelectedDateCount += 1;
+      });
+    });
+
     return initial;
-  }, [filteredSales]);
+  }, [applyArchiveFilters, dateFilter, filteredSales, salesWithMetrics]);
 
   const statsCards = [
     {
@@ -219,19 +253,30 @@ const SalesArchive = () => {
       tone: "green",
     },
     {
+      label: dateFilter ? "Paiements encaissés ce jour" : "Paiements des ventes filtrées",
+      value: formatCurrency(filteredStats.paymentsOnSelectedDate),
+      helper: `${formatNumber(filteredStats.paymentsOnSelectedDateCount)} paiement(s)${
+        dateFilter ? " sur la date choisie" : " liés aux ventes affichées"
+      }`,
+      icon: <CreditCard className="w-5 h-5" />,
+      tone: "sky",
+    },
+    {
       label: "Solde restant",
       value: formatCurrency(filteredStats.totalBalance),
       helper: `${formatNumber(filteredStats.partiallyPaidSales + filteredStats.pendingSales)} vente(s) non soldée(s)`,
       icon: <WalletCards className="w-5 h-5" />,
       tone: filteredStats.totalBalance > 0 ? "rose" : "slate",
     },
-    {
-      label: "Profit estimé",
-      value: formatCurrency(filteredStats.totalProfit),
-      helper: `Marge moyenne: ${formatPercent(filteredStats.averageMargin)}`,
-      icon: <TrendingUp className="w-5 h-5" />,
-      tone: "violet",
-    },
+    ...(canViewSensitiveFinancials
+      ? [{
+          label: "Profit estimé",
+          value: formatCurrency(filteredStats.totalProfit),
+          helper: `Marge moyenne: ${formatPercent(filteredStats.averageMargin)}`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          tone: "violet",
+        }]
+      : []),
     {
       label: "Unités vendues",
       value: formatNumber(filteredStats.totalItems),
@@ -266,33 +311,27 @@ const SalesArchive = () => {
   };
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header — compact on mobile */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center gap-3">
             <Link
               to="/sales"
-              className="flex items-center gap-2 shrink-0 w-10 h-10 justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors md:w-auto md:h-auto md:px-0 md:py-0 md:bg-transparent md:border-0 md:rounded-none md:justify-start"
+              className="flex items-center gap-2 shrink-0 w-10 h-10 justify-center rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-950 transition-colors md:w-auto md:h-auto md:px-3 md:py-2 md:rounded-full md:justify-start"
               aria-label="Retour au tableau des ventes"
             >
-              <svg
-                className="w-5 h-5 shrink-0 md:w-4 md:h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="hidden md:inline text-sm font-medium text-indigo-600 hover:text-indigo-700">
+              <ArrowLeft className="w-5 h-5 shrink-0 md:w-4 md:h-4" />
+              <span className="hidden md:inline text-sm font-medium">
                 Tableau des ventes
               </span>
             </Link>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl md:text-3xl">
+              <p className="text-xs font-medium uppercase text-slate-500">Archive ventes</p>
+              <h1 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl md:text-3xl">
                 Toutes les ventes
               </h1>
-              <p className="hidden sm:block text-sm text-gray-500 mt-0.5">
+              <p className="hidden sm:block text-sm text-slate-500 mt-0.5">
                 Liste complète et filtrée des ventes.
               </p>
             </div>
@@ -300,29 +339,22 @@ const SalesArchive = () => {
         </div>
 
         {/* Filters — collapsible on mobile */}
-        <div className="rounded-2xl border border-gray-200/70 bg-white/90 backdrop-blur-sm shadow-sm overflow-hidden">
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
           <button
             type="button"
             onClick={() => setFiltersOpen((o) => !o)}
-            className="w-full flex items-center justify-between p-4 text-left sm:hidden bg-white hover:bg-gray-50/80 transition-colors"
+            className="w-full flex items-center justify-between p-4 text-left sm:hidden bg-white hover:bg-slate-50 transition-colors"
             aria-expanded={filtersOpen}
           >
-            <span className="font-medium text-gray-900">Filtres</span>
+            <span className="font-medium text-slate-900">Filtres</span>
             {hasActiveFilters && (
-              <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+              <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded-full">
                 Actifs
               </span>
             )}
-            <svg
-              className={`w-5 h-5 text-gray-500 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
           </button>
-          <div className={`${filtersOpen ? "block" : "hidden"} sm:block border-t border-gray-100 sm:border-t-0`}>
+          <div className={`${filtersOpen ? "block" : "hidden"} sm:block border-t border-slate-100 sm:border-t-0`}>
             <div className="p-4 sm:p-6 pt-0 sm:pt-6">
               <SalesFiltersBar
                 statusFilter={statusFilter}
@@ -349,7 +381,7 @@ const SalesArchive = () => {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[1.5rem] bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -360,18 +392,20 @@ const SalesArchive = () => {
           </div>
         ) : (
           <>
-            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-slate-950">
                     Statistiques des filtres sélectionnés
                   </h2>
-                  <p className="text-sm text-gray-500">
-                    Ces chiffres sont calculés uniquement sur les ventes actuellement affichées.
+                  <p className="text-sm text-slate-500">
+                    {canViewSensitiveFinancials
+                      ? "Ces chiffres sont calculés uniquement sur les ventes actuellement affichées."
+                      : "Vue opérationnelle: ventes, paiements, soldes et livraisons sans données sensibles."}
                   </p>
                 </div>
                 {hasActiveFilters && (
-                  <span className="self-start rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 sm:self-auto">
+                  <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 sm:self-auto">
                     Filtres actifs
                   </span>
                 )}
@@ -385,17 +419,17 @@ const SalesArchive = () => {
             </section>
 
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{filteredSales.length}</span>
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold text-slate-950">{filteredSales.length}</span>
                 {filteredSales.length === 1 ? " vente" : " ventes"}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
               {filteredSales.length === 0 ? (
-                <div className="col-span-full text-center py-12 sm:py-16 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50">
-                  <p className="text-gray-500 font-medium">Aucune vente correspondante</p>
-                  <p className="text-sm text-gray-400 mt-1">Modifiez les filtres ou revenez plus tard.</p>
+                <div className="col-span-full text-center py-12 sm:py-16 rounded-[1.5rem] border border-dashed border-slate-300 bg-white">
+                  <p className="text-slate-600 font-medium">Aucune vente correspondante</p>
+                  <p className="text-sm text-slate-400 mt-1">Modifiez les filtres ou revenez plus tard.</p>
                 </div>
               ) : (
                 <>
@@ -421,9 +455,18 @@ const SalesArchive = () => {
                           getStatusText={getStatusText}
                           getProfitCategoryClass={getProfitCategoryClass}
                           getProfitCategoryText={getProfitCategoryText}
-                          showProfitBadge
+                          showProfitBadge={canViewSensitiveFinancials}
                           profitCategory={sale.computedCategory}
                           isModified={isModified}
+                          actions={
+                            sale.status === "completed" ? (
+                              <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+                                <Suspense fallback={<div className="flex justify-center py-2"><AppLoader fullScreen={false} text="Facture…" /></div>}>
+                                  <ExportSalesPdf sale={sale} />
+                                </Suspense>
+                              </div>
+                            ) : null
+                          }
                         />
                       </motion.div>
                     );
@@ -438,7 +481,7 @@ const SalesArchive = () => {
                             Math.min(current + VISIBLE_SALES_STEP, filteredSales.length)
                           )
                         }
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                       >
                         Afficher plus ({formatNumber(visibleSales.length)} sur {formatNumber(filteredSales.length)})
                       </button>
@@ -466,13 +509,13 @@ const statTones = {
 };
 
 const StatCard = ({ label, value, helper, icon, tone = "indigo" }) => (
-  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <p className="text-xs font-semibold uppercase text-slate-500">
           {label}
         </p>
-        <p className="mt-1 break-words text-xl font-bold text-gray-900 tabular-nums">
+        <p className="mt-1 break-words text-xl font-semibold text-slate-950 tabular-nums">
           {value}
         </p>
       </div>
@@ -480,7 +523,7 @@ const StatCard = ({ label, value, helper, icon, tone = "indigo" }) => (
         {icon}
       </div>
     </div>
-    <p className="mt-3 text-xs text-gray-500">{helper}</p>
+    <p className="mt-3 text-xs text-slate-500">{helper}</p>
   </div>
 );
 

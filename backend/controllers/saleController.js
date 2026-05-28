@@ -29,18 +29,12 @@ const normalizeObjectId = (value) => {
   return String(value);
 };
 
+const hasUserPermission = (user, permission) =>
+  Boolean(user?.isAdmin || (Array.isArray(user?.permissions) && user.permissions.includes(permission)));
+
 const isAdminUser = (user) => Boolean(user?.isAdmin);
 
-const buildSaleAccessFilter = (user, baseFilter = {}) => {
-  if (isAdminUser(user)) {
-    return baseFilter;
-  }
-
-  return {
-    ...baseFilter,
-    user: user?._id
-  };
-};
+const buildSaleAccessFilter = (_user, baseFilter = {}) => baseFilter;
 
 const assertSaleAccess = (sale, user) => {
   if (!sale) {
@@ -59,6 +53,44 @@ const assertSaleAccess = (sale, user) => {
   }
 
   return { allowed: false, status: 403, message: 'Non autorisé à accéder à cette vente' };
+};
+
+const sanitizeSaleForUser = (sale, user) => {
+  if (!sale || isAdminUser(user)) return sale;
+  const plain = { ...sale };
+  if (!hasUserPermission(user, 'view_sensitive_financials')) {
+    delete plain.profitData;
+    delete plain.profitCategory;
+    delete plain.profit;
+  }
+  plain.products = (plain.products || []).map((item) => {
+    const next = { ...item };
+    if (next.product && typeof next.product === 'object') {
+      const product = { ...next.product };
+      if (!hasUserPermission(user, 'view_sensitive_financials')) {
+        delete product.costPrice;
+      }
+      if (!hasUserPermission(user, 'view_supplier_contacts')) {
+        delete product.supplierPhone;
+      }
+      next.product = product;
+    }
+    return next;
+  });
+  return plain;
+};
+
+const sanitizeUserSalesPayload = (payload, user) => {
+  if (isAdminUser(user)) return payload;
+  const stats = payload.stats ? { ...payload.stats } : payload.stats;
+  if (stats && !hasUserPermission(user, 'view_sensitive_financials')) {
+    delete stats.totalProfit;
+  }
+  return {
+    ...payload,
+    sales: (payload.sales || []).map((sale) => sanitizeSaleForUser(sale, user)),
+    stats,
+  };
 };
 
 const formatGroupedSummary = (rows = [], expectedKeys = []) => {
@@ -188,8 +220,9 @@ const getSales = asyncHandler(async (req, res) => {
         .populate('client', 'name email');
     } else if (isListSummary) {
       query = query
-        .select('_id client products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
+        .select('_id client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
         .populate('client', 'name email')
+        .populate('user', 'name email isAdmin role')
         .populate({
           path: 'products.product',
           select: 'name container',
@@ -225,7 +258,7 @@ const getSales = asyncHandler(async (req, res) => {
       }
 
       if (isListSummary) {
-        return {
+        return sanitizeSaleForUser({
           ...sale,
           products: (sale.products || []).map((p) => ({
             ...p,
@@ -234,10 +267,10 @@ const getSales = asyncHandler(async (req, res) => {
           modificationCount: Array.isArray(sale.modificationHistory) ? sale.modificationHistory.length : 0,
           totalPaid,
           balance
-        };
+        }, req.user);
       }
 
-      return {
+      return sanitizeSaleForUser({
         ...sale,
         formattedDate: new Date(sale.saleDate).toLocaleString('fr-FR', {
           day: '2-digit',
@@ -252,7 +285,7 @@ const getSales = asyncHandler(async (req, res) => {
         })),
         totalPaid,
         balance
-      };
+      }, req.user);
     });
 
     res.json(formattedSales);
@@ -293,21 +326,21 @@ const getUserSales = asyncHandler(async (req, res) => {
     .lean();
 
   if (!sales || sales.length === 0) {
-    return res.json({
+    return res.json(sanitizeUserSalesPayload({
       user,
       sales: [],
       stats: null
-    });
+    }, req.user));
   }
 
   // Calculer les statistiques
   const stats = calculateSalesStats(sales);
 
-  res.json({
+  res.json(sanitizeUserSalesPayload({
     user,
     sales,
     stats
-  });
+  }, req.user));
 });
 
 // Fonction pour calculer les statistiques des ventes
@@ -615,9 +648,8 @@ const addPayment = asyncHandler(async (req, res) => {
 
   try {
     const sale = await Sale.findById(id);
-    const access = assertSaleAccess(sale, req.user);
-    if (!access.allowed) {
-      return res.status(access.status).json({ message: access.message });
+    if (!sale) {
+      return res.status(404).json({ message: 'Vente non trouvée' });
     }
 
     if (sale.status === 'cancelled') {
@@ -1712,7 +1744,7 @@ const getSaleById = asyncHandler(async (req, res) => {
       balance
     };
 
-    res.json(formattedSale);
+    res.json(sanitizeSaleForUser(formattedSale, req.user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -2476,9 +2508,8 @@ const updateDelivery = asyncHandler(async (req, res) => {
   try {
     const { deliveryStatus, deliveryNote, deliveryDate } = req.body;
     const sale = await Sale.findById(req.params.id);
-    const access = assertSaleAccess(sale, req.user);
-    if (!access.allowed) {
-      return res.status(access.status).json({ message: access.message });
+    if (!sale) {
+      return res.status(404).json({ message: 'Vente non trouvée' });
     }
 
     if (sale.status !== 'completed') {

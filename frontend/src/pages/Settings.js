@@ -30,6 +30,9 @@ const buildBrandingForm = (branding = {}) => ({
   removeLogo: false,
 });
 
+const settingInputClass = "min-h-[48px] w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm";
+const settingButtonClass = "min-h-[48px] w-full rounded-xl px-4 py-3 text-sm font-semibold transition disabled:opacity-70 sm:w-auto";
+
 const Settings = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { appSettings, setAppSettings } = useAppSettings();
@@ -175,22 +178,22 @@ const Settings = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6 lg:py-10">
       <Toaster position="top-right" />
-      <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl tracking-tight mb-6">
+      <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl tracking-tight mb-5 sm:mb-6">
         Paramètres
       </h1>
 
       {isAdmin && (
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-6 sm:p-5">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Identité de l'application</h2>
               <p className="mt-1 text-sm text-gray-500">
                 Personnalisez le nom, le logo, la couleur principale et les textes clés pour rendre l’application plus professionnelle.
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-500">
               Visible dans la navigation, la page de connexion, le footer et le titre du navigateur.
             </div>
           </div>
@@ -206,7 +209,7 @@ const Settings = () => {
                     type="text"
                     value={brandingSettings.appName}
                     onChange={(e) => handleBrandingFieldChange('appName', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="Ex: HD Gestion Pro"
                     required
                   />
@@ -220,7 +223,7 @@ const Settings = () => {
                     type="text"
                     value={brandingSettings.shortName}
                     onChange={(e) => handleBrandingFieldChange('shortName', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="Ex: HD Pro"
                     required
                   />
@@ -235,7 +238,7 @@ const Settings = () => {
                   type="text"
                   value={brandingSettings.tagline}
                   onChange={(e) => handleBrandingFieldChange('tagline', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={settingInputClass}
                   placeholder="Ex: Ventes, stock et encaissements en un seul endroit"
                   required
                 />
@@ -246,26 +249,26 @@ const Settings = () => {
                   label="Logo"
                   description="Importez un logo carré propre pour l’en-tête et l’écran de connexion."
                 >
-                  <div className="space-y-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                  <div className="space-y-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 sm:p-4">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleBrandingLogoChange}
-                      className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700"
+                      className="block w-full text-sm text-gray-600 file:mb-2 file:block file:min-h-[42px] file:w-full file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-gray-700 sm:file:mb-0 sm:file:inline-block sm:file:w-auto sm:file:mr-3"
                     />
                     <input
                       type="url"
                       value={brandingSettings.logoUrl}
                       onChange={(e) => handleBrandingFieldChange('logoUrl', e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className={settingInputClass}
                       placeholder="Ou collez l'URL d'un logo"
                     />
-                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <label className="flex min-h-[44px] items-start gap-3 rounded-xl bg-white px-3 py-2.5 text-sm text-gray-600">
                       <input
                         type="checkbox"
                         checked={brandingSettings.removeLogo}
                         onChange={(e) => handleBrandingFieldChange('removeLogo', e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
                       Retirer le logo personnalisé et revenir au logo par défaut
                     </label>
@@ -276,18 +279,18 @@ const Settings = () => {
                   label="Couleur principale"
                   description="Une seule couleur forte suffit pour personnaliser les points de contact clés."
                 >
-                  <div className="flex items-center gap-3 rounded-xl border border-gray-300 bg-white px-3 py-2">
+                  <div className="flex min-h-[48px] items-center gap-3 rounded-xl border border-gray-300 bg-white px-3 py-2">
                     <input
                       type="color"
                       value={brandingSettings.primaryColor}
                       onChange={(e) => handleBrandingFieldChange('primaryColor', e.target.value)}
-                      className="h-11 w-14 cursor-pointer rounded-lg border border-gray-200 bg-white"
+                      className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white"
                     />
                     <input
                       type="text"
                       value={brandingSettings.primaryColor}
                       onChange={(e) => handleBrandingFieldChange('primaryColor', e.target.value)}
-                      className="flex-1 border-0 bg-transparent text-sm font-medium text-gray-700 focus:outline-none focus:ring-0"
+                      className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-gray-700 focus:outline-none focus:ring-0 sm:text-sm"
                       placeholder="#2563EB"
                     />
                   </div>
@@ -303,7 +306,7 @@ const Settings = () => {
                     type="text"
                     value={brandingSettings.loginTitle}
                     onChange={(e) => handleBrandingFieldChange('loginTitle', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="Connexion"
                     required
                   />
@@ -317,7 +320,7 @@ const Settings = () => {
                     type="text"
                     value={brandingSettings.loginSubtitle}
                     onChange={(e) => handleBrandingFieldChange('loginSubtitle', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="Accédez à votre espace professionnel"
                     required
                   />
@@ -333,7 +336,7 @@ const Settings = () => {
                     type="text"
                     value={brandingSettings.supportPhone}
                     onChange={(e) => handleBrandingFieldChange('supportPhone', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="+242 06 00 00 00"
                   />
                 </BrandingField>
@@ -346,7 +349,7 @@ const Settings = () => {
                     type="email"
                     value={brandingSettings.supportEmail}
                     onChange={(e) => handleBrandingFieldChange('supportEmail', e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={settingInputClass}
                     placeholder="contact@entreprise.com"
                   />
                 </BrandingField>
@@ -360,25 +363,25 @@ const Settings = () => {
                   type="text"
                   value={brandingSettings.footerText}
                   onChange={(e) => handleBrandingFieldChange('footerText', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={settingInputClass}
                   placeholder="Entreprise. Tous droits réservés."
                   required
                 />
               </BrandingField>
 
-              <div className="flex flex-wrap gap-3 pt-1">
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
                   onClick={handleResetBrandingSettings}
                   disabled={savingBrandingSettings}
-                  className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70"
+                  className={`${settingButtonClass} border border-gray-300 text-gray-700 hover:bg-gray-50`}
                 >
                   Réinitialiser
                 </button>
                 <button
                   type="submit"
                   disabled={savingBrandingSettings}
-                  className="rounded-xl px-4 py-3 text-sm font-medium text-white transition hover:opacity-95 disabled:opacity-70"
+                  className={`${settingButtonClass} text-white hover:opacity-95`}
                   style={{ backgroundColor: previewColor }}
                 >
                   {savingBrandingSettings ? 'Enregistrement...' : 'Enregistrer la personnalisation'}
@@ -386,7 +389,7 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-gray-900">Aperçu rapide</h3>
                 <p className="mt-1 text-xs text-gray-500">
@@ -450,7 +453,7 @@ const Settings = () => {
       )}
 
       {isAdmin && (
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-6 sm:p-5">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Dates Manuelles</h2>
             <p className="mt-1 text-sm text-gray-500">
@@ -519,19 +522,19 @@ const Settings = () => {
 
 const BrandingField = ({ label, description, children }) => (
   <label className="block">
-    <div className="mb-2">
-      <div className="text-sm font-medium text-gray-900">{label}</div>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    <div className="mb-2.5">
+      <div className="text-sm font-semibold text-gray-900">{label}</div>
+      <p className="mt-1 text-xs leading-relaxed text-gray-500 sm:text-sm">{description}</p>
     </div>
     {children}
   </label>
 );
 
 const PreferenceToggle = ({ label, description, checked, disabled, onChange }) => (
-  <label className={`flex items-start justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3 transition ${disabled ? 'opacity-70' : 'hover:border-gray-300'}`}>
-    <div className="min-w-0">
-      <div className="text-sm font-medium text-gray-900">{label}</div>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+  <label className={`flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3 transition ${disabled ? 'opacity-70' : 'hover:border-gray-300 active:bg-gray-50'}`}>
+    <div className="min-w-0 flex-1">
+      <div className="text-sm font-semibold text-gray-900">{label}</div>
+      <p className="mt-1 text-xs leading-relaxed text-gray-500 sm:text-sm">{description}</p>
     </div>
     <button
       type="button"
@@ -539,13 +542,13 @@ const PreferenceToggle = ({ label, description, checked, disabled, onChange }) =
       aria-checked={checked}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition ${
+      className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition ${
         checked ? 'bg-indigo-600' : 'bg-gray-300'
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-          checked ? 'translate-x-6' : 'translate-x-1'
+        className={`inline-block h-6 w-6 transform rounded-full bg-white transition ${
+          checked ? 'translate-x-7' : 'translate-x-1'
         }`}
       />
     </button>

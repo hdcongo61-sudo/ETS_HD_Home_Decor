@@ -52,6 +52,10 @@ const SaleDetailPage = () => {
     const [showProfitSections, setShowProfitSections] = useState(true);
     const [paymentStartDate, setPaymentStartDate] = useState('');
     const [paymentEndDate, setPaymentEndDate] = useState('');
+    const [requestModal, setRequestModal] = useState(null);
+    const [requestReason, setRequestReason] = useState('');
+    const [requestNote, setRequestNote] = useState('');
+    const [requestSubmitting, setRequestSubmitting] = useState(false);
 
     useAutoClearMessage(message, setMessage);
     const [reminderDate, setReminderDate] = useState('');
@@ -347,6 +351,38 @@ const SaleDetailPage = () => {
         }
     };
 
+    const openAdminRequest = (payload) => {
+        setRequestModal(payload);
+        setRequestReason('');
+        setRequestNote('');
+    };
+
+    const handleSubmitAdminRequest = async () => {
+        if (!requestModal || requestSubmitting) return;
+        if (!requestReason.trim()) {
+            setMessage('Erreur: la raison est requise pour envoyer une demande');
+            return;
+        }
+
+        try {
+            setRequestSubmitting(true);
+            await api.post('/admin-requests', {
+                ...requestModal,
+                reason: requestReason.trim(),
+                note: requestNote.trim()
+            });
+            setRequestModal(null);
+            setRequestReason('');
+            setRequestNote('');
+            setMessage('✅ Demande envoyée à l’administrateur');
+        } catch (error) {
+            console.error('Admin request error:', error.response?.data || error);
+            setMessage('Erreur: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setRequestSubmitting(false);
+        }
+    };
+
     const getStatusClass = (status) => {
         switch (status) {
             case 'completed': return 'bg-green-100 text-green-800';
@@ -522,6 +558,26 @@ const SaleDetailPage = () => {
         return true;
     });
     const filteredPaymentsTotal = filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const formatCfa = (value) => `${(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
+    const mobileSummaryCards = [
+        {
+            label: 'Total',
+            value: formatCfa(sale.totalAmount),
+            tone: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+        },
+        {
+            label: 'Payé',
+            value: formatCfa(sale.totalPaid),
+            tone: 'bg-emerald-50 text-emerald-700 border-emerald-100'
+        },
+        {
+            label: 'Reste',
+            value: formatCfa(Math.max(Number(sale.balance) || 0, 0)),
+            tone: Number(sale.balance) > 0
+                ? 'bg-rose-50 text-rose-700 border-rose-100'
+                : 'bg-slate-50 text-slate-700 border-slate-100'
+        }
+    ];
 
     // Chart data for payment history
     const paymentChartData = {
@@ -551,13 +607,13 @@ const SaleDetailPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
-            <div className="max-w-6xl mx-auto px-4 sm:px-5 md:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
+            <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
                 {/* Back + Page title */}
-                <header className="flex flex-col gap-4">
+                <header className="flex flex-col gap-3 sm:gap-4">
                     <button
                         type="button"
                         onClick={() => navigate(returnToSales)}
-                        className="inline-flex w-fit items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition hover:text-indigo-700 hover:ring-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        className="inline-flex w-fit min-h-[42px] items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition hover:text-indigo-700 hover:ring-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -570,9 +626,43 @@ const SaleDetailPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                         </span>
-                        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Détails de la vente</h1>
+                        <div className="min-w-0">
+                            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Détails de la vente</h1>
+                            <p className="mt-0.5 text-sm text-gray-500 sm:hidden">Vente #{sale._id?.substring(18) || 'N/A'}</p>
+                        </div>
                     </div>
                 </header>
+
+                <nav className="sticky top-0 z-20 -mx-3 overflow-x-auto border-y border-gray-200 bg-white/95 px-3 py-2 backdrop-blur sm:hidden">
+                    <div className="flex min-w-max gap-2">
+                        <a href="#resume-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">Résumé</a>
+                        <a href="#produits-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">Produits</a>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMobileHistoryTab('payments');
+                                setTimeout(() => {
+                                    document.getElementById('paiements-vente')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 0);
+                            }}
+                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                        >
+                            Paiements
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMobileHistoryTab('history');
+                                setTimeout(() => {
+                                    document.getElementById('historique-vente')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 0);
+                            }}
+                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                        >
+                            Historique
+                        </button>
+                    </div>
+                </nav>
 
                 {message && (
                     <div
@@ -591,12 +681,12 @@ const SaleDetailPage = () => {
                 )}
 
                 {/* Sale header card */}
-                <section className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <section id="resume-vente" className="scroll-mt-20 bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                     <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col gap-4 sm:gap-0 sm:flex-row sm:justify-between sm:items-start">
-                            <div>
+                            <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                                    <h2 className="hidden text-lg sm:block sm:text-xl font-semibold text-gray-900 dark:text-white">
                                         Vente #{sale._id?.substring(18) || 'N/A'}
                                     </h2>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
@@ -623,7 +713,7 @@ const SaleDetailPage = () => {
                                     {sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}
                                 </p>
                             </div>
-                            <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
+                            <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
                                 {isAdmin && (
                                     <button
                                         type="button"
@@ -654,6 +744,34 @@ const SaleDetailPage = () => {
                                         </svg>
                                         Modifier
                                     </Link>
+                                )}
+                                {!isAdmin && sale.status !== 'cancelled' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => openAdminRequest({
+                                            type: 'sale.edit',
+                                            targetModel: 'Sale',
+                                            targetId: sale._id,
+                                            targetLabel: `Vente #${sale._id?.slice(-6) || ''}`
+                                        })}
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                    >
+                                        Demander modification
+                                    </button>
+                                )}
+                                {!isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => openAdminRequest({
+                                            type: 'sale.delete',
+                                            targetModel: 'Sale',
+                                            targetId: sale._id,
+                                            targetLabel: `Vente #${sale._id?.slice(-6) || ''}`
+                                        })}
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-medium text-red-700 shadow-sm transition hover:bg-red-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                    >
+                                        Demander suppression
+                                    </button>
                                 )}
                                 <button
                                     type="button"
@@ -707,6 +825,15 @@ const SaleDetailPage = () => {
                                 )}
                             </div>
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 p-4 sm:hidden">
+                        {mobileSummaryCards.map((card) => (
+                            <div key={card.label} className={`rounded-2xl border p-3 ${card.tone}`}>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{card.label}</p>
+                                <p className="mt-1 break-words text-sm font-bold leading-tight text-gray-950">{card.value}</p>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Payment Reminder Section */}
@@ -856,9 +983,9 @@ const SaleDetailPage = () => {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 px-4 sm:px-6">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 mb-6 px-4 sm:px-6">
                         {/* Informations client */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
                                     <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -869,13 +996,13 @@ const SaleDetailPage = () => {
                             </h3>
 
                             {sale.client ? (
-                                <div className="space-y-2">
-                                    <div className="flex items-start">
-                                        <span className="font-medium text-sm w-20">Nom:</span>
+                                <div className="space-y-3">
+                                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start">
+                                        <span className="font-medium text-xs uppercase tracking-wide text-gray-500 sm:w-20 sm:text-sm sm:normal-case sm:tracking-normal sm:text-gray-900">Nom</span>
                                         {isAdmin ? (
                                             <Link
                                                 to={clientPath(sale.client)}
-                                                className="text-blue-600 hover:text-blue-800 text-sm flex items-center transition-colors"
+                                                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition-colors"
                                             >
                                                 {sale.client.name}
                                                 <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -887,22 +1014,22 @@ const SaleDetailPage = () => {
                                         )}
                                     </div>
                                     {sale.client.email && (
-                                        <div className="flex items-start">
-                                            <span className="font-medium text-sm w-20">Email:</span>
+                                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start">
+                                            <span className="font-medium text-xs uppercase tracking-wide text-gray-500 sm:w-20 sm:text-sm sm:normal-case sm:tracking-normal sm:text-gray-900">Email</span>
                                             <a
                                                 href={`mailto:${sale.client.email}`}
-                                                className="text-blue-600 hover:text-blue-800 text-sm transition-colors"
+                                                className="break-all text-blue-600 hover:text-blue-800 text-sm transition-colors"
                                             >
                                                 {sale.client.email}
                                             </a>
                                         </div>
                                     )}
                                     {sale.client.phone && (
-                                        <div className="flex items-start">
-                                            <span className="font-medium text-sm w-20">Téléphone:</span>
+                                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start">
+                                            <span className="font-medium text-xs uppercase tracking-wide text-gray-500 sm:w-20 sm:text-sm sm:normal-case sm:tracking-normal sm:text-gray-900">Téléphone</span>
                                             <a
                                                 href={`tel:${sale.client.phone}`}
-                                                className="text-blue-600 hover:text-blue-800 text-sm transition-colors"
+                                                className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                                             >
                                                 {sale.client.phone}
                                             </a>
@@ -915,7 +1042,7 @@ const SaleDetailPage = () => {
                         </div>
 
                         {/* Informations vendeur */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
                                     <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -925,22 +1052,22 @@ const SaleDetailPage = () => {
                                 Vendeur
                             </h3>
 
-                            <div className="space-y-2">
-                                <div className="flex items-start">
-                                    <span className="font-medium text-sm w-20">Nom:</span>
+                            <div className="space-y-3">
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-start">
+                                    <span className="font-medium text-xs uppercase tracking-wide text-gray-500 sm:w-20 sm:text-sm sm:normal-case sm:tracking-normal sm:text-gray-900">Nom</span>
                                     <span className="text-sm">{sale.user?.name || "Non spécifié"}</span>
                                 </div>
                                 {sale.user?.email && (
-                                    <div className="flex items-start">
-                                        <span className="font-medium text-sm w-20">Email:</span>
-                                        <span className="text-sm">{sale.user.email}</span>
+                                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start">
+                                        <span className="font-medium text-xs uppercase tracking-wide text-gray-500 sm:w-20 sm:text-sm sm:normal-case sm:tracking-normal sm:text-gray-900">Email</span>
+                                        <span className="break-all text-sm">{sale.user.email}</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Résumé financier */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40">
                                     <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -951,17 +1078,17 @@ const SaleDetailPage = () => {
                             </h3>
 
                             <div className="space-y-3">
-                                <div className="flex justify-between">
+                                <div className="flex items-start justify-between gap-3">
                                     <span className="text-sm">Total de la vente:</span>
-                                    <span className="text-sm font-semibold">{(Number(sale.totalAmount) || 0).toFixed(0)} CFA</span>
+                                    <span className="text-right text-sm font-semibold">{(Number(sale.totalAmount) || 0).toFixed(0)} CFA</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex items-start justify-between gap-3">
                                     <span className="text-sm">Total payé:</span>
-                                    <span className="text-sm font-semibold text-green-600">{(Number(sale.totalPaid) || 0).toFixed(0)} CFA</span>
+                                    <span className="text-right text-sm font-semibold text-green-600">{(Number(sale.totalPaid) || 0).toFixed(0)} CFA</span>
                                 </div>
-                                <div className="flex justify-between border-t pt-2">
+                                <div className="flex items-start justify-between gap-3 border-t pt-2">
                                     <span className="text-sm font-medium">Solde restant:</span>
-                                    <span className={`text-sm font-semibold ${Number(sale.balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    <span className={`text-right text-sm font-semibold ${Number(sale.balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                         {Math.abs(Number(sale.balance) || 0).toFixed(0)} CFA
                                     </span>
                                 </div>
@@ -970,7 +1097,7 @@ const SaleDetailPage = () => {
 
                         {/* Section Bénéfices */}
                         {isAdmin && showProfitSections && (
-                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40">
                                     <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1005,8 +1132,8 @@ const SaleDetailPage = () => {
                     </div>
 
                     {/* Produits vendus avec bénéfices */}
-                    <div className="mb-6 px-4 sm:px-6">
-                        <div className="flex justify-between items-center mb-3">
+                    <div id="produits-vente" className="scroll-mt-20 mb-6 px-4 sm:px-6">
+                        <div className="flex items-start justify-between gap-3 mb-3">
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40">
                                     <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1170,7 +1297,7 @@ const SaleDetailPage = () => {
                     </div>
 
 
-                    <div className="md:hidden mb-4">
+                    <div id="paiements-vente" className="scroll-mt-20 md:hidden mb-4 px-4">
                         <div className="flex gap-2">
                             <button
                                 type="button"
@@ -1198,7 +1325,7 @@ const SaleDetailPage = () => {
                     </div>
 
                     {/* Historique des paiements */}
-                    <div className={`${mobileHistoryTab === 'payments' ? 'block' : 'hidden'} md:block`}>
+                    <div className={`${mobileHistoryTab === 'payments' ? 'block' : 'hidden'} md:block px-4 sm:px-6`}>
                         <div className="mb-4 space-y-3">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -1254,7 +1381,7 @@ const SaleDetailPage = () => {
                             <div className="space-y-6">
                                 {filteredPayments.length > 0 ? (
                                     <>
-                                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <div className="hidden bg-white p-4 rounded-xl border border-gray-200 sm:block">
                                         <Bar
                                             data={paymentChartData}
                                             options={{
@@ -1272,7 +1399,69 @@ const SaleDetailPage = () => {
                                         />
                                     </div>
 
-                                    <div className="overflow-x-auto">
+                                    <div className="space-y-3 md:hidden">
+                                        {filteredPayments.map((payment, index) => {
+                                            const paymentUser = getPaymentUser(payment);
+                                            return (
+                                                <article key={`mobile-payment-${payment._id || index}`} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{payment.formattedDate || 'Date non définie'}</p>
+                                                            <p className="mt-1 text-lg font-semibold text-emerald-700">{formatCfa(payment.amount)}</p>
+                                                        </div>
+                                                        <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-700">
+                                                            {payment.method === 'MobileMoney' ? 'Mobile Money' : payment.method}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl bg-gray-50 p-3 text-sm">
+                                                        <div>
+                                                            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Enregistré par</span>
+                                                            <p className="mt-0.5 font-medium text-gray-900">{paymentUser?.name || 'Inconnu'}</p>
+                                                            {paymentUser?.email && <p className="break-all text-xs text-gray-500">{paymentUser.email}</p>}
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Rôle</span>
+                                                            {paymentUser ? getRoleBadge(getUserRole(paymentUser)) : <span className="text-xs text-gray-500">Non spécifié</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-3">
+                                                        {isAdmin ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeletePayment(payment._id)}
+                                                                disabled={isDeleting}
+                                                                className="min-h-[42px] w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                                                            >
+                                                                Supprimer ce paiement
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openAdminRequest({
+                                                                    type: 'payment.delete',
+                                                                    targetModel: 'Sale',
+                                                                    targetId: sale._id,
+                                                                    targetLabel: `Paiement ${(Number(payment.amount) || 0).toLocaleString('fr-FR')} CFA`,
+                                                                    metadata: {
+                                                                        paymentId: payment._id,
+                                                                        amount: payment.amount,
+                                                                        saleId: sale._id
+                                                                    }
+                                                                })}
+                                                                className="min-h-[42px] w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                                                            >
+                                                                Demander suppression
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </article>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="hidden overflow-x-auto md:block">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
@@ -1281,9 +1470,7 @@ const SaleDetailPage = () => {
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enregistré par</th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
-                                                {isAdmin && (
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                                )}
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1315,8 +1502,8 @@ const SaleDetailPage = () => {
                                                     <td className="px-4 py-4 whitespace-nowrap">
                                                         {paymentUser ? getRoleBadge(getUserRole(paymentUser)) : "Non spécifié"}
                                                     </td>
-                                                    {isAdmin && (
-                                                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                        {isAdmin ? (
                                                             <button
                                                                 onClick={() => handleDeletePayment(payment._id)}
                                                                 disabled={isDeleting}
@@ -1327,8 +1514,26 @@ const SaleDetailPage = () => {
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 0 00-1 1v3M4 7h16" />
                                                                 </svg>
                                                             </button>
-                                                        </td>
-                                                    )}
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openAdminRequest({
+                                                                    type: 'payment.delete',
+                                                                    targetModel: 'Sale',
+                                                                    targetId: sale._id,
+                                                                    targetLabel: `Paiement ${(Number(payment.amount) || 0).toLocaleString('fr-FR')} CFA`,
+                                                                    metadata: {
+                                                                        paymentId: payment._id,
+                                                                        amount: payment.amount,
+                                                                        saleId: sale._id
+                                                                    }
+                                                                })}
+                                                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                                                            >
+                                                                Demander suppression
+                                                            </button>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                                 );
                                             })}
@@ -1351,6 +1556,27 @@ const SaleDetailPage = () => {
                             </div>
                         )}
                     </div>
+
+                    <div id="historique-vente" className={`${mobileHistoryTab === 'history' ? 'block' : 'hidden'} scroll-mt-20 px-4 pb-6 md:hidden`}>
+                        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-900">Historique des modifications</h3>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        {sale.modificationHistory?.length || 0} entrée{(sale.modificationHistory?.length || 0) > 1 ? 's' : ''} enregistrée{(sale.modificationHistory?.length || 0) > 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHistoryModal(true)}
+                                    disabled={!sale.modificationHistory || sale.modificationHistory.length === 0}
+                                    className="min-h-[42px] rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                                >
+                                    Ouvrir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 {/* Modal de paiement */}
@@ -1360,6 +1586,67 @@ const SaleDetailPage = () => {
                     sale={sale}
                     onAddPayment={handleAddPayment}
                 />
+
+                <Modal
+                    isOpen={Boolean(requestModal)}
+                    onClose={() => setRequestModal(null)}
+                    title="Demande administrateur"
+                    size="sm"
+                    footer={
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setRequestModal(null)}
+                                disabled={requestSubmitting}
+                                className="min-h-[44px] w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 font-medium disabled:opacity-60"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSubmitAdminRequest}
+                                disabled={requestSubmitting || !requestReason.trim()}
+                                className="min-h-[44px] w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {requestSubmitting ? 'Envoi...' : 'Envoyer'}
+                            </button>
+                        </>
+                    }
+                >
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                            Cette action sera envoyée à un administrateur avec votre raison avant validation.
+                        </p>
+                        <div>
+                            <label htmlFor="admin-request-reason" className="mb-2 block text-sm font-medium text-gray-700">
+                                Raison obligatoire
+                            </label>
+                            <textarea
+                                id="admin-request-reason"
+                                value={requestReason}
+                                onChange={(event) => setRequestReason(event.target.value)}
+                                rows={4}
+                                maxLength={600}
+                                placeholder="Expliquez pourquoi cette action est nécessaire..."
+                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">{requestReason.length}/600 caractères</p>
+                        </div>
+                        <div>
+                            <label htmlFor="admin-request-note" className="mb-2 block text-sm font-medium text-gray-700">
+                                Note optionnelle
+                            </label>
+                            <input
+                                id="admin-request-note"
+                                value={requestNote}
+                                onChange={(event) => setRequestNote(event.target.value)}
+                                maxLength={200}
+                                placeholder="Ex: erreur de montant, doublon, client incorrect"
+                                className="min-h-[44px] w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                    </div>
+                </Modal>
 
                 {/* Modal de rappel */}
                 <Modal

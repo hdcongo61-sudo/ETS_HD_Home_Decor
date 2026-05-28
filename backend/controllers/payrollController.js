@@ -144,108 +144,6 @@ const deletePaySlip = async (req, res) => {
     }
 };
 
-// @desc    Request an advance
-// @route   POST /api/employees/:id/advances
-// @access  Private/Admin
-const requestAdvance = async (req, res) => {
-    try {
-        const { amount, reason, status } = req.body;
-        const employee = await Employee.findById(req.params.id);
-
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        const advance = {
-            amount,
-            reason,
-            status: status || 'pending',
-            date: new Date()
-        };
-
-        employee.advances.push(advance);
-        await employee.save();
-
-        res.status(201).json(advance);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-// @desc    Update an advance
-// @route   PUT /api/employees/:id/advances/:advanceId
-// @access  Private/Admin
-const updateAdvance = async (req, res) => {
-    try {
-        const { amount, reason, status } = req.body;
-        const employee = await Employee.findById(req.params.id);
-
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        const advance = employee.advances.id(req.params.advanceId);
-        if (!advance) {
-            return res.status(404).json({ message: 'Advance not found' });
-        }
-
-        if (amount !== undefined) {
-            advance.amount = amount;
-        }
-
-        if (reason !== undefined) advance.reason = reason;
-        if (status !== undefined) advance.status = status;
-
-        await employee.save();
-        res.json(advance);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-// @desc    Delete an advance
-// @route   DELETE /api/employees/:id/advances/:advanceId
-// @access  Private/Admin
-const deleteAdvance = async (req, res) => {
-    try {
-        const employee = await Employee.findById(req.params.id);
-
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        const advanceIndex = employee.advances.findIndex(
-            adv => adv._id.toString() === req.params.advanceId
-        );
-
-        if (advanceIndex === -1) {
-            return res.status(404).json({ message: 'Advance not found' });
-        }
-
-        employee.advances.splice(advanceIndex, 1);
-        await employee.save();
-
-        res.json({ message: 'Advance removed' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// @desc    Get all advances for an employee
-// @route   GET /api/employees/:id/advances
-// @access  Private/Admin
-const getEmployeeAdvances = async (req, res) => {
-    try {
-        const employee = await Employee.findById(req.params.id);
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-        res.json(employee.advances);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
 // @desc    Get all pay slips for an employee
 // @route   GET /api/employees/:id/payroll
 // @access  Private/Admin
@@ -272,15 +170,10 @@ const getFinancialSummary = async (req, res) => {
         }
 
         const totalPaid = employee.paySlips.reduce((sum, slip) => sum + slip.netSalary, 0);
-        const totalAdvances = employee.advances
-            .filter(adv => adv.status === 'approved')
-            .reduce((sum, adv) => sum + adv.amount, 0);
-
         res.json({
             salary: employee.salary,
             totalPaid,
-            totalAdvances,
-            balance: totalPaid - totalAdvances
+            balance: totalPaid
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -328,10 +221,6 @@ module.exports = {
     updatePaySlip,
     deletePaySlip,
     getPaySlip,
-    requestAdvance,
-    updateAdvance,
-    deleteAdvance,
-    getEmployeeAdvances,
     getEmployeePaySlips,
     getFinancialSummary,
     getDashboardStats,

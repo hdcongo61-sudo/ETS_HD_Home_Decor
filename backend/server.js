@@ -32,6 +32,7 @@ const bankRoutes = require('./routes/bankRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const lookupRoutes = require('./routes/lookupRoutes');
 const appSettingsRoutes = require('./routes/appSettingsRoutes');
+const adminRequestRoutes = require('./routes/adminRequestRoutes');
 
 const app = express();
 
@@ -102,6 +103,7 @@ app.use('/api/bank', bankRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/lookups', lookupRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
+app.use('/api/admin-requests', adminRequestRoutes);
 
 // 10. Error handler middleware
 app.use(errorHandler);

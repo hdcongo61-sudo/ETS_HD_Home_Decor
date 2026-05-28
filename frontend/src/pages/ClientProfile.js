@@ -7,6 +7,18 @@ import {
   ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import { getPaymentStructureKey } from '../utils/saleUtils';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Copy,
+  CreditCard,
+  Edit3,
+  History,
+  Phone,
+  Printer,
+  UserRound,
+} from 'lucide-react';
 
 const PROFILE_GENDER_LABELS = {
   male: 'Homme',
@@ -226,7 +238,7 @@ const ClientProfile = () => {
     if (stats.totalSpent > spendingLimit) {
       alerts.push({
         type: 'success',
-        title: 'Client Premium 💎',
+        title: 'Client Premium',
         message: `Ce client a dépassé ${spendingLimit.toLocaleString('fr-FR')} CFA de dépenses cumulées.`,
         color: 'green'
       });
@@ -299,7 +311,7 @@ const ClientProfile = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex h-screen items-center justify-center bg-[#f6f7f9]">
         <AppLoader fullScreen={false} text="Chargement du profil client…" />
       </div>
     );
@@ -307,10 +319,10 @@ const ClientProfile = () => {
 
   if (error || !client) {
     return (
-      <div className="max-w-4xl mx-auto py-12 text-center">
-        <p className="text-red-600 font-semibold mb-4">{error || "Client introuvable"}</p>
-        <Link to={returnToClients} className="text-blue-600 hover:underline">
-          ← Retour à la liste des clients
+      <div className="mx-auto max-w-4xl py-12 text-center">
+        <p className="mb-4 font-semibold text-rose-700">{error || "Client introuvable"}</p>
+        <Link to={returnToClients} className="text-slate-700 hover:text-slate-950">
+          Retour à la liste des clients
         </Link>
       </div>
     );
@@ -333,37 +345,40 @@ const ClientProfile = () => {
 
   // --- UI ---
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
+    <div className="mx-auto max-w-6xl space-y-5">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex items-center gap-3">
-          <Link to={returnToClients} className="p-2 rounded-full hover:bg-gray-100">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
+          <Link to={returnToClients} className="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-white">
+            <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-3xl font-semibold text-gray-900">Profil du client</h1>
+          <div>
+            <p className="text-xs font-medium uppercase text-slate-500">Profil client</p>
+            <h1 className="text-2xl font-semibold text-slate-950 sm:text-3xl">Profil du client</h1>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {client.phone && (
             <>
-              <a href={`tel:${client.phone}`} className="px-3 py-2 bg-white border rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2">📞 Appeler</a>
+              <a href={`tel:${client.phone}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"><Phone className="h-4 w-4" /> Appeler</a>
               <a
                 href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
                 target="_blank" rel="noopener noreferrer"
-                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
               >
-                💬 WhatsApp
+                WhatsApp
               </a>
             </>
           )}
           <button
             onClick={() => window.print()}
-            className="px-3 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
           >
-            🖨️ Imprimer
+            <Printer className="h-4 w-4" />
+            Imprimer
           </button>
         </div>
       </div>
@@ -381,46 +396,40 @@ const ClientProfile = () => {
       )}
 
       {/* CLIENT INFO CARD */}
-      <div className="bg-white p-6 rounded-3xl shadow border space-y-6">
+      <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         {/* Header Info */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <UserRound className="h-8 w-8" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{client.name}</h2>
-              <p className="text-gray-600">{client.email || '—'}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Genre : <span className="text-gray-800">{formatGenderLabel(client.gender)}</span>
+              <h2 className="text-xl font-semibold text-slate-950">{client.name}</h2>
+              <p className="text-slate-600">{client.email || '—'}</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Genre : <span className="text-slate-800">{formatGenderLabel(client.gender)}</span>
               </p>
               {client.phone && (
                 <div className="flex items-center gap-2 mt-1 group">
                   <a
                     href={`tel:${client.phone}`}
-                    className="flex items-center gap-1 text-blue-600 hover:text-indigo-700 transition"
+                    className="flex items-center gap-1 text-slate-700 hover:text-slate-950 transition"
                     title="Appeler ce numéro"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                        d="M3 5a2 2 0 012-2h3.28a2 2 0 011.948 1.516l.72 3.104a2 2 0 01-.516 1.833l-1.12 1.12a12.042 12.042 0 005.657 5.657l1.12-1.12a2 2 0 011.833-.516l3.104.72A2 2 0 0121 19.72V22a2 2 0 01-2 2h-.28C9.507 24 0 14.493 0 3.28V3a2 2 0 012-2h1z" />
-                    </svg>
+                    <Phone className="h-4 w-4" />
                     <span className="font-medium">{client.phone}</span>
                   </a>
 
                   {/* COPY BUTTON */}
                   <button
                     onClick={() => handleCopy(client.phone)}
-                    className="ml-2 text-gray-400 hover:text-gray-700 transition"
+                    className="ml-2 text-slate-400 hover:text-slate-700 transition"
                     title="Copier le numéro"
                   >
-                    📋
+                    <Copy className="h-4 w-4" />
                   </button>
                   {copied && (
-                    <span className="ml-1 text-xs text-green-600 font-medium animate-fadeIn">copié !</span>
+                    <span className="ml-1 text-xs font-medium text-emerald-700 animate-fadeIn">copié !</span>
                   )}
                 </div>
               )}
@@ -430,13 +439,13 @@ const ClientProfile = () => {
 
           {/* Mini Stats */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-3 rounded-xl text-center">
-              <p className="text-xs text-blue-600 font-medium">Achats</p>
-              <p className="text-xl font-bold">{stats.purchaseCount}</p>
+            <div className="rounded-2xl bg-slate-50 p-3 text-center">
+              <p className="text-xs font-medium text-slate-500">Achats</p>
+              <p className="text-xl font-semibold text-slate-950">{stats.purchaseCount}</p>
             </div>
-            <div className="bg-green-50 p-3 rounded-xl text-center">
-              <p className="text-xs text-green-600 font-medium">Total</p>
-              <p className="text-xl font-bold text-gray-900">
+            <div className="rounded-2xl bg-emerald-50 p-3 text-center">
+              <p className="text-xs font-medium text-emerald-700">Total</p>
+              <p className="text-xl font-semibold text-slate-950">
                 {stats.totalSpent.toLocaleString('fr-FR')} CFA
               </p>
             </div>
@@ -444,44 +453,44 @@ const ClientProfile = () => {
         </div>
 
         {/* TIMELINE INFO */}
-        <div className="border-t border-gray-100 pt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-700">
+        <div className="grid gap-4 border-t border-slate-100 pt-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-center gap-2">
-            <span className="text-blue-600">📅</span>
+            <CalendarDays className="h-4 w-4 text-slate-500" />
             <div>
-              <p className="font-semibold text-gray-800">Inscrit le</p>
-              <p className="text-gray-600">{formatDate(client.createdAt)}</p>
+              <p className="font-semibold text-slate-800">Inscrit le</p>
+              <p className="text-slate-600">{formatDate(client.createdAt)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-green-600">💳</span>
+            <CreditCard className="h-4 w-4 text-slate-500" />
             <div>
-              <p className="font-semibold text-gray-800">Dernier achat</p>
-              <p className="text-gray-600">{formatDate(stats.lastPurchaseDate || client.lastPurchaseDate)}</p>
+              <p className="font-semibold text-slate-800">Dernier achat</p>
+              <p className="text-slate-600">{formatDate(stats.lastPurchaseDate || client.lastPurchaseDate)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-emerald-600">💸</span>
+            <CreditCard className="h-4 w-4 text-slate-500" />
             <div>
-              <p className="font-semibold text-gray-800">Dernier paiement</p>
-              <p className="text-gray-600">{formatDate(stats.lastPaymentDate)}</p>
+              <p className="font-semibold text-slate-800">Dernier paiement</p>
+              <p className="text-slate-600">{formatDate(stats.lastPaymentDate)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-yellow-600">✏️</span>
+            <Edit3 className="h-4 w-4 text-slate-500" />
             <div>
-              <p className="font-semibold text-gray-800">Dernière modification</p>
-              <p className="text-gray-600">{formatDate(client.updatedAt)}</p>
+              <p className="font-semibold text-slate-800">Dernière modification</p>
+              <p className="text-slate-600">{formatDate(client.updatedAt)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-purple-600">👤</span>
+            <UserRound className="h-4 w-4 text-slate-500" />
             <div>
-              <p className="font-semibold text-gray-800">Modifié par</p>
-              <p className="text-gray-600">
+              <p className="font-semibold text-slate-800">Modifié par</p>
+              <p className="text-slate-600">
                 {client.updatedBy?.name || client.updatedBy?.email || '—'}
               </p>
             </div>
@@ -490,10 +499,10 @@ const ClientProfile = () => {
       </div>
 
       {purchases.length > 0 && (
-        <div className="bg-white p-6 rounded-3xl shadow border space-y-6">
+        <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-gray-900">Statistiques commerciales</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-slate-950">Statistiques commerciales</h2>
+            <p className="text-sm text-slate-500">
               Lecture rapide du comportement d’achat et de paiement de ce client.
             </p>
           </div>
@@ -501,30 +510,30 @@ const ClientProfile = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {insightCards.map((card) => (
               <div key={card.label} className={`rounded-2xl border p-4 ${card.classes}`}>
-                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{card.label}</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">{card.value}</p>
+                <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{card.value}</p>
                 <p className="mt-1 text-sm opacity-90">{card.helper}</p>
               </div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Panier moyen</p>
-              <p className="mt-2 text-xl font-bold text-gray-900">{stats.averagePurchase.toLocaleString('fr-FR')} CFA</p>
-              <p className="mt-1 text-sm text-gray-600">Moyenne par vente créée</p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Panier moyen</p>
+              <p className="mt-2 text-xl font-semibold text-slate-950">{stats.averagePurchase.toLocaleString('fr-FR')} CFA</p>
+              <p className="mt-1 text-sm text-slate-600">Moyenne par vente créée</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Articles par vente</p>
-              <p className="mt-2 text-xl font-bold text-gray-900">{stats.averageItemsPerSale.toFixed(1)}</p>
-              <p className="mt-1 text-sm text-gray-600">Volume moyen du panier</p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Articles par vente</p>
+              <p className="mt-2 text-xl font-semibold text-slate-950">{stats.averageItemsPerSale.toFixed(1)}</p>
+              <p className="mt-1 text-sm text-slate-600">Volume moyen du panier</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Profil de paiement</p>
-              <p className="mt-2 text-xl font-bold text-gray-900">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Profil de paiement</p>
+              <p className="mt-2 text-xl font-semibold text-slate-950">
                 {stats.multiplePaymentCount > stats.singlePaymentCount ? 'Échelonné' : 'Direct'}
               </p>
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-slate-600">
                 {stats.multiplePaymentCount > stats.singlePaymentCount
                   ? 'Ce client paie souvent en plusieurs fois.'
                   : 'Ce client règle surtout en un seul paiement.'}
@@ -537,39 +546,36 @@ const ClientProfile = () => {
       {/* GRAPHS + PURCHASE HISTORY */}
       {purchases.length > 0 && (
         <>
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Évolution des achats</h2>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-950">Évolution des achats</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={2} dot />
+                <Line type="monotone" dataKey="total" stroke="#0f172a" strokeWidth={2} dot />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Total dépensé par mois</h2>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-950">Total dépensé par mois</h2>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={monthsSpending}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                <Bar dataKey="total" fill="#10b981" radius={[5, 5, 0, 0]} />
+                <Bar dataKey="total" fill="#047857" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* HISTORY */}
-          <div className="bg-white p-6 rounded-3xl shadow border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M3 3h18M9 3v18M15 3v18" />
-              </svg>
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-950">
+              <History className="h-5 w-5 text-slate-600" />
               Historique des Achats
             </h2>
 
@@ -578,7 +584,7 @@ const ClientProfile = () => {
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm border-separate border-spacing-y-2">
                     <thead>
-                      <tr className="text-left text-gray-600 bg-gray-50">
+                      <tr className="bg-slate-50 text-left text-slate-600">
                         <th className="px-4 py-2 rounded-l-lg font-medium">Date</th>
                         <th className="px-4 py-2 font-medium">Montant total</th>
                         <th className="px-4 py-2 font-medium">Statut</th>
@@ -590,27 +596,27 @@ const ClientProfile = () => {
                         <tr
                           key={p._id}
                           className={`transition-all duration-200 cursor-pointer ${
-                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          } hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md`}
+                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                          } hover:bg-slate-100`}
                           onClick={() => navigate(`/sales/${p._id}`)}
                         >
-                          <td className="px-4 py-3 font-medium text-gray-700 rounded-l-lg">
+                          <td className="rounded-l-lg px-4 py-3 font-medium text-slate-700">
                             {formatDate(p.saleDate)}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">
+                          <td className="px-4 py-3 font-semibold text-slate-950">
                             {p.totalAmount.toLocaleString('fr-FR')} CFA
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ${
                               p.status === 'completed'
-                                ? 'bg-green-100 text-green-800 border-green-200'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                                 : p.status === 'partially_paid'
                                 ? 'bg-indigo-100 text-indigo-800 border-indigo-200 animate-pulse'
                                 : p.status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
                                 : p.status === 'cancelled'
                                 ? 'bg-red-100 text-red-800 border-red-200'
-                                : 'bg-gray-100 text-gray-700 border-gray-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {p.status === 'partially_paid'
                                 ? 'Paiement partiel'
@@ -626,10 +632,10 @@ const ClientProfile = () => {
                           <td className="px-4 py-3 text-right rounded-r-lg">
                             <Link
                               to={`/sales/${p._id}`}
-                              className="text-blue-600 hover:text-indigo-700 text-sm font-medium hover:underline"
+                              className="inline-flex items-center justify-end gap-1 text-sm font-medium text-slate-700 hover:text-slate-950"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              Voir détails →
+                              Voir détails <ArrowRight className="h-4 w-4" />
                             </Link>
                           </td>
                         </tr>
@@ -642,24 +648,24 @@ const ClientProfile = () => {
                   {purchases.map((p, index) => (
                     <div
                       key={p._id}
-                      className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white"
+                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                       onClick={() => navigate(`/sales/${p._id}`)}
                     >
                       <div className="flex justify-between items-center mb-2">
                         <div>
-                          <p className="text-base font-semibold text-gray-900">
+                          <p className="text-base font-semibold text-slate-950">
                             {p.totalAmount.toLocaleString('fr-FR')} CFA
                           </p>
-                          <p className="text-xs text-gray-500">{formatDate(p.saleDate)}</p>
+                          <p className="text-xs text-slate-500">{formatDate(p.saleDate)}</p>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           p.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-emerald-100 text-emerald-800'
                             : p.status === 'partially_paid'
                             ? 'bg-indigo-100 text-indigo-800'
                             : p.status === 'pending'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                            : 'bg-rose-100 text-rose-800'
                         }`}>
                           {p.status === 'partially_paid'
                             ? 'Paiement partiel'
@@ -675,9 +681,9 @@ const ClientProfile = () => {
                           e.stopPropagation();
                           navigate(`/sales/${p._id}`);
                         }}
-                        className="w-full text-blue-600 hover:text-indigo-700 text-sm font-medium mt-2"
+                        className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
                       >
-                        Voir détails →
+                        Voir détails <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
@@ -685,14 +691,15 @@ const ClientProfile = () => {
               </>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">
-                  🎉 Tous les produits ont été vendus au moins une fois !
+                <p className="text-lg text-slate-500">
+                  Aucun historique d’achat.
                 </p>
               </div>
             )}
           </div>
         </>
       )}
+    </div>
     </div>
   );
 };

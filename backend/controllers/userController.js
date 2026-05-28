@@ -57,6 +57,7 @@ const sanitizeUser = (userDoc) => {
     ...rest,
     _id: normalizedId,
     phone: rest.phone || '',
+    permissions: Array.isArray(rest.permissions) ? rest.permissions : [],
     lastLogin: rest.lastLogin || null,
     lockUntil: rest.lockUntil || null,
     lastModifiedBy: normalizeRef(rest.lastModifiedBy),
@@ -115,6 +116,31 @@ const parsePositiveNumber = (value, fallback = 0) => {
   return parsed;
 };
 
+const ALLOWED_PERMISSIONS = new Set([
+  'view_sensitive_financials',
+  'view_supplier_contacts',
+  'approve_admin_requests',
+]);
+
+const normalizePermissions = (value) => {
+  let raw = value;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch (error) {
+      raw = raw.split(',');
+    }
+  }
+
+  if (!Array.isArray(raw)) return [];
+
+  return [...new Set(
+    raw
+      .map((permission) => String(permission || '').trim())
+      .filter((permission) => ALLOWED_PERMISSIONS.has(permission))
+  )];
+};
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private/Admin
@@ -141,6 +167,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin || null,
       createdAt: user.createdAt
@@ -173,6 +200,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     isAdmin: isAdmin || false,
+    permissions: normalizePermissions(req.body.permissions),
     phone: phone ? phone.trim() : '',
     accessControlEnabled: Boolean(accessControlEnabled),
     accessStart: parseDateOrNull(accessStart),
@@ -187,6 +215,7 @@ const registerUser = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin,
       token: generateToken(user._id)
@@ -327,6 +356,7 @@ const loginUser = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin,
       token: generateToken(user._id)
@@ -484,6 +514,7 @@ const createUserByAdmin = async (req, res) => {
     email,
     password, // Le mot de passe sera hashé par le middleware pre-save du modèle User
     isAdmin: isAdmin || false,
+    permissions: normalizePermissions(req.body.permissions),
     phone: phone ? phone.trim() : '',
     accessControlEnabled: Boolean(accessControlEnabled),
     accessStart: parseDateOrNull(accessStart),
@@ -541,6 +572,9 @@ const updateUser = async (req, res) => {
     }
     if (typeof req.body.isAdmin !== 'undefined') {
       user.isAdmin = Boolean(req.body.isAdmin);
+    }
+    if (typeof req.body.permissions !== 'undefined') {
+      user.permissions = normalizePermissions(req.body.permissions);
     }
     if (typeof req.body.accessControlEnabled !== 'undefined') {
       user.accessControlEnabled = Boolean(req.body.accessControlEnabled);
@@ -631,6 +665,7 @@ const updateUser = async (req, res) => {
       'email',
       'phone',
       'isAdmin',
+      'permissions',
       'accessControlEnabled',
       'accessStart',
       'accessEnd',
