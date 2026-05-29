@@ -29,7 +29,15 @@ export const employeePayrollPath = (entityOrId, slug) =>
   buildPath('/employees', entityOrId, slug, '/payroll');
 export const employeePayrollNewPath = (entityOrId, slug) =>
   `${employeePayrollPath(entityOrId, slug)}/new`;
-export const employeePayrollPayslipEditPath = (entityOrId, slug, payslipId) =>
-  `${employeePayrollPath(entityOrId, slug)}/${payslipId}/edit`;
-export const employeePayrollPayslipPrintPath = (entityOrId, slug, payslipId) =>
-  `${employeePayrollPath(entityOrId, slug)}/${payslipId}/print`;
+export const employeePayrollPayslipEditPath = (entityOrId, slugOrPayslipId, maybePayslipId) => {
+  const hasExplicitSlug = maybePayslipId !== undefined;
+  const slug = hasExplicitSlug ? slugOrPayslipId : undefined;
+  const payslipId = hasExplicitSlug ? maybePayslipId : slugOrPayslipId;
+  return `${employeePayrollPath(entityOrId, slug)}/${payslipId}/edit`;
+};
+export const employeePayrollPayslipPrintPath = (entityOrId, slugOrPayslipId, maybePayslipId) => {
+  const hasExplicitSlug = maybePayslipId !== undefined;
+  const slug = hasExplicitSlug ? slugOrPayslipId : undefined;
+  const payslipId = hasExplicitSlug ? maybePayslipId : slugOrPayslipId;
+  return `${employeePayrollPath(entityOrId, slug)}/${payslipId}/print`;
+};

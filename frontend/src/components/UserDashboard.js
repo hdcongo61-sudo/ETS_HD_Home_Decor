@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import UserForm from './UserForm';
@@ -64,6 +64,7 @@ const formatDateTime = (value) => {
 };
 
 const UserDashboard = () => {
+    const location = useLocation();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -79,6 +80,7 @@ const UserDashboard = () => {
         connectedNow: 0
     });
     const [activeTab, setActiveTab] = useState('all');
+    const openedUserLinkRef = useRef('');
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -132,6 +134,23 @@ const UserDashboard = () => {
             fetchUsers();
         }
     }, [auth]);
+
+    useEffect(() => {
+        const requestedUserId = new URLSearchParams(location.search).get('user');
+        if (!requestedUserId) {
+            openedUserLinkRef.current = '';
+            return;
+        }
+        if (openedUserLinkRef.current === requestedUserId || users.length === 0) return;
+
+        const matchedUser = users.find((user) => String(user._id) === requestedUserId);
+        if (matchedUser) {
+            openedUserLinkRef.current = requestedUserId;
+            setSelectedUser(matchedUser);
+            setShowForm(true);
+            setActiveTab('all');
+        }
+    }, [location.search, users]);
 
     const handleDelete = async (userId) => {
         if (window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {

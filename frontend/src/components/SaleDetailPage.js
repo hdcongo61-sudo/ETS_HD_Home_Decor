@@ -606,37 +606,40 @@ const SaleDetailPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+        <div className="min-h-screen bg-[#f6f7f9] text-gray-900 dark:bg-gray-900 dark:text-gray-100">
             <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
                 {/* Back + Page title */}
-                <header className="flex flex-col gap-3 sm:gap-4">
+                <header className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <button
                         type="button"
                         onClick={() => navigate(returnToSales)}
-                        className="inline-flex w-fit min-h-[42px] items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition hover:text-indigo-700 hover:ring-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        className="inline-flex w-fit min-h-[42px] items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white hover:text-gray-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                         Retour aux ventes
                     </button>
-                    <div className="flex items-center gap-3">
-                        <span className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[22px] border border-gray-200 bg-gray-100 text-gray-700 shadow-inner dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Détails de la vente</h1>
-                            <p className="mt-0.5 text-sm text-gray-500 sm:hidden">Vente #{sale._id?.substring(18) || 'N/A'}</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Détails de la vente</p>
+                            <h1 className="truncate text-xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-2xl">Vente #{sale._id?.substring(18) || 'N/A'}</h1>
+                            <p className="mt-0.5 text-sm text-gray-500">{sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}</p>
                         </div>
+                    </div>
                     </div>
                 </header>
 
-                <nav className="sticky top-0 z-20 -mx-3 overflow-x-auto border-y border-gray-200 bg-white/95 px-3 py-2 backdrop-blur sm:hidden">
+                <nav className="sticky top-[72px] z-20 -mx-3 overflow-x-auto border-y border-gray-200 bg-white/95 px-3 py-2 backdrop-blur sm:hidden">
                     <div className="flex min-w-max gap-2">
-                        <a href="#resume-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">Résumé</a>
-                        <a href="#produits-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">Produits</a>
+                        <a href="#resume-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">Résumé</a>
+                        <a href="#produits-vente" className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">Produits</a>
                         <button
                             type="button"
                             onClick={() => {
@@ -645,7 +648,7 @@ const SaleDetailPage = () => {
                                     document.getElementById('paiements-vente')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }, 0);
                             }}
-                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700"
                         >
                             Paiements
                         </button>
@@ -657,7 +660,7 @@ const SaleDetailPage = () => {
                                     document.getElementById('historique-vente')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }, 0);
                             }}
-                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700"
                         >
                             Historique
                         </button>
@@ -681,7 +684,7 @@ const SaleDetailPage = () => {
                 )}
 
                 {/* Sale header card */}
-                <section id="resume-vente" className="scroll-mt-20 bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <section id="resume-vente" className="scroll-mt-24 overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_16px_50px_rgba(15,23,42,0.06)] dark:border-gray-800 dark:bg-gray-900/95">
                     <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col gap-4 sm:gap-0 sm:flex-row sm:justify-between sm:items-start">
                             <div className="min-w-0">
@@ -718,7 +721,7 @@ const SaleDetailPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowProfitSections((prev) => !prev)}
-                                        className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition hover:bg-gray-50 dark:hover:bg-gray-700 sm:col-span-1 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                        className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 sm:col-span-1 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             {showProfitSections ? (
@@ -737,7 +740,7 @@ const SaleDetailPage = () => {
                                 {isAdmin && sale.status !== 'cancelled' && (
                                     <Link
                                         to={`/sales/${sale._id}/edit`}
-                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -776,7 +779,7 @@ const SaleDetailPage = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPaymentModal(true)}
-                                    className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-95 disabled:pointer-events-none disabled:opacity-50 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                    className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-50 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     disabled={sale.status === 'completed' || sale.status === 'cancelled'}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -789,7 +792,7 @@ const SaleDetailPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowReminderModal(true)}
-                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-amber-500/20 transition hover:opacity-95 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -802,7 +805,7 @@ const SaleDetailPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowDeliveryModal(true)}
-                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:opacity-95 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -815,7 +818,7 @@ const SaleDetailPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowHistoryModal(true)}
-                                        className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-gray-900/15 transition hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 sm:col-span-1 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
+                                        className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 sm:col-span-1 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />

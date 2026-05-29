@@ -219,18 +219,33 @@ const Expenses = () => {
   useResponsiveTable(tableRef, [expenses]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-red-500 p-2 rounded-xl">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[22px] border border-red-100 bg-red-50 text-red-700 shadow-inner">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900">Gestion des Dépenses</h1>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Caisse & charges</p>
+              <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-950 sm:text-3xl">Gestion des dépenses</h1>
+              <p className="mt-1 text-sm text-gray-500">Suivi des sorties, salaires, catégories et historique de paiement.</p>
+            </div>
+          </div>
+          <a
+            href="#expense-form-section"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800"
+          >
+            Nouvelle dépense
+          </a>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 border border-red-100">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-red-700 shadow-sm flex items-center gap-2">
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
@@ -239,15 +254,18 @@ const Expenses = () => {
       )}
 
       {/* Tableau de bord */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <section className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-5">
+        <div className="mb-4 flex flex-col gap-1">
+        <h2 className="text-lg font-semibold text-gray-950 flex items-center gap-2">
           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          Tableau de Bord des Dépenses
+          Tableau de bord
         </h2>
+          <p className="text-sm text-gray-500">Vue rapide des dépenses correspondant aux filtres actifs.</p>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {/* Carte: Total dépensé */}
           <StatCard
             title="Total dépensé"
@@ -282,8 +300,8 @@ const Expenses = () => {
         </div>
 
         {/* Graphique de répartition */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200">
-          <h3 className="text-gray-600 text-sm font-medium mb-4 flex items-center gap-2">
+        <div className="mt-5 rounded-[24px] border border-gray-200 bg-gray-50/80 p-4 sm:p-5">
+          <h3 className="text-gray-700 text-sm font-semibold mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
@@ -291,6 +309,7 @@ const Expenses = () => {
             Répartition par catégorie
           </h3>
 
+          {dashboardData.total > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Diagramme circulaire */}
             <div className="flex justify-center">
@@ -329,7 +348,7 @@ const Expenses = () => {
             </div>
 
             {/* Légende et détails */}
-            <div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="space-y-3">
                 {Object.entries(dashboardData.categoryTotals).map(([category, total]) => {
                   const percentage = (total / dashboardData.total) * 100;
@@ -363,59 +382,73 @@ const Expenses = () => {
               </div>
             </div>
           </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-10 text-center">
+              <p className="text-sm font-semibold text-gray-700">Aucune donnée à répartir</p>
+              <p className="mt-1 text-sm text-gray-500">Ajoutez une dépense ou élargissez vos filtres.</p>
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div ref={formSectionRef} id="expense-form-section" className="bg-white p-6 rounded-2xl border border-gray-200 scroll-mt-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <section ref={formSectionRef} id="expense-form-section" className="scroll-mt-24 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-5">
+          <div className="mb-4 flex flex-col gap-1">
+          <h2 className="text-lg font-semibold text-gray-950 flex items-center gap-2">
             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {editingExpense ? 'Modifier Dépense' : 'Nouvelle Dépense'}
+            {editingExpense ? 'Modifier la dépense' : 'Nouvelle dépense'}
           </h2>
+            <p className="text-sm text-gray-500">
+              {editingExpense ? 'Mettez à jour les informations enregistrées.' : 'Ajoutez une sortie avec sa catégorie et son mode de paiement.'}
+            </p>
+          </div>
           <ExpenseForm
             onSubmit={handleSubmit}
             onCancel={handleCancelEdit}
             submitting={submitting}
             initialData={editingExpense}
           />
-        </div>
+        </section>
 
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200">
+        <section className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-5 lg:col-span-2">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-gray-950 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
-              Filtres
+              Historique des dépenses
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <p className="text-sm text-gray-500">Filtrez par texte, période ou catégorie.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 rounded-[24px] border border-gray-200 bg-gray-50/80 p-3 md:grid-cols-5">
               <input
                 type="text"
                 placeholder="Rechercher..."
                 value={filter.search}
                 onChange={(e) => setFilter({ ...filter, search: e.target.value })}
-                className="p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="min-h-[44px] rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
               />
               <input
                 type="date"
                 value={filter.startDate}
                 max={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
-                className="p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="min-h-[44px] rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
               />
               <input
                 type="date"
                 value={filter.endDate}
                 max={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
-                className="p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="min-h-[44px] rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
               />
               <select
                 value={filter.category}
                 onChange={(e) => setFilter({ ...filter, category: e.target.value })}
-                className="p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="min-h-[44px] rounded-2xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
               >
                 <option value="">Toutes catégories</option>
                 {categoryFilterOptions.map((category) => (
@@ -426,7 +459,7 @@ const Expenses = () => {
               </select>
               <button
                 onClick={() => setFilter({ search: '', startDate: '', endDate: '', category: '' })}
-                className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium w-full"
+                className="min-h-[44px] rounded-2xl bg-gray-950 px-3 text-sm font-semibold text-white transition hover:bg-gray-800"
               >
                 Réinitialiser
               </button>
@@ -439,7 +472,7 @@ const Expenses = () => {
             </div>
           ) : (
             <>
-              <div className="mb-4 p-4 bg-blue-50 rounded-xl flex items-center justify-between border border-blue-100">
+              <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -452,11 +485,13 @@ const Expenses = () => {
               </div>
 
               {expenses.length === 0 && !loading && (
-                <div className="text-center py-6 text-gray-500">
-                  Aucune dépense trouvée
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
+                  <p className="text-sm font-semibold text-gray-700">Aucune dépense trouvée</p>
+                  <p className="mt-1 text-sm text-gray-500">Ajustez les filtres ou créez une nouvelle dépense.</p>
                 </div>
               )}
 
+              {expenses.length > 0 && (
               <div className="overflow-x-auto -mx-2 sm:mx-0">
                 <table ref={tableRef} className="responsive-table w-full">
                   <thead className="bg-gray-50">
@@ -469,9 +504,9 @@ const Expenses = () => {
                       <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-100">
                     {expenses.map((expense) => (
-                      <tr key={expense._id} className="hover:bg-gray-50">
+                      <tr key={expense._id} className="transition-colors hover:bg-gray-50">
                         <td data-title="Date" className="px-4 sm:px-6 py-4 text-sm text-gray-900">
                           {formatDateTime(expense.date)}
                         </td>
@@ -510,7 +545,7 @@ const Expenses = () => {
                             <button
                               type="button"
                               onClick={() => handleEdit(expense)}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 touch-manipulation"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-2xl hover:bg-gray-100 touch-manipulation"
                               aria-label="Modifier"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -520,7 +555,7 @@ const Expenses = () => {
                             <button
                               type="button"
                               onClick={() => handleDelete(expense._id)}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:text-red-800 rounded-xl hover:bg-red-50 touch-manipulation"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 hover:text-red-800 rounded-2xl hover:bg-red-50 touch-manipulation"
                               aria-label="Supprimer"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,9 +569,11 @@ const Expenses = () => {
                   </tbody>
                 </table>
               </div>
+              )}
             </>
           )}
-        </div>
+        </section>
+      </div>
       </div>
     </div>
   );
@@ -554,16 +591,16 @@ const StatCard = ({ title, value, icon, color = 'blue' }) => {
   const colors = colorClasses[color] || colorClasses.blue;
 
   return (
-    <div className="bg-white p-5 rounded-2xl border border-gray-200">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-xl ${colors.bg} mr-4`}>
+    <div className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${colors.bg}`}>
           <svg className={`w-5 h-5 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
           </svg>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-lg font-semibold text-gray-900">{value}</p>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</p>
+          <p className="mt-1 break-words text-lg font-semibold text-gray-950">{value}</p>
         </div>
       </div>
     </div>

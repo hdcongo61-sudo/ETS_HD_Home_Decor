@@ -60,7 +60,7 @@ import {
   getProfitCategoryText,
   parseDateSafely,
 } from "../utils/saleUtils";
-import { SalesFiltersBar, SaleCard } from "./sales-shared";
+import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
 
 // Enregistrement Chart.js
@@ -96,6 +96,7 @@ const buildSalesReturnSearch = ({
   dateFilter,
   deliveryFilter,
   containerFilter,
+  sellerFilter,
 }) => {
   const params = new URLSearchParams();
   if (statusFilter) params.set("status", statusFilter);
@@ -105,6 +106,7 @@ const buildSalesReturnSearch = ({
   if (dateFilter) params.set("date", dateFilter);
   if (deliveryFilter) params.set("delivery", deliveryFilter);
   if (containerFilter) params.set("container", containerFilter);
+  if (sellerFilter) params.set("seller", sellerFilter);
   const query = params.toString();
   return query ? `?${query}` : "";
 };
@@ -117,6 +119,16 @@ const normalizeCollection = (value, nestedKeys = []) => {
     }
   }
   return [];
+};
+
+const getSaleSellerId = (sale) => {
+  if (!sale?.user) return "";
+  return typeof sale.user === "object" ? String(sale.user._id || sale.user.id || "") : String(sale.user);
+};
+
+const getSaleSellerName = (sale) => {
+  if (!sale?.user || typeof sale.user !== "object") return "";
+  return sale.user.name || sale.user.email || "";
 };
 
 /* ===============================
@@ -901,6 +913,7 @@ const Sales = () => {
   const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [containerFilter, setContainerFilter] = useState("");
+  const [sellerFilter, setSellerFilter] = useState("");
   const [containers, setContainers] = useState([]);
   const [historyFiltersOpen, setHistoryFiltersOpen] = useState(false); // collapsed on mobile by default
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -976,6 +989,7 @@ const Sales = () => {
     if (params.has("container")) {
       setContainerFilter(params.get("container") || "");
     }
+    setSellerFilter(params.get("seller") || "");
   }, [location.search]);
 
   // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
@@ -1249,11 +1263,28 @@ const Sales = () => {
     [sales]
   );
 
+  const sellers = useMemo(() => {
+    const byId = new Map();
+    sales.forEach((sale) => {
+      const sellerId = getSaleSellerId(sale);
+      if (!sellerId || byId.has(sellerId)) return;
+      byId.set(sellerId, {
+        _id: sellerId,
+        name: getSaleSellerName(sale) || "Vendeur sans nom",
+        email: typeof sale.user === "object" ? sale.user.email || "" : "",
+      });
+    });
+    return Array.from(byId.values()).sort((a, b) =>
+      (a.name || a.email || "").localeCompare(b.name || b.email || "", "fr", { sensitivity: "base" })
+    );
+  }, [sales]);
+
   const applySalesFilters = useCallback((source, options = {}) => {
     const { includeDate = true } = options;
     const base = source.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
+      const sellerMatch = !sellerFilter || getSaleSellerId(sale) === sellerFilter;
       const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
       const paymentStructureMatch =
         !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
@@ -1266,7 +1297,7 @@ const Sales = () => {
       const containerMatch =
         !containerFilter ||
         (sale.products || []).some((p) => p.product?.container === containerFilter);
-      return statusMatch && clientMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
+      return statusMatch && clientMatch && sellerMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
 
     let out = [...base];
@@ -1287,7 +1318,7 @@ const Sales = () => {
     }
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
-  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
+  }, [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
 
   const filteredSales = useMemo(
     () => applySalesFilters(salesWithProfit, { includeDate: true }),
@@ -1402,20 +1433,21 @@ const Sales = () => {
     };
   }, [clients, products]);
 
-  const hasActiveFilters = Boolean(statusFilter || clientFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
+  const hasActiveFilters = Boolean(statusFilter || clientFilter || sellerFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
 
   const salesReturnSearch = useMemo(
     () =>
       buildSalesReturnSearch({
         statusFilter,
         clientFilter,
+        sellerFilter,
         saleTypeFilter,
         paymentStructureFilter,
         dateFilter,
         deliveryFilter,
         containerFilter,
       }),
-    [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]
+    [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]
   );
   const salesReturnPath = `/sales${salesReturnSearch}`;
   const saleLinkState = useMemo(() => ({ returnToSales: salesReturnPath }), [salesReturnPath]);
@@ -1425,13 +1457,14 @@ const Sales = () => {
     params.set("history", "1");
     if (statusFilter) params.set("status", statusFilter);
     if (clientFilter) params.set("client", clientFilter);
+    if (sellerFilter) params.set("seller", sellerFilter);
     if (saleTypeFilter) params.set("saleType", saleTypeFilter);
     if (paymentStructureFilter) params.set("paymentStructure", paymentStructureFilter);
     if (dateFilter) params.set("date", dateFilter);
     if (deliveryFilter) params.set("delivery", deliveryFilter);
     if (containerFilter) params.set("container", containerFilter);
     return `?${params.toString()}`;
-  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
+  }, [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
@@ -1914,6 +1947,7 @@ const Sales = () => {
                       <SalesFiltersBar
                         statusFilter={statusFilter}
                         clientFilter={clientFilter}
+                        sellerFilter={sellerFilter}
                         saleTypeFilter={saleTypeFilter}
                         paymentStructureFilter={paymentStructureFilter}
                         dateFilter={dateFilter}
@@ -1921,8 +1955,10 @@ const Sales = () => {
                         containerFilter={containerFilter}
                         clients={clients}
                         containers={containers}
+                        sellers={sellers}
                         onStatusChange={setStatusFilter}
                         onClientChange={setClientFilter}
+                        onSellerChange={setSellerFilter}
                         onSaleTypeChange={setSaleTypeFilter}
                         onPaymentStructureChange={setPaymentStructureFilter}
                         onDateChange={setDateFilter}
@@ -1931,6 +1967,7 @@ const Sales = () => {
                         onReset={() => {
                           setStatusFilter("");
                           setClientFilter("");
+                          setSellerFilter("");
                           setSaleTypeFilter("");
                           setPaymentStructureFilter("");
                           setDateFilter("");
@@ -1945,6 +1982,17 @@ const Sales = () => {
                 </div>
 
                 <HistoryStatsSummary />
+
+                <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-medium text-gray-600">
+                    Export des ventes affichées: <span className="font-semibold text-gray-950">{filteredSales.length}</span>
+                  </p>
+                  <SalesListExportButtons
+                    sales={filteredSales}
+                    filenamePrefix="ventes-filtrees"
+                    label="Ventes filtrées"
+                  />
+                </div>
 
                 <div className="space-y-4">
                   {filteredSales.length === 0 ? (
@@ -2016,11 +2064,11 @@ const Sales = () => {
 
           {showDeliveryModal && selectedSale && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+              className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
               onClick={() => setShowDeliveryModal(false)}
             >
               <div
-                className="bg-white rounded-2xl w-full max-w-md border border-gray-200 shadow-xl overflow-hidden"
+                className="w-full max-w-md overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">
@@ -2115,22 +2163,35 @@ const Sales = () => {
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         <Toaster position="top-right" />
         {/* En-tête */}
-        <header className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-5 lg:p-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+        <header className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_16px_50px_rgba(15,23,42,0.07)] backdrop-blur">
+          <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase text-slate-500">Ventes</p>
-              <h1 className="mt-1 text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-950">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Ventes
+                </span>
+                {isAdmin && (
+                  <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-white">
+                    Admin
+                  </span>
+                )}
+              </div>
+              <h1 className="mt-3 text-[1.55rem] font-semibold leading-tight tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">
                 Tableau de bord commercial
               </h1>
-              <p className="text-sm sm:text-base text-slate-600 mt-1">
-                Suivi opérationnel des ventes, encaissements, marges et livraisons.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                Suivi des ventes, encaissements, marges et livraisons.
               </p>
             </div>
 
-            <div className="flex flex-row flex-wrap gap-2 sm:gap-3 lg:flex-shrink-0">
+            <div className="flex flex-col gap-3 lg:flex-shrink-0 lg:items-end">
               {isAdmin && (
                 <>
-                  <div className="flex flex-wrap gap-2 sm:gap-2" role="tablist" aria-label="Mode d’affichage">
+                  <div
+                    className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 lg:justify-end"
+                    role="tablist"
+                    aria-label="Mode d’affichage"
+                  >
                     {[
                       { value: "dashboard", label: "Vue Standard", icon: ReceiptText },
                       { value: "analytics", label: "Analytics", icon: BarChart3 },
@@ -2142,10 +2203,10 @@ const Sales = () => {
                         role="tab"
                         aria-selected={viewMode === value}
                         onClick={() => setViewMode(value)}
-                        className={`inline-flex min-h-[40px] items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+                        className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition-all ${
                           viewMode === value
-                            ? "bg-slate-900 text-white shadow-sm"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            ? "bg-slate-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]"
+                            : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-white"
                         }`}
                       >
                         <Icon className="h-4 w-4" aria-hidden />
@@ -2155,7 +2216,7 @@ const Sales = () => {
                   </div>
                   <button
                     onClick={() => setShowExportModal(true)}
-                    className="inline-flex min-h-[40px] items-center justify-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors whitespace-nowrap"
+                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
                   >
                     <Download className="h-4 w-4" aria-hidden />
                     Exporter
@@ -2836,6 +2897,7 @@ const Sales = () => {
                         <SalesFiltersBar
                           statusFilter={statusFilter}
                           clientFilter={clientFilter}
+                          sellerFilter={sellerFilter}
                           saleTypeFilter={saleTypeFilter}
                           paymentStructureFilter={paymentStructureFilter}
                           dateFilter={dateFilter}
@@ -2843,8 +2905,10 @@ const Sales = () => {
                           containerFilter={containerFilter}
                           clients={clients}
                           containers={containers}
+                          sellers={sellers}
                           onStatusChange={setStatusFilter}
                           onClientChange={setClientFilter}
+                          onSellerChange={setSellerFilter}
                           onSaleTypeChange={setSaleTypeFilter}
                           onPaymentStructureChange={setPaymentStructureFilter}
                           onDateChange={setDateFilter}
@@ -2853,6 +2917,7 @@ const Sales = () => {
                           onReset={() => {
                             setStatusFilter("");
                             setClientFilter("");
+                            setSellerFilter("");
                             setSaleTypeFilter("");
                             setPaymentStructureFilter("");
                             setDateFilter("");
@@ -2867,6 +2932,17 @@ const Sales = () => {
                   </div>
 
                   <HistoryStatsSummary />
+
+                  <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-gray-600">
+                      Export des ventes affichées: <span className="font-semibold text-gray-950">{filteredSales.length}</span>
+                    </p>
+                    <SalesListExportButtons
+                      sales={filteredSales}
+                      filenamePrefix="ventes-filtrees"
+                      label="Ventes filtrées"
+                    />
+                  </div>
 
                   {/* Liste des ventes — une carte par ligne (mobile et desktop) */}
                   <div className="grid grid-cols-1 gap-4">
@@ -2949,11 +3025,11 @@ const Sales = () => {
             {/* Modal Export */}
             {isAdmin && showExportModal && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+              className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
                 onClick={() => setShowExportModal(false)}
               >
                 <div
-                  className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col"
+                  className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
@@ -2988,11 +3064,11 @@ const Sales = () => {
             {/* Modal Livraison */}
             {showDeliveryModal && selectedSale && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
                 onClick={() => setShowDeliveryModal(false)}
               >
                 <div
-                  className="bg-white rounded-2xl w-full max-w-md border border-gray-200 shadow-xl overflow-hidden"
+                  className="w-full max-w-md overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50">

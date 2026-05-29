@@ -14,6 +14,7 @@ const REQUEST_LABELS = {
   'expense.create': 'Création dépense',
   'product.price_change': 'Changement prix',
   'stock.adjustment': 'Ajustement stock',
+  'user.password_update': 'Mise à jour mot de passe',
   other: 'Autre demande',
 };
 
@@ -47,6 +48,13 @@ const formatDate = (value) => {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('fr-FR');
+};
+
+const getTargetLink = (request) => {
+  if (!request?.targetId) return null;
+  if (request.targetModel === 'Sale') return `/sales/${request.targetId}`;
+  if (request.targetModel === 'User') return `/admin/users?user=${request.targetId}`;
+  return null;
 };
 
 const AdminRequests = () => {
@@ -146,18 +154,24 @@ const AdminRequests = () => {
                   <p className="mt-1 text-sm text-gray-500">
                     Demandé par {request.requestedBy?.name || 'Utilisateur'} · {formatDate(request.createdAt)}
                   </p>
-                  {request.targetLabel && request.targetModel === 'Sale' && request.targetId ? (
+                  {request.targetLabel && getTargetLink(request) ? (
                     <Link
-                      to={`/sales/${request.targetId}`}
+                      to={getTargetLink(request)}
                       className="mt-1 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-800"
                     >
-                      {request.targetLabel}
+                      {request.targetModel === 'User' ? `Ouvrir le profil: ${request.targetLabel}` : request.targetLabel}
                     </Link>
                   ) : request.targetLabel ? (
                     <p className="mt-1 text-sm font-medium text-gray-700">{request.targetLabel}</p>
                   ) : null}
                 </div>
               </div>
+
+              {request.type === 'user.password_update' && request.status === 'pending' && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Rappel admin: ouvrez le profil utilisateur, vérifiez son identité, puis mettez à jour son mot de passe.
+                </div>
+              )}
 
               <div className="mt-4 rounded-xl bg-gray-50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Raison</p>

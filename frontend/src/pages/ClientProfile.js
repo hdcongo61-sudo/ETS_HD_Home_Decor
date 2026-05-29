@@ -349,14 +349,16 @@ const ClientProfile = () => {
     <div className="mx-auto max-w-6xl space-y-5">
 
       {/* HEADER */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex items-center gap-3">
-          <Link to={returnToClients} className="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-white">
+      <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link to={returnToClients} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white hover:text-slate-950">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-500">Profil client</p>
-            <h1 className="text-2xl font-semibold text-slate-950 sm:text-3xl">Profil du client</h1>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Profil client</p>
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{client.name}</h1>
+            <p className="mt-1 truncate text-sm text-slate-500">{client.email || client.phone || 'Client enregistré'}</p>
           </div>
         </div>
 
@@ -381,6 +383,7 @@ const ClientProfile = () => {
             Imprimer
           </button>
         </div>
+        </div>
       </div>
 
       {/* 🔔 Notifications */}
@@ -396,16 +399,16 @@ const ClientProfile = () => {
       )}
 
       {/* CLIENT INFO CARD */}
-      <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="space-y-6 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-6">
         {/* Header Info */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-slate-200 bg-slate-100 text-slate-700 shadow-inner">
               <UserRound className="h-8 w-8" />
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">{client.name}</h2>
-              <p className="text-slate-600">{client.email || '—'}</p>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-semibold text-slate-950">{client.name}</h2>
+              <p className="truncate text-slate-600">{client.email || '—'}</p>
               <p className="mt-1 text-sm text-slate-600">
                 Genre : <span className="text-slate-800">{formatGenderLabel(client.gender)}</span>
               </p>
@@ -438,12 +441,12 @@ const ClientProfile = () => {
           </div>
 
           {/* Mini Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-slate-50 p-3 text-center">
+          <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
               <p className="text-xs font-medium text-slate-500">Achats</p>
               <p className="text-xl font-semibold text-slate-950">{stats.purchaseCount}</p>
             </div>
-            <div className="rounded-2xl bg-emerald-50 p-3 text-center">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-center">
               <p className="text-xs font-medium text-emerald-700">Total</p>
               <p className="text-xl font-semibold text-slate-950">
                 {stats.totalSpent.toLocaleString('fr-FR')} CFA
@@ -453,8 +456,8 @@ const ClientProfile = () => {
         </div>
 
         {/* TIMELINE INFO */}
-        <div className="grid gap-4 border-t border-slate-100 pt-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex items-center gap-2">
+        <div className="grid gap-3 border-t border-slate-100 pt-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <CalendarDays className="h-4 w-4 text-slate-500" />
             <div>
               <p className="font-semibold text-slate-800">Inscrit le</p>
@@ -462,7 +465,7 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <CreditCard className="h-4 w-4 text-slate-500" />
             <div>
               <p className="font-semibold text-slate-800">Dernier achat</p>
@@ -470,7 +473,7 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <CreditCard className="h-4 w-4 text-slate-500" />
             <div>
               <p className="font-semibold text-slate-800">Dernier paiement</p>
@@ -478,7 +481,7 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <Edit3 className="h-4 w-4 text-slate-500" />
             <div>
               <p className="font-semibold text-slate-800">Dernière modification</p>
@@ -486,7 +489,7 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
             <UserRound className="h-4 w-4 text-slate-500" />
             <div>
               <p className="font-semibold text-slate-800">Modifié par</p>

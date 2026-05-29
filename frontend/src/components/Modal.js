@@ -1,4 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
+
+let openModalCount = 0;
+let previousBodyOverflow = '';
 
 /**
  * Shared modal: mobile-first (bottom sheet on small screens, centered on desktop).
@@ -15,15 +21,25 @@ const Modal = ({
   footer,
   size = 'md',
   contentClassName = '',
+  panelClassName = '',
+  footerClassName = '',
   noPadding = false,
+  closeOnBackdrop = true,
+  hideCloseButton = false,
+  headerAction = null,
+  icon = null,
+  mobileFullscreen = false,
   'aria-label': ariaLabel,
 }) => {
   const open = isOpen ?? show;
+  const titleId = useId();
+  const subtitleId = useId();
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-2xl',
-    lg: 'max-w-4xl',
-    xl: 'max-w-6xl',
+    sm: 'sm:max-w-md',
+    md: 'sm:max-w-2xl',
+    lg: 'sm:max-w-4xl',
+    xl: 'sm:max-w-6xl',
+    full: 'sm:max-w-[min(1180px,calc(100vw-2rem))]',
   };
 
   useEffect(() => {
@@ -32,104 +48,134 @@ const Modal = ({
       if (e.key === 'Escape') onClose?.();
     };
     document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
+    if (openModalCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    openModalCount += 1;
+
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      openModalCount = Math.max(0, openModalCount - 1);
+      if (openModalCount === 0) {
+        document.body.style.overflow = previousBodyOverflow;
+      }
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-[260] overflow-hidden"
       aria-modal="true"
       role="dialog"
-      aria-label={ariaLabel || title}
+      aria-label={ariaLabel || (title ? undefined : 'Fenêtre de dialogue')}
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={subtitle ? subtitleId : undefined}
     >
-      {/* Backdrop: tap to close (Apple-style dimmed) */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[4px] transition-opacity duration-apple ease-apple"
-        onClick={onClose}
+      <motion.div
+        className="fixed inset-0 bg-gray-950/45 backdrop-blur-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+        onClick={closeOnBackdrop ? onClose : undefined}
         aria-hidden
       />
 
-      {/* Container: bottom sheet on mobile, centered on desktop */}
-      <div className="flex min-h-full items-end justify-center px-0 pt-0 pb-0 sm:items-center sm:p-4 sm:pb-8">
-        <div
+      <div className="pointer-events-none relative flex h-full min-h-full items-end justify-center px-0 pt-[env(safe-area-inset-top)] sm:items-center sm:p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 18, scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 360, damping: 34, mass: 0.9 }}
           className={`
-            relative w-full ${sizeClasses[size]} flex flex-col
-            bg-white dark:bg-gray-900 shadow-apple-lg
-            rounded-t-apple-xl sm:rounded-apple-xl
-            max-h-[94vh] sm:max-h-[88vh]
-            border border-gray-200/80 dark:border-gray-700
+            pointer-events-auto relative flex w-full ${sizeClasses[size] || sizeClasses.md} flex-col overflow-hidden
+            bg-white text-gray-950 shadow-[0_30px_100px_rgba(15,23,42,0.30)]
+            dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100
+            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-[28px]'}
+            border border-white/80 sm:max-h-[min(88dvh,860px)] sm:rounded-[28px] dark:border-gray-800
             safe-area-bottom
+            ${panelClassName}
           `}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag handle (mobile only, Apple-style) */}
-          <div className="sm:hidden flex justify-center pt-2.5 pb-2 shrink-0">
+          <div className="flex shrink-0 justify-center pb-2 pt-2.5 sm:hidden">
             <div
-              className="w-9 h-1 rounded-full bg-gray-300/90 dark:bg-gray-600"
+              className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700"
               aria-hidden
             />
           </div>
 
-          {/* Header: sticky */}
-          <div className="shrink-0 flex items-start justify-between gap-3 px-4 sm:px-6 pt-0 sm:pt-6 pb-4 border-b border-gray-200/80 dark:border-gray-700 bg-white dark:bg-gray-900">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-[17px] sm:text-xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-                {title}
-              </h2>
-              {subtitle && (
-                <p className="mt-0.5 text-[15px] text-gray-500 dark:text-gray-400">
-                  {subtitle}
-                </p>
-              )}
+          <div className="shrink-0 border-b border-gray-200 bg-white/96 px-4 pb-4 pt-0 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950/96 sm:px-6 sm:pt-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                {icon && (
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    {icon}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  {title && (
+                    <h2 id={titleId} className="truncate text-[17px] font-semibold tracking-tight text-gray-950 dark:text-gray-100 sm:text-xl">
+                      {title}
+                    </h2>
+                  )}
+                  {subtitle && (
+                    <p id={subtitleId} className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 dark:text-gray-400 sm:text-[15px]">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {headerAction}
+                {!hideCloseButton && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100 dark:focus-visible:ring-white/20"
+                    aria-label="Fermer"
+                  >
+                    <X size={20} strokeWidth={2.2} />
+                  </button>
+                )}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-apple text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-apple ease-apple touch-manipulation"
-              aria-label="Fermer"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
           </div>
 
-          {/* Body: scrollable */}
           <div
             className={`
-              flex-1 overflow-y-auto overscroll-contain
-              ${noPadding ? '' : 'px-4 sm:px-6 py-4 sm:py-5'}
+              min-h-0 flex-1 overflow-y-auto overscroll-contain
+              ${noPadding ? '' : 'px-4 py-4 sm:px-6 sm:py-5'}
               ${contentClassName}
             `}
           >
             {children}
           </div>
 
-          {/* Footer: optional, sticky */}
           {footer && (
-            <div className="shrink-0 px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end sm:items-center rounded-b-2xl safe-area-bottom">
-              {footer}
+            <div className={`shrink-0 border-t border-gray-200 bg-gray-50/95 px-4 py-3 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95 sm:px-6 sm:py-4 ${footerClassName}`}>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                {footer}
+              </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
+  );
+
+  if (typeof document === 'undefined') {
+    return modal;
+  }
+
+  return createPortal(
+    <AnimatePresence mode="wait">
+      {modal}
+    </AnimatePresence>,
+    document.body
   );
 };
 

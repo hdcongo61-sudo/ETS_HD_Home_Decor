@@ -9,26 +9,53 @@ import {
   CalendarDays,
   ShoppingBag,
   Users,
+  ArrowRight,
+  BadgePercent,
+  PackageCheck,
+  Receipt,
+  Sparkles,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 
-const StatCard = ({ icon, title, value, color }) => (
+const formatCFA = (value) =>
+  `${Math.round(value || 0).toLocaleString("fr-FR")} CFA`;
+
+const StatCard = ({ icon: Icon, title, value, helper, tone = "slate" }) => {
+  const toneClasses = {
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
+    red: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+    violet: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
+    slate: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700",
+  };
+
+  return (
   <motion.div
-    whileHover={{ scale: 1.02 }}
-    className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-4"
+    whileHover={{ y: -2 }}
+    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
   >
-    <div className={`p-3 rounded-xl ${color.bg} text-white`}>{icon}</div>
-    <div>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-      <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-        {typeof value === "number"
-          ? value.toLocaleString("fr-FR") + " CFA"
-          : value}
-      </h3>
+    <div className="flex items-start justify-between gap-3">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${toneClasses[tone] || toneClasses.slate}`}>
+        <Icon size={20} />
+      </span>
+      {helper && (
+        <span className="rounded-full bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          {helper}
+        </span>
+      )}
     </div>
+    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+      {title}
+    </p>
+    <h3 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+        {typeof value === "number"
+          ? formatCFA(value)
+          : value}
+    </h3>
   </motion.div>
-);
+  );
+};
 
 const BusinessAnalyticsDashboard = ({
   sales = [],
@@ -67,6 +94,8 @@ const BusinessAnalyticsDashboard = ({
   );
   const profit = totalPaid - totalExpenses;
   const margin = totalSales ? (profit / totalSales) * 100 : 0;
+  const collectionRate = totalSales ? (totalPaid / totalSales) * 100 : 0;
+  const expenseRate = totalPaid ? (totalExpenses / totalPaid) * 100 : 0;
 
   // === Analyse des produits ===
   const productStats = useMemo(() => {
@@ -145,217 +174,309 @@ const BusinessAnalyticsDashboard = ({
     return result;
   }, [weeklyPayments, weeklySales]);
 
-  // === Synthèse intelligente en français ===
-  const insightSummary = `
-Cette semaine (${format(currentWeek.start, "dd MMM", {
+  const weeklyLabel = `${format(currentWeek.start, "dd MMM", {
     locale: fr,
-  })} - ${format(currentWeek.end, "dd MMM", { locale: fr })}) :
-
-💰 Ventes : ${totalSales.toLocaleString("fr-FR")} CFA  
-🏦 Encaissements : ${totalPaid.toLocaleString("fr-FR")} CFA  
-📉 Dépenses : ${totalExpenses.toLocaleString("fr-FR")} CFA  
-💹 Profit : ${profit.toLocaleString("fr-FR")} CFA (${margin.toFixed(1)} % de marge)
-
-🛒 Produits analysés : ${productStats.total}  
-👥 Clients actifs : ${clientStats.total}
-
-📦 Ventes en gros : ${commerceHighlights.wholesale.count} (${commerceHighlights.wholesale.totalAmount.toLocaleString("fr-FR")} CFA)
-💳 Paiement unique : ${commerceHighlights.singlePayment.count} (${commerceHighlights.singlePayment.totalAmount.toLocaleString("fr-FR")} CFA)
-🧾 Paiements multiples : ${commerceHighlights.multiplePayments.count} (${commerceHighlights.multiplePayments.totalAmount.toLocaleString("fr-FR")} CFA)
-
-🔝 **Top Produits :** ${productStats.top
-    .map((p) => `${p.name} (${p.revenue.toLocaleString("fr-FR")} CFA)`)
-    .join(", ")}
-
-🌟 **Top Clients :** ${clientStats.top
-    .map((c) => `${c.name} (${c.totalSpent.toLocaleString("fr-FR")} CFA)`)
-    .join(", ")} 
-
-${
-  clientStats.inactive.length > 0
-    ? `⚠️ Clients à relancer : ${clientStats.inactive
-        .map((c) => c.name)
-        .join(", ")}`
-    : "Tous vos clients sont actifs cette semaine ! 🚀"
-}
-  `.trim();
+  })} - ${format(currentWeek.end, "dd MMM", { locale: fr })}`;
+  const topProduct = productStats.top[0];
+  const topClient = clientStats.top[0];
+  const insightCards = [
+    {
+      label: "Recouvrement",
+      value: `${collectionRate.toFixed(1)}%`,
+      helper:
+        collectionRate >= 80
+          ? "Encaissement solide sur la semaine."
+          : "Suivre les ventes non totalement réglées.",
+      icon: Coins,
+      tone: "blue",
+    },
+    {
+      label: "Marge nette",
+      value: `${margin.toFixed(1)}%`,
+      helper:
+        profit >= 0
+          ? "La semaine reste profitable."
+          : "Les dépenses dépassent les encaissements.",
+      icon: BadgePercent,
+      tone: profit >= 0 ? "green" : "red",
+    },
+    {
+      label: "Charge dépenses",
+      value: `${expenseRate.toFixed(1)}%`,
+      helper: "Dépenses comparées aux encaissements.",
+      icon: Receipt,
+      tone: expenseRate > 60 ? "red" : "slate",
+    },
+  ];
 
   return (
     <motion.div
-      className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl shadow-lg p-6 space-y-8"
+      className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-gray-900"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
       {/* ====== Résumé Analytique ====== */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-          Résumé Analytique
-        </h2>
-        <button
-          onClick={() => onOpenDayDetails?.(new Date())}
-          className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <CalendarDays size={16} />
-          Voir les détails du jour
-        </button>
-      </div>
-
-      {/* Cartes principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Ventes"
-          value={totalSales}
-          icon={<DollarSign size={20} />}
-          color={{ bg: "bg-green-500" }}
-        />
-        <StatCard
-          title="Encaissements"
-          value={totalPaid}
-          icon={<Coins size={20} />}
-          color={{ bg: "bg-blue-500" }}
-        />
-        <StatCard
-          title="Dépenses"
-          value={totalExpenses}
-          icon={<TrendingDown size={20} />}
-          color={{ bg: "bg-red-500" }}
-        />
-        <StatCard
-          title="Profit Net"
-          value={profit}
-          icon={<PieIcon size={20} />}
-          color={{ bg: "bg-purple-500" }}
-        />
-      </div>
-
-      {/* ====== Analyse Produits ====== */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-          <ShoppingBag className="text-indigo-500" size={18} />
-          Analyse des Produits
-        </h3>
-        {productStats.top.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {productStats.top.map((p) => (
-              <motion.div
-                key={p.name}
-                whileHover={{ scale: 1.03 }}
-                className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm"
-              >
-                <h4 className="font-semibold text-gray-800 dark:text-gray-100">
-                  {p.name}
-                </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {p.quantity} vendu(s)
-                </p>
-                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                  {p.revenue.toLocaleString("fr-FR")} CFA
-                </p>
-              </motion.div>
-            ))}
+      <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)] dark:bg-white dark:text-gray-950">
+              <Brain size={20} />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                Semaine courante
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-2xl">
+                Résumé analytique
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Lecture rapide des ventes, encaissements, clients et produits du {weeklyLabel}.
+              </p>
+            </div>
           </div>
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">
-            Aucune vente enregistrée cette semaine.
-          </p>
-        )}
+          {onOpenDayDetails && (
+            <button
+              onClick={() => onOpenDayDetails(new Date())}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+            >
+              <CalendarDays size={18} />
+              Détails du jour
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ====== Analyse Clients ====== */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-          <Users className="text-teal-500" size={18} />
-          Analyse des Clients
-        </h3>
-        {clientStats.top.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {clientStats.top.map((c) => (
-              <motion.div
-                key={c.name}
-                whileHover={{ scale: 1.03 }}
-                className="p-4 rounded-xl bg-gradient-to-br from-teal-50 to-green-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm"
-              >
-                <h4 className="font-semibold text-gray-800 dark:text-gray-100">
-                  {c.name}
-                </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {c.count} achat(s)
-                </p>
-                <p className="text-sm font-medium text-teal-600 dark:text-teal-400">
-                  {c.totalSpent.toLocaleString("fr-FR")} CFA dépensés
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">
-            Aucun client actif cette semaine.
-          </p>
-        )}
-      </div>
+      <div className="space-y-6 p-4 sm:p-5">
+        {/* Cartes principales */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Ventes" value={totalSales} icon={DollarSign} helper={`${weeklySales.length} vente(s)`} tone="green" />
+          <StatCard title="Encaissements" value={totalPaid} icon={Coins} helper={`${collectionRate.toFixed(0)}% encaissé`} tone="blue" />
+          <StatCard title="Dépenses" value={totalExpenses} icon={TrendingDown} helper={`${weeklyExpenses.length} ligne(s)`} tone="red" />
+          <StatCard title="Profit net" value={profit} icon={PieIcon} helper={`${margin.toFixed(1)}% marge`} tone={profit >= 0 ? "violet" : "red"} />
+        </div>
 
-      {/* ====== Synthèse Intelligente ====== */}
-      <motion.div
-        className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm mt-6"
-        whileHover={{ scale: 1.01 }}
-      >
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-            <Brain className="text-blue-600 dark:text-blue-400" size={18} />
-            Synthèse Intelligente
-          </h3>
-          <button
-            onClick={() => onOpenDayDetails?.(new Date())}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {insightCards.map(({ label, value, helper, icon: Icon, tone }) => (
+            <div
+              key={label}
+              className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
+                  {label}
+                </p>
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200">
+                  <Icon size={17} />
+                </span>
+              </div>
+              <p className={`mt-3 text-2xl font-black tabular-nums ${
+                tone === "red"
+                  ? "text-rose-700 dark:text-rose-300"
+                  : tone === "green"
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : tone === "blue"
+                  ? "text-blue-700 dark:text-blue-300"
+                  : "text-gray-950 dark:text-white"
+              }`}>
+                {value}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-gray-400">
+                {helper}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* ====== Analyse Produits ====== */}
+          <AnalyticsList
+            title="Produits qui tirent la semaine"
+            description={`${productStats.total} produit(s) vendu(s) sur la période.`}
+            icon={ShoppingBag}
+            emptyText="Aucune vente enregistrée cette semaine."
           >
-            <CalendarDays size={14} /> Voir les détails
-          </button>
+            {productStats.top.map((p, index) => (
+              <RankedRow
+                key={p.name}
+                index={index}
+                title={p.name}
+                subtitle={`${p.quantity} vendu(s)`}
+                value={formatCFA(p.revenue)}
+              />
+            ))}
+          </AnalyticsList>
+
+          {/* ====== Analyse Clients ====== */}
+          <AnalyticsList
+            title="Clients les plus actifs"
+            description={`${clientStats.total} client(s) actif(s) cette semaine.`}
+            icon={Users}
+            emptyText="Aucun client actif cette semaine."
+          >
+            {clientStats.top.map((c, index) => (
+              <RankedRow
+                key={c.name}
+                index={index}
+                title={c.name}
+                subtitle={`${c.count} achat(s)`}
+                value={formatCFA(c.totalSpent)}
+              />
+            ))}
+          </AnalyticsList>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="rounded-2xl border border-fuchsia-200 bg-white/80 p-4 dark:border-fuchsia-900/60 dark:bg-gray-900/70">
-            <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700 dark:text-fuchsia-300">
-              Ventes en gros
-            </p>
-            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
-              {commerceHighlights.wholesale.count}
-            </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {commerceHighlights.wholesale.totalAmount.toLocaleString("fr-FR")} CFA
-            </p>
+        {/* ====== Synthèse Intelligente ====== */}
+        <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70 sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100">
+                <Sparkles size={18} />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-gray-950 dark:text-white">
+                  Synthèse intelligente
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Points à retenir avant de passer aux détails.
+                </p>
+              </div>
+            </div>
+            <span className="w-fit rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              {weeklySales.length} vente(s)
+            </span>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-white/80 p-4 dark:border-emerald-900/60 dark:bg-gray-900/70">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-              Paiement unique
-            </p>
-            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
-              {commerceHighlights.singlePayment.count}
-            </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {commerceHighlights.singlePayment.totalAmount.toLocaleString("fr-FR")} CFA
-            </p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <CommerceMetric
+              icon={PackageCheck}
+              label="Ventes en gros"
+              count={commerceHighlights.wholesale.count}
+              amount={commerceHighlights.wholesale.totalAmount}
+            />
+            <CommerceMetric
+              icon={Coins}
+              label="Paiement unique"
+              count={commerceHighlights.singlePayment.count}
+              amount={commerceHighlights.singlePayment.totalAmount}
+            />
+            <CommerceMetric
+              icon={Receipt}
+              label="Paiements multiples"
+              count={commerceHighlights.multiplePayments.count}
+              amount={commerceHighlights.multiplePayments.totalAmount}
+            />
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-white/80 p-4 dark:border-amber-900/60 dark:bg-gray-900/70">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Paiements multiples
-            </p>
-            <p className="mt-2 text-2xl font-black text-gray-900 dark:text-gray-100 tabular-nums">
-              {commerceHighlights.multiplePayments.count}
-            </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {commerceHighlights.multiplePayments.totalAmount.toLocaleString("fr-FR")} CFA
-            </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <InsightNote
+              title="Produit moteur"
+              value={topProduct?.name || "Aucun"}
+              helper={topProduct ? `${formatCFA(topProduct.revenue)} générés` : "Pas encore de vente cette semaine."}
+            />
+            <InsightNote
+              title="Client principal"
+              value={topClient?.name || "Aucun"}
+              helper={topClient ? `${formatCFA(topClient.totalSpent)} sur ${topClient.count} achat(s)` : "Pas encore de client actif."}
+            />
+            <InsightNote
+              title="Relance"
+              value={clientStats.inactive.length ? `${clientStats.inactive.length} client(s)` : "Stable"}
+              helper={
+                clientStats.inactive.length
+                  ? clientStats.inactive.map((c) => c.name).join(", ")
+                  : "Aucun signal de relance prioritaire."
+              }
+            />
           </div>
         </div>
-
-        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
-          {insightSummary}
-        </p>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };
+
+const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) => {
+  const hasChildren = React.Children.count(children) > 0;
+
+  return (
+    <section className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+          <Icon size={18} />
+        </span>
+        <div>
+          <h3 className="text-base font-semibold text-gray-950 dark:text-white">
+            {title}
+          </h3>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            {description}
+          </p>
+        </div>
+      </div>
+      {hasChildren ? (
+        <div className="space-y-2">{children}</div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+          {emptyText}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const RankedRow = ({ index, title, subtitle, value }) => (
+  <motion.div
+    whileHover={{ x: 2 }}
+    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70"
+  >
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-950 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+        {index + 1}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+          {title}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
+      </div>
+    </div>
+    <span className="shrink-0 text-sm font-bold text-gray-950 dark:text-white">
+      {value}
+    </span>
+  </motion.div>
+);
+
+const CommerceMetric = ({ icon: Icon, label, count, amount }) => (
+  <div className="rounded-[20px] border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+        {label}
+      </p>
+      <Icon size={17} className="text-gray-500 dark:text-gray-400" />
+    </div>
+    <p className="mt-3 text-2xl font-black text-gray-950 dark:text-white">
+      {count || 0}
+    </p>
+    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+      {formatCFA(amount)}
+    </p>
+  </div>
+);
+
+const InsightNote = ({ title, value, helper }) => (
+  <div className="rounded-[20px] border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+        {title}
+      </p>
+      <ArrowRight size={16} className="text-gray-400" />
+    </div>
+    <p className="mt-3 truncate text-base font-bold text-gray-950 dark:text-white">
+      {value}
+    </p>
+    <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 dark:text-gray-400">
+      {helper}
+    </p>
+  </div>
+);
 
 export default BusinessAnalyticsDashboard;

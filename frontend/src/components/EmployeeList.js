@@ -11,7 +11,9 @@ import {
   Plus,
   Search,
   Trash2,
+  UserCheck,
   UserRound,
+  UserX,
   UsersRound,
 } from 'lucide-react';
 import api from '../services/api';
@@ -35,6 +37,8 @@ const hasPaySlipForCurrentMonth = (employee) => {
   return (employee.paySlips || []).some((slip) => slip.month === month && slip.year === year);
 };
 
+const isEmployeeActive = (employee) => employee.isActive !== false;
+
 const EmployeeList = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +46,7 @@ const EmployeeList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [payrollFilter, setPayrollFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
@@ -77,14 +82,18 @@ const EmployeeList = () => {
   );
 
   const dashboardStats = useMemo(() => {
-    const totalSalary = employees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
-    const payrollReady = employees.filter(hasPaySlipForCurrentMonth).length;
-    const missingPayroll = Math.max(employees.length - payrollReady, 0);
+    const activeEmployees = employees.filter(isEmployeeActive);
+    const inactiveEmployees = employees.length - activeEmployees.length;
+    const totalSalary = activeEmployees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
+    const payrollReady = activeEmployees.filter(hasPaySlipForCurrentMonth).length;
+    const missingPayroll = Math.max(activeEmployees.length - payrollReady, 0);
 
     return {
       totalEmployees: employees.length,
+      activeEmployees: activeEmployees.length,
+      inactiveEmployees,
       totalSalary,
-      averageSalary: employees.length ? totalSalary / employees.length : 0,
+      averageSalary: activeEmployees.length ? totalSalary / activeEmployees.length : 0,
       payrollReady,
       missingPayroll,
     };
@@ -103,13 +112,18 @@ const EmployeeList = () => {
           normalizeText(employee.phone).includes(search);
         const matchesDepartment =
           !departmentFilter || employee.department === departmentFilter;
+        const active = isEmployeeActive(employee);
+        const matchesStatus =
+          statusFilter === 'all' ||
+          (statusFilter === 'active' && active) ||
+          (statusFilter === 'inactive' && !active);
         const payrollDone = hasPaySlipForCurrentMonth(employee);
         const matchesPayroll =
           payrollFilter === 'all' ||
           (payrollFilter === 'ready' && payrollDone) ||
           (payrollFilter === 'missing' && !payrollDone);
 
-        return matchesSearch && matchesDepartment && matchesPayroll;
+        return matchesSearch && matchesDepartment && matchesStatus && matchesPayroll;
       })
       .sort((a, b) => {
         if (sortBy === 'salary_desc') return Number(b.salary || 0) - Number(a.salary || 0);
@@ -117,13 +131,14 @@ const EmployeeList = () => {
         if (sortBy === 'hireDate_desc') return new Date(b.hireDate || 0) - new Date(a.hireDate || 0);
         return (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' });
       });
-  }, [employees, searchTerm, departmentFilter, payrollFilter, sortBy]);
+  }, [employees, searchTerm, departmentFilter, statusFilter, payrollFilter, sortBy]);
 
-  const hasActiveFilters = searchTerm || departmentFilter || payrollFilter !== 'all' || sortBy !== 'name';
+  const hasActiveFilters = searchTerm || departmentFilter || statusFilter !== 'active' || payrollFilter !== 'all' || sortBy !== 'name';
 
   const resetFilters = () => {
     setSearchTerm('');
     setDepartmentFilter('');
+    setStatusFilter('active');
     setPayrollFilter('all');
     setSortBy('name');
   };
@@ -146,14 +161,15 @@ const EmployeeList = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <div className="rounded-[28px] border border-white/80 bg-white/88 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl text-white">
+            <div className="bg-gray-950 p-2 rounded-2xl text-white shadow-[0_12px_28px_rgba(15,23,42,0.18)]">
               <UsersRound className="w-6 h-6" />
             </div>
-            Gestion des Employés
+            Gestion des employés
           </h1>
           <p className="text-gray-600 mt-2">Vue claire des employés, salaires, paie du mois et actions rapides.</p>
         </div>
@@ -161,23 +177,25 @@ const EmployeeList = () => {
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <Link
             to="/employees/new" 
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm shadow-sm"
+            className="form-button-primary flex items-center justify-center gap-2 text-sm"
           >
             <Plus className="w-4 h-4" />
             Nouvel Employé
           </Link>
         </div>
       </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <MetricCard icon={<UsersRound className="w-5 h-5" />} label="Employés" value={dashboardStats.totalEmployees} />
-        <MetricCard icon={<Banknote className="w-5 h-5" />} label="Masse salariale" value={formatCurrency(dashboardStats.totalSalary)} />
+        <MetricCard icon={<UserCheck className="w-5 h-5" />} label="Actifs" value={dashboardStats.activeEmployees} tone="dark" />
+        <MetricCard icon={<UserX className="w-5 h-5" />} label="Inactifs" value={dashboardStats.inactiveEmployees} tone="neutral" />
+        <MetricCard icon={<Banknote className="w-5 h-5" />} label="Masse active" value={formatCurrency(dashboardStats.totalSalary)} />
         <MetricCard icon={<BriefcaseBusiness className="w-5 h-5" />} label="Salaire moyen" value={formatCurrency(dashboardStats.averageSalary)} />
-        <MetricCard icon={<FileText className="w-5 h-5" />} label="Paie créée" value={`${dashboardStats.payrollReady}/${dashboardStats.totalEmployees}`} tone="green" />
+        <MetricCard icon={<FileText className="w-5 h-5" />} label="Paie créée" value={`${dashboardStats.payrollReady}/${dashboardStats.activeEmployees}`} tone="green" />
         <MetricCard icon={<CalendarClock className="w-5 h-5" />} label="Paie à préparer" value={dashboardStats.missingPayroll} tone={dashboardStats.missingPayroll > 0 ? 'amber' : 'green'} />
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+      <div className="rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] backdrop-blur-xl">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <label className="flex-1 min-w-[220px]">
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recherche</span>
@@ -188,7 +206,7 @@ const EmployeeList = () => {
                 placeholder="Nom, poste, email, téléphone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="form-control pl-10 text-sm"
               />
             </div>
           </label>
@@ -198,7 +216,7 @@ const EmployeeList = () => {
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+              className="form-control mt-1 text-sm"
             >
               <option value="">Tous</option>
               {departments.map((department) => (
@@ -207,12 +225,25 @@ const EmployeeList = () => {
             </select>
           </label>
 
+          <label className="min-w-[170px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Statut</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="form-control mt-1 text-sm"
+            >
+              <option value="active">Actifs</option>
+              <option value="inactive">Ne travaillent plus</option>
+              <option value="all">Tous</option>
+            </select>
+          </label>
+
           <label className="min-w-[190px]">
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Paie du mois</span>
             <select
               value={payrollFilter}
               onChange={(e) => setPayrollFilter(e.target.value)}
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+              className="form-control mt-1 text-sm"
             >
               <option value="all">Tous</option>
               <option value="missing">À préparer</option>
@@ -225,7 +256,7 @@ const EmployeeList = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+              className="form-control mt-1 text-sm"
             >
               <option value="name">Nom A-Z</option>
               <option value="hireDate_desc">Plus récent</option>
@@ -238,7 +269,7 @@ const EmployeeList = () => {
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
+              className="form-button-secondary inline-flex items-center justify-center gap-2 text-sm"
             >
               <Filter className="w-4 h-4" />
               Réinitialiser
@@ -272,6 +303,9 @@ const EmployeeList = () => {
                 Département
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Statut
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -287,30 +321,36 @@ const EmployeeList = () => {
             {filteredEmployees.length > 0 ? (
               filteredEmployees.map(employee => {
                 const payrollReady = hasPaySlipForCurrentMonth(employee);
+                const active = isEmployeeActive(employee);
                 return (
-                <tr key={employee._id} className="hover:bg-gray-50 transition-colors">
+                <tr key={employee._id} className={`transition-colors hover:bg-gray-50 ${active ? '' : 'bg-gray-50/60'}`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       to={employeeBasePath(employee)}
-                      className="flex items-center gap-3 text-sm font-medium text-gray-900 hover:text-blue-600"
+                      className="flex items-center gap-3 text-sm font-medium text-gray-900 hover:text-gray-700"
                     >
-                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                      <div className={`w-10 h-10 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center ${active ? 'bg-gray-100' : 'bg-gray-200 grayscale'}`}>
                         {employee.photo ? (
                           <img src={employee.photo} alt={employee.name} className="w-full h-full object-cover" />
                         ) : (
-                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                         )}
                       </div>
                       <div>
-                        <div>{employee.name}</div>
+                        <div className={active ? '' : 'text-gray-500'}>{employee.name}</div>
                         <div className="text-xs text-gray-500">{employee.email}</div>
                       </div>
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.position || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{employee.department || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {active ? 'Actif' : 'Ne travaille plus'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                     {formatCurrency(employee.salary)}
                   </td>
@@ -330,8 +370,9 @@ const EmployeeList = () => {
                       </Link>
                       <Link
                         to={employeePayrollNewPath(employee)}
-                        className="text-gray-600 hover:text-green-700 p-2 rounded-lg hover:bg-green-50 inline-flex items-center"
+                        className={`p-2 rounded-lg inline-flex items-center ${active ? 'text-gray-600 hover:text-green-700 hover:bg-green-50' : 'pointer-events-none text-gray-300'}`}
                         title="Créer fiche de paie"
+                        aria-disabled={!active}
                       >
                         <FileText className="w-4 h-4" />
                       </Link>
@@ -356,7 +397,7 @@ const EmployeeList = () => {
               })
             ) : (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-sm text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -375,32 +416,36 @@ const EmployeeList = () => {
         {filteredEmployees.length > 0 ? (
           filteredEmployees.map(employee => {
             const payrollReady = hasPaySlipForCurrentMonth(employee);
+            const active = isEmployeeActive(employee);
             return (
-            <div key={employee._id} className="bg-white p-5 rounded-2xl border border-gray-200">
+            <div key={employee._id} className={`rounded-[24px] border border-gray-200 bg-white p-5 shadow-sm ${active ? '' : 'bg-gray-50/90'}`}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                  <div className={`w-12 h-12 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center ${active ? 'bg-gray-100' : 'bg-gray-200 grayscale'}`}>
                     {employee.photo ? (
                       <img src={employee.photo} alt={employee.name} className="w-full h-full object-cover" />
                     ) : (
-                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     )}
                   </div>
                   <div>
-                    <Link to={employeeBasePath(employee)} className="text-base font-semibold text-gray-900 hover:text-blue-600">
+                    <Link to={employeeBasePath(employee)} className="text-base font-semibold text-gray-900 hover:text-gray-700">
                       {employee.name}
                     </Link>
+                    <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {active ? 'Actif' : 'Ne travaille plus'}
+                    </span>
                     <div className="text-sm text-gray-600 mt-1">{employee.position}</div>
                     <div className="text-sm text-gray-600">{employee.email}</div>
                     <div className="text-sm text-gray-500">{employee.department || 'N/A'}</div>
                     <div className="mt-2 text-sm font-semibold text-gray-900">
                       {formatCurrency(employee.salary)}
                     </div>
-                    <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${payrollReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>
+                    {active && <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${payrollReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>
                       Paie du mois : {payrollReady ? 'créée' : 'à préparer'}
-                    </span>
+                    </span>}
                   </div>
                 </div>
                 <div className="flex space-x-1">
@@ -467,11 +512,13 @@ const metricTones = {
   blue: 'bg-blue-50 text-blue-700',
   green: 'bg-green-50 text-green-700',
   amber: 'bg-amber-50 text-amber-700',
+  dark: 'bg-gray-950 text-white',
+  neutral: 'bg-gray-100 text-gray-700',
 };
 
 const MetricCard = ({ icon, label, value, tone = 'blue' }) => (
-  <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${metricTones[tone] || metricTones.blue}`}>
+  <div className="rounded-[22px] border border-white/80 bg-white/90 p-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${metricTones[tone] || metricTones.blue}`}>
       {icon}
     </div>
     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>

@@ -9,6 +9,7 @@ import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
 import AppLoader from '../components/AppLoader';
 import AuthContext from '../context/AuthContext';
+import Modal from '../components/Modal';
 
 /* ===================================================== */
 /* 🧩 UTILITAIRES DE FORMATTAGE */
@@ -307,13 +308,14 @@ const getActivityIcon = (type) => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-[#f6f7f9]">
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8" ref={pageRef}>
         {/* 🧭 HEADER */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-6 overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <button
             onClick={() => navigate(returnToProducts)}
-            className="inline-flex w-fit items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 transition hover:text-gray-800 hover:ring-gray-300"
+            className="inline-flex w-fit items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white hover:text-gray-950"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -325,7 +327,7 @@ const getActivityIcon = (type) => {
             {canSeeFinancials && (
             <button
               onClick={() => setShowProfitSections((prev) => !prev)}
-              className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:col-span-1 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+              className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:col-span-1 sm:min-h-[44px] sm:px-4 sm:py-2"
               type="button"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,7 +347,7 @@ const getActivityIcon = (type) => {
             {isAdmin && (
               <button
                 onClick={handleExportPDF}
-                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800 sm:min-h-[44px] sm:px-4 sm:py-2"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -356,7 +358,7 @@ const getActivityIcon = (type) => {
 
             <button
               onClick={() => setShowQRCode(true)}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:min-h-[44px] sm:rounded-xl sm:px-3 sm:py-2"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:min-h-[44px] sm:px-3 sm:py-2"
               title="QR Code"
             >
               <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +378,7 @@ const getActivityIcon = (type) => {
                   state: { returnTo: productPath(product || id) },
                 })
               }
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-amber-500/20 transition hover:bg-amber-600 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:px-4 sm:py-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -404,14 +406,15 @@ const getActivityIcon = (type) => {
             )}
           </div>
         </div>
+        </div>
 
         {/* 🖼️ PRODUIT HEADER */}
-        <div className="bg-white shadow-md rounded-2xl p-6 flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col gap-6 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] md:flex-row md:p-6">
           <div className="md:w-1/2">
             <img
               src={product.image || '/placeholder.png'}
               alt={product.name}
-              className="rounded-xl object-cover w-full max-h-96 shadow-sm"
+              className="aspect-[4/3] max-h-96 w-full rounded-[24px] border border-gray-100 bg-gray-50 object-cover shadow-sm"
             />
             {canSeeFinancials && showProfitSections && profitMargin > 0 && (
               <div className="mt-3 inline-flex px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
@@ -420,13 +423,14 @@ const getActivityIcon = (type) => {
             )}
           </div>
 
-          <div className="md:w-1/2 flex flex-col justify-between">
+          <div className="flex flex-col justify-between md:w-1/2">
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900 mb-2">{product.name}</h1>
-              <p className="text-gray-500 mb-4">{product.description}</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Fiche produit</p>
+              <h1 className="mb-2 text-3xl font-semibold tracking-tight text-gray-950">{product.name}</h1>
+              <p className="mb-4 text-sm leading-6 text-gray-500">{product.description || 'Aucune description enregistrée.'}</p>
 
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl font-bold text-indigo-600">
+                <span className="text-3xl font-bold tracking-tight text-gray-950">
                   {formatCurrency(product.price)}
                 </span>
                 {canSeeFinancials && showProfitSections && product.costPrice && (
@@ -434,33 +438,33 @@ const getActivityIcon = (type) => {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     product.stock < 5
-                      ? 'bg-red-100 text-red-700'
+                      ? 'border-red-100 bg-red-50 text-red-700'
                       : product.stock < 15
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-green-100 text-green-700'
+                      ? 'border-yellow-100 bg-yellow-50 text-yellow-700'
+                      : 'border-green-100 bg-green-50 text-green-700'
                   }`}
                 >
                   {product.stock} en stock
                 </span>
-                <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700">
                   Conteneur: {product.container?.trim() || 'Non defini'}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700">
                   Entrepot: {product.warehouse?.trim() || 'Non defini'}
                 </span>
                 {product.stock > 20 && (
-                  <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
-                    🏆 Top Seller
+                  <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                    Top Seller
                   </span>
                 )}
               </div>
 
               {product.supplierName && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm">
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm">
                   <p className="text-gray-700 font-medium mb-1">Fournisseur :</p>
                   <p className="text-gray-600">{product.supplierName}</p>
                   {canSeeSupplierContacts && product.supplierPhone && (
@@ -473,16 +477,16 @@ const getActivityIcon = (type) => {
         </div>
 
         {/* 🧭 ONGLETS */}
-        <div className="mt-8">
-          <div className="flex space-x-4 border-b">
+        <div className="mt-6">
+          <div className="flex gap-2 overflow-x-auto rounded-[22px] border border-white/80 bg-white/90 p-2 shadow-sm">
             {['overview', 'financial', 'history'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium ${
+                className={`min-h-[42px] shrink-0 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
                   activeTab === tab
-                    ? 'border-b-2 border-indigo-500 text-indigo-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)]'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
                 }`}
               >
                 {tab === 'overview'
@@ -664,10 +668,12 @@ const getActivityIcon = (type) => {
       </div>
 
       {/* 🧾 MODALE QR CODE */}
-      {showQRCode && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">QR Code du produit</h3>
+      <Modal
+        isOpen={showQRCode}
+        onClose={() => setShowQRCode(false)}
+        title="QR Code du produit"
+        size="sm"
+      >
             <div className="flex justify-center">
               <div ref={qrCodeRef} className="p-3 bg-white">
                 <QRCode value={productUrl} size={200} />
@@ -679,31 +685,25 @@ const getActivityIcon = (type) => {
             <div className="flex justify-center mt-4 space-x-3">
               <button
                 onClick={() => setShowQRCode(false)}
-                className="px-4 py-2 border rounded-xl hover:bg-gray-50"
+                className="form-button-secondary"
               >
                 Fermer
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* 👥 MODALE ACHETEURS */}
-      {buyersModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-lg max-h-[85vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Acheteurs du produit
-              </h3>
-              <button
-                onClick={closeBuyersModal}
-                className="text-gray-500 hover:text-gray-700"
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
-            </div>
+      <Modal
+        isOpen={buyersModalOpen}
+        onClose={closeBuyersModal}
+        title="Acheteurs du produit"
+        size="md"
+        footer={
+          <button onClick={closeBuyersModal} className="form-button-secondary">
+            Fermer
+          </button>
+        }
+      >
 
             <div className="flex-1 overflow-auto border border-gray-100 rounded-xl">
               {buyersLoading && (
@@ -761,27 +761,34 @@ const getActivityIcon = (type) => {
               )}
             </div>
 
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={closeBuyersModal}
-                className="px-4 py-2 border rounded-xl hover:bg-gray-50"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-        {requestModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {requestModal === 'price' ? 'Demander changement de prix' : 'Demander ajustement stock'}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">La demande sera envoyée à un administrateur.</p>
-              </div>
+        <Modal
+          isOpen={Boolean(requestModal)}
+          onClose={() => setRequestModal(null)}
+          title={requestModal === 'price' ? 'Demander changement de prix' : 'Demander ajustement stock'}
+          subtitle="La demande sera envoyée à un administrateur."
+          size="sm"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setRequestModal(null)}
+                className="form-button-secondary"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={submitAdminRequest}
+                disabled={requestSubmitting || !requestReason.trim() || requestValue === ''}
+                className="form-button-primary"
+              >
+                {requestSubmitting ? 'Envoi...' : 'Envoyer'}
+              </button>
+            </>
+          }
+        >
               <div className="space-y-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-gray-700">
@@ -792,7 +799,7 @@ const getActivityIcon = (type) => {
                     min="0"
                     value={requestValue}
                     onChange={(event) => setRequestValue(event.target.value)}
-                    className="min-h-[44px] w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                    className="form-control text-sm"
                   />
                 </label>
                 <label className="block">
@@ -802,31 +809,12 @@ const getActivityIcon = (type) => {
                     onChange={(event) => setRequestReason(event.target.value)}
                     rows={4}
                     maxLength={600}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                    className="form-control text-sm"
                     placeholder="Expliquez pourquoi cette modification est nécessaire..."
                   />
                 </label>
               </div>
-              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setRequestModal(null)}
-                  className="min-h-[44px] rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={submitAdminRequest}
-                  disabled={requestSubmitting || !requestReason.trim() || requestValue === ''}
-                  className="min-h-[44px] rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  {requestSubmitting ? 'Envoi...' : 'Envoyer'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </Modal>
     </div>
   );
 };

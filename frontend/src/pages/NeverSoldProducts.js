@@ -8,6 +8,13 @@ import {
 } from 'recharts';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { productEditPath, productPath } from '../utils/paths';
+import {
+  ProductActionButton,
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+} from '../components/ProductAnalyticsUI';
+import { Download, FileText, PackageCheck, PackageX, Percent, Wallet } from 'lucide-react';
 
 const NeverSoldProducts = () => {
   const [data, setData] = useState([]);
@@ -179,35 +186,25 @@ const exportToPDF = async () => {
 
   return (
     <motion.div
-      className="p-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-3xl shadow-lg"
+      className="contents"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Produits Jamais Vendus
-          </h1>
-          <p className="text-gray-500">
-            Analyse des articles sans ventes depuis leur ajout
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/product-dashboard')}
-          className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all"
-        >
-          ⬅ Retour au Tableau de Bord
-        </button>
-      </div>
+      <ProductPageShell>
+      <ProductHero
+        eyebrow="Inventaire dormant"
+        title="Produits jamais vendus"
+        description="Analyse des articles sans ventes depuis leur ajout."
+        onBack={() => navigate('/product-dashboard')}
+      />
 
       {/* Barre résumé */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <MiniStat label="Produits Jamais Vendus" value={stats.total} color="indigo" />
-        <MiniStat label="Valeur du Stock" value={`${(stats.stockValue || 0).toLocaleString()} CFA`} color="green" />
-        <MiniStat label="% Produits" value={stats.totalProducts ? ((stats.total / stats.totalProducts) * 100).toFixed(1) + '%' : '0%'} color="purple" />
-        <MiniStat label="% Valeur Totale" value={stats.totalStockValue ? ((stats.stockValue / stats.totalStockValue) * 100).toFixed(1) + '%' : '0%'} color="yellow" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ProductMetricCard label="Produits Jamais Vendus" title="Produits jamais vendus" value={stats.total} tone="violet" icon={PackageX} />
+        <ProductMetricCard title="Valeur du stock" value={`${(stats.stockValue || 0).toLocaleString()} CFA`} tone="emerald" icon={Wallet} />
+        <ProductMetricCard title="% produits" value={stats.totalProducts ? ((stats.total / stats.totalProducts) * 100).toFixed(1) + '%' : '0%'} tone="sky" icon={Percent} />
+        <ProductMetricCard title="% valeur totale" value={stats.totalStockValue ? ((stats.stockValue / stats.totalStockValue) * 100).toFixed(1) + '%' : '0%'} tone="amber" icon={PackageCheck} />
       </div>
 
       {/* Filtres et exports */}
@@ -230,12 +227,12 @@ const exportToPDF = async () => {
           </select>
         </div>
         <div className="flex gap-3">
-          <button onClick={exportToExcel} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg shadow">
-            ⬇️ Excel
-          </button>
-          <button onClick={exportToPDF} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow">
-            🧾 PDF
-          </button>
+          <ProductActionButton onClick={exportToExcel} variant="primary" icon={Download}>
+            Excel
+          </ProductActionButton>
+          <ProductActionButton onClick={exportToPDF} icon={FileText}>
+            PDF
+          </ProductActionButton>
         </div>
       </div>
 
@@ -409,26 +406,12 @@ const exportToPDF = async () => {
             : '✅ Excellent ! Moins de 30% de vos produits n’ont jamais été vendus.'}
         </div>
       )}
+      </ProductPageShell>
     </motion.div>
   );
 };
 
 /* --- Composants réutilisables --- */
-const MiniStat = ({ label, value, color }) => {
-  const colors = {
-    indigo: 'text-indigo-600',
-    green: 'text-green-600',
-    purple: 'text-purple-600',
-    yellow: 'text-yellow-600',
-  };
-  return (
-    <div className="bg-white rounded-xl shadow px-5 py-3">
-      <p className="text-sm text-gray-500">{label}</p>
-      <h3 className={`text-xl font-bold ${colors[color]}`}>{value}</h3>
-    </div>
-  );
-};
-
 const ChartCard = ({ title, children }) => (
   <motion.div
     className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"

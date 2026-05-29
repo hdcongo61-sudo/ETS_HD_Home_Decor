@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
-import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
+import { getSaleTypeText } from '../utils/saleUtils';
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -232,20 +232,19 @@ const SaleForm = ({
   };
 
   const inputBase =
-    'w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder:text-gray-400 ' +
-    'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow';
+    'form-control text-gray-900 placeholder:text-gray-400';
 
-  const sectionTitleClass = 'text-sm font-semibold text-gray-900 uppercase tracking-wide';
+  const sectionTitleClass = 'text-sm font-semibold text-gray-900 uppercase tracking-[0.12em]';
 
   /** UI **/
   return (
     <form
       id={formId}
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden"
+      className="form-shell"
     >
       {/* Header */}
-      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/50">
+      <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-4 sm:px-6 sm:py-5">
         <h3 className="text-lg font-semibold text-gray-900">Nouvelle vente</h3>
         <p className="text-sm text-gray-500 mt-0.5">Renseignez le client, les produits et le paiement.</p>
       </div>
@@ -256,11 +255,11 @@ const SaleForm = ({
           <h4 id="sale-form-client" className={sectionTitleClass}>
             Client
           </h4>
-          <div className="rounded-xl border border-gray-200/80 bg-gray-50/30 p-4 space-y-3">
+          <div className="form-panel p-4 space-y-3">
             <input
               type="text"
               placeholder="Rechercher un client…"
-              className={`${inputBase} bg-white`}
+              className={inputBase}
               value={clientSearchTerm}
               onChange={(e) => setClientSearchTerm(e.target.value)}
               aria-label="Rechercher un client"
@@ -268,7 +267,7 @@ const SaleForm = ({
             <select
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
-              className={`${inputBase} bg-white`}
+              className={inputBase}
               required
               aria-label="Sélectionner un client"
             >
@@ -298,16 +297,16 @@ const SaleForm = ({
               return (
                 <div
                   key={index}
-                  className={`rounded-xl border p-4 space-y-3 transition-colors ${
+                  className={`rounded-[20px] border p-4 space-y-3 transition-colors ${
                     errors[index]
                       ? 'border-red-200 bg-red-50/30'
-                      : 'border-gray-200/80 bg-gray-50/30'
+                      : 'border-gray-200/80 bg-gray-50/50'
                   }`}
                 >
                   <input
                     type="text"
                     placeholder="Rechercher un produit…"
-                    className={`${inputBase} bg-white`}
+                    className={inputBase}
                     value={productSearchTerms[index] || ''}
                     onChange={(e) => {
                       const newTerms = [...productSearchTerms];
@@ -322,7 +321,7 @@ const SaleForm = ({
                       <select
                         value={item.product}
                         onChange={(e) => handleProductChange(index, e.target.value)}
-                        className={`${inputBase} bg-white ${errors[index] ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+                        className={`${inputBase} ${errors[index] ? 'form-control-error' : ''}`}
                         aria-invalid={!!errors[index]}
                         aria-describedby={errors[index] ? `product-error-${index}` : undefined}
                       >
@@ -340,7 +339,7 @@ const SaleForm = ({
                         id={`qty-${index}`}
                         type="number"
                         min="1"
-                        className={inputBase + ' bg-white'}
+                        className={inputBase}
                         value={item.quantity}
                         onChange={(e) => handleQuantityChange(index, e.target.value)}
                         placeholder="Qté"
@@ -351,7 +350,7 @@ const SaleForm = ({
                       <input
                         id={`price-${index}`}
                         type="number"
-                        className={inputBase + ' bg-white'}
+                        className={inputBase}
                         value={item.price}
                         onChange={(e) => handlePriceChange(index, e.target.value)}
                         placeholder="Prix"
@@ -374,7 +373,7 @@ const SaleForm = ({
                   </div>
 
                   {selectedProduct && (
-                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200/80">
+                    <div className="flex items-center gap-3 rounded-2xl border border-gray-200/80 bg-white p-3">
                       <img
                         src={selectedProduct.image || '/placeholder.png'}
                         alt=""
@@ -400,7 +399,7 @@ const SaleForm = ({
           <button
             type="button"
             onClick={addProduct}
-            className="w-full py-3 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="form-button-secondary flex w-full items-center justify-center gap-2 text-sm"
           >
             <span className="text-lg leading-none" aria-hidden>+</span>
             Ajouter un produit
@@ -427,15 +426,15 @@ const SaleForm = ({
             <h4 id="sale-form-date" className={sectionTitleClass}>
               Date réelle de vente
             </h4>
-            <div className="rounded-xl border border-sky-200/80 bg-sky-50/60 p-4 space-y-2">
+            <div className="form-panel p-4 space-y-2">
               <input
                 type="datetime-local"
                 value={saleDate}
                 onChange={(e) => setSaleDate(e.target.value)}
-                className={`${inputBase} bg-white`}
+                className={inputBase}
                 aria-label="Date réelle de la vente"
               />
-              <p className="text-xs text-sky-700">
+              <p className="form-help">
                 Optionnel. Utilisez ce champ pour rattraper des ventes notées sur papier avec leur vraie date.
               </p>
             </div>
@@ -454,9 +453,9 @@ const SaleForm = ({
                 return (
                   <label
                     key={type}
-                    className={`rounded-2xl border-2 p-4 cursor-pointer transition-all ${
+                    className={`cursor-pointer rounded-[20px] border p-4 transition-all ${
                       active
-                        ? `${getSaleTypeClass(type)} border-current shadow-sm`
+                        ? 'border-gray-950 bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.14)]'
                         : 'border-gray-200 bg-gray-50/60 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -492,7 +491,7 @@ const SaleForm = ({
             Rappel de paiement
           </h4>
           {isFullyPaid && (
-            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               La vente est soldée. Le rappel de paiement est désactivé.
             </div>
           )}
@@ -502,24 +501,24 @@ const SaleForm = ({
               checked={setReminder}
               onChange={(e) => setSetReminder(e.target.checked)}
               disabled={isFullyPaid}
-              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              className="form-check rounded"
             />
             <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Définir un rappel</span>
           </label>
           {setReminder && !isFullyPaid && (
-            <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 space-y-3">
+            <div className="form-panel p-4 space-y-3">
               <input
                 type="datetime-local"
                 value={reminderDate}
                 onChange={(e) => setReminderDate(e.target.value)}
-                className={inputBase + ' bg-white'}
+                className={inputBase}
                 aria-label="Date et heure du rappel"
               />
               <textarea
                 value={reminderNote}
                 onChange={(e) => setReminderNote(e.target.value)}
                 placeholder="Note du rappel…"
-                className={`${inputBase} min-h-[72px] resize-y bg-white`}
+                className={`${inputBase} min-h-[72px] resize-y`}
                 rows={2}
                 aria-label="Note du rappel"
               />
@@ -536,9 +535,9 @@ const SaleForm = ({
             {['cash', 'MobileMoney', 'credit'].map((m) => (
               <label
                 key={m}
-                className={`flex items-center justify-center gap-2 min-h-[48px] px-4 py-3 border-2 rounded-xl cursor-pointer transition-all ${
+                className={`flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 transition-all ${
                   paymentMethod === m
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    ? 'border-gray-950 bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.14)]'
                     : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
@@ -557,10 +556,10 @@ const SaleForm = ({
             ))}
           </div>
 
-          <div className="rounded-xl border border-gray-200/80 bg-gray-50/30 p-4 space-y-4">
+          <div className="form-panel p-4 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
-                <label htmlFor="sale-payment-amount" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="sale-payment-amount" className="form-label mb-1.5 block">
                   Montant payé maintenant
                 </label>
                 <input
@@ -571,41 +570,41 @@ const SaleForm = ({
                   step="0.01"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  className={`${inputBase} bg-white`}
+                  className={inputBase}
                   placeholder="0"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setPaymentAmount(totalAmount > 0 ? String(totalAmount) : '')}
-                className="min-h-[44px] px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium"
+                className="form-button-secondary"
               >
                 Paiement total
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
                 <p className="text-gray-500">Total vente</p>
                 <p className="font-semibold text-gray-900">{totalAmount.toLocaleString('fr-FR')} CFA</p>
               </div>
-              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
                 <p className="text-gray-500">Payé</p>
                 <p className="font-semibold text-green-700">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
               </div>
-              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
                 <p className="text-gray-500">Reste</p>
                 <p className="font-semibold text-amber-700">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
               </div>
             </div>
 
             {isFullyPaid && (
-              <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={markAsDelivered}
                   onChange={(e) => setMarkAsDelivered(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  className="form-check rounded"
                 />
                 <span className="text-sm font-medium text-green-800">
                   Confirmer la livraison immédiatement
@@ -616,9 +615,9 @@ const SaleForm = ({
         </section>
 
         {/* TOTAL */}
-        <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50/50 px-5 py-4 flex justify-between items-center">
+        <div className="flex items-center justify-between rounded-[20px] border border-gray-200 bg-gray-50/80 px-5 py-4">
           <span className="font-semibold text-gray-800">Total</span>
-          <span className="text-xl font-bold text-indigo-700 tabular-nums">
+          <span className="text-xl font-bold text-gray-950 tabular-nums">
             {totalAmount.toLocaleString('fr-FR')} CFA
           </span>
         </div>
@@ -627,11 +626,7 @@ const SaleForm = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full min-h-[48px] py-3 rounded-xl font-semibold text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
-              isSubmitting
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700'
-            }`}
+            className="form-button-primary w-full"
           >
             {isSubmitting ? 'Enregistrement…' : 'Enregistrer la vente'}
           </button>

@@ -39,6 +39,20 @@ const employeeSchema = mongoose.Schema(
       trim: true,
     },
     department: { type: String },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    leftDate: {
+      type: Date,
+      default: null,
+    },
+    inactiveReason: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     paySlips: [
       {
         month: { type: Number, required: true },

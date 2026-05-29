@@ -5,6 +5,7 @@ const Client = require('../models/clientModel');
 const User = require('../models/userModel');
 const Expense = require('../models/expenseModel');
 const DeletedSale = require('../models/deletedSaleModel');
+const Employee = require('../models/employeeModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -188,6 +189,10 @@ const getSales = asyncHandler(async (req, res) => {
     // Client filter
     if (req.query.client) {
       filter.client = req.query.client;
+    }
+
+    if (req.query.seller || req.query.user) {
+      filter.user = req.query.seller || req.query.user;
     }
 
     // Date range filter
@@ -2334,8 +2339,11 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const baseReminderFilter = isAdminUser(req.user) ? {} : { user: req.user._id };
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
 
-    const [overdue, upcoming, neverPaid] = await Promise.all([
+    const [overdue, upcoming, neverPaid, salaryEmployees] = await Promise.all([
       Sale.find({
         ...baseReminderFilter,
         'paymentReminder.isSet': true,
@@ -2373,7 +2381,25 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         .populate('client', 'name email phone')
         .select('_id client totalAmount payments paymentReminder saleDate saleType status')
         .lean()
-        .sort({ saleDate: 1 })
+        .sort({ saleDate: 1 }),
+
+      isAdminUser(req.user)
+        ? Employee.find({
+            isActive: { $ne: false },
+            $expr: { $eq: [{ $dayOfMonth: '$hireDate' }, currentDay] },
+            paySlips: {
+              $not: {
+                $elemMatch: {
+                  month: currentMonth,
+                  year: currentYear
+                }
+              }
+            }
+          })
+            .select('_id name slug position department salary hireDate photo paySlips')
+            .lean()
+            .sort({ name: 1 })
+        : []
     ]);
 
     // Calculate balance and totalPaid manually
@@ -2393,7 +2419,20 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     res.json({
       overdue: processReminders(overdue),
       upcoming: processReminders(upcoming),
-      neverPaid: processReminders(neverPaid)
+      neverPaid: processReminders(neverPaid),
+      salaryReminders: salaryEmployees.map((employee) => ({
+        _id: employee._id,
+        name: employee.name,
+        slug: employee.slug,
+        position: employee.position,
+        department: employee.department,
+        salary: employee.salary || 0,
+        hireDate: employee.hireDate,
+        photo: employee.photo || '',
+        month: currentMonth,
+        year: currentYear,
+        dueDate: now
+      }))
     });
   } catch (error) {
     res.status(500).json({ 

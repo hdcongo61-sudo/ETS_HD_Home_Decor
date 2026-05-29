@@ -1,7 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  Boxes,
+  Coins,
+  Package,
+  RotateCcw,
+  Search,
+  TrendingUp,
+  Truck,
+  Wallet,
+} from 'lucide-react';
 import api from '../services/api';
+import {
+  ProductActionButton,
+  ProductEmptyState,
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+  ProductSection,
+} from '../components/ProductAnalyticsUI';
 
 const rangeOptions = [
   { value: 'day', label: '24 dernières heures' },
@@ -20,11 +38,8 @@ const defaultTotals = {
   unitsSold: 0,
 };
 
-const formatCurrency = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
-
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
 const formatNumber = (value) => Number(value || 0).toLocaleString('fr-FR');
-
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
 const parseFilterNumber = (value) => {
@@ -43,12 +58,12 @@ const SupplierProducts = () => {
     minRevenue: '',
     minProfit: '',
   });
-  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [totals, setTotals] = useState(defaultTotals);
   const [generatedAt, setGeneratedAt] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSupplierData = async () => {
@@ -57,7 +72,6 @@ const SupplierProducts = () => {
       try {
         const res = await api.get(`/products/by-supplier?range=${range}`);
         const { suppliers = [], totals = {}, generatedAt = '' } = res.data || {};
-
         setSuppliers(suppliers);
         setTotals({ ...defaultTotals, ...totals });
         setGeneratedAt(generatedAt);
@@ -73,36 +87,12 @@ const SupplierProducts = () => {
   }, [range]);
 
   const summaryCards = [
-    {
-      title: 'Fournisseurs actifs',
-      value: formatNumber(totals.supplierCount),
-      accent: 'from-indigo-500 to-purple-500',
-    },
-    {
-      title: 'Produits suivis',
-      value: formatNumber(totals.productCount),
-      accent: 'from-blue-500 to-indigo-500',
-    },
-    {
-      title: 'Valeur du stock',
-      value: formatCurrency(totals.stockValue),
-      accent: 'from-emerald-500 to-teal-500',
-    },
-    {
-      title: 'Revenus générés',
-      value: formatCurrency(totals.revenue),
-      accent: 'from-violet-500 to-fuchsia-500',
-    },
-    {
-      title: 'Profit total',
-      value: formatCurrency(totals.profit),
-      accent: 'from-green-500 to-emerald-500',
-    },
-    {
-      title: 'Unités vendues',
-      value: formatNumber(totals.unitsSold),
-      accent: 'from-orange-500 to-amber-500',
-    },
+    { title: 'Fournisseurs actifs', value: formatNumber(totals.supplierCount), icon: Truck, tone: 'blue' },
+    { title: 'Produits suivis', value: formatNumber(totals.productCount), icon: Package, tone: 'slate' },
+    { title: 'Valeur du stock', value: formatCurrency(totals.stockValue), icon: Boxes, tone: 'sky' },
+    { title: 'Revenus générés', value: formatCurrency(totals.revenue), icon: Wallet, tone: 'emerald' },
+    { title: 'Profit total', value: formatCurrency(totals.profit), icon: TrendingUp, tone: 'violet' },
+    { title: 'Unités vendues', value: formatNumber(totals.unitsSold), icon: Coins, tone: 'amber' },
   ];
 
   const supplierOptions = useMemo(
@@ -116,9 +106,7 @@ const SupplierProducts = () => {
 
   const categoryOptions = useMemo(() => {
     const categories = suppliers.flatMap((supplier) =>
-      (supplier.products || [])
-        .map((product) => product.category)
-        .filter(Boolean)
+      (supplier.products || []).map((product) => product.category).filter(Boolean)
     );
 
     return [...new Set(categories)].sort((a, b) =>
@@ -151,42 +139,23 @@ const SupplierProducts = () => {
             !search ||
             normalizeText(product.name).includes(search) ||
             normalizeText(product.sku).includes(search);
-          const matchesCategory =
-            !category || normalizeText(product.category) === category;
-          const matchesUnits =
-            minUnits === null || Number(product.sold || 0) >= minUnits;
-          const matchesRevenue =
-            minRevenue === null || Number(product.revenue || 0) >= minRevenue;
-          const matchesProfit =
-            minProfit === null || Number(product.profit || 0) >= minProfit;
+          const matchesCategory = !category || normalizeText(product.category) === category;
+          const matchesUnits = minUnits === null || Number(product.sold || 0) >= minUnits;
+          const matchesRevenue = minRevenue === null || Number(product.revenue || 0) >= minRevenue;
+          const matchesProfit = minProfit === null || Number(product.profit || 0) >= minProfit;
 
-          return (
-            matchesSearch &&
-            matchesCategory &&
-            matchesUnits &&
-            matchesRevenue &&
-            matchesProfit
-          );
+          return matchesSearch && matchesCategory && matchesUnits && matchesRevenue && matchesProfit;
         }),
       }))
       .filter((supplier) => supplier.products.length > 0);
   }, [suppliers, supplierFilter, productFilters, hasProductFilters]);
 
   const updateProductFilter = (key, value) => {
-    setProductFilters((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setProductFilters((current) => ({ ...current, [key]: value }));
   };
 
   const resetProductFilters = () => {
-    setProductFilters({
-      search: '',
-      category: '',
-      minUnits: '',
-      minRevenue: '',
-      minProfit: '',
-    });
+    setProductFilters({ search: '', category: '', minUnits: '', minRevenue: '', minProfit: '' });
   };
 
   const renderGeneratedAt = () => {
@@ -202,399 +171,288 @@ const SupplierProducts = () => {
   };
 
   const supplierMetricCards = (supplier) => [
-    {
-      label: 'Revenu',
-      value: formatCurrency(supplier.totalRevenue),
-      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    },
-    {
-      label: 'Profit',
-      value: formatCurrency(supplier.totalProfit),
-      className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-    },
-    {
-      label: 'Unités vendues',
-      value: formatNumber(supplier.totalUnitsSold),
-      className: 'border-amber-200 bg-amber-50 text-amber-700',
-    },
-    {
-      label: 'Marge moy.',
-      value: `${Number(supplier.averageMargin || 0).toFixed(1)} %`,
-      className: 'border-sky-200 bg-sky-50 text-sky-700',
-    },
+    { label: 'Revenu', value: formatCurrency(supplier.totalRevenue), tone: 'emerald' },
+    { label: 'Profit', value: formatCurrency(supplier.totalProfit), tone: 'violet' },
+    { label: 'Unités vendues', value: formatNumber(supplier.totalUnitsSold), tone: 'amber' },
+    { label: 'Marge moy.', value: `${Number(supplier.averageMargin || 0).toFixed(1)} %`, tone: 'sky' },
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <button
-            onClick={() => navigate('/product-dashboard')}
-            className="mb-3 inline-flex items-center px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition shadow-sm"
-          >
-            ← Retour
-          </button>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Produits par Fournisseur
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Analyse détaillée des performances produit par fournisseur.
-          </p>
-          {renderGeneratedAt() && (
-            <p className="text-xs text-gray-400 mt-2">{renderGeneratedAt()}</p>
-          )}
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="range" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <ProductPageShell>
+      <ProductHero
+        eyebrow="Inventaire fournisseur"
+        title="Produits par fournisseur"
+        description="Analyse détaillée des performances produit par fournisseur, avec filtres par catégorie, volume, revenu et profit."
+        meta={renderGeneratedAt()}
+        onBack={() => navigate('/product-dashboard')}
+        actions={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
               Période
+              <select value={range} onChange={(e) => setRange(e.target.value)} className="form-control min-w-[190px] text-sm">
+                {rangeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id="range"
-              value={range}
-              onChange={(e) => setRange(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            >
-              {rangeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="supplier-filter" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
               Fournisseur
+              <select value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} className="form-control min-w-[210px] text-sm">
+                <option value="">Tous les fournisseurs</option>
+                {supplierOptions.map((supplierName) => (
+                  <option key={supplierName} value={supplierName}>
+                    {supplierName}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id="supplier-filter"
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            >
-              <option value="">Tous les fournisseurs</option>
-              {supplierOptions.map((supplierName) => (
-                <option key={supplierName} value={supplierName}>
-                  {supplierName}
-                </option>
-              ))}
-            </select>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
         </div>
       ) : (
         <>
           <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.3 }}
           >
             {summaryCards.map((card) => (
-              <motion.div
-                key={card.title}
-                whileHover={{ scale: 1.03 }}
-                className={`bg-gradient-to-br ${card.accent} text-white p-5 rounded-2xl shadow-md`}
-              >
-                <h3 className="text-sm uppercase tracking-wide opacity-80">
-                  {card.title}
-                </h3>
-                <p className="mt-2 text-2xl font-semibold">{card.value}</p>
-              </motion.div>
+              <ProductMetricCard key={card.title} {...card} />
             ))}
           </motion.div>
 
-          <section className="bg-white rounded-3xl shadow-md border border-gray-100 p-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800">
-                  Filtres des produits
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Filtre les lignes affichées dans chaque fournisseur.
-                </p>
-              </div>
-              {hasProductFilters && (
-                <button
-                  type="button"
-                  onClick={resetProductFilters}
-                  className="self-start sm:self-auto px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
-                >
+          <ProductSection
+            title="Filtres des produits"
+            description="Filtre les lignes affichées dans chaque fournisseur."
+            action={
+              hasProductFilters ? (
+                <ProductActionButton onClick={resetProductFilters} icon={RotateCcw}>
                   Réinitialiser
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                </ProductActionButton>
+              ) : null
+            }
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
                 Produit ou SKU
-                <input
-                  type="search"
-                  value={productFilters.search}
-                  onChange={(e) => updateProductFilter('search', e.target.value)}
-                  placeholder="Rechercher..."
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
-                />
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="search"
+                    value={productFilters.search}
+                    onChange={(e) => updateProductFilter('search', e.target.value)}
+                    placeholder="Rechercher..."
+                    className="form-control pl-9 text-sm font-normal normal-case tracking-normal"
+                  />
+                </div>
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Catégorie
-                <select
-                  value={productFilters.category}
-                  onChange={(e) => updateProductFilter('category', e.target.value)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
-                >
-                  <option value="">Toutes les catégories</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Ventes min.
-                <input
-                  type="number"
-                  min="0"
-                  value={productFilters.minUnits}
-                  onChange={(e) => updateProductFilter('minUnits', e.target.value)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Revenu min.
-                <input
-                  type="number"
-                  min="0"
-                  value={productFilters.minRevenue}
-                  onChange={(e) => updateProductFilter('minRevenue', e.target.value)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Profit min.
-                <input
-                  type="number"
-                  min="0"
-                  value={productFilters.minProfit}
-                  onChange={(e) => updateProductFilter('minProfit', e.target.value)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-normal normal-case tracking-normal text-gray-700"
-                />
-              </label>
+              <FilterSelect label="Catégorie" value={productFilters.category} onChange={(value) => updateProductFilter('category', value)}>
+                <option value="">Toutes les catégories</option>
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </FilterSelect>
+              <FilterInput label="Ventes min." value={productFilters.minUnits} onChange={(value) => updateProductFilter('minUnits', value)} />
+              <FilterInput label="Revenu min." value={productFilters.minRevenue} onChange={(value) => updateProductFilter('minRevenue', value)} />
+              <FilterInput label="Profit min." value={productFilters.minProfit} onChange={(value) => updateProductFilter('minProfit', value)} />
             </div>
-          </section>
+          </ProductSection>
 
-          <section className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Résumé par fournisseur
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Comparaison rapide du revenu, profit, unités vendues et marge moyenne.
-              </p>
-            </div>
+          <ProductSection
+            title="Résumé par fournisseur"
+            description="Comparaison rapide du revenu, profit, unités vendues et marge moyenne."
+          >
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                   <tr>
-                    <th className="py-3 px-4 text-left">Fournisseur</th>
-                    <th className="py-3 px-4 text-right">Revenu</th>
-                    <th className="py-3 px-4 text-right">Profit</th>
-                    <th className="py-3 px-4 text-right">Unités vendues</th>
-                    <th className="py-3 px-4 text-right">Marge moy.</th>
-                    <th className="py-3 px-4 text-right">Produits</th>
+                    <th className="px-4 py-3 text-left">Fournisseur</th>
+                    <th className="px-4 py-3 text-right">Revenu</th>
+                    <th className="px-4 py-3 text-right">Profit</th>
+                    <th className="px-4 py-3 text-right">Unités vendues</th>
+                    <th className="px-4 py-3 text-right">Marge moy.</th>
+                    <th className="px-4 py-3 text-right">Produits</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {visibleSuppliers.map((supplier) => (
-                    <tr key={`summary-${supplier.supplierName}`} className="hover:bg-indigo-50/30">
-                      <td className="py-3 px-4 font-semibold text-gray-800">
-                        <Link
-                          to={`/suppliers/${encodeURIComponent(supplier.supplierName || 'Inconnu')}`}
-                          className="text-indigo-700 hover:text-indigo-900 hover:underline"
-                        >
-                          {supplier.supplierName}
+                    <tr key={`summary-${supplier.supplierName}`} className="transition hover:bg-gray-50 dark:hover:bg-gray-800/70">
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                        <Link to={`/suppliers/${encodeURIComponent(supplier.supplierName || 'Inconnu')}`} className="underline-offset-4 hover:underline">
+                          {supplier.supplierName || 'Inconnu'}
                         </Link>
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-600">
-                        {formatCurrency(supplier.totalRevenue)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-indigo-600">
-                        {formatCurrency(supplier.totalProfit)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-amber-700">
-                        {formatNumber(supplier.totalUnitsSold)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-sky-700">
-                        {`${Number(supplier.averageMargin || 0).toFixed(1)} %`}
-                      </td>
-                      <td className="py-3 px-4 text-right text-gray-600">
-                        {formatNumber(supplier.totalProducts)}
-                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-600">{formatCurrency(supplier.totalRevenue)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-violet-600">{formatCurrency(supplier.totalProfit)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-amber-700">{formatNumber(supplier.totalUnitsSold)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-sky-700">{`${Number(supplier.averageMargin || 0).toFixed(1)} %`}</td>
+                      <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatNumber(supplier.totalProducts)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-                  {visibleSuppliers.length === 0 && (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  Aucun fournisseur à comparer avec ce filtre.
-                </div>
+              {visibleSuppliers.length === 0 && (
+                <ProductEmptyState title="Aucun fournisseur" description="Aucun fournisseur à comparer avec ce filtre." />
               )}
             </div>
-          </section>
+          </ProductSection>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {visibleSuppliers.map((supplier) => (
-              <motion.div
+              <motion.article
                 key={supplier.supplierName}
-                className="bg-white p-6 rounded-3xl shadow-md border border-gray-100"
+                className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-5"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.25 }}
               >
-                <div className="flex flex-col gap-4 mb-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-800">
-                      <Link
-                        to={`/suppliers/${encodeURIComponent(
-                          supplier.supplierName || 'Inconnu'
-                        )}`}
-                        className="hover:underline text-indigo-700 hover:text-indigo-900"
-                      >
-                        {supplier.supplierName}
-                      </Link>
-                    </h2>
-                    {supplier.supplierPhone && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        📞 {supplier.supplierPhone}
-                      </p>
-                    )}
+                <div className="mb-5 flex flex-col gap-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-950 dark:text-white">
+                        <Link to={`/suppliers/${encodeURIComponent(supplier.supplierName || 'Inconnu')}`} className="underline-offset-4 hover:underline">
+                          {supplier.supplierName || 'Inconnu'}
+                        </Link>
+                      </h2>
+                      {supplier.supplierPhone && (
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{supplier.supplierPhone}</p>
+                      )}
+                    </div>
+                    <span className="w-fit rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      {formatNumber(supplier.totalProducts)} produits
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {supplierMetricCards(supplier).map((metric) => (
-                      <div
-                        key={`${supplier.supplierName}-${metric.label}`}
-                        className={`rounded-xl p-3 sm:p-4 border min-h-[78px] flex flex-col justify-center ${metric.className}`}
-                      >
-                        <p className="text-xs sm:text-sm opacity-80">{metric.label}</p>
-                        <p className="text-base sm:text-xl font-bold mt-0.5">{metric.value}</p>
-                      </div>
+                      <SmallMetric key={`${supplier.supplierName}-${metric.label}`} {...metric} />
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Produits</p>
-                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatNumber(supplier.totalProducts)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Stock</p>
-                      <p className="text-base sm:text-lg font-semibold text-gray-800 mt-0.5">{formatCurrency(supplier.totalStockValue)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Stock critique</p>
-                      <p className="text-base sm:text-lg font-semibold text-amber-700 mt-0.5">{formatNumber(supplier.lowStockCount)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100 min-h-[44px] flex flex-col justify-center">
-                      <p className="text-xs sm:text-sm text-gray-500">Rupture</p>
-                      <p className="text-base sm:text-lg font-semibold text-red-600 mt-0.5">{formatNumber(supplier.outOfStockCount)}</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <SmallMetric label="Produits" value={formatNumber(supplier.totalProducts)} />
+                    <SmallMetric label="Stock" value={formatCurrency(supplier.totalStockValue)} />
+                    <SmallMetric label="Stock critique" value={formatNumber(supplier.lowStockCount)} tone="amber" />
+                    <SmallMetric label="Rupture" value={formatNumber(supplier.outOfStockCount)} tone="rose" />
                   </div>
                 </div>
 
-                <div className="overflow-x-auto -mx-2 sm:mx-0">
-                  <table className="responsive-table min-w-full text-sm">
-                    <thead className="bg-indigo-50 text-indigo-700 uppercase text-xs">
-                      <tr>
-                        <th className="py-2 px-3 text-left">Produit</th>
-                        <th className="py-2 px-3 text-left">Catégorie</th>
-                        <th className="py-2 px-3 text-right">Stock</th>
-                        <th className="py-2 px-3 text-right">Valeur Stock</th>
-                        <th className="py-2 px-3 text-right">Ventes</th>
-                        <th className="py-2 px-3 text-right">Revenu</th>
-                        <th className="py-2 px-3 text-right">Profit</th>
-                        <th className="py-2 px-3 text-right">Marge</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {supplier.products && supplier.products.length > 0 ? (
-                        supplier.products.map((product) => (
-                          <tr
-                            key={`${supplier.supplierName}-${product._id}`}
-                            className="border-b last:border-0 hover:bg-indigo-50/40 transition-colors"
-                          >
-                            <td data-title="Produit" className="py-2 px-3 font-medium text-gray-800 responsive-table__product-cell">
-                              <Link
-                                to={`/products/${product._id}`}
-                                className="text-indigo-700 hover:text-indigo-900 hover:underline"
-                              >
-                                {product.name}
-                              </Link>
-                              {product.sku && (
-                                <span className="ml-2 text-xs text-gray-400">
-                                  {product.sku}
-                                </span>
-                              )}
-                            </td>
-                            <td data-title="Catégorie" className="py-2 px-3 text-gray-500">
-                              {product.category || 'Non catégorisé'}
-                            </td>
-                            <td data-title="Stock" className="py-2 px-3 text-right">
-                              {formatNumber(product.stock)}
-                            </td>
-                            <td data-title="Valeur Stock" className="py-2 px-3 text-right">
-                              {formatCurrency(product.stockValue)}
-                            </td>
-                            <td data-title="Ventes" className="py-2 px-3 text-right">
-                              {formatNumber(product.sold)}
-                            </td>
-                            <td data-title="Revenu" className="py-2 px-3 text-right text-emerald-600 font-semibold">
-                              {formatCurrency(product.revenue)}
-                            </td>
-                            <td data-title="Profit" className="py-2 px-3 text-right text-indigo-600 font-semibold">
-                              {formatCurrency(product.profit)}
-                            </td>
-                            <td data-title="Marge" className="py-2 px-3 text-right">
-                              {`${Number(product.margin || 0).toFixed(1)} %`}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="py-4 px-3 text-center text-gray-500"
-                          >
-                            Aucun produit enregistré pour ce fournisseur.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
+                <ProductTable products={supplier.products || []} emptyText="Aucun produit enregistré pour ce fournisseur." />
+              </motion.article>
             ))}
 
             {visibleSuppliers.length === 0 && !error && (
-              <div className="bg-white border border-dashed border-gray-200 p-10 rounded-3xl text-center text-gray-500">
-                Aucun fournisseur à afficher pour la période sélectionnée.
-              </div>
+              <ProductEmptyState title="Aucun fournisseur" description="Aucun fournisseur à afficher pour la période sélectionnée." />
             )}
           </div>
         </>
       )}
-    </div>
+    </ProductPageShell>
   );
 };
+
+const FilterInput = ({ label, value, onChange }) => (
+  <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+    {label}
+    <input
+      type="number"
+      min="0"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="form-control text-sm font-normal normal-case tracking-normal"
+    />
+  </label>
+);
+
+const FilterSelect = ({ label, value, onChange, children }) => (
+  <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+    {label}
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="form-control text-sm font-normal normal-case tracking-normal"
+    >
+      {children}
+    </select>
+  </label>
+);
+
+const toneMap = {
+  amber: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
+  rose: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
+  sky: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300',
+  violet: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300',
+  slate: 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200',
+};
+
+const SmallMetric = ({ label, value, tone = 'slate' }) => (
+  <div className={`flex min-h-[78px] flex-col justify-center rounded-2xl border p-3 ${toneMap[tone] || toneMap.slate}`}>
+    <p className="text-xs font-medium opacity-80">{label}</p>
+    <p className="mt-1 text-base font-bold sm:text-lg">{value}</p>
+  </div>
+);
+
+const ProductTable = ({ products, emptyText }) => (
+  <div className="overflow-x-auto -mx-2 sm:mx-0">
+    <table className="responsive-table min-w-full text-sm">
+      <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <tr>
+          <th className="px-3 py-2 text-left">Produit</th>
+          <th className="px-3 py-2 text-left">Catégorie</th>
+          <th className="px-3 py-2 text-right">Stock</th>
+          <th className="px-3 py-2 text-right">Valeur stock</th>
+          <th className="px-3 py-2 text-right">Ventes</th>
+          <th className="px-3 py-2 text-right">Revenu</th>
+          <th className="px-3 py-2 text-right">Profit</th>
+          <th className="px-3 py-2 text-right">Marge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {products.length > 0 ? (
+          products.map((product) => (
+            <tr key={product._id} className="border-b border-gray-100 transition-colors last:border-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70">
+              <td data-title="Produit" className="responsive-table__product-cell px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                <Link to={`/products/${product._id}`} className="underline-offset-4 hover:underline">
+                  {product.name}
+                </Link>
+                {product.sku && <span className="ml-2 text-xs text-gray-400">{product.sku}</span>}
+              </td>
+              <td data-title="Catégorie" className="px-3 py-2 text-gray-500">{product.category || 'Non catégorisé'}</td>
+              <td data-title="Stock" className="px-3 py-2 text-right">{formatNumber(product.stock)}</td>
+              <td data-title="Valeur Stock" className="px-3 py-2 text-right">{formatCurrency(product.stockValue)}</td>
+              <td data-title="Ventes" className="px-3 py-2 text-right">{formatNumber(product.sold)}</td>
+              <td data-title="Revenu" className="px-3 py-2 text-right font-semibold text-emerald-600">{formatCurrency(product.revenue)}</td>
+              <td data-title="Profit" className="px-3 py-2 text-right font-semibold text-violet-600">{formatCurrency(product.profit)}</td>
+              <td data-title="Marge" className="px-3 py-2 text-right">{`${Number(product.margin || 0).toFixed(1)} %`}</td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={8} className="px-3 py-5 text-center text-gray-500">
+              {emptyText}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
 
 export default SupplierProducts;

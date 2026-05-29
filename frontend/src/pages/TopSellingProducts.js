@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { motion } from 'framer-motion';
 import { productPath } from '../utils/paths';
-import { ArrowLeft, Medal, TrendingUp, Trophy, Wallet } from 'lucide-react';
+import { TrendingUp, Trophy, Wallet } from 'lucide-react';
+import {
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+  ProductSection,
+} from '../components/ProductAnalyticsUI';
 
 const TopSellingProducts = () => {
   const [data, setData] = useState([]);
@@ -29,8 +34,8 @@ const TopSellingProducts = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
       </div>
     );
   }
@@ -40,34 +45,19 @@ const TopSellingProducts = () => {
   }
 
   return (
-    <motion.div
-      className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div>
-          <p className="text-xs font-medium uppercase text-slate-500">Performance produits</p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Produits les plus vendus</h1>
-          <p className="text-slate-500 mt-1">
-            Classement basé sur les ventes récentes et bénéfices estimés.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/product-dashboard')}
-          className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Dashboard
-        </button>
-      </div>
+    <ProductPageShell>
+      <ProductHero
+        eyebrow="Performance produits"
+        title="Produits les plus vendus"
+        description="Classement basé sur les ventes récentes et bénéfices estimés."
+        onBack={() => navigate('/product-dashboard')}
+      />
 
       {/* Tableau principal */}
-      <div className="hidden md:block overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+      <ProductSection title="Classement détaillé" description="Produits ordonnés par volume et performance financière.">
+      <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               {[
                 'Produit',
@@ -81,21 +71,21 @@ const TopSellingProducts = () => {
               ].map((header) => (
                 <th
                   key={header}
-                  className="px-6 py-3 text-left font-medium text-slate-500 uppercase"
+                  className="px-6 py-3 text-left font-medium uppercase text-gray-500 dark:text-gray-400"
                 >
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {data.map((p, index) => (
               <tr
                 key={p._id || index}
-                className="hover:bg-slate-50 transition cursor-pointer"
+                className="cursor-pointer transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
                 onClick={() => navigate(productPath(p))}
               >
-                <td className="px-6 py-4 font-semibold text-slate-950">{p.name}</td>
+                <td className="px-6 py-4 font-semibold text-gray-950 dark:text-white">{p.name}</td>
                 <td className="px-6 py-4 text-slate-600">{p.category || '—'}</td>
                 <td className="px-6 py-4 text-slate-600">{p.supplierName || '—'}</td>
                 <td className="px-6 py-4 text-slate-700">{p.price?.toLocaleString() || '—'}</td>
@@ -120,7 +110,7 @@ const TopSellingProducts = () => {
         {data.map((p, index) => (
           <div
             key={p._id || index}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
+            className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70"
             onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
@@ -156,22 +146,23 @@ const TopSellingProducts = () => {
           </div>
         ))}
       </div>
+      </ProductSection>
 
       {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
-        <StatCard
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <ProductMetricCard
           title="Revenu Total"
           value={`${data.reduce((sum, p) => sum + (p.revenue || 0), 0).toLocaleString()} CFA`}
           tone="sky"
           icon={Wallet}
         />
-        <StatCard
+        <ProductMetricCard
           title="Profit Total"
           value={`${data.reduce((sum, p) => sum + (p.profit || 0), 0).toLocaleString()} CFA`}
           tone="emerald"
           icon={TrendingUp}
         />
-        <StatCard
+        <ProductMetricCard
           title="Marge Moyenne"
           value={
             data.length
@@ -184,32 +175,7 @@ const TopSellingProducts = () => {
           icon={Trophy}
         />
       </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ---- Composant de carte statistique ----
-const toneMap = {
-  sky: 'border-sky-200 bg-sky-50 text-sky-700',
-  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  amber: 'border-amber-200 bg-amber-50 text-amber-700',
-};
-const StatCard = ({ title, value, tone = 'sky', icon: Icon = Medal }) => {
-  return (
-    <motion.div
-      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div>
-        <p className="text-sm text-slate-500">{title}</p>
-        <h3 className="text-2xl font-semibold mt-1 text-slate-950">{value}</h3>
-      </div>
-      <div className={`rounded-2xl border p-3 ${toneMap[tone] || toneMap.sky}`}>
-        <Icon className="h-5 w-5" />
-      </div>
-    </motion.div>
+    </ProductPageShell>
   );
 };
 

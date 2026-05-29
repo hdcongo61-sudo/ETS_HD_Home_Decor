@@ -36,8 +36,12 @@ const adminRequestRoutes = require('./routes/adminRequestRoutes');
 
 const app = express();
 
+app.disable('x-powered-by');
+
 // 1. Set security HTTP headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // ✅ Trust proxy (important for Render)
 app.set('trust proxy', 1);
@@ -46,33 +50,48 @@ app.set('trust proxy', 1);
 const allowedOrigins = [
   'http://localhost:3000',
   process.env.FRONTEND_URL,
-  'https://www.hdgestion.co'
-];
+  'https://www.hdgestion.co',
+]
+  .flatMap((origin) => String(origin || '').split(','))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
+  optionsSuccessStatus: 204,
 }));
 
 
 // 3. Rate limiting to prevent brute-force attacks
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per window
+  windowMs: (Number(process.env.RATE_LIMIT_WINDOW_MIN) || 15) * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again after 15 minutes'
 });
 app.use(limiter);
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts. Please try again after 15 minutes',
+});
+app.use('/api/users/login', authLimiter);
+app.use('/api/users/password-update-request', authLimiter);
+
 // 4. Body parser with size limit
 app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
 // 5. Cookie parser
 app.use(cookieParser());

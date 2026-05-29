@@ -3,7 +3,17 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Menu } from "lucide-react";
+import {
+  ArrowUpRight,
+  BriefcaseBusiness,
+  FileText,
+  Menu,
+  Package,
+  Search,
+  Sparkles,
+  UserRound,
+  X,
+} from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
@@ -131,26 +141,26 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="surface-bar sticky top-0 z-50 nav-safe-top border-b border-gray-200/70 shadow-sm">
-      <div className="mx-auto max-w-[1600px] px-3 py-2 sm:px-4">
-        <div className="flex min-h-[58px] items-center gap-3">
+    <nav className="sticky top-0 z-50 nav-safe-top border-b border-white/60 bg-white/88 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
+      <div className="mx-auto max-w-[1600px] px-3 py-1.5 sm:px-4 lg:px-5">
+        <div className="flex min-h-[48px] items-center gap-2.5">
           {/* === Logo === */}
           <Link
             to="/"
-            className="flex min-w-0 shrink-0 items-center gap-2.5 rounded-xl px-1.5 py-1 transition-colors hover:bg-gray-100/70"
+            className="group flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-1 py-0.5 transition-all duration-200 hover:bg-gray-100/80 active:scale-[0.99]"
             onClick={closeMenu}
           >
             <img
               src={logoUrl}
               alt={branding.shortName || branding.appName}
-              className="h-10 w-10 shrink-0 rounded-xl border border-gray-200/80 bg-white object-contain shadow-apple-sm"
+              className="h-8 w-8 shrink-0 rounded-xl border border-gray-200/80 bg-white object-contain shadow-[0_6px_18px_rgba(15,23,42,0.07)] transition-transform duration-200 group-hover:scale-[1.02] lg:h-9 lg:w-9"
             />
             <div className="hidden min-w-0 lg:block">
-              <span className="block truncate text-[17px] font-semibold tracking-tight text-gray-900">
+              <span className="block truncate text-[15px] font-semibold tracking-tight text-gray-900">
                 {branding.appName}
               </span>
               {branding.tagline && (
-                <span className="block truncate text-[11px] text-gray-500">
+                <span className="block truncate text-[10px] text-gray-500">
                   {branding.tagline}
                 </span>
               )}
@@ -162,17 +172,28 @@ const Navigation = () => {
             {renderNavigationLinks(auth, handleLogout, closeMenu, false, false, autresOpen, setAutresOpen)}
           </div>
 
+          {showSearchBar && (
+            <GlobalSearchBar
+              query={query}
+              setQuery={setQuery}
+              results={results}
+              onSelectResult={handleSelectResult}
+              className="hidden w-56 shrink-0 md:block lg:w-64 xl:w-80"
+              compact
+            />
+          )}
+
           {/* === Profil & Actions === */}
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {auth.isAuthenticated && (
               <>
                 <Link
                   to="/profile"
-                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200/80 bg-gray-50 transition-colors duration-apple ease-apple hover:bg-gray-100"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200/80 bg-white/85 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 ease-apple hover:-translate-y-0.5 hover:bg-gray-50 active:translate-y-0"
                   onClick={closeMenu}
                   aria-label="Profil"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-100">
+                  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gray-100">
                     {auth.user?.photo ? (
                       <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
                     ) : (
@@ -188,8 +209,8 @@ const Navigation = () => {
             {!isDesktop && (
               <button
                 onClick={toggleMenu}
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 transition-colors duration-apple ease-apple hover:bg-gray-50 hover:text-gray-900 focus:outline-none active:bg-gray-100"
-                aria-label="Toggle menu"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200/80 bg-white/90 text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 ease-apple hover:-translate-y-0.5 hover:bg-gray-50 hover:text-gray-950 focus:outline-none active:translate-y-0 active:bg-gray-100"
+                aria-label={isMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
                 aria-expanded={isMenuOpen}
               >
                 {isMenuOpen ? (
@@ -201,18 +222,6 @@ const Navigation = () => {
             )}
           </div>
         </div>
-
-        {showSearchBar && (
-          <div className="mt-2 hidden md:block">
-            <GlobalSearchBar
-              query={query}
-              setQuery={setQuery}
-              results={results}
-              onSelectResult={handleSelectResult}
-              className="mx-auto w-full max-w-3xl"
-            />
-          </div>
-        )}
 
         {/* === Barre de recherche mobile === */}
         {showSearchBar && (
@@ -232,28 +241,31 @@ const Navigation = () => {
             type="button"
             aria-label="Fermer le menu"
             onClick={closeMenu}
-            className="md:hidden fixed inset-0 z-40 bg-[#f2f2f7]/95"
+            className="fixed inset-0 z-40 bg-gray-950/18 backdrop-blur-sm md:hidden"
             style={{ top: 0, left: 0, right: 0, bottom: 0 }}
           />
         )}
 
-        {/* === Menu mobile: card sections, app background === */}
-        <div
-          className={`md:hidden relative z-[51] overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
-            isMenuOpen ? "max-h-[80vh] opacity-100 visible" : "max-h-0 opacity-0 invisible pointer-events-none"
-          }`}
-        >
+        <AnimatePresence>
+          {!isDesktop && isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              className="relative z-[51] md:hidden"
+            >
           <div
-            className="overflow-y-auto overflow-x-hidden py-4 px-3 mt-2 rounded-2xl border border-gray-200/80 shadow-sm touch-manipulation bg-[#f2f2f7]"
+            className="mt-2 overflow-y-auto overflow-x-hidden rounded-[24px] border border-white/70 bg-[#f7f6f3]/96 px-3 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)] touch-manipulation backdrop-blur-2xl"
             style={{
               paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
               WebkitOverflowScrolling: "touch",
-              maxHeight: "80vh",
+              maxHeight: "min(78vh, 720px)",
             }}
           >
             {auth.isAuthenticated && (
               <div
-                className="mb-3 flex min-h-[56px] items-center gap-3 rounded-xl border border-gray-200/60 px-4 py-3 shadow-sm"
+                className="mb-3 flex min-h-[64px] items-center gap-3 rounded-[22px] border border-white/70 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
                 style={{ backgroundColor: brandTint }}
               >
                 <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
@@ -267,13 +279,18 @@ const Navigation = () => {
                   <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{auth.user?.name}</p>
                   <p className="text-xs text-gray-500 truncate">{auth.user?.email}</p>
                 </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-gray-700 shadow-sm">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                </div>
               </div>
             )}
             <div className="flex flex-col gap-0">
               {renderNavigationLinks(auth, handleLogout, closeMenu, true, true, false, () => {})}
             </div>
           </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );
@@ -281,22 +298,22 @@ const Navigation = () => {
 
 // === Mobile menu: section card (efficient grouping) ===
 const MobileMenuSection = ({ title, children }) => (
-  <div className="bg-white/95 rounded-xl border border-gray-200/70 shadow-sm overflow-hidden mb-3 last:mb-0">
-    <div className="px-3.5 pt-2.5 pb-1">
-      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{title}</span>
+  <div className="mb-3 overflow-hidden rounded-[22px] border border-white/80 bg-white/88 shadow-[0_10px_30px_rgba(15,23,42,0.06)] last:mb-0">
+    <div className="px-4 pb-1 pt-3">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{title}</span>
     </div>
-    <div className="flex flex-col pb-1">{children}</div>
+    <div className="flex flex-col px-1.5 pb-1.5">{children}</div>
   </div>
 );
 
 // === Liens du menu (desktop + mobile) ===
 const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
   const linkClass = isMobile
-    ? "group/nav flex min-h-[48px] w-full items-center rounded-lg px-3.5 py-2.5 text-[15px] font-medium text-gray-800 transition-colors hover:bg-gray-50 active:bg-gray-100 touch-manipulation"
-    : "group/nav relative flex h-[58px] min-w-[72px] max-w-[96px] items-center justify-center rounded-xl px-2 text-gray-600 transition-colors duration-200 hover:bg-gray-100/80 hover:text-gray-950";
+    ? "group/nav flex min-h-[50px] w-full items-center rounded-2xl px-3 py-2.5 text-[15px] font-medium text-gray-800 transition-all duration-200 hover:bg-gray-50 active:scale-[0.99] active:bg-gray-100 touch-manipulation"
+    : "group/nav relative flex h-[44px] min-w-[62px] max-w-[92px] items-center justify-center rounded-2xl px-1.5 text-gray-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-100/85 hover:text-gray-950 active:translate-y-0";
 
   const iconClass = isMobile
-    ? "h-5 w-5 shrink-0 text-gray-500"
+    ? "h-5 w-5 shrink-0 text-gray-500 transition-colors group-hover/nav:text-gray-800"
     : "h-5 w-5 shrink-0 text-gray-500 transition-colors group-hover/nav:text-gray-800";
 
   const showPrimaryTabs = !(isMobile && hidePrimaryTabsOnMobile);
@@ -382,7 +399,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             openInNewTab={!isMobile}
           />
           {/* Desktop: Dépenses then Autres dropdown */}
-          {!isMobile && (
+          {!isMobile && auth.isAdmin && (
             <NavIcon
               to="/expenses"
               icon={
@@ -426,7 +443,8 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
-                      className="absolute right-0 top-full z-[60] mt-2 w-[min(95vw,560px)] rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-xl"
+                      transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+                      className="absolute right-0 top-full z-[60] mt-3 w-[min(95vw,620px)] rounded-[24px] border border-white/80 bg-white/95 px-4 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl"
                     >
                       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                         {/* Colonne gauche */}
@@ -479,7 +497,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                           <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Autres</div>
                           <div className="space-y-0.5">
                             <Link to="/bank" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Caisse</Link>
-                            <Link to="/expenses" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>
+                            {auth.isAdmin && <Link to="/expenses" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>}
                             {auth.isAdmin && <Link to="/expenses/monthly-plan" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Objectif mensuel</Link>}
                             <Link to="/admin-requests" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>{auth.isAdmin ? 'Demandes admin' : 'Mes demandes'}</Link>
                           </div>
@@ -524,7 +542,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
           </MobileMenuSection>
           <MobileMenuSection title="Caisse & Dépenses">
             <NavIcon to="/bank" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M5 10V7l7-4 7 4v3M5 10v8m4-8v8m4-8v8m4-8v8M3 18h18" /></svg>} label="Caisse" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
-            <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
+            {auth.isAdmin && <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
             {auth.isAdmin && <NavIcon to="/expenses/monthly-plan" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 3a1 1 0 012 0v1.07A8.001 8.001 0 112.07 15H1a1 1 0 110-2h2a1 1 0 011 1 6 6 0 106-6 1 1 0 01-1-1V3zm1 5a1 1 0 011 1v3.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0112 13V9a1 1 0 011-1z" /></svg>} label="Objectif mensuel" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
           </MobileMenuSection>
           <MobileMenuSection title="Clients">
@@ -626,7 +644,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         onClick={handleLogout}
         className={
           isMobile
-            ? "mt-3 flex min-h-[52px] w-full items-center rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-[15px] font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 active:bg-red-100 touch-manipulation"
+            ? "mt-3 flex min-h-[52px] w-full items-center rounded-[22px] border border-red-100 bg-red-50 px-3.5 py-3 text-[15px] font-semibold text-red-700 shadow-sm transition-all duration-200 hover:bg-red-100 active:scale-[0.99] active:bg-red-100 touch-manipulation"
             : `${linkClass} text-red-600 hover:bg-red-50/80 active:bg-red-100/60`
         }
         aria-label="Déconnexion"
@@ -681,8 +699,13 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
     ? currentWithHash === target
     : location.pathname === cleanPath;
   const activeClass = isMobile
-    ? "bg-indigo-50 text-indigo-700"
-    : "bg-gray-100 text-gray-950";
+    ? "bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]"
+    : "bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.13)] hover:bg-gray-950 hover:text-white";
+  const renderedIcon = React.isValidElement(icon)
+    ? React.cloneElement(icon, {
+        className: `${icon.props.className || ""} ${isActive ? "!text-white" : ""}`,
+      })
+    : icon;
 
   return (
     <Link
@@ -696,41 +719,92 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
       rel={openInNewTab ? "noopener noreferrer" : undefined}
     >
       <div className={`flex w-full ${isMobile ? "flex-row items-center" : "h-full flex-col items-center justify-center gap-1 text-center"}`}>
-        <span className={isMobile ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100/80" : "flex h-6 w-6 items-center justify-center"}>
-          {icon}
+        <span className={isMobile ? `flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${isActive ? "bg-white/16 text-white" : "bg-gray-100/90 text-gray-600"}` : "flex h-6 w-6 items-center justify-center"}>
+          {renderedIcon}
         </span>
         {isMobile && <span className="ml-3 min-w-0 flex-1 truncate">{label}</span>}
         {!isMobile && (
-          <span className="max-w-full truncate text-[11px] font-medium leading-tight text-gray-500 transition-colors group-hover/nav:text-gray-800">
+          <span className={`max-w-full truncate text-[11px] font-medium leading-tight transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover/nav:text-gray-800"}`}>
             {label}
           </span>
         )}
       </div>
       {!isMobile && isActive && (
-        <span className="absolute bottom-1.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-indigo-500" />
+        <span className="absolute bottom-1.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-white/85" />
       )}
     </Link>
   );
 };
 
-const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className = "", isMobile = false }) => (
+const SEARCH_RESULT_META = {
+  product: {
+    label: "Produit",
+    icon: Package,
+    tone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  },
+  client: {
+    label: "Client",
+    icon: UserRound,
+    tone: "bg-blue-50 text-blue-700 ring-blue-100",
+  },
+  sale: {
+    label: "Vente",
+    icon: FileText,
+    tone: "bg-amber-50 text-amber-700 ring-amber-100",
+  },
+  employee: {
+    label: "Employé",
+    icon: BriefcaseBusiness,
+    tone: "bg-gray-100 text-gray-700 ring-gray-200",
+  },
+  default: {
+    label: "Résultat",
+    icon: Search,
+    tone: "bg-gray-100 text-gray-700 ring-gray-200",
+  },
+};
+
+const getResultTitle = (item) =>
+  item?.name || item?.clientName || item?.title || item?.saleNumber || "Résultat sans nom";
+
+const getResultDescription = (item) => {
+  if (!item) return "";
+  if (item.type === "product") {
+    return `Stock: ${Number(item.stock || 0).toLocaleString("fr-FR")}`;
+  }
+  if (item.type === "client") {
+    return item.phone || item.email || "Fiche client";
+  }
+  if (item.type === "sale") {
+    return item.totalAmount
+      ? `${Number(item.totalAmount || 0).toLocaleString("fr-FR")} CFA`
+      : "Détail de vente";
+  }
+  if (item.type === "employee") {
+    return item.role || item.position || item.phone || "Fiche employé";
+  }
+  return item.type || "";
+};
+
+const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className = "", isMobile = false, compact = false }) => (
   <div className={`relative ${className}`}>
     <input
       type="text"
       value={query}
       onChange={(e) => setQuery(e.target.value)}
-      placeholder="Rechercher produits, clients, ventes..."
-      className={`w-full pl-10 pr-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400 ${
-        isMobile ? "py-2.5 shadow-sm" : "py-2"
+      placeholder={isMobile ? "Rechercher produits, clients, ventes..." : "Recherche rapide"}
+      aria-label="Recherche globale"
+      className={`w-full rounded-2xl border border-gray-200/90 bg-white/92 pl-9 pr-9 text-sm font-medium text-gray-800 shadow-[0_8px_24px_rgba(15,23,42,0.05)] outline-none transition-all placeholder:text-gray-400 focus:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-900/5 ${
+        isMobile ? "py-3" : compact ? "py-2" : "py-2.5"
       }`}
     />
     <Search
-      className={`absolute left-3 ${isMobile ? "top-3" : "top-2.5"} text-gray-400 w-5 h-5`}
+      className={`absolute left-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} h-4 w-4 text-gray-400`}
     />
     {query && (
       <button
         onClick={() => setQuery("")}
-        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+        className={`absolute right-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} text-gray-400 hover:text-gray-600`}
         aria-label="Effacer la recherche"
       >
         <X size={18} />
@@ -743,36 +817,40 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="absolute z-50 bg-white w-full mt-2 rounded-xl border border-gray-200 shadow-lg overflow-hidden max-h-72 overflow-y-auto"
+          transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+          className={`absolute ${isMobile ? "left-0 right-0 w-full" : "right-0 w-[min(420px,90vw)]"} z-[80] mt-2 max-h-[min(70vh,360px)] overflow-y-auto rounded-[24px] border border-gray-200 bg-[#f7f6f3] p-2 shadow-[0_28px_80px_rgba(15,23,42,0.28)] ring-1 ring-gray-950/10`}
         >
           {results.map((item) => {
             const isProduct = item.type === "product";
+            const meta = SEARCH_RESULT_META[item.type] || SEARCH_RESULT_META.default;
+            const ResultIcon = meta.icon;
             return (
-              <li
-                key={item._id}
-                onClick={() => onSelectResult(item)}
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-3">
-                  {isProduct && item.image ? (
-                    <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 text-sm">
-                      {item.type === "client" ? "👤" : item.type === "employee" ? "👥" : "📄"}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <span className="block truncate font-medium text-gray-800">
-                      {item.name || item.clientName || item.title}
-                    </span>
-                    {isProduct && (
-                      <span className="block text-xs text-gray-500">
-                        Stock: {Number(item.stock || 0).toLocaleString("fr-FR")}
-                      </span>
+              <li key={item._id}>
+                <button
+                  type="button"
+                  onClick={() => onSelectResult(item)}
+                  className="group/search flex w-full items-center gap-3 rounded-[18px] border border-gray-200 bg-white px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.99]"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-gray-600">
+                    {isProduct && item.image ? (
+                      <img src={item.image} alt={item.name || "Produit"} className="h-full w-full object-cover" />
+                    ) : (
+                      <ResultIcon className="h-5 w-5" aria-hidden="true" />
                     )}
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500 capitalize">{item.type}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-gray-900">
+                      {getResultTitle(item)}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-gray-500">
+                      {getResultDescription(item)}
+                    </span>
+                  </span>
+                  <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 sm:inline-flex ${meta.tone}`}>
+                    {meta.label}
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover/search:text-gray-500" aria-hidden="true" />
+                </button>
               </li>
             );
           })}

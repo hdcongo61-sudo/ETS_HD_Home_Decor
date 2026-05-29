@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
 const LoginHistory = require('../models/loginHistoryModel');
+const AdminRequest = require('../models/adminRequestModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 
@@ -409,6 +410,69 @@ const loginUser = asyncHandler(async (req, res) => {
   return res.status(401).json({ message: invalidMessage });
 });
 
+// @desc    Request a password update from the login screen
+// @route   POST /api/users/password-update-request
+// @access  Public
+const requestPasswordUpdate = asyncHandler(async (req, res) => {
+  const login = String(req.body.login || '').trim();
+  const reason = String(req.body.reason || '').trim();
+
+  if (!login) {
+    return res.status(400).json({ message: 'Téléphone ou email requis.' });
+  }
+
+  if (!reason) {
+    return res.status(400).json({ message: 'Expliquez pourquoi vous ne pouvez pas vous connecter.' });
+  }
+
+  if (reason.length > 1000) {
+    return res.status(400).json({ message: 'La raison ne peut pas dépasser 1000 caractères.' });
+  }
+
+  let user = null;
+  if (login.includes('@')) {
+    user = await User.findOne({ email: login });
+  } else {
+    user = await findUserByPhone(login);
+  }
+
+  if (!user) {
+    return res.status(404).json({ message: 'Aucun utilisateur trouvé avec cet identifiant.' });
+  }
+
+  const existingPending = await AdminRequest.findOne({
+    type: 'user.password_update',
+    requestedBy: user._id,
+    status: 'pending',
+  });
+
+  if (existingPending) {
+    return res.status(200).json({
+      message: 'Une demande est déjà en attente. Un administrateur doit la traiter.',
+    });
+  }
+
+  await AdminRequest.create({
+    type: 'user.password_update',
+    reason,
+    note: `Demande envoyée depuis la page de connexion. Identifiant utilisé: ${login}`,
+    targetModel: 'User',
+    targetId: user._id,
+    targetLabel: user.name || user.email || user.phone || 'Utilisateur',
+    metadata: {
+      login,
+      email: user.email || '',
+      phone: user.phone || '',
+      requestSource: 'login',
+    },
+    requestedBy: user._id,
+  });
+
+  res.status(201).json({
+    message: 'Demande envoyée. Un administrateur recevra le rappel et pourra mettre à jour votre mot de passe.',
+  });
+});
+
 const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
@@ -787,6 +851,7 @@ const getLoginActivity = asyncHandler(async (req, res) => {
 
 module.exports = {
   loginUser,
+  requestPasswordUpdate,
   getUsers,
   getUserProfile,
   registerUser,

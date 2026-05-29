@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { productEditPath, productPath } from '../utils/paths';
-import { AlertTriangle, ArrowLeft, BarChart3, Edit3, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Edit3, Wallet } from 'lucide-react';
+import {
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+  ProductSection,
+} from '../components/ProductAnalyticsUI';
 
 const CriticalStockProducts = () => {
   const [products, setProducts] = useState([]);
@@ -37,41 +42,24 @@ const CriticalStockProducts = () => {
   }));
 
   return (
-    <motion.div
-      className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="mx-auto max-w-7xl space-y-5">
-      {/* Header */}
-      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div>
-          <p className="text-xs font-medium uppercase text-slate-500">Stock</p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Produits à stock critique</h1>
-          <p className="text-slate-500 mt-1">
-            Liste des articles dont le stock est inférieur à 5 unités.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/product-dashboard')}
-          className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Dashboard
-        </button>
-      </div>
+    <ProductPageShell>
+      <ProductHero
+        eyebrow="Stock"
+        title="Produits à stock critique"
+        description="Liste des articles dont le stock est inférieur à 5 unités."
+        onBack={() => navigate('/product-dashboard')}
+      />
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <StatCard title="Produits Critiques" value={products.length} tone="amber" icon={AlertTriangle} />
-        <StatCard
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <ProductMetricCard title="Produits critiques" value={products.length} tone="amber" icon={AlertTriangle} />
+        <ProductMetricCard
           title="Valeur Totale du Stock"
           value={`${totalValue.toLocaleString()} CFA`}
           tone="sky"
           icon={Wallet}
         />
-        <StatCard
+        <ProductMetricCard
           title="Stock Moyen"
           value={
             products.length
@@ -85,10 +73,7 @@ const CriticalStockProducts = () => {
 
       {/* Graphique */}
       {products.length > 0 && (
-        <div className="bg-white rounded-[1.5rem] shadow-sm p-4 sm:p-6 border border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-950 mb-4">
-            Niveaux de Stock des Produits Critiques
-          </h2>
+        <ProductSection title="Niveaux de stock" description="Vue rapide des produits critiques.">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -98,26 +83,27 @@ const CriticalStockProducts = () => {
               <Bar dataKey="stock" fill="#F59E0B" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ProductSection>
       )}
 
       {/* Tableau */}
-      <div className="hidden md:block overflow-x-auto bg-white rounded-[1.5rem] shadow-sm border border-slate-200">
+      <ProductSection title="Produits à traiter" description="Ouvrez la fiche ou réapprovisionnez directement.">
+      <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               {['Produit', 'Catégorie', 'Fournisseur', 'Prix (CFA)', 'Stock', 'Valeur Totale', 'Actions'].map((h) => (
-                <th key={h} className="px-6 py-3 text-left font-medium text-slate-500 uppercase">
+                <th key={h} className="px-6 py-3 text-left font-medium uppercase text-gray-500 dark:text-gray-400">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {products.map((p) => (
               <tr
                 key={p._id}
-                className="hover:bg-slate-50 transition cursor-pointer"
+                className="cursor-pointer transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
                 onClick={() => navigate(productPath(p))}
               >
                 <td className="px-6 py-4 font-semibold text-slate-950">{p.name}</td>
@@ -134,7 +120,7 @@ const CriticalStockProducts = () => {
                       e.stopPropagation();
                       navigate(productEditPath(p));
                     }}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
                   >
                     <Edit3 className="h-4 w-4" />
                     Réapprovisionner
@@ -151,7 +137,7 @@ const CriticalStockProducts = () => {
         {products.map((p) => (
           <div
             key={p._id}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
+            className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70"
             onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
@@ -181,7 +167,7 @@ const CriticalStockProducts = () => {
                 e.stopPropagation();
                 navigate(productEditPath(p));
               }}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
             >
               <Edit3 className="h-4 w-4" />
               Réapprovisionner
@@ -189,32 +175,8 @@ const CriticalStockProducts = () => {
           </div>
         ))}
       </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ---- Carte statistique ----
-const toneMap = {
-  amber: 'border-amber-200 bg-amber-50 text-amber-700',
-  sky: 'border-sky-200 bg-sky-50 text-sky-700',
-  slate: 'border-slate-200 bg-slate-50 text-slate-700',
-};
-const StatCard = ({ title, value, tone = 'slate', icon: Icon = BarChart3 }) => {
-  return (
-    <motion.div
-      className="flex justify-between items-center rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div>
-        <p className="text-sm text-slate-500">{title}</p>
-        <h3 className="text-2xl font-semibold mt-1 text-slate-950">{value}</h3>
-      </div>
-      <div className={`rounded-2xl border p-3 ${toneMap[tone] || toneMap.slate}`}>
-        <Icon className="h-5 w-5" />
-      </div>
-    </motion.div>
+      </ProductSection>
+    </ProductPageShell>
   );
 };
 

@@ -14,6 +14,7 @@ const adminRequestSchema = mongoose.Schema(
         'expense.create',
         'product.price_change',
         'stock.adjustment',
+        'user.password_update',
         'other',
       ],
       required: true,

@@ -16,7 +16,7 @@ const toIsoStringOrNull = (value) => {
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const inputClass = 'w-full min-h-[44px] px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base';
+const inputClass = 'form-control text-base';
 
 const PERMISSION_OPTIONS = [
     {
@@ -231,12 +231,12 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
     const formContent = (
         <form onSubmit={handleSubmit} className="space-y-5">
             {/* Photo */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="form-panel flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
                 <div className="relative shrink-0">
                     {photoPreview ? (
                         <img src={photoPreview} alt={formData.name || 'Utilisateur'} className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm" />
                     ) : (
-                        <div className="w-16 h-16 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-dashed border-blue-200">
+                        <div className="w-16 h-16 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center border border-dashed border-gray-300">
                             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -251,7 +251,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">Photo</p>
                     <p className="text-xs text-gray-500 mt-0.5">JPG, PNG ou WEBP (max 5 Mo)</p>
-                    <label className="mt-2 inline-flex items-center min-h-[44px] px-4 py-2.5 bg-white border border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 text-sm font-medium text-gray-700">
+                    <label className="form-button-secondary mt-2 inline-flex cursor-pointer items-center text-sm">
                         <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" /></svg>
                         Choisir une photo
                         <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
@@ -260,35 +260,35 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Nom complet</label>
+                <label className="form-label">Nom complet</label>
                 <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} placeholder="Ex. Jean Dupont" />
             </div>
             <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email</label>
+                <label className="form-label">Email</label>
                 <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputClass} placeholder="exemple@etshd.com" />
             </div>
             <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Téléphone</label>
+                <label className="form-label">Téléphone</label>
                 <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="+242 06 000 0000" />
             </div>
             <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">{user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>
+                <label className="form-label">{user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>
                 <input type="password" name="password" value={formData.password} onChange={handleChange} minLength={6} className={inputClass} placeholder={user ? 'Laisser vide pour ne pas changer' : 'Minimum 6 caractères'} />
             </div>
             {formData.password && (
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
+                    <label className="form-label">Confirmer le mot de passe</label>
                     <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={inputClass} placeholder="Confirmer le mot de passe" />
                 </div>
             )}
 
-            <div className="flex items-center min-h-[44px] p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+            <div className="form-panel flex items-center min-h-[48px] p-3">
+                <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="form-check rounded" />
                 <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">Accès administrateur</label>
             </div>
 
             {!formData.isAdmin && (
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                <div className="form-panel p-4 space-y-3">
                     <div>
                         <h3 className="text-sm font-semibold text-gray-800">Permissions utilisateur</h3>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -297,12 +297,12 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                     </div>
                     <div className="space-y-2">
                         {PERMISSION_OPTIONS.map((permission) => (
-                            <label key={permission.value} className="flex items-start gap-3 rounded-xl bg-white p-3 border border-gray-200 cursor-pointer">
+                            <label key={permission.value} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-gray-200 bg-white p-3 transition-colors hover:bg-gray-50">
                                 <input
                                     type="checkbox"
                                     checked={(formData.permissions || []).includes(permission.value)}
                                     onChange={(event) => handlePermissionChange(permission.value, event.target.checked)}
-                                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    className="form-check mt-1 rounded"
                                 />
                                 <span>
                                     <span className="block text-sm font-medium text-gray-800">{permission.label}</span>
@@ -314,25 +314,25 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 </div>
             )}
 
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+            <div className="form-panel p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <h3 className="text-sm font-semibold text-gray-800">Fenêtre de connexion</h3>
                         <p className="text-xs text-gray-500 mt-0.5">Restreindre les plages horaires de connexion.</p>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer min-h-[44px]">
-                        <input type="checkbox" name="accessControlEnabled" checked={formData.accessControlEnabled} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                        <input type="checkbox" name="accessControlEnabled" checked={formData.accessControlEnabled} onChange={handleChange} className="form-check rounded" />
                         Activer
                     </label>
                 </div>
                 {formData.accessControlEnabled && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-gray-600">Début autorisé</label>
+                            <label className="form-label text-xs">Début autorisé</label>
                             <input type="datetime-local" name="accessStart" value={formData.accessStart} onChange={handleChange} className={`${inputClass} text-sm`} />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-gray-600">Fin autorisée</label>
+                            <label className="form-label text-xs">Fin autorisée</label>
                             <input type="datetime-local" name="accessEnd" value={formData.accessEnd} onChange={handleChange} className={`${inputClass} text-sm`} />
                         </div>
                     </div>
@@ -340,10 +340,10 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
-                <button type="button" onClick={onCancel} className="min-h-[44px] px-5 py-2.5 rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium transition-colors w-full sm:w-auto">
+                <button type="button" onClick={onCancel} className="form-button-secondary w-full sm:w-auto">
                     Annuler
                 </button>
-                <button type="submit" className="min-h-[44px] px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto">
+                <button type="submit" className="form-button-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                     {user ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
                 </button>
@@ -357,7 +357,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
 
     return (
         <div className="max-w-md mx-auto">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div className="form-shell p-6">
                 <div className="mb-6">
                     <h2 className="text-xl font-semibold text-gray-900">{user ? "Modifier l'utilisateur" : "Ajouter un utilisateur"}</h2>
                     <p className="text-sm text-gray-500 mt-1">{user ? "Mettez à jour les informations du compte." : "Créez un nouveau compte utilisateur."}</p>

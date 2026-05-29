@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { ProductHero, ProductPageShell } from '../components/ProductAnalyticsUI';
 
 const rangeOptions = [
   { value: 'day', label: '24 dernieres heures' },
@@ -102,34 +103,21 @@ const WarehouseProducts = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Produits par Entrepot
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Analyse detaillee des performances produit par entrepot.
-          </p>
-          {renderGeneratedAt() && (
-            <p className="text-xs text-gray-400 mt-2">{renderGeneratedAt()}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/product-dashboard')}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition shadow-sm"
-          >
-            ← Retour
-          </button>
-          <label htmlFor="range" className="text-sm font-medium text-gray-600">
-            Periode
-          </label>
+    <ProductPageShell>
+      <ProductHero
+        eyebrow="Inventaire entrepôt"
+        title="Produits par entrepôt"
+        description="Analyse détaillée des performances produit par entrepôt."
+        meta={renderGeneratedAt()}
+        onBack={() => navigate('/product-dashboard')}
+        actions={
+          <label htmlFor="range" className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+            Période
           <select
             id="range"
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+            className="form-control min-w-[190px] text-sm"
           >
             {rangeOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -137,8 +125,9 @@ const WarehouseProducts = () => {
               </option>
             ))}
           </select>
-        </div>
-      </div>
+          </label>
+        }
+      />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
@@ -299,7 +288,7 @@ const WarehouseProducts = () => {
           </div>
         </>
       )}
-    </div>
+    </ProductPageShell>
   );
 };
 

@@ -19,7 +19,6 @@ import {
 } from 'recharts';
 import {
   AlertTriangle,
-  ArrowUpRight,
   Boxes,
   Download,
   Package,
@@ -28,6 +27,15 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import {
+  ProductActionButton,
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+  ProductSection,
+  formatProductCurrency,
+  formatProductNumber,
+} from '../components/ProductAnalyticsUI';
 
 const ProductDashboard = () => {
   const navigate = useNavigate();
@@ -134,13 +142,13 @@ const ProductDashboard = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
       </div>
     );
 
   if (error)
-    return <p className="text-center text-red-600 mt-8">{error}</p>;
+    return <p className="mt-8 text-center text-red-600">{error}</p>;
 
   const supplierChartData = stats.supplierStats.slice(0, 5).map((s) => ({
     ...s,
@@ -165,42 +173,30 @@ const ProductDashboard = () => {
   }));
 
   return (
-    <motion.div
-      className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <ProductPageShell>
       <Toaster />
-      <div className="mx-auto max-w-7xl space-y-5">
-      <header className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <p className="text-xs font-medium uppercase text-slate-500">Inventaire</p>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">
-          Tableau de bord produits
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Stock, ventes, marges et regroupements par fournisseur, conteneur et entrepôt.
-        </p>
-      </header>
+      <ProductHero
+        eyebrow="Inventaire"
+        title="Tableau de bord produits"
+        description="Stock, ventes, marges et regroupements par fournisseur, conteneur et entrepôt."
+      />
 
       {/* 1️⃣ Synthèse Globale */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <ProductSection
+        title="Synthèse globale"
+        description="Vue consolidée de l’inventaire et de la performance commerciale."
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <OverviewCard title="Total Produits" value={stats.totalProducts} icon={Package} tone="slate" />
-          <OverviewCard title="Produits Vendus" value={stats.soldProducts} icon={TrendingUp} tone="emerald" />
-          <OverviewCard title="Stock Critique" value={stats.lowStockProducts.length} icon={AlertTriangle} tone="amber" />
-          <OverviewCard title="Rupture de Stock" value={stats.outOfStockProducts.length} icon={PackageX} tone="rose" />
-          <OverviewCard title="Valeur Totale du Stock" value={`${stats.totalStockValue.toLocaleString()} CFA`} icon={Wallet} tone="sky" />
-          <OverviewCard title="Valeur des Invendus" value={`${stats.neverSoldStockValue.toLocaleString()} CFA`} icon={Boxes} tone="violet" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ProductMetricCard title="Total produits" value={formatProductNumber(stats.totalProducts)} icon={Package} tone="slate" />
+          <ProductMetricCard title="Produits vendus" value={formatProductNumber(stats.soldProducts)} icon={TrendingUp} tone="emerald" />
+          <ProductMetricCard title="Stock critique" value={formatProductNumber(stats.lowStockProducts.length)} icon={AlertTriangle} tone="amber" />
+          <ProductMetricCard title="Rupture de stock" value={formatProductNumber(stats.outOfStockProducts.length)} icon={PackageX} tone="rose" />
+          <ProductMetricCard title="Valeur totale du stock" value={formatProductCurrency(stats.totalStockValue)} icon={Wallet} tone="sky" />
+          <ProductMetricCard title="Valeur des invendus" value={formatProductCurrency(stats.neverSoldStockValue)} icon={Boxes} tone="violet" />
         </div>
 
         {/* Graphique tendance ventes */}
-        <div className="mt-8 h-40">
+        <div className="mt-5 h-48 rounded-[22px] border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={stats.salesTrend}>
               <defs>
@@ -216,11 +212,11 @@ const ProductDashboard = () => {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </motion.div>
+      </ProductSection>
 
       {/* 2️⃣ Liens Rapides */}
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -232,13 +228,10 @@ const ProductDashboard = () => {
       </motion.div>
 
       {/* 3️⃣ Graphique Revenu vs Profit */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <ProductSection
+        title="Comparatif revenu / profit"
+        description="Les produits qui génèrent le plus de chiffre d’affaires et de marge."
       >
-        <h2 className="text-xl font-semibold mb-4 text-slate-950">Comparatif Revenu / Profit</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={stats.topSellingProducts.slice(0, 10)}>
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -249,19 +242,13 @@ const ProductDashboard = () => {
             <Bar dataKey="profit" fill="#10B981" name="Profit" />
           </BarChart>
         </ResponsiveContainer>
-      </motion.div>
+      </ProductSection>
 
       {/* 4️⃣ Top Produits Vendus */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <h2 className="text-xl font-semibold mb-4 text-slate-950">Top Produits Vendus</h2>
+      <ProductSection title="Top produits vendus" description="Les cinq produits les plus performants.">
         <div className="overflow-x-auto">
           <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               <tr>
                 <th className="py-2 px-3">Produit</th>
                 <th className="py-2 px-3">Catégorie</th>
@@ -272,7 +259,7 @@ const ProductDashboard = () => {
             </thead>
             <tbody>
               {stats.topSellingProducts.slice(0, 5).map((p) => (
-                <tr key={p._id} className="border-b hover:bg-indigo-50">
+                <tr key={p._id} className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70">
                   <td className="py-2 px-3">{p.name}</td>
                   <td className="py-2 px-3">{p.category}</td>
                   <td className="py-2 px-3">{p.sold}</td>
@@ -283,33 +270,20 @@ const ProductDashboard = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </ProductSection>
 
       {/* 5️⃣ Statistiques Fournisseurs */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <ProductSection
+        title="Statistiques fournisseurs"
+        description="Revenu, profit, risques de stock et performance par fournisseur."
+        action={
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <ProductActionButton onClick={() => navigate('/products/by-supplier')}>Vue détaillée</ProductActionButton>
+            <ProductActionButton onClick={exportSuppliersToExcel} variant="primary" icon={Download}>Export Excel</ProductActionButton>
+          </div>
+        }
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-950">Statistiques Fournisseurs</h2>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <button
-              onClick={() => navigate('/products/by-supplier')}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 w-full sm:w-auto"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              Vue détaillée
-            </button>
-            <button
-              onClick={exportSuppliersToExcel}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 w-full sm:w-auto"
-            >
-              <Download className="h-4 w-4" />
-              Export Excel
-            </button>
-          </div>
         </div>
 
         <div className="mb-6 h-64">
@@ -398,27 +372,14 @@ const ProductDashboard = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </ProductSection>
 
       {/* 6️⃣ Statistiques Conteneurs */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <ProductSection
+        title="Statistiques conteneurs"
+        description="Lecture de la performance par arrivage ou conteneur."
+        action={<ProductActionButton onClick={() => navigate('/products/by-container')}>Vue détaillée</ProductActionButton>}
       >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-950">Statistiques Conteneurs</h2>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <button
-              onClick={() => navigate('/products/by-container')}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 w-full sm:w-auto"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              Vue détaillée
-            </button>
-          </div>
-        </div>
 
         <div className="mb-6 h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -489,27 +450,14 @@ const ProductDashboard = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </ProductSection>
 
       {/* 7️⃣ Statistiques Entrepots */}
-      <motion.div
-        className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <ProductSection
+        title="Statistiques entrepôts"
+        description="Suivi des emplacements de stockage et des risques de rupture."
+        action={<ProductActionButton onClick={() => navigate('/products/by-warehouse')}>Vue détaillée</ProductActionButton>}
       >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-950">Statistiques Entrepots</h2>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <button
-              onClick={() => navigate('/products/by-warehouse')}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 w-full sm:w-auto"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              Vue detaillee
-            </button>
-          </div>
-        </div>
 
         <div className="mb-6 h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -588,9 +536,8 @@ const ProductDashboard = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
-      </div>
-    </motion.div>
+      </ProductSection>
+    </ProductPageShell>
   );
 };
 
@@ -603,22 +550,6 @@ const toneClasses = {
   sky: 'border-sky-200 bg-sky-50 text-sky-700',
   violet: 'border-violet-200 bg-violet-50 text-violet-700',
 };
-
-const OverviewCard = ({ title, value, icon: Icon, tone = 'slate' }) => (
-  <motion.div
-    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-    whileHover={{ y: -2 }}
-    transition={{ duration: 0.2 }}
-  >
-    <div>
-      <p className="text-sm text-slate-500">{title}</p>
-      <h3 className="text-2xl font-semibold mt-1 text-slate-950">{value}</h3>
-    </div>
-    <div className={`rounded-2xl border p-3 ${toneClasses[tone] || toneClasses.slate}`}>
-      <Icon className="h-5 w-5" />
-    </div>
-  </motion.div>
-);
 
 const QuickLinkCard = ({ title, subtitle, icon: Icon, tone = 'slate', path, count }) => {
   const navigate = useNavigate();

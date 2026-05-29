@@ -175,6 +175,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   if (selectedCategory && !categoryOptions.includes(selectedCategory)) {
     categoryOptions.push(selectedCategory);
   }
+  const controlClass = (error) => `form-control ${error ? 'form-control-error' : ''}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -189,14 +190,14 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className={`w-full p-2 border rounded-lg ${errors.date ? 'border-red-500' : 'border-gray-200'
-                } focus:ring-2 focus:ring-blue-500`}
+              className={controlClass(errors.date)}
+              aria-invalid={Boolean(errors.date)}
               required
             />
-            <p className="text-xs text-gray-500">
+            <p className="form-help">
               Utilisez la date et l'heure réelles si la dépense a été notée plus tôt sur papier.
             </p>
-            {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+            {errors.date && <p className="form-error">{errors.date}</p>}
           </div>
         )}
 
@@ -211,14 +212,14 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               value={formData.amount}
               onChange={handleChange}
               step="0.01"
-              className={`w-full p-2 border rounded-lg pr-8 ${errors.amount ? 'border-red-500' : 'border-gray-200'
-                } focus:ring-2 focus:ring-blue-500`}
+              className={`${controlClass(errors.amount)} pr-12`}
+              aria-invalid={Boolean(errors.amount)}
               placeholder="0.00"
               required
             />
             <span className="absolute right-3 top-2.5 text-gray-400">CFA</span>
           </div>
-          {errors.amount && <p className="text-red-500 text-sm">{errors.amount}</p>}
+          {errors.amount && <p className="form-error">{errors.amount}</p>}
         </div>
       </div>
 
@@ -231,13 +232,13 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           name="description"
           value={formData.description}
           onChange={handleChange}
-          className={`w-full p-2 border rounded-lg ${errors.description ? 'border-red-500' : 'border-gray-200'
-            } focus:ring-2 focus:ring-blue-500`}
+          className={controlClass(errors.description)}
+          aria-invalid={Boolean(errors.description)}
           rows="3"
           placeholder="Détails de la dépense..."
           required
         />
-        {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
+        {errors.description && <p className="form-error">{errors.description}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,8 +251,8 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             name="category"
             value={formData.category}
             onChange={handleChange}
-            className={`w-full p-2 border rounded-lg ${errors.category ? 'border-red-500' : 'border-gray-200'
-              } focus:ring-2 focus:ring-blue-500`}
+            className={controlClass(errors.category)}
+            aria-invalid={Boolean(errors.category)}
             required
           >
             <option value="">Sélectionner une catégorie</option>
@@ -266,7 +267,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               Ajoutez les catégories dans Paramètres &gt; Catégories dépenses.
             </p>
           )}
-          {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+          {errors.category && <p className="form-error">{errors.category}</p>}
         </div>
 
         {/* Payment Method Field */}
@@ -278,7 +279,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             name="paymentMethod"
             value={formData.paymentMethod}
             onChange={handleChange}
-            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="form-control"
             required
           >
             <option value="cash">Espèces</option>
@@ -290,10 +291,10 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
       </div>
 
       {salaryCategorySelected && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 space-y-4">
+        <div className="form-panel p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-blue-900">Paiement de salaire</h3>
-            <p className="text-xs text-blue-700 mt-1">
+            <h3 className="text-sm font-semibold text-gray-900">Paiement de salaire</h3>
+            <p className="form-help mt-1">
               Le montant sera déduit du salaire mensuel restant de l'employé pour le mois choisi.
             </p>
           </div>
@@ -307,8 +308,8 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
                 name="employee"
                 value={formData.employee}
                 onChange={handleChange}
-                className={`w-full p-2 border rounded-lg bg-white ${errors.employee ? 'border-red-500' : 'border-gray-200'
-                  } focus:ring-2 focus:ring-blue-500`}
+                className={controlClass(errors.employee)}
+                aria-invalid={Boolean(errors.employee)}
                 required
               >
                 <option value="">Sélectionner un employé</option>
@@ -321,7 +322,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               {employees.length === 0 && (
                 <p className="text-xs text-amber-600">Aucun employé disponible.</p>
               )}
-              {errors.employee && <p className="text-red-500 text-sm">{errors.employee}</p>}
+              {errors.employee && <p className="form-error">{errors.employee}</p>}
             </div>
 
             <div className="space-y-1">
@@ -333,16 +334,16 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
                 name="salaryPeriod"
                 value={formData.salaryPeriod}
                 onChange={handleChange}
-                className={`w-full p-2 border rounded-lg bg-white ${errors.salaryPeriod ? 'border-red-500' : 'border-gray-200'
-                  } focus:ring-2 focus:ring-blue-500`}
+                className={controlClass(errors.salaryPeriod)}
+                aria-invalid={Boolean(errors.salaryPeriod)}
                 required
               />
-              {errors.salaryPeriod && <p className="text-red-500 text-sm">{errors.salaryPeriod}</p>}
+              {errors.salaryPeriod && <p className="form-error">{errors.salaryPeriod}</p>}
             </div>
           </div>
 
           {selectedEmployee && (
-            <div className="rounded-xl bg-white/80 p-3 text-sm text-gray-700 border border-blue-100">
+            <div className="rounded-2xl bg-white/85 p-3 text-sm text-gray-700 border border-gray-200/80">
               Salaire mensuel :
               <span className="ml-1 font-semibold text-gray-900">
                 {Number(selectedEmployee.salary || 0).toLocaleString('fr-FR')} CFA
@@ -357,7 +358,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           <button
             type="button"
             onClick={() => (typeof onCancel === 'function' ? onCancel() : onSubmit(null))}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="form-button-secondary"
           >
             Annuler
           </button>
@@ -365,7 +366,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         <button
           type="submit"
           disabled={submitting}
-          className={`px-4 py-2 text-white rounded-lg transition-colors ${submitting ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'}`}
+          className="form-button-primary"
         >
           {submitting ? (
             <span className="flex items-center gap-2">

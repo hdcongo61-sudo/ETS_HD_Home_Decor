@@ -21,6 +21,15 @@ const uploadEmployeePhoto = (buffer) => new Promise((resolve, reject) => {
   streamifier.createReadStream(buffer).pipe(stream);
 });
 
+const parseBoolean = (value, fallback = true) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+  }
+  return fallback;
+};
+
 // @desc    Get all employees
 // @route   GET /api/employees
 // @access  Private/Admin
@@ -68,6 +77,9 @@ const createEmployee = async (req, res) => {
       hireDate: req.body.hireDate,
       department: req.body.department || '',
       photo: photoUrl,
+      isActive: parseBoolean(req.body.isActive, true),
+      leftDate: parseBoolean(req.body.isActive, true) ? null : req.body.leftDate || null,
+      inactiveReason: parseBoolean(req.body.isActive, true) ? '' : req.body.inactiveReason || '',
     });
 
     await employee.save();
@@ -100,6 +112,11 @@ const updateEmployee = async (req, res) => {
       employee.salary = req.body.salary || employee.salary;
       employee.hireDate = req.body.hireDate || employee.hireDate;
       employee.department = req.body.department || employee.department;
+      if (Object.prototype.hasOwnProperty.call(req.body, 'isActive')) {
+        employee.isActive = parseBoolean(req.body.isActive, employee.isActive);
+        employee.leftDate = employee.isActive ? null : req.body.leftDate || employee.leftDate || new Date();
+        employee.inactiveReason = employee.isActive ? '' : req.body.inactiveReason || '';
+      }
       if (resolvedPhoto !== undefined) {
         employee.photo = resolvedPhoto;
       }

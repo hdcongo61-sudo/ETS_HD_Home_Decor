@@ -1,5 +1,6 @@
 // components/GlobalSaleModal.js
 import React, { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Check, Loader2, ReceiptText, RefreshCw, Users, Boxes } from 'lucide-react';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
 import Modal from './Modal';
@@ -12,6 +13,35 @@ const normalizeCollection = (value, nestedKeys = []) => {
   }
   return [];
 };
+
+const GlobalModalSkeleton = () => (
+  <div className="space-y-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {[0, 1, 2, 3].map((item) => (
+        <div key={item} className="h-20 animate-pulse rounded-2xl border border-gray-200 bg-gray-100/80" />
+      ))}
+    </div>
+    <div className="space-y-3 rounded-3xl border border-gray-200 bg-white p-4">
+      <div className="h-4 w-36 animate-pulse rounded-full bg-gray-200" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[0, 1, 2, 3, 4, 5].map((item) => (
+          <div key={item} className="h-12 animate-pulse rounded-2xl bg-gray-100" />
+        ))}
+      </div>
+      <div className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+    </div>
+  </div>
+);
+
+const MetricPill = ({ icon, label, value }) => (
+  <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+      {icon}
+      {label}
+    </div>
+    <p className="mt-1 text-lg font-semibold text-gray-950">{value}</p>
+  </div>
+);
 
 const GlobalSaleModal = () => {
   const { activeModal, closeModal } = useModal();
@@ -74,14 +104,19 @@ const GlobalSaleModal = () => {
       isOpen={isOpen}
       onClose={closeModal}
       title="Nouvelle vente"
-      subtitle="Même formulaire que la page ventes: date, type, paiement, rappel et livraison."
-      size="lg"
+      subtitle="Créer une vente complète sans quitter votre page actuelle."
+      size="xl"
+      mobileFullscreen
+      icon={<ReceiptText size={20} />}
+      contentClassName="bg-gray-50/80"
+      footerClassName="bg-white/96"
       footer={
         <>
           <button
             type="button"
             onClick={closeModal}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors touch-manipulation"
+            disabled={isSubmitting}
+            className="min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 sm:w-auto"
           >
             Annuler
           </button>
@@ -89,41 +124,62 @@ const GlobalSaleModal = () => {
             type="submit"
             form="global-sale-form"
             disabled={isSubmitting || loading}
-            className={`min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 touch-manipulation ${
+            className={`min-h-[44px] w-full rounded-2xl px-4 py-3 font-semibold flex items-center justify-center gap-2 transition sm:w-auto ${
               isSubmitting || loading
-                ? 'bg-gray-400 cursor-not-allowed text-white'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                ? 'bg-gray-300 cursor-not-allowed text-gray-600'
+                : 'bg-gray-950 hover:bg-gray-800 text-white shadow-sm'
             }`}
           >
-            {isSubmitting ? 'Enregistrement…' : 'Enregistrer la vente'}
+            {isSubmitting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              <>
+                <Check size={18} />
+                Enregistrer la vente
+              </>
+            )}
           </button>
         </>
       }
     >
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-          <span className="ml-3 text-sm text-gray-600">Chargement du formulaire…</span>
-        </div>
+        <GlobalModalSkeleton />
       ) : loadError ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p>{loadError}</p>
+        <div className="rounded-3xl border border-red-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            <AlertCircle size={22} />
+          </div>
+          <h3 className="mt-4 text-base font-semibold text-gray-950">Chargement impossible</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-gray-600">{loadError}</p>
           <button
             type="button"
             onClick={fetchSaleFormData}
-            className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
           >
+            <RefreshCw size={16} />
             Réessayer
           </button>
         </div>
       ) : (
-        <SaleForm
-          clients={clients}
-          products={products}
-          onSubmit={handleSubmit}
-          formId="global-sale-form"
-          hideSubmit
-        />
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricPill icon={<Users size={14} />} label="Clients" value={clients.length} />
+            <MetricPill icon={<Boxes size={14} />} label="Produits" value={products.length} />
+            <MetricPill icon={<ReceiptText size={14} />} label="Mode" value="Complet" />
+            <MetricPill icon={<Check size={14} />} label="Stock" value="Automatique" />
+          </div>
+
+          <SaleForm
+            clients={clients}
+            products={products}
+            onSubmit={handleSubmit}
+            formId="global-sale-form"
+            hideSubmit
+          />
+        </div>
       )}
     </Modal>
   );

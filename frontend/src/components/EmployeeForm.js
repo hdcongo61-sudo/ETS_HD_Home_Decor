@@ -14,7 +14,10 @@ const EmployeeForm = () => {
     salary: '',
     hireDate: new Date().toISOString().split('T')[0],
     department: '',
-    photo: ''
+    photo: '',
+    isActive: true,
+    leftDate: '',
+    inactiveReason: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +45,10 @@ const EmployeeForm = () => {
             salary: data.salary || '',
             hireDate: formattedDate,
             department: data.department || '',
-            photo: data.photo || ''
+            photo: data.photo || '',
+            isActive: data.isActive !== false,
+            leftDate: data.leftDate ? new Date(data.leftDate).toISOString().split('T')[0] : '',
+            inactiveReason: data.inactiveReason || ''
           });
           setPhotoPreview(data.photo || '');
           setIsEditMode(true);
@@ -88,6 +94,13 @@ const EmployeeForm = () => {
       newErrors.salary = 'Salaire invalide';
     }
     if (!formData.hireDate) newErrors.hireDate = 'La date d\'embauche est requise';
+    if (!formData.isActive && formData.leftDate) {
+      const hireDate = new Date(formData.hireDate);
+      const leftDate = new Date(formData.leftDate);
+      if (!Number.isNaN(hireDate.getTime()) && !Number.isNaN(leftDate.getTime()) && leftDate < hireDate) {
+        newErrors.leftDate = 'La date de départ doit être après la date d’embauche';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -103,7 +116,9 @@ const EmployeeForm = () => {
       const dataToSend = {
         ...formData,
         salary: parseFloat(formData.salary),
-        hireDate: new Date(formData.hireDate).toISOString()
+        hireDate: new Date(formData.hireDate).toISOString(),
+        leftDate: formData.isActive || !formData.leftDate ? '' : new Date(formData.leftDate).toISOString(),
+        inactiveReason: formData.isActive ? '' : formData.inactiveReason
       };
 
       let payload = dataToSend;
@@ -139,10 +154,11 @@ const EmployeeForm = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value,
+      ...(name === 'isActive' && checked ? { leftDate: '', inactiveReason: '' } : {})
     });
     // Clear error when user starts typing
     if (errors[name]) {
@@ -197,10 +213,15 @@ const EmployeeForm = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-2xl font-semibold text-gray-900">{isEditMode ? 'Modifier' : 'Nouvel'} Employé</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">{isEditMode ? 'Modifier' : 'Nouvel'} employé</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Informations RH, statut de présence et données de paie.
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <div className="form-shell p-5 sm:p-8">
         {errors.general && (
           <div className="mb-6 p-4 bg-red-50 rounded-xl flex items-start gap-3">
             <div className="bg-red-100 p-2 rounded-full">
@@ -216,7 +237,7 @@ const EmployeeForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="form-panel flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
             <div className="relative">
               {photoPreview ? (
                 <img
@@ -225,7 +246,7 @@ const EmployeeForm = () => {
                   className="w-20 h-20 rounded-2xl object-cover border border-gray-200 shadow-sm"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-dashed border-blue-200">
+                <div className="w-20 h-20 rounded-2xl bg-gray-50 text-gray-600 flex items-center justify-center border border-dashed border-gray-300">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15.5 21h-7A2.5 2.5 0 016 18.5v0A5.5 5.5 0 0111.5 13h1A5.5 5.5 0 0118 18.5v0A2.5 2.5 0 0115.5 21z" />
                   </svg>
@@ -249,7 +270,7 @@ const EmployeeForm = () => {
               <p className="text-sm font-medium text-gray-900">Photo de l'employé</p>
               <p className="text-xs text-gray-500 mt-1">Formats acceptés : JPG, PNG, WEBP (max 5 Mo).</p>
               <div className="mt-3 flex flex-wrap gap-3">
-                <label className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition">
+                <label className="form-button-secondary inline-flex cursor-pointer items-center">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V8a2 2 0 00-2-2h-3l-1.447-1.894A2 2 0 0011.382 4H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -260,7 +281,7 @@ const EmployeeForm = () => {
                   <button
                     type="button"
                     onClick={handlePhotoRemove}
-                    className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 text-sm"
+                    className="form-button-secondary text-sm"
                   >
                     Supprimer
                   </button>
@@ -389,18 +410,72 @@ const EmployeeForm = () => {
             </div>
           </div>
 
+          <section className="form-panel p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Statut dans la boutique</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Désactivez ce statut quand l’employé ne travaille plus dans votre boutique.
+                </p>
+              </div>
+              <label className="inline-flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                  className="form-check rounded"
+                />
+                <span className="text-sm font-semibold text-gray-800">
+                  Travaille encore ici
+                </span>
+              </label>
+            </div>
+
+            {!formData.isActive && (
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  label="Date de départ"
+                  type="date"
+                  name="leftDate"
+                  value={formData.leftDate}
+                  error={errors.leftDate}
+                  onChange={handleChange}
+                  icon={
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  }
+                />
+                <FormField
+                  label="Raison / note"
+                  name="inactiveReason"
+                  value={formData.inactiveReason}
+                  error={errors.inactiveReason}
+                  onChange={handleChange}
+                  placeholder="Ex. Fin de contrat, départ volontaire..."
+                  icon={
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h8m-8 4h6M5 5h14v14H5z" />
+                    </svg>
+                  }
+                />
+              </div>
+            )}
+          </section>
+
           <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => navigate('/employees')}
-              className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 flex items-center gap-2 justify-center transition-colors"
+              className="form-button-secondary flex items-center gap-2 justify-center"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 justify-center disabled:opacity-50 transition-colors"
+              className="form-button-primary flex items-center gap-2 justify-center"
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
@@ -418,7 +493,7 @@ const EmployeeForm = () => {
   );
 };
 
-const FormField = ({ label, type = 'text', name, value, error, onChange, icon, required }) => (
+const FormField = ({ label, type = 'text', name, value, error, onChange, icon, required, placeholder = '' }) => (
   <div className="space-y-2">
     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
       {icon}
@@ -430,13 +505,15 @@ const FormField = ({ label, type = 'text', name, value, error, onChange, icon, r
       name={name}
       value={value}
       onChange={onChange}
-      className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${
+      placeholder={placeholder}
+      className={`form-control ${
         error 
-          ? 'border-red-500 focus:ring-red-100' 
-          : 'border-gray-300 focus:ring-blue-100 focus:border-blue-500'
+          ? 'form-control-error' 
+          : ''
       }`}
+      aria-invalid={Boolean(error)}
     />
-    {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+    {error && <div className="form-error mt-1 text-xs">{error}</div>}
   </div>
 );
 

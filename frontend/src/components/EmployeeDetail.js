@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Edit3, FileText, Mail, Phone, Plus, UserRound } from 'lucide-react';
+import { Edit3, FileText, Mail, Phone, Plus, UserRound, UserX } from 'lucide-react';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import {
@@ -34,6 +34,7 @@ const EmployeeDetail = () => {
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const employeeReference = employee || { _id: id };
+  const employeeActive = employee?.isActive !== false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -127,7 +128,7 @@ const EmployeeDetail = () => {
     <div className="max-w-6xl mx-auto p-6">
       {isPhotoOpen && employee.photo && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-md"
           onClick={() => setIsPhotoOpen(false)}
         >
           <div
@@ -137,7 +138,7 @@ const EmployeeDetail = () => {
             <button
               type="button"
               onClick={() => setIsPhotoOpen(false)}
-              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full p-2 shadow-md hover:bg-gray-100"
+            className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-2xl p-2 shadow-md hover:bg-gray-100"
               aria-label="Fermer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +148,7 @@ const EmployeeDetail = () => {
             <img
               src={employee.photo}
               alt={employee.name}
-              className="w-full max-h-[80vh] object-contain rounded-2xl bg-white"
+              className="w-full max-h-[80vh] object-contain rounded-[28px] bg-white shadow-[0_28px_90px_rgba(15,23,42,0.28)]"
             />
           </div>
         </div>
@@ -166,14 +167,14 @@ const EmployeeDetail = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Détails de l'employé</h1>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
         {/* Profile Header */}
-        <div className="p-8 flex flex-col gap-6 border-b border-gray-100 lg:flex-row lg:items-center lg:justify-between">
+        <div className="p-6 sm:p-8 flex flex-col gap-6 border-b border-gray-100 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-6">
           <button
             type="button"
             onClick={() => employee.photo && setIsPhotoOpen(true)}
-            className="w-16 h-16 rounded-2xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className={`w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-gray-900/10 ${employeeActive ? 'bg-gray-100' : 'bg-gray-200 grayscale'}`}
             aria-label="Afficher la photo en grand"
           >
             {employee.photo ? (
@@ -183,13 +184,23 @@ const EmployeeDetail = () => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             )}
           </button>
           <div>
             <h2 className="text-2xl font-semibold text-gray-900">{employee.name}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${employeeActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                {employeeActive ? 'Actif dans la boutique' : 'Ne travaille plus ici'}
+              </span>
+              {!employeeActive && employee.leftDate && (
+                <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  Départ le {new Date(employee.leftDate).toLocaleDateString('fr-FR')}
+                </span>
+              )}
+            </div>
             <p className="text-gray-600 flex items-center gap-1 mt-1">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -214,27 +225,34 @@ const EmployeeDetail = () => {
                   Appeler
                 </a>
               )}
+              {!employeeActive && employee.inactiveReason && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+                  <UserX className="h-3.5 w-3.5" />
+                  {employee.inactiveReason}
+                </span>
+              )}
             </div>
           </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
             <Link
               to={employeePayrollNewPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold ${employeeActive ? 'bg-gray-950 text-white hover:bg-black' : 'pointer-events-none bg-gray-100 text-gray-400'}`}
+              aria-disabled={!employeeActive}
             >
               <Plus className="w-4 h-4" />
               Fiche de paie
             </Link>
             <Link
               to={employeePayrollPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
             >
               <FileText className="w-4 h-4" />
               Paie
             </Link>
             <Link
               to={employeeEditPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200"
             >
               <Edit3 className="w-4 h-4" />
               Modifier
@@ -243,7 +261,7 @@ const EmployeeDetail = () => {
         </div>
 
         {/* Financial Summary */}
-        <div className="p-8 bg-gray-50 border-b border-gray-100">
+        <div className="p-6 sm:p-8 bg-gray-50/80 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Résumé financier</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-gray-100 flex items-center gap-4">
@@ -303,7 +321,7 @@ const EmployeeDetail = () => {
             <button
               onClick={() => setActiveTab('details')}
               className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'details'
-                ? 'text-blue-600 border-b-2 border-blue-600'
+                ? 'text-gray-950 border-b-2 border-gray-950'
                 : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
@@ -314,7 +332,7 @@ const EmployeeDetail = () => {
             <button
               onClick={() => setActiveTab('payslips')}
               className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'payslips'
-                ? 'text-blue-600 border-b-2 border-blue-600'
+                ? 'text-gray-950 border-b-2 border-gray-950'
                 : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
@@ -395,6 +413,26 @@ const EmployeeDetail = () => {
                 label="Département"
                 value={employee.department}
               />
+              <DetailItem
+                icon={<UserX className="h-5 w-5 text-gray-500" />}
+                label="Statut boutique"
+                value={
+                  employeeActive
+                    ? 'Travaille encore dans la boutique'
+                    : `Ne travaille plus${employee.leftDate ? ` depuis le ${new Date(employee.leftDate).toLocaleDateString('fr-FR')}` : ''}`
+                }
+              />
+              {!employeeActive && employee.inactiveReason && (
+                <DetailItem
+                  icon={
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h8m-8 4h6M5 5h14v14H5z" />
+                    </svg>
+                  }
+                  label="Note de départ"
+                  value={employee.inactiveReason}
+                />
+              )}
             </div>
           )}
 
@@ -405,7 +443,8 @@ const EmployeeDetail = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Historique des fiches de paie</h3>
                 <Link
                   to={employeePayrollNewPath(employeeReference)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
+                  className={`rounded-2xl px-4 py-2.5 flex items-center gap-2 transition-colors ${employeeActive ? 'bg-gray-950 text-white hover:bg-black' : 'pointer-events-none bg-gray-100 text-gray-400'}`}
+                  aria-disabled={!employeeActive}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -571,7 +610,8 @@ const EmployeeDetail = () => {
                   <p className="text-gray-500 mt-2 mb-4">Aucune fiche de paie trouvée pour cet employé</p>
                   <Link
                     to={employeePayrollNewPath(employeeReference)}
-                    className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm transition-colors"
+                    className={`inline-flex items-center rounded-2xl px-4 py-2 text-sm transition-colors ${employeeActive ? 'bg-gray-950 text-white hover:bg-black' : 'pointer-events-none bg-gray-100 text-gray-400'}`}
+                    aria-disabled={!employeeActive}
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -589,7 +629,7 @@ const EmployeeDetail = () => {
         <div className="p-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-between">
           <Link
             to="/employees"
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 justify-center transition-colors"
+            className="form-button-secondary flex items-center gap-2 justify-center"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -598,8 +638,8 @@ const EmployeeDetail = () => {
           </Link>
           <div className="flex gap-3">
             <Link
-              to={employeeEditPath(employeeReference)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 justify-center transition-colors"
+            to={employeeEditPath(employeeReference)}
+              className="form-button-primary flex items-center gap-2 justify-center"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />

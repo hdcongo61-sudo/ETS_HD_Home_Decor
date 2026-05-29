@@ -272,7 +272,7 @@ const Products = () => {
               <button
                 type="submit"
                 form="product-form"
-                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition disabled:opacity-50"
+                className="form-button-primary w-full sm:w-auto"
                 disabled={formSubmitting}
               >
                 {editingProduct ? 'Enregistrer les modifications' : 'Créer le produit'}
@@ -1456,24 +1456,24 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 /* ===================================================== */
 /* 🧱 INPUTS */
 /* ===================================================== */
-const inputBaseClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:text-sm';
+const inputBaseClass = 'form-control text-base sm:text-sm';
 const Input = ({ label, className = '', ...props }) => (
   <div className={className}>
-    <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="form-label mb-1.5 block">{label}</label>
     <input {...props} className={inputBaseClass} />
   </div>
 );
 
 const Textarea = ({ label, rows = 3, className = '', ...props }) => (
   <div className={className}>
-    <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="form-label mb-1.5 block">{label}</label>
     <textarea rows={rows} {...props} className={`${inputBaseClass} resize-y min-h-[80px]`} />
   </div>
 );
 
 const Select = ({ label, options, className = '', ...props }) => (
   <div className={className}>
-    <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+    <label className="form-label mb-1.5 block">{label}</label>
     <select {...props} className={`${inputBaseClass} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%236b7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10`}>
       <option value="">Sélectionnez...</option>
       {options.map((opt) => (

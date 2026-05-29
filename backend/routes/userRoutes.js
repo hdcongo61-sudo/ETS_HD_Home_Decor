@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   loginUser,
+  requestPasswordUpdate,
   registerUser,
   getUsers,
   getUserProfile,
@@ -19,6 +20,7 @@ const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 // Route de login
 router.post('/login', loginUser);
+router.post('/password-update-request', requestPasswordUpdate);
 
 router.route('/')
   .post(imageUpload.single('photoFile'), registerUser)

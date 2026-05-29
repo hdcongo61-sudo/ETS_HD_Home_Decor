@@ -1,18 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
 import { motion } from 'framer-motion';
+import { Edit3, PackageX, Wallet } from 'lucide-react';
+import api from '../services/api';
 import { productEditPath, productPath } from '../utils/paths';
+import {
+  ProductActionButton,
+  ProductEmptyState,
+  ProductHero,
+  ProductMetricCard,
+  ProductPageShell,
+  ProductSection,
+  formatProductCurrency,
+  formatProductNumber,
+} from '../components/ProductAnalyticsUI';
 
 const OutOfStockProducts = () => {
   const [products, setProducts] = useState([]);
-  const [, setError] = useState('');
-  const [, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOutOfStock = async () => {
       try {
+        setLoading(true);
         const res = await api.get('/products/dashboard');
         setProducts(res.data.outOfStockProducts || []);
       } catch (err) {
@@ -28,124 +40,122 @@ const OutOfStockProducts = () => {
   const totalValue = products.reduce((sum, p) => sum + (p.price || 0), 0);
 
   return (
-    <motion.div
-      className="bg-gradient-to-br from-red-50 via-white to-rose-50 rounded-3xl p-6 shadow-lg"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Produits en Rupture de Stock</h1>
-          <p className="text-gray-500 mt-1">
-            Liste des produits actuellement épuisés en boutique.
-          </p>
+    <ProductPageShell>
+      <ProductHero
+        eyebrow="Alerte stock"
+        title="Produits en rupture de stock"
+        description="Articles actuellement épuisés et à réapprovisionner en priorité."
+        onBack={() => navigate('/product-dashboard')}
+      />
+
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+          {error}
         </div>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-sm transition"
-        >
-          ⬅ Retour au Tableau de Bord
-        </button>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        <StatCard title="Produits en Rupture" value={products.length} color="red" icon="❌" />
-        <StatCard
-          title="Valeur Totale Potentielle"
-          value={`${totalValue.toLocaleString()} CFA`}
-          color="rose"
-          icon="💰"
-        />
-      </div>
-
-      <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              {['Produit', 'Catégorie', 'Fournisseur', 'Prix (CFA)', 'Actions'].map((h) => (
-                <th
-                  key={h}
-                  className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider"
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {products.map((p) => (
-              <tr key={p._id} className="hover:bg-red-50 transition">
-                <td className="px-6 py-4 font-semibold text-gray-800">{p.name}</td>
-                <td className="px-6 py-4 text-gray-600">{p.category || '—'}</td>
-                <td className="px-6 py-4 text-gray-600">{p.supplierName || '—'}</td>
-                <td className="px-6 py-4 text-gray-700">{p.price?.toLocaleString() || '—'}</td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => navigate(productEditPath(p))}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Réapprovisionner
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="md:hidden space-y-4">
-        {products.map((p) => (
-          <div
-            key={p._id}
-            className="bg-white rounded-2xl shadow border border-gray-100 p-4"
-            onClick={() => navigate(productPath(p))}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-500">{p.category || '—'}</p>
-              </div>
-              <span className="text-xs text-gray-500">📦 {p.price?.toLocaleString() || '—'} CFA</span>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Fournisseur : <span className="text-gray-800">{p.supplierName || '—'}</span>
-            </p>
-            <div className="flex justify-end mt-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(productEditPath(p));
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition text-sm font-medium"
-              >
-                Réapprovisionner
-              </button>
-            </div>
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ProductMetricCard title="Produits en rupture" value={formatProductNumber(products.length)} icon={PackageX} tone="rose" />
+            <ProductMetricCard title="Valeur potentielle" value={formatProductCurrency(totalValue)} icon={Wallet} tone="amber" />
           </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-};
 
-const StatCard = ({ title, value, color, icon }) => {
-  const colorMap = {
-    red: 'from-red-500 to-rose-400',
-    rose: 'from-rose-500 to-pink-400',
-  };
-  return (
-    <motion.div
-      className={`bg-gradient-to-r ${colorMap[color]} text-white p-5 rounded-2xl shadow-md flex justify-between items-center`}
-      whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div>
-        <p className="text-sm opacity-90">{title}</p>
-        <h3 className="text-2xl font-bold mt-1">{value}</h3>
-      </div>
-      <div className="text-3xl opacity-90">{icon}</div>
-    </motion.div>
+          <ProductSection
+            title="Liste des ruptures"
+            description="Cliquez sur un produit pour voir sa fiche ou réapprovisionnez directement."
+          >
+            {products.length > 0 ? (
+              <>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+                    <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                      <tr>
+                        {['Produit', 'Catégorie', 'Fournisseur', 'Prix', 'Action'].map((header) => (
+                          <th key={header} className="px-5 py-3 text-left font-semibold">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {products.map((product) => (
+                        <tr
+                          key={product._id}
+                          className="cursor-pointer transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                          onClick={() => navigate(productPath(product))}
+                        >
+                          <td className="px-5 py-4 font-semibold text-gray-950 dark:text-white">{product.name}</td>
+                          <td className="px-5 py-4 text-gray-600 dark:text-gray-400">{product.category || '—'}</td>
+                          <td className="px-5 py-4 text-gray-600 dark:text-gray-400">{product.supplierName || '—'}</td>
+                          <td className="px-5 py-4 font-semibold text-gray-950 dark:text-white">{formatProductCurrency(product.price)}</td>
+                          <td className="px-5 py-4">
+                            <ProductActionButton
+                              icon={Edit3}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(productEditPath(product));
+                              }}
+                            >
+                              Réapprovisionner
+                            </ProductActionButton>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="space-y-3 md:hidden">
+                  {products.map((product) => (
+                    <motion.article
+                      key={product._id}
+                      whileTap={{ scale: 0.99 }}
+                      className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+                      onClick={() => navigate(productPath(product))}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-950 dark:text-white">{product.name}</p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{product.category || '—'}</p>
+                        </div>
+                        <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                          Rupture
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                        Fournisseur : <span className="font-medium text-gray-800 dark:text-gray-200">{product.supplierName || '—'}</span>
+                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-gray-950 dark:text-white">{formatProductCurrency(product.price)}</span>
+                        <ProductActionButton
+                          icon={Edit3}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(productEditPath(product));
+                          }}
+                        >
+                          Réapprovisionner
+                        </ProductActionButton>
+                      </div>
+                    </motion.article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <ProductEmptyState
+                title="Aucune rupture"
+                description="Tous les produits ont encore du stock disponible."
+              />
+            )}
+          </ProductSection>
+        </>
+      )}
+    </ProductPageShell>
   );
 };
 

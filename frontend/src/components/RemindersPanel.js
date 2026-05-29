@@ -9,21 +9,19 @@ import {
   Filter,
   CalendarClock,
   Users,
+  Wallet,
 } from "lucide-react";
+import { employeePayrollNewPath } from "../utils/paths";
 
 const ReminderCard = ({ sale, color, label }) => (
   <motion.div
-    whileHover={{ scale: 1.02, y: -2 }}
+    whileHover={{ y: -2 }}
     transition={{ type: "spring", stiffness: 250, damping: 14 }}
-    className={`relative group overflow-hidden p-5 rounded-2xl border-l-4 ${color.border} 
-                ${color.bg} backdrop-blur-sm border border-gray-200/40 
-                shadow-sm dark:border-gray-700/40 hover:shadow-md transition-all`}
+    className={`group rounded-[22px] border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-gray-900 ${color.border}`}
   >
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br from-white to-transparent transition-opacity duration-300"></div>
-
-    <div className="flex justify-between items-start">
-      <div className="space-y-1">
-        <h4 className={`font-semibold ${color.text}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 space-y-1">
+        <h4 className="truncate font-semibold text-gray-950 dark:text-white">
           {sale.client?.name || "Client inconnu"}
         </h4>
         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -44,7 +42,7 @@ const ReminderCard = ({ sale, color, label }) => (
         )}
       </div>
       <span
-        className={`text-xs px-2 py-1 rounded-full font-medium tracking-wide ${color.badge}`}
+        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${color.badge}`}
       >
         {label}
       </span>
@@ -66,7 +64,76 @@ const getLastPaymentDate = (payments = []) => {
   return last;
 };
 
-const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
+const SalaryReminderCard = ({ employee }) => (
+  <motion.div
+    whileHover={{ scale: 1.015, y: -2 }}
+    transition={{ type: "spring", stiffness: 260, damping: 18 }}
+    className="relative overflow-hidden rounded-2xl border border-gray-200 bg-gray-950 p-5 text-white shadow-[0_16px_42px_rgba(15,23,42,0.18)]"
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h4 className="truncate font-semibold">{employee.name || "Employé"}</h4>
+        <p className="mt-1 text-sm text-white/70">
+          {employee.position || "Poste non renseigné"}
+          {employee.department ? ` · ${employee.department}` : ""}
+        </p>
+        <p className="mt-3 text-sm text-white/75">
+          Salaire prévu :{" "}
+          <span className="font-semibold text-white">
+            {Number(employee.salary || 0).toLocaleString("fr-FR")} CFA
+          </span>
+        </p>
+      </div>
+      <span className="rounded-full bg-white/12 px-2.5 py-1 text-xs font-semibold text-white">
+        Aujourd'hui
+      </span>
+    </div>
+    <div className="mt-4 text-xs font-semibold text-white/80 group-hover:underline">
+      Créer la fiche de paie
+    </div>
+  </motion.div>
+);
+
+const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amount, tone }) => {
+  const toneClass =
+    tone === "rose"
+      ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+      : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300";
+
+  return (
+    <Link to={`/sales/${sale._id}`} className="group">
+      <motion.article
+        whileHover={{ y: -2 }}
+        className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="truncate font-semibold text-gray-950 dark:text-white">
+              {sale.client?.name || "Client inconnu"}
+            </h4>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {helperLabel} : {helperValue}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {amountLabel} :{" "}
+              <span className="font-semibold text-gray-950 dark:text-white">
+                {Number(amount || 0).toLocaleString("fr-FR")} CFA
+              </span>
+            </p>
+          </div>
+          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>
+            {badge}
+          </span>
+        </div>
+        <div className="mt-3 text-xs font-semibold text-gray-600 group-hover:underline dark:text-gray-300">
+          Voir la vente
+        </div>
+      </motion.article>
+    </Link>
+  );
+};
+
+const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryReminders = [] }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [partialAgeFilter, setPartialAgeFilter] = useState("10");
@@ -187,16 +254,14 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
   const getColor = (type) =>
     type === "overdue"
       ? {
-          bg: "bg-red-50/70 dark:bg-red-900/30",
           text: "text-red-700 dark:text-red-300",
-          border: "border-red-500/70",
-          badge: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100",
+          border: "border-rose-200 dark:border-rose-500/20",
+          badge: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
         }
       : {
-          bg: "bg-orange-50/70 dark:bg-orange-900/30",
           text: "text-orange-700 dark:text-orange-300",
-          border: "border-orange-400/70",
-          badge: "bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100",
+          border: "border-amber-200 dark:border-amber-500/20",
+          badge: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
         };
 
   const tabs = [
@@ -218,23 +283,33 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
       icon: <Clock size={16} className="text-orange-500" />,
       count: upcoming.length,
     },
+    {
+      key: "salary",
+      label: "Salaires",
+      icon: <Wallet size={16} className="text-gray-700" />,
+      count: salaryReminders.length,
+    },
   ];
 
   return (
     <motion.div
-      className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl shadow-lg p-6 space-y-6"
+      className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-gray-900"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {/* ===== HEADER ===== */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <BellRing className="text-blue-600 dark:text-blue-400" />
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+            Recouvrement
+          </p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
+            <BellRing className="text-gray-700 dark:text-gray-200" />
             Gestion des Rappels Clients
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Suivi automatique des paiements clients et rappels planifiés
           </p>
         </div>
@@ -247,24 +322,23 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
             placeholder="Rechercher un client..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 
-                       bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-72"
+            className="form-control w-full pl-9 text-sm md:w-72"
           />
         </div>
       </div>
+      </div>
 
       {/* ===== TABS ===== */}
-      <div className="flex gap-3 mt-4 border-b border-gray-200 dark:border-gray-700 pb-2 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all
+            className={`flex min-h-[42px] shrink-0 items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition-all
               ${
                 activeTab === tab.key
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "bg-gray-950 text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] dark:bg-white dark:text-gray-950"
+                  : "border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
               }`}
           >
             {tab.icon}
@@ -290,9 +364,22 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3 }}
-          className="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+          className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3"
         >
-          {filtered.length > 0 ? (
+          {activeTab === "salary" ? (
+            salaryReminders.length > 0 ? (
+              salaryReminders.map((employee) => (
+                <Link key={employee._id} to={employeePayrollNewPath(employee)} className="group">
+                  <SalaryReminderCard employee={employee} />
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-full flex flex-col items-center rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
+                <Wallet className="w-10 h-10 mb-2 opacity-60" />
+                <p>Aucun salaire à payer aujourd'hui</p>
+              </div>
+            )
+          ) : filtered.length > 0 ? (
             filtered.map((sale) => (
               <Link key={sale._id} to={`/sales/${sale._id}`}>
                 <ReminderCard
@@ -309,7 +396,7 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
               </Link>
             ))
           ) : (
-            <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 flex flex-col items-center">
+            <div className="col-span-full flex flex-col items-center rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
               <BellRing className="w-10 h-10 mb-2 opacity-60" />
               <p>Aucun rappel trouvé pour ce filtre</p>
             </div>
@@ -318,11 +405,11 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
       </AnimatePresence>
 
       {/* ===== PARTIAL ORDERS FILTER ===== */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-4">
+      <div className="space-y-4 border-t border-gray-100 p-4 dark:border-gray-800 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Filter size={16} className="text-indigo-500" />
+            <h3 className="flex items-center gap-2 text-base font-bold text-gray-950 dark:text-white">
+              <Filter size={16} className="text-gray-500" />
               Ventes partiellement payées sans paiement récent
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -333,7 +420,7 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
             <select
               value={partialAgeFilter}
               onChange={(e) => setPartialAgeFilter(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="form-control text-sm"
               aria-label="Filtre délai paiement"
             >
               {partialAgeOptions.map((opt) => (
@@ -348,52 +435,37 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {partialFiltered.length > 0 ? (
             partialFiltered.map((sale) => (
-              <Link key={sale._id} to={`/sales/${sale._id}`} className="group">
-                <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                        {sale.client?.name || "Client inconnu"}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Dernier paiement :{" "}
-                        {sale.lastPayment
-                          ? sale.lastPayment.toLocaleDateString("fr-FR", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "N/A"}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Solde restant :{" "}
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {sale.balance?.toLocaleString("fr-FR")} CFA
-                        </span>
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
-                      {sale.daysSincePayment} j
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 group-hover:underline">
-                    Voir la vente
-                  </div>
-                </div>
-              </Link>
+              <FollowUpCard
+                key={sale._id}
+                sale={sale}
+                badge={`${sale.daysSincePayment} j`}
+                helperLabel="Dernier paiement"
+                helperValue={
+                  sale.lastPayment
+                    ? sale.lastPayment.toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "N/A"
+                }
+                amountLabel="Solde restant"
+                amount={sale.balance}
+                tone="amber"
+              />
             ))
           ) : (
-            <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="col-span-full rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
               Aucune vente partiellement payée pour ce délai
             </div>
           )}
         </div>
       </div>
 
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-4">
+      <div className="space-y-4 border-t border-gray-100 p-4 dark:border-gray-800 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-bold text-gray-950 dark:text-white">
               <Filter size={16} className="text-rose-500" />
               Ventes sans paiement
             </h3>
@@ -405,7 +477,7 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
             <select
               value={neverPaidAgeFilter}
               onChange={(e) => setNeverPaidAgeFilter(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="form-control text-sm"
               aria-label="Filtre délai sans paiement"
             >
               {neverPaidAgeOptions.map((opt) => (
@@ -420,42 +492,27 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [] }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {neverPaidFiltered.length > 0 ? (
             neverPaidFiltered.map((sale) => (
-              <Link key={sale._id} to={`/sales/${sale._id}`} className="group">
-                <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                        {sale.client?.name || "Client inconnu"}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Vente créée le{" "}
-                        {sale.saleDate
-                          ? new Date(sale.saleDate).toLocaleDateString("fr-FR", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "N/A"}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Montant :{" "}
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {sale.totalAmount?.toLocaleString("fr-FR")} CFA
-                        </span>
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">
-                      {sale.daysWithoutPayment} j
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 group-hover:underline">
-                    Voir la vente
-                  </div>
-                </div>
-              </Link>
+              <FollowUpCard
+                key={sale._id}
+                sale={sale}
+                badge={`${sale.daysWithoutPayment} j`}
+                helperLabel="Créée le"
+                helperValue={
+                  sale.saleDate
+                    ? new Date(sale.saleDate).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "N/A"
+                }
+                amountLabel="Montant"
+                amount={sale.totalAmount}
+                tone="rose"
+              />
             ))
           ) : (
-            <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="col-span-full rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
               Aucune vente sans paiement pour ce délai
             </div>
           )}

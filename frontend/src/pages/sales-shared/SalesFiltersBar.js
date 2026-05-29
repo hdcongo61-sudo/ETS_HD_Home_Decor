@@ -50,10 +50,13 @@ const SalesFiltersBar = ({
   dateFilter,
   deliveryFilter,
   containerFilter = "",
+  sellerFilter = "",
   clients = [],
   containers = [],
+  sellers = [],
   onStatusChange,
   onClientChange,
+  onSellerChange = () => {},
   onSaleTypeChange = () => {},
   onPaymentStructureChange = () => {},
   onDateChange,
@@ -67,6 +70,7 @@ const SalesFiltersBar = ({
   const activeFilters = [
     statusFilter ? { key: "status", label: `Statut: ${STATUS_OPTIONS.find((opt) => opt.value === statusFilter)?.label || statusFilter}` } : null,
     clientFilter ? { key: "client", label: `Client sélectionné` } : null,
+    sellerFilter ? { key: "seller", label: `Vendeur sélectionné` } : null,
     saleTypeFilter ? { key: "saleType", label: saleTypeFilter === "wholesale" ? "Vente en gros" : "Vente normale" } : null,
     paymentStructureFilter
       ? {
@@ -161,6 +165,27 @@ const SalesFiltersBar = ({
             {clients.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
+              </option>
+            ))}
+          </select>
+        </FilterCard>
+
+        <FilterCard
+          label="Vendeur"
+          accent="slate"
+          helper="Filtre les ventes enregistrées par un vendeur."
+        >
+          <select
+            id="filter-seller"
+            value={sellerFilter}
+            onChange={(e) => onSellerChange(e.target.value)}
+            className={INPUT_CLASS}
+            aria-label="Filtrer par vendeur"
+          >
+            <option value="">Tous les vendeurs</option>
+            {sellers.map((seller) => (
+              <option key={seller._id} value={seller._id}>
+                {seller.name || seller.email || "Vendeur sans nom"}
               </option>
             ))}
           </select>

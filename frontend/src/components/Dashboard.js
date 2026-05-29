@@ -54,6 +54,7 @@ import {
   Sun,
   Moon,
   CalendarDays,
+  ChevronDown,
   Coins,
   Truck,
   PackageCheck,
@@ -67,7 +68,15 @@ import {
   AlertTriangle,
   ArrowRight,
   Wand2,   // 🔹 lissage
-  Download // 🔹 export stats ventes
+  Download, // 🔹 export stats ventes
+  Landmark,
+  UsersRound,
+  Receipt,
+  FileText,
+  Settings,
+  UserCog,
+  BriefcaseBusiness,
+  LayoutDashboard
 } from "lucide-react";
 
 import AccordionSection from "../components/AccordionSection";
@@ -99,6 +108,7 @@ const Dashboard = () => {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
+  const [isHomeHubOpen, setIsHomeHubOpen] = useState(true);
   const activeYear = useMemo(() => {
     const parsed = parseInt(selectedYear, 10);
     return Number.isNaN(parsed) ? currentYear : parsed;
@@ -178,6 +188,7 @@ const Dashboard = () => {
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [overdueReminders, setOverdueReminders] = useState([]);
   const [neverPaidReminders, setNeverPaidReminders] = useState([]);
+  const [salaryReminders, setSalaryReminders] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
@@ -430,6 +441,7 @@ const Dashboard = () => {
       setUpcomingReminders(response.data.upcoming || []);
       setOverdueReminders(response.data.overdue || []);
       setNeverPaidReminders(response.data.neverPaid || []);
+      setSalaryReminders(response.data.salaryReminders || []);
     } catch (err) {
       console.error("Erreur de rappels:", err);
     }
@@ -1121,6 +1133,108 @@ const Dashboard = () => {
 
   const today = new Date();
   const userName = auth?.user?.name || auth?.user?.username || "";
+  const periodLabel =
+    timeRange === "day"
+      ? "Aujourd'hui"
+      : timeRange === "week"
+      ? "Cette semaine"
+      : timeRange === "month"
+      ? "Ce mois"
+      : "Vue annuelle";
+  const periodOptions = [
+    { value: "day", label: "Jour" },
+    { value: "week", label: "Semaine" },
+    { value: "month", label: "Mois" },
+    { value: "year", label: "Année" },
+  ];
+  const comparisonOptions = [
+    { value: "none", label: "Sans comparaison", shortLabel: "Aucune" },
+    { value: "prev-week", label: "Semaine précédente", shortLabel: "S-1" },
+    { value: "prev-month", label: "Mois précédent", shortLabel: "M-1" },
+    { value: "prev-year", label: "Année précédente", shortLabel: "A-1" },
+  ];
+  const comparisonLabel =
+    comparisonOptions.find((option) => option.value === compareMode)?.label ||
+    "Sans comparaison";
+  const homeShortcuts = [
+    {
+      to: "/sales",
+      label: "Ventes",
+      description: "Enregistrer, encaisser et suivre les commandes.",
+      icon: ShoppingCart,
+      meta: `${totalSales.toLocaleString("fr-FR")} CFA`,
+    },
+    {
+      to: "/bank",
+      label: "Caisse",
+      description: "Voir les encaissements et mouvements.",
+      icon: Landmark,
+      meta: `${totalPaid.toLocaleString("fr-FR")} CFA`,
+    },
+    {
+      to: "/products",
+      label: "Produits",
+      description: "Catalogue, stock et prix de vente.",
+      icon: Package,
+      meta: `${productActionSuggestions.length} à surveiller`,
+    },
+    {
+      to: "/clients",
+      label: "Clients",
+      description: "Fiches clients et historique commercial.",
+      icon: UsersRound,
+      meta: "Relation client",
+    },
+    {
+      to: "/expenses",
+      label: "Dépenses",
+      description: "Charges, salaires et sorties de caisse.",
+      icon: Receipt,
+      meta: `${totalExpenses.toLocaleString("fr-FR")} CFA`,
+    },
+    {
+      to: "/employees",
+      label: "Employés",
+      description: "Équipe, paie et statut boutique.",
+      icon: BriefcaseBusiness,
+      meta: `${salaryReminders.length} rappel(s)`,
+    },
+    {
+      to: "/product-dashboard",
+      label: "Dashboard produits",
+      description: "Ruptures, stocks critiques et performance.",
+      icon: PackageCheck,
+      meta: "Stock",
+    },
+    {
+      to: "/clients/dashboard",
+      label: "Dashboard clients",
+      description: "Analyse clients et comportements d'achat.",
+      icon: LayoutDashboard,
+      meta: "Analyse",
+    },
+    {
+      to: "/documents",
+      label: "Documents",
+      description: "Pièces et fichiers d'entreprise.",
+      icon: FileText,
+      meta: "Archive",
+    },
+    {
+      to: "/users/stats",
+      label: "Utilisateurs",
+      description: "Activité, accès et supervision.",
+      icon: UserCog,
+      meta: "Admin",
+    },
+    {
+      to: "/settings",
+      label: "Paramètres",
+      description: "Branding, listes et préférences.",
+      icon: Settings,
+      meta: "Système",
+    },
+  ];
 
   // ===== UI — styles des cartes principales =====
   const CARD_STYLES = [
@@ -1153,121 +1267,308 @@ const Dashboard = () => {
   return (
     <div className="min-h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
-        {/* ===== HEADER — Accueil professionnel mobile/desktop ===== */}
-        <header className="flex flex-col gap-4 sm:gap-5">
-          <div className="flex flex-col gap-1 sm:gap-0.5">
-            {userName && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                Bienvenue, <span className="text-gray-700 dark:text-gray-200">{userName}</span>
+        {/* ===== HOME HUB ===== */}
+        <header className="overflow-hidden rounded-[28px] border border-white/80 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/90">
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 lg:p-6">
+            <div className="min-w-0">
+              {userName && (
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Bienvenue, <span className="text-gray-900 dark:text-gray-100">{userName}</span>
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                  Accueil opérationnel
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <CalendarDays size={13} />
+                  {periodLabel}
+                </span>
+              </div>
+              <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+                Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
               </p>
-            )}
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-              Tableau de bord
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-              Aperçu global des performances
-            </p>
-          </div>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-              aria-label="Basculer thème"
+              type="button"
+              onClick={() => setIsHomeHubOpen((current) => !current)}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"
+              aria-expanded={isHomeHubOpen}
+              aria-controls="home-hub-content"
             >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {isHomeHubOpen ? "Réduire" : "Afficher"}
+              <ChevronDown
+                size={18}
+                className={`transition-transform duration-200 ${isHomeHubOpen ? "rotate-180" : ""}`}
+              />
             </button>
-
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="min-h-[44px] px-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
-              aria-label="Période"
-            >
-              <option value="day">Aujourd’hui</option>
-              <option value="week">Semaine</option>
-              <option value="month">Mois</option>
-              <option value="year">Année</option>
-            </select>
-
-            {timeRange === "year" && (
-              <>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  onBlur={() => {
-                    if (Number.isNaN(parseInt(selectedYear, 10))) {
-                      setSelectedYear(String(currentYear));
-                    }
-                  }}
-                  className="min-h-[44px] w-24 sm:w-28 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm"
-                  aria-label="Année"
-                  placeholder="Année"
-                  min="1970"
-                  max={currentYear}
-                />
-
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="min-h-[44px] pl-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
-                  aria-label="Mois de l'année"
-                >
-                  <option value="">Toute l'année</option>
-                  {monthOptions.map((month) => (
-                    <option key={month.value} value={month.value}>
-                      {month.label}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedWeek}
-                  onChange={(e) => setSelectedWeek(e.target.value)}
-                  className="min-h-[44px] pl-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
-                  aria-label="Semaine de l'année"
-                >
-                  <option value="">
-                    {selectedMonth ? "Tout le mois" : "Toutes les semaines"}
-                  </option>
-                  {weekOptions.map((week) => (
-                    <option key={week.value} value={week.value}>
-                      {week.label}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            <select
-              value={compareMode}
-              onChange={(e) => setCompareMode(e.target.value)}
-              className="min-h-[44px] pl-4 pr-10 py-2 border border-indigo-200 dark:border-indigo-800 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 dark:text-gray-200"
-              aria-label="Comparer à"
-              title="Comparer à"
-            >
-              <option value="none">Aucune comparaison</option>
-              <option value="prev-week">Vs semaine préc.</option>
-              <option value="prev-month">Vs mois préc.</option>
-              <option value="prev-year">Vs année préc.</option>
-            </select>
-
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  setExportStartDate(exportDescriptor.startValue);
-                  setExportEndDate(exportDescriptor.endValue);
-                  setShowExportMenu(true);
-                }}
-                className="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
-              >
-                <Download size={18} />
-                <span className="hidden sm:inline">Exporter</span>
-              </button>
-            )}
           </div>
+
+          {isHomeHubOpen && (
+            <motion.div
+              id="home-hub-content"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+          <div className="grid gap-5 border-t border-gray-100 p-4 pt-5 dark:border-gray-800 sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+            <div className="min-w-0">
+              {userName && (
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Bienvenue, <span className="text-gray-900 dark:text-gray-100">{userName}</span>
+                </p>
+              )}
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                    Vue rapide
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+                    Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
+                  </p>
+                </div>
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  <CalendarDays size={15} />
+                  {periodLabel}
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ventes</p>
+                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                    {totalSales.toLocaleString("fr-FR")} CFA
+                  </p>
+                </div>
+                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Encaissements</p>
+                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                    {totalPaid.toLocaleString("fr-FR")} CFA
+                  </p>
+                </div>
+                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Profit net</p>
+                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                    {profit.toLocaleString("fr-FR")} CFA
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
+              <div className="flex items-start justify-between gap-3 px-1 pb-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                    Pilotage
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Période et comparaison
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                  <CalendarDays size={13} />
+                  {periodLabel}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="form-button-secondary flex items-center justify-center gap-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  aria-label="Basculer thème"
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  Thème
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setExportStartDate(exportDescriptor.startValue);
+                      setExportEndDate(exportDescriptor.endValue);
+                      setShowExportMenu(true);
+                    }}
+                    className="form-button-primary flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Download size={18} />
+                    Exporter
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-3 space-y-3">
+                <div className="rounded-[20px] border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900">
+                  <div className="grid grid-cols-4 gap-1">
+                    {periodOptions.map((option) => {
+                      const isActive = timeRange === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setTimeRange(option.value)}
+                          className={`min-h-[42px] rounded-2xl px-2 text-xs font-semibold transition-all duration-200 ${
+                            isActive
+                              ? "bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:bg-white dark:text-gray-950"
+                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                          }`}
+                          aria-pressed={isActive}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {timeRange === "year" && (
+                  <div className="rounded-[20px] border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+                      Détail annuel
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                      <label className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                          Année
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={selectedYear}
+                          onChange={(e) => setSelectedYear(e.target.value)}
+                          onBlur={() => {
+                            if (Number.isNaN(parseInt(selectedYear, 10))) {
+                              setSelectedYear(String(currentYear));
+                            }
+                          }}
+                          className="form-control text-sm"
+                          aria-label="Année"
+                          placeholder="Année"
+                          min="1970"
+                          max={currentYear}
+                        />
+                      </label>
+                      <label className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                          Mois
+                        </span>
+                        <select
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          className="form-control text-sm"
+                          aria-label="Mois de l'année"
+                        >
+                          <option value="">Toute l'année</option>
+                          {monthOptions.map((month) => (
+                            <option key={month.value} value={month.value}>
+                              {month.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                          Semaine
+                        </span>
+                        <select
+                          value={selectedWeek}
+                          onChange={(e) => setSelectedWeek(e.target.value)}
+                          className="form-control text-sm"
+                          aria-label="Semaine de l'année"
+                        >
+                          <option value="">
+                            {selectedMonth ? "Tout le mois" : "Toutes les semaines"}
+                          </option>
+                          {weekOptions.map((week) => (
+                            <option key={week.value} value={week.value}>
+                              {week.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-[20px] border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+                      Comparer à
+                    </p>
+                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                      {comparisonOptions.find((option) => option.value === compareMode)?.shortLabel}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {comparisonOptions.map((option) => {
+                      const isActive = compareMode === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setCompareMode(option.value)}
+                          className={`min-h-[42px] rounded-2xl border px-3 text-left text-xs font-semibold transition-all duration-200 ${
+                            isActive
+                              ? "border-gray-950 bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-white dark:bg-white dark:text-gray-950"
+                              : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
+                          }`}
+                          aria-pressed={isActive}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-[18px] border border-gray-200 bg-white/80 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-400">
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    Vue:
+                  </span>{" "}
+                  {periodLabel}
+                  <span className="mx-2 text-gray-300">/</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    Comparaison:
+                  </span>{" "}
+                  {comparisonLabel}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5 lg:px-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                Pages rattachées
+              </h2>
+              <span className="text-xs font-medium text-gray-400">{homeShortcuts.length} accès</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="group rounded-[22px] border border-gray-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+                      <Icon size={20} />
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      {meta}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-gray-950 dark:text-white">{label}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                    {description}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+            </motion.div>
+          )}
         </header>
 
         {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
@@ -1657,30 +1958,34 @@ const Dashboard = () => {
         )}
 
         {isAdmin && nonCriticalReady && (
-        <AccordionSection title="📊 Statistiques des ventes" defaultOpenDesktop={true}>
+        <AccordionSection title="Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
-          className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border-0"
+          className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-gray-900"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
         >
           {/* 🔹 En-tête + contrôles (période + switch lissage + export ALL) */}
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 sr-only">
-                Contrôles statistiques
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                Home analytics
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
+                Statistiques des ventes
               </h2>
-              <p className="text-gray-500 text-xs">
-                Tendance, encaissements, méthodes, statuts & top produits
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Tendance, encaissements, méthodes, statuts et top produits sur la période.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               {/* Sélecteur de période (alimente /dashboard/data) */}
               <select
                 value={salesStatsRange}
                 onChange={(e) => setSalesStatsRange(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
+                className="form-control min-h-[42px] text-sm sm:w-auto"
                 title="Plage des statistiques des ventes"
               >
                 <option value="7days">7 jours</option>
@@ -1693,10 +1998,10 @@ const Dashboard = () => {
               <button
                 type="button"
                 onClick={() => setSmoothTrend((v) => !v)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm transition
+                className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5
                   ${smoothTrend
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700"}`}
+                    ? "border-gray-950 bg-gray-950 text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] dark:border-white dark:bg-white dark:text-gray-950"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"}`}
                 title="Lisser la tendance (moyenne mobile 3 j)"
               >
                 <Wand2 size={16} />
@@ -1707,7 +2012,7 @@ const Dashboard = () => {
               <button
                 type="button"
                 onClick={exportSalesStatsAll}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
                 title="Exporter toutes les statistiques de ventes"
               >
                 <Download size={16} />
@@ -1715,101 +2020,46 @@ const Dashboard = () => {
               </button>
             </div>
           </div>
+          </div>
+
+          <div className="p-4 sm:p-5">
 
           {/* 🔹 Label dynamique lissage */}
           {smoothTrend && (
-            <div className="mb-2">
-              <span className="inline-flex items-center gap-2 text-[11px] px-2.5 py-1 rounded-full bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-300/40">
+            <div className="mb-4">
+              <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 <Wand2 size={14} /> Tendance lissée (3 j)
               </span>
             </div>
           )}
 
           {bestDays && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                <p className="text-xs text-gray-500">Meilleur jour de ventes</p>
-                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatBestDay(bestDays.sales)}
-                </div>
-                <div className="text-green-700 dark:text-green-300 font-semibold">
-                  {Math.round(bestDays.sales?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                </div>
-              </div>
-              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                <p className="text-xs text-gray-500">Meilleur jour d'encaissements</p>
-                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatBestDay(bestDays.payments)}
-                </div>
-                <div className="text-blue-700 dark:text-blue-300 font-semibold">
-                  {Math.round(bestDays.payments?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                </div>
-              </div>
-              <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                <p className="text-xs text-gray-500">Jour de dépense maximal</p>
-                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatBestDay(bestDays.expenses)}
-                </div>
-                <div className="text-red-700 dark:text-red-300 font-semibold">
-                  {Math.round(bestDays.expenses?.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                </div>
-              </div>
+            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <SalesInsightCard title="Meilleur jour de ventes" value={formatBestDay(bestDays.sales)} amount={bestDays.sales?.totalAmount} tone="emerald" icon={ShoppingCart} />
+              <SalesInsightCard title="Meilleur jour d'encaissements" value={formatBestDay(bestDays.payments)} amount={bestDays.payments?.totalAmount} tone="blue" icon={Coins} />
+              <SalesInsightCard title="Jour de dépense maximal" value={formatBestDay(bestDays.expenses)} amount={bestDays.expenses?.totalAmount} tone="rose" icon={TrendingDown} />
             </div>
           )}
 
           {/* Résumé compact + Encart livraisons à droite */}
           {salesStatsData && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-5">
+            <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
               {/* Résumé (4 cartes) */}
-              <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-200 dark:border-green-800 flex items-center gap-3">
-                  <DollarSign className="text-green-600" />
-                  <div>
-                    <p className="text-xs text-gray-500">Total ventes</p>
-                    <h3 className="text-lg font-bold text-green-700 dark:text-green-300">
-                      {Math.round(salesStatsData.totalSales || 0).toLocaleString("fr-FR")}{" "}
-                      CFA
-                    </h3>
-                  </div>
-                </div>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800 flex items-center gap-3">
-                  <TrendingUp className="text-blue-600" />
-                  <div>
-                    <p className="text-xs text-gray-500">Vente moyenne</p>
-                    <h3 className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                      {Math.round(salesStatsData.averageSale || 0).toLocaleString("fr-FR")}{" "}
-                      CFA
-                    </h3>
-                  </div>
-                </div>
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 flex items-center gap-3">
-                  <Package className="text-yellow-600" />
-                  <div>
-                    <p className="text-xs text-gray-500">Produits vendus</p>
-                    <h3 className="text-lg font-bold text-yellow-700 dark:text-yellow-300">
-                      {salesStatsData.totalProducts || 0}
-                    </h3>
-                  </div>
-                </div>
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-200 dark:border-purple-800 flex items-center gap-3">
-                  <ShoppingCart className="text-purple-600" />
-                  <div>
-                    <p className="text-xs text-gray-500">Nombre de ventes</p>
-                    <h3 className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                      {salesStatsData.salesCount || 0}
-                    </h3>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 lg:col-span-4">
+                <SalesMetricCard title="Total ventes" value={`${Math.round(salesStatsData.totalSales || 0).toLocaleString("fr-FR")} CFA`} icon={DollarSign} tone="emerald" />
+                <SalesMetricCard title="Vente moyenne" value={`${Math.round(salesStatsData.averageSale || 0).toLocaleString("fr-FR")} CFA`} icon={TrendingUp} tone="blue" />
+                <SalesMetricCard title="Produits vendus" value={salesStatsData.totalProducts || 0} icon={Package} tone="amber" />
+                <SalesMetricCard title="Nombre de ventes" value={salesStatsData.salesCount || 0} icon={ShoppingCart} tone="violet" />
               </div>
 
               {/* 🔹 Encart livraisons à droite */}
-              <div className="lg:col-span-1 p-4 rounded-2xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-                <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-2">
-                  <Truck className="text-indigo-600" size={16} />
+              <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70 lg:col-span-1">
+                <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                  <Truck size={16} />
                   Livraisons
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-green-50 dark:bg-green-900/20">
+                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-white p-2.5 dark:border-emerald-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-green-700 dark:text-green-300">
                       <PackageCheck size={16} /> Livrées
                     </span>
@@ -1817,7 +2067,7 @@ const Dashboard = () => {
                       {deliveryStats?.delivered?.count || 0}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+                  <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-white p-2.5 dark:border-amber-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
                       <Clock3 size={16} /> En attente
                     </span>
@@ -1825,7 +2075,7 @@ const Dashboard = () => {
                       {deliveryStats?.pending?.count || 0}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-red-50 dark:bg-red-900/20">
+                  <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-white p-2.5 dark:border-rose-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-red-700 dark:text-red-300">
                       <XCircle size={16} /> Non livrées
                     </span>
@@ -1902,21 +2152,24 @@ const Dashboard = () => {
           )}
 
           {salesStatsData && (
-            <div className="mb-5 rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 p-4 sm:p-5">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
+            <section className="mb-5 rounded-[24px] border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-500/20 dark:bg-rose-500/10 sm:p-5">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-600 dark:text-rose-300">
+                    À encaisser
+                  </p>
+                  <h3 className="mt-1 text-base font-bold text-rose-950 dark:text-rose-100">
                     Ventes sans aucun paiement
                   </h3>
-                  <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-1">
+                  <p className="mt-1 text-sm text-rose-700/80 dark:text-rose-300/80">
                     Ventes créées sur la période sélectionnée sans paiement enregistré.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
                     {neverPaidSales.count} vente{neverPaidSales.count > 1 ? "s" : ""}
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
                     {Math.round(neverPaidSales.totalAmount || 0).toLocaleString("fr-FR")} CFA
                   </span>
                 </div>
@@ -1928,7 +2181,7 @@ const Dashboard = () => {
                     <Link
                       key={sale._id}
                       to={`/sales/${sale._id}`}
-                      className="rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:shadow-md hover:border-rose-300 dark:hover:border-rose-700 transition"
+                      className="rounded-[20px] border border-rose-200/80 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md dark:border-rose-500/20 dark:bg-gray-900 dark:hover:border-rose-700"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1953,7 +2206,7 @@ const Dashboard = () => {
                         <span className="text-sm font-bold text-rose-700 dark:text-rose-300">
                           {Math.round(sale.totalAmount || 0).toLocaleString("fr-FR")} CFA
                         </span>
-                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                        <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
                           Ouvrir la vente
                         </span>
                       </div>
@@ -1961,11 +2214,11 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-rose-200 dark:border-rose-900/40 bg-white/70 dark:bg-gray-900/40 px-4 py-5 text-sm text-gray-600 dark:text-gray-300">
+                <div className="rounded-2xl border border-dashed border-rose-200 bg-white/75 px-4 py-6 text-center text-sm text-gray-600 dark:border-rose-500/20 dark:bg-gray-900/40 dark:text-gray-300">
                   Aucune vente sans paiement sur cette période.
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {/* 🔹 Sous-bloc "Encaissements" (paymentsTotal / paymentsCount) */}
@@ -2071,6 +2324,7 @@ const Dashboard = () => {
               )}
             </ul>
           </div>
+          </div>
         </motion.div>
         </AccordionSection>
         )}
@@ -2082,6 +2336,7 @@ const Dashboard = () => {
               expenses={expensesData}
               payments={paymentsData}
               defaultPeriod="month"
+              onOpenDayDetails={handleOpenDayDetails}
             />
           </Suspense>
         )}
@@ -2090,15 +2345,28 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <>
             {Object.values(bestDaysRanges).length > 0 && (
-              <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                  Meilleurs jours par plage
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
+              <section className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_20px_56px_rgba(15,23,42,0.07)] dark:border-gray-800 dark:bg-gray-900">
+                <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                    Performance par période
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-gray-950 dark:text-white">
+                    Meilleurs jours par plage
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Les pics de ventes, d’encaissements et de dépenses pour chaque fenêtre suivie.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
                   {Object.values(bestDaysRanges).map((entry) => (
-                    <div key={entry.label} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{entry.label}</p>
-                      <div className="grid grid-cols-3 gap-2">
+                    <article key={entry.label} className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70 sm:p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-gray-950 dark:text-white">{entry.label}</p>
+                        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                          Plage
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                         <StatCard
                           title="Ventes"
                           entry={entry.days?.sales}
@@ -2115,16 +2383,17 @@ const Dashboard = () => {
                           accent="text-red-600 dark:text-red-300"
                         />
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
             <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
               <RemindersPanel
                 overdue={overdueReminders}
                 upcoming={upcomingReminders}
                 neverPaid={neverPaidReminders}
+                salaryReminders={salaryReminders}
               />
             </Suspense>
           </>
@@ -2174,13 +2443,51 @@ const Dashboard = () => {
   );
 };
 
+const salesToneClasses = {
+  amber: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
+  blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300",
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
+  rose: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300",
+  violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300",
+};
+
+const SalesMetricCard = ({ title, value, icon: Icon, tone = "emerald" }) => (
+  <motion.article
+    whileHover={{ y: -2 }}
+    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+  >
+    <div className="flex items-start justify-between gap-3">
+      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
+        <Icon size={18} />
+      </span>
+    </div>
+    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</p>
+    <p className="mt-2 text-lg font-bold text-gray-950 dark:text-white">{value}</p>
+  </motion.article>
+);
+
+const SalesInsightCard = ({ title, value, amount, icon: Icon, tone = "emerald" }) => (
+  <article className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</p>
+      <span className={`flex h-9 w-9 items-center justify-center rounded-2xl border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
+        <Icon size={17} />
+      </span>
+    </div>
+    <p className="mt-3 text-sm font-semibold text-gray-950 dark:text-white">{value}</p>
+    <p className={`mt-2 text-lg font-black tabular-nums ${tone === "rose" ? "text-rose-700 dark:text-rose-300" : tone === "blue" ? "text-blue-700 dark:text-blue-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+      {Math.round(amount || 0).toLocaleString("fr-FR")} CFA
+    </p>
+  </article>
+);
+
 const StatCard = ({ title, entry, accent }) => (
-  <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-[11px]">
-    <div className="text-[10px] text-gray-500">{title}</div>
-    <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+  <div className="rounded-2xl border border-gray-200 bg-white p-3 text-[11px] shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</div>
+    <div className="mt-2 text-xs font-semibold text-gray-900 dark:text-gray-100">
       {entry?.date ? new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(new Date(entry.date)) : "—"}
     </div>
-    <div className={`text-sm font-bold ${accent}`}>
+    <div className={`mt-1 text-sm font-bold ${accent}`}>
       {entry?.totalAmount ? `${Math.round(entry.totalAmount).toLocaleString("fr-FR")} CFA` : "—"}
     </div>
   </div>

@@ -11,6 +11,9 @@ const createPaySlip = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
+        if (employee.isActive === false) {
+            return res.status(400).json({ message: 'Cannot create a pay slip for an inactive employee' });
+        }
 
         // Vérifier s'il existe déjà une fiche pour ce mois/année
         const existingPaySlip = employee.paySlips.find(

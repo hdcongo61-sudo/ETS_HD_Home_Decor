@@ -28,7 +28,7 @@ import {
   getStatusText,
   parseDateSafely,
 } from "../utils/saleUtils";
-import { SalesFiltersBar, SaleCard } from "./sales-shared";
+import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
 
 const ExportSalesPdf = lazy(() => import("../components/ExportSalesPdf"));
@@ -43,6 +43,16 @@ const formatPercent = (value) => `${Number(value || 0).toFixed(1)} %`;
 const INITIAL_VISIBLE_SALES = 40;
 const VISIBLE_SALES_STEP = 40;
 
+const getSaleSellerId = (sale) => {
+  if (!sale?.user) return "";
+  return typeof sale.user === "object" ? String(sale.user._id || sale.user.id || "") : String(sale.user);
+};
+
+const getSaleSellerName = (sale) => {
+  if (!sale?.user || typeof sale.user !== "object") return "";
+  return sale.user.name || sale.user.email || "";
+};
+
 const SalesArchive = () => {
   const location = useLocation();
   const { auth } = useContext(AuthContext);
@@ -55,6 +65,7 @@ const SalesArchive = () => {
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
+  const [sellerFilter, setSellerFilter] = useState("");
   const [saleTypeFilter, setSaleTypeFilter] = useState("");
   const [paymentStructureFilter, setPaymentStructureFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -68,10 +79,12 @@ const SalesArchive = () => {
     const params = new URLSearchParams(location.search);
     setStatusFilter(params.get("status") || "");
     setClientFilter(params.get("client") || "");
+    setSellerFilter(params.get("seller") || "");
     setSaleTypeFilter(params.get("saleType") || "");
     setPaymentStructureFilter(params.get("paymentStructure") || "");
     setDateFilter(params.get("date") || "");
     setDeliveryFilter(params.get("delivery") || "");
+    setContainerFilter(params.get("container") || "");
   }, [location.search]);
 
   useEffect(() => {
@@ -104,6 +117,7 @@ const SalesArchive = () => {
   }, [
     statusFilter,
     clientFilter,
+    sellerFilter,
     saleTypeFilter,
     paymentStructureFilter,
     dateFilter,
@@ -123,11 +137,28 @@ const SalesArchive = () => {
     [sales]
   );
 
+  const sellers = useMemo(() => {
+    const byId = new Map();
+    sales.forEach((sale) => {
+      const sellerId = getSaleSellerId(sale);
+      if (!sellerId || byId.has(sellerId)) return;
+      byId.set(sellerId, {
+        _id: sellerId,
+        name: getSaleSellerName(sale) || "Vendeur sans nom",
+        email: typeof sale.user === "object" ? sale.user.email || "" : "",
+      });
+    });
+    return Array.from(byId.values()).sort((a, b) =>
+      (a.name || a.email || "").localeCompare(b.name || b.email || "", "fr", { sensitivity: "base" })
+    );
+  }, [sales]);
+
   const applyArchiveFilters = useCallback((source, options = {}) => {
     const { includeDate = true } = options;
     const base = source.filter((sale) => {
       const statusMatch = !statusFilter || sale.status === statusFilter;
       const clientMatch = !clientFilter || sale.client?._id === clientFilter;
+      const sellerMatch = !sellerFilter || getSaleSellerId(sale) === sellerFilter;
       const saleTypeMatch = !saleTypeFilter || (sale.saleType || "normal") === saleTypeFilter;
       const paymentStructureMatch =
         !paymentStructureFilter || getPaymentStructureKey(sale) === paymentStructureFilter;
@@ -140,10 +171,10 @@ const SalesArchive = () => {
       const containerMatch =
         !containerFilter ||
         (sale.products || []).some((p) => p.product?.container === containerFilter);
-      return statusMatch && clientMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
+      return statusMatch && clientMatch && sellerMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
     return base;
-  }, [statusFilter, clientFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
+  }, [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
 
   const filteredSales = useMemo(
     () => applyArchiveFilters(salesWithMetrics, { includeDate: true }),
@@ -151,7 +182,7 @@ const SalesArchive = () => {
   );
 
   const hasActiveFilters =
-    !!statusFilter || !!clientFilter || !!saleTypeFilter || !!paymentStructureFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
+    !!statusFilter || !!clientFilter || !!sellerFilter || !!saleTypeFilter || !!paymentStructureFilter || !!dateFilter || !!deliveryFilter || !!containerFilter;
 
   const visibleSales = useMemo(
     () => filteredSales.slice(0, visibleCount),
@@ -303,6 +334,7 @@ const SalesArchive = () => {
   const handleResetFilters = () => {
     setStatusFilter("");
     setClientFilter("");
+    setSellerFilter("");
     setSaleTypeFilter("");
     setPaymentStructureFilter("");
     setDateFilter("");
@@ -359,6 +391,7 @@ const SalesArchive = () => {
               <SalesFiltersBar
                 statusFilter={statusFilter}
                 clientFilter={clientFilter}
+                sellerFilter={sellerFilter}
                 saleTypeFilter={saleTypeFilter}
                 paymentStructureFilter={paymentStructureFilter}
                 dateFilter={dateFilter}
@@ -366,8 +399,10 @@ const SalesArchive = () => {
                 containerFilter={containerFilter}
                 clients={clients}
                 containers={containers}
+                sellers={sellers}
                 onStatusChange={setStatusFilter}
                 onClientChange={setClientFilter}
+                onSellerChange={setSellerFilter}
                 onSaleTypeChange={setSaleTypeFilter}
                 onPaymentStructureChange={setPaymentStructureFilter}
                 onDateChange={setDateFilter}
@@ -418,11 +453,16 @@ const SalesArchive = () => {
               </div>
             </section>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-600">
                 <span className="font-semibold text-slate-950">{filteredSales.length}</span>
                 {filteredSales.length === 1 ? " vente" : " ventes"}
               </p>
+              <SalesListExportButtons
+                sales={filteredSales}
+                filenamePrefix="archive-ventes"
+                label="Archive des ventes"
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4">

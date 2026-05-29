@@ -12,6 +12,11 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lockout, setLockout] = useState(null);
+  const [passwordRequestOpen, setPasswordRequestOpen] = useState(false);
+  const [passwordRequestReason, setPasswordRequestReason] = useState('');
+  const [passwordRequestLoading, setPasswordRequestLoading] = useState(false);
+  const [passwordRequestMessage, setPasswordRequestMessage] = useState('');
+  const [passwordRequestError, setPasswordRequestError] = useState('');
   const { setAuth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
   const navigate = useNavigate();
@@ -104,6 +109,39 @@ const Login = () => {
     }
   };
 
+  const handlePasswordUpdateRequest = async (e) => {
+    e.preventDefault();
+    const login = loginId.trim();
+    const reason = passwordRequestReason.trim();
+
+    setPasswordRequestError('');
+    setPasswordRequestMessage('');
+
+    if (!login) {
+      setPasswordRequestError('Entrez votre téléphone ou email avant d’envoyer la demande.');
+      return;
+    }
+
+    if (!reason) {
+      setPasswordRequestError('Ajoutez la raison pour aider l’admin à comprendre le blocage.');
+      return;
+    }
+
+    try {
+      setPasswordRequestLoading(true);
+      const { data } = await api.post('/users/password-update-request', {
+        login,
+        reason,
+      });
+      setPasswordRequestMessage(data?.message || 'Demande envoyée à un administrateur.');
+      setPasswordRequestReason('');
+    } catch (err) {
+      setPasswordRequestError(err.response?.data?.message || 'Impossible d’envoyer la demande pour le moment.');
+    } finally {
+      setPasswordRequestLoading(false);
+    }
+  };
+
   // Calculate lockout time remaining
   const getLockoutTime = () => {
     if (!lockout) return null;
@@ -175,7 +213,7 @@ const Login = () => {
                 autoComplete="username"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className="form-control pr-11"
                 placeholder="07 00 00 00 00 ou exemple@societe.com"
                 required
                 disabled={!!lockoutTime}
@@ -211,7 +249,7 @@ const Login = () => {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className="form-control pr-11"
                 placeholder="••••••••"
                 required
                 disabled={!!lockoutTime}
@@ -264,11 +302,7 @@ const Login = () => {
 
           <button
             type="submit"
-            className={`w-full flex items-center justify-center gap-2 py-4 px-4 text-white rounded-xl transition-all duration-200 font-medium ${lockoutTime
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'hover:opacity-95 active:scale-[0.98]'
-              }`}
-            style={lockoutTime ? undefined : { backgroundColor: branding.primaryColor }}
+            className="form-button-primary flex w-full items-center justify-center gap-2"
             disabled={isLoading || !!lockoutTime}
           >
             {isLoading ? (
@@ -320,13 +354,56 @@ const Login = () => {
               Vous avez oublié votre mot de passe?{' '}
               <button
                 type="button"
-                className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                onClick={() => alert("Veuillez contacter l'administrateur pour réinitialiser votre mot de passe.")}
+                className="font-semibold text-gray-900 transition-colors hover:text-gray-700"
+                onClick={() => {
+                  setPasswordRequestOpen((current) => !current);
+                  setPasswordRequestError('');
+                  setPasswordRequestMessage('');
+                }}
               >
-                Réinitialiser
+                Demander une mise à jour
               </button>
             </p>
           </div>
+
+          {passwordRequestOpen && (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-left">
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-gray-900">Demande de mise à jour du mot de passe</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Utilisez le même téléphone ou email que votre compte, puis expliquez pourquoi vous ne pouvez pas vous connecter.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <textarea
+                  value={passwordRequestReason}
+                  onChange={(e) => setPasswordRequestReason(e.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                  className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
+                  placeholder="Ex: mot de passe oublié, téléphone changé, compte verrouillé..."
+                />
+                {passwordRequestError && (
+                  <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {passwordRequestError}
+                  </div>
+                )}
+                {passwordRequestMessage && (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                    {passwordRequestMessage}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePasswordUpdateRequest}
+                  disabled={passwordRequestLoading}
+                  className="min-h-[44px] w-full rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {passwordRequestLoading ? 'Envoi en cours...' : 'Envoyer la demande'}
+                </button>
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>
