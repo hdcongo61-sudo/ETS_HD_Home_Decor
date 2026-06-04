@@ -3,6 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from './AppLoader';
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  KPICard,
+  LoadingSkeleton,
+  PageHeader,
+  StatusBadge,
+  Workspace,
+} from './business';
+import { Activity, CheckCircle2, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 
 const ResumeConnexions = () => {
     const tableRef = useRef(null);
@@ -59,172 +70,68 @@ const ResumeConnexions = () => {
     useResponsiveTable(tableRef, [loginStats.recentLogins]);
 
     return (
-        <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">
-                Résumé des connexions
-            </h2>
-            <button
-                onClick={fetchLoginStats}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 w-full md:w-auto"
-            >
-                    <svg
-                        className="w-4 h-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
-                    </svg>
-                    Actualiser
-                </button>
-            </div>
+    <Workspace className="space-y-5">
+      <PageHeader
+        title="Resume des connexions"
+        description="Les 10 dernieres tentatives de connexion"
+        actions={
+          <Button variant="primary" size="sm" onClick={fetchLoginStats}>
+            <RefreshCw className="h-4 w-4" /> Actualiser
+          </Button>
+        }
+      />
 
-            {error && (
-                <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center">
-                    <svg
-                        className="w-6 h-6 mr-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                    </svg>
-                    {error}
-                </div>
-            )}
-
-            {loading ? (
-                <div className="flex justify-center py-20">
-                    <AppLoader fullScreen={false} text="Chargement…" />
-                </div>
-            ) : (
-                <>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                        <div className="bg-white p-6 rounded-lg shadow border border-blue-100">
-                            <div className="text-3xl font-bold text-blue-800 mb-2">
-                                {loginStats.totalLogins}
-                            </div>
-                            <div className="text-lg text-blue-600">
-                                Connexions totales
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-lg shadow border border-green-100">
-                            <div className="text-3xl font-bold text-green-800 mb-2">
-                                {loginStats.successfulLogins}
-                            </div>
-                            <div className="text-lg text-green-600">
-                                Connexions réussies (30j)
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-lg shadow border border-red-100">
-                            <div className="text-3xl font-bold text-red-800 mb-2">
-                                {loginStats.failedLogins}
-                            </div>
-                            <div className="text-lg text-red-600">
-                                Échecs de connexion (30j)
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                Activité de connexion récente
-                            </h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Les 10 dernières tentatives de connexion
-                            </p>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table ref={tableRef} className="responsive-table min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Utilisateur
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Email utilisé
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Statut
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Adresse IP
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Appareil
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Date
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {loginStats.recentLogins.map((login) => (
-                                        <tr
-                                            key={login._id}
-                                            onClick={() => navigate(`/users/login-activity/${login._id}`)}
-                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        >
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <div className="ml-4">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {login.user?.name || 'N/A'}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {login.user?._id ? `ID: ${login.user._id.substring(0, 8)}...` : 'Compte inexistant'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {login.attemptedEmail || login.user?.email || 'N/A'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span
-                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${login.success
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
-                                                        }`}
-                                                >
-                                                    {login.success ? 'Réussi' : 'Échoué'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {login.ipAddress}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <div className="truncate max-w-xs">
-                                                    {login.device || 'Inconnu'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {formatDate(login.createdAt)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </>
-            )}
+      {error && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          {error}
         </div>
-    );
+      )}
+
+      {loading ? (
+        <LoadingSkeleton rows={6} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <KPICard title="Connexions totales" value={loginStats.totalLogins} tone="neutral" icon={<Activity className="h-4 w-4" />} />
+            <KPICard title="Reussies (30j)" value={loginStats.successfulLogins} tone="success" icon={<CheckCircle2 className="h-4 w-4" />} />
+            <KPICard title="Echecs (30j)" value={loginStats.failedLogins} tone="danger" icon={<XCircle className="h-4 w-4" />} />
+          </div>
+
+          {loginStats.recentLogins.length === 0 ? (
+            <EmptyState title="Aucune activite recente" description="Les connexions apparaitront ici." />
+          ) : (
+            <DataTable>
+              <table ref={tableRef} className="responsive-table w-full">
+                <thead>
+                  <tr>
+                    <th>Utilisateur</th>
+                    <th>Email</th>
+                    <th>Statut</th>
+                    <th>Adresse IP</th>
+                    <th>Appareil</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginStats.recentLogins.map((login) => (
+                    <tr key={login._id} onClick={() => navigate(`/users/login-activity/${login._id}`)} className="cursor-pointer">
+                      <td className="font-medium text-[var(--ms-text)]">{login.user?.name || 'N/A'}</td>
+                      <td className="text-[var(--ms-text-muted)] text-sm">{login.attemptedEmail || login.user?.email || 'N/A'}</td>
+                      <td><StatusBadge tone={login.success ? 'success' : 'danger'}>{login.success ? 'Reussi' : 'Echoue'}</StatusBadge></td>
+                      <td className="text-[var(--ms-text-muted)] text-sm">{login.ipAddress}</td>
+                      <td className="text-[var(--ms-text-muted)] text-sm max-w-[200px] truncate">{login.device || 'Inconnu'}</td>
+                      <td className="text-[var(--ms-text-muted)] text-sm">{formatDate(login.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTable>
+          )}
+        </>
+      )}
+    </Workspace>
+  );
 };
 
 export default ResumeConnexions;

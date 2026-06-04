@@ -4,6 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
+import { PageHeader, Workspace } from '../components/business';
 
 const TABS = [
   { key: 'categories', label: 'Catégories produits', endpoint: '/lookups/categories' },
@@ -178,11 +179,9 @@ const Settings = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6 lg:py-10">
+    <Workspace className="space-y-5">
       <Toaster position="top-right" />
-      <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl tracking-tight mb-5 sm:mb-6">
-        Paramètres
-      </h1>
+      <PageHeader title="Parametres" />
 
       {isAdmin && (
         <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-6 sm:p-5">
@@ -516,7 +515,7 @@ const Settings = () => {
           label={TABS.find((t) => t.key === activeTab).label}
         />
       )}
-    </div>
+    </Workspace>
   );
 };
 

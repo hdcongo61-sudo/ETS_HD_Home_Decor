@@ -17,6 +17,16 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import {
+  Button,
+  ChartCard,
+  DataTable,
+  EmptyState,
+  KPICard,
+  LoadingSkeleton,
+  PageHeader,
+  Workspace,
+} from '../components/business';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -96,194 +106,123 @@ const ClientDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f6f7f9]">
-        <AppLoader fullScreen={false} text="Chargement du tableau de bord client…" />
-      </div>
+      <Workspace className="flex justify-center items-center" style={{ minHeight: '60vh' }}>
+        <AppLoader fullScreen={false} text="Chargement..." />
+      </Workspace>
     );
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-4xl py-12 text-center">
-        <p className="mb-4 font-semibold text-rose-700">{error}</p>
-        <Link to="/clients" className="text-slate-700 hover:text-slate-950">Retour à la liste des clients</Link>
-      </div>
+      <Workspace>
+        <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
+          {error}
+        </div>
+      </Workspace>
     );
   }
 
   const topClients = stats?.topClients || [];
 
   return (
-    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
-      <div className="mx-auto max-w-7xl space-y-5">
+    <Workspace className="space-y-5">
+      <PageHeader
+        title="Tableau de bord clients"
+        description="Apercu global des clients et de leurs comportements."
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => window.location.href = '/clients'}>
+            Liste complete <ArrowRight className="h-4 w-4" />
+          </Button>
+        }
+      />
 
-        {/* Header */}
-        <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-500">Clients</p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">Tableau de bord clients</h1>
-            <p className="mt-1 text-sm text-slate-600">Aperçu global des clients et de leurs comportements.</p>
-          </div>
-          <Link
-            to="/clients"
-            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            Liste complète
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+      {/* KPI Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <KPICard title="Total Clients" value={stats.totalClients} tone="neutral" icon={<Users className="h-4 w-4" />} />
+          <KPICard title="Achats Cumules" value={formatCurrency(stats.totalSpent)} tone="success" icon={<Wallet className="h-4 w-4" />} />
+          <KPICard title="Depense Moyenne" value={formatCurrency(stats.avgSpent)} tone="neutral" icon={<ShoppingBag className="h-4 w-4" />} />
+          <KPICard title="Retention" value={`${enhancedMetrics.retentionRate.toFixed(1)}%`} tone="neutral" icon={<Repeat2 className="h-4 w-4" />} />
+          <KPICard title="Freq. Achats" value={`${enhancedMetrics.avgPurchaseFreq.toFixed(1)} jrs`} tone="neutral" icon={<Clock3 className="h-4 w-4" />} />
         </div>
+      )}
 
-        {/* Stat Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: 'Total Clients', value: stats.totalClients, icon: '👥' },
-              { label: 'Achats Cumulés', value: formatCurrency(stats.totalSpent), icon: Wallet },
-              { label: 'Dépense Moyenne', value: formatCurrency(stats.avgSpent), icon: ShoppingBag },
-              { label: 'Rétention Clients', value: `${enhancedMetrics.retentionRate.toFixed(1)}%`, icon: Repeat2 },
-              { label: 'Fréquence Moy. Achats', value: `${enhancedMetrics.avgPurchaseFreq.toFixed(1)} jrs`, icon: Clock3 },
-            ].map((item, idx) => {
-              const Icon = typeof item.icon === 'string' ? Users : item.icon;
-              return (
-              <div
-                key={idx}
-                className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
-              >
-                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <p className="text-sm text-slate-500">{item.label}</p>
-                <h3 className="mt-1 text-xl font-semibold text-slate-950">{item.value}</h3>
-              </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Pie Chart */}
-          {topClients.length > 0 && (
-            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-              <h2 className="mb-4 text-lg font-semibold text-slate-950">Top 5 Clients (dépenses)</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={topClients}
-                    dataKey="totalSpent"
-                    nameKey="name"
-                    outerRadius={100}
-                    label
-                  >
-                    {topClients.map((entry, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Line Chart - Monthly Signups */}
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-950">Nouveaux Clients par Mois</h2>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {topClients.length > 0 && (
+          <ChartCard title="Top 5 Clients (depenses)">
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={enhancedMetrics.monthlySignups}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#0f172a" strokeWidth={2} />
-              </LineChart>
+              <PieChart>
+                <Pie data={topClients} dataKey="totalSpent" nameKey="name" outerRadius={100} label>
+                  {topClients.map((entry, index) => (<Cell key={index} fill={COLORS[index % COLORS.length]} />))}
+                </Pie>
+                <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
+                <Legend />
+              </PieChart>
             </ResponsiveContainer>
-          </div>
-        </div>
+          </ChartCard>
+        )}
+        <ChartCard title="Nouveaux Clients par Mois">
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={enhancedMetrics.monthlySignups}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="count" stroke="#0078D4" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
         {/* Loyalty & Inactivity */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Loyalty */}
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-950">Top Clients Fidèles (nombre d’achats)</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={enhancedMetrics.loyalClients}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="purchaseCount" fill="#047857" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Inactive */}
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-950">Clients Inactifs (≥ 60 jours)</h2>
-            {enhancedMetrics.inactiveClients.length > 0 ? (
-              <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto">
-                {enhancedMetrics.inactiveClients.map((c) => (
-                  <li key={c._id} className="flex items-center justify-between py-3">
-                    <span className="font-medium text-slate-800">{c.name}</span>
-                    <span className="text-sm text-slate-500">
-                      Dernier achat: {c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('fr-FR') : '—'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="py-6 text-center text-slate-500">Aucun client inactif</p>
-            )}
-          </div>
-        </div>
-
-        {/* Top Clients Table */}
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-950">
-            <Trophy className="h-5 w-5 text-amber-600" />
-            Top Clients par Dépenses
-          </h2>
-          {topClients.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table ref={tableRef} className="responsive-table w-full text-sm border-separate border-spacing-y-2 min-w-[640px]">
-                <thead className="bg-slate-50">
-                  <tr className="text-left text-slate-700">
-                    <th className="px-4 py-2 rounded-l-lg">#</th>
-                    <th className="px-4 py-2">Nom</th>
-                    <th className="px-4 py-2">Total Dépensé</th>
-                    <th className="px-4 py-2 text-right rounded-r-lg">Profil</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topClients.map((client, index) => (
-                    <tr
-                      key={client._id}
-                      className="cursor-pointer transition hover:bg-slate-50"
-                    >
-                      <td className="px-4 py-3 font-semibold text-slate-600">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium text-slate-950">{client.name}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
-                        {formatCurrency(client.totalSpent)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          to={clientPath(client)}
-                          className="inline-flex items-center justify-end gap-1 font-medium text-slate-700 hover:text-slate-950"
-                        >
-                          Voir profil <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <ChartCard title="Top Clients Fideles (achats)">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={enhancedMetrics.loyalClients}>
+              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip />
+              <Bar dataKey="purchaseCount" fill="#107C10" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="Clients Inactifs (>= 60 jours)">
+          {enhancedMetrics.inactiveClients.length > 0 ? (
+            <ul className="max-h-72 divide-y divide-[var(--ms-border)] overflow-y-auto">
+              {enhancedMetrics.inactiveClients.map((c) => (
+                <li key={c._id} className="flex items-center justify-between py-3 px-2">
+                  <span className="font-medium text-[var(--ms-text)]">{c.name}</span>
+                  <span className="text-sm text-[var(--ms-text-muted)]">Dernier achat: {c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('fr-FR') : '—'}</span>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="py-8 text-center text-slate-500">Pas encore assez de données clients.</p>
+            <p className="py-6 text-center text-[var(--ms-text-muted)]">Aucun client inactif</p>
           )}
-        </div>
+        </ChartCard>
       </div>
-    </div>
+
+      <ChartCard title="Top Clients par Depenses">
+        {topClients.length > 0 ? (
+          <DataTable>
+            <table ref={tableRef} className="responsive-table w-full">
+              <thead><tr><th>#</th><th>Nom</th><th>Total Depense</th><th className="text-right">Profil</th></tr></thead>
+              <tbody>
+                {topClients.map((client, index) => (
+                  <tr key={client._id} className="cursor-pointer" onClick={() => window.location.href = clientPath(client)}>
+                    <td className="font-semibold text-[var(--ms-text-muted)]">{index + 1}</td>
+                    <td className="font-medium text-[var(--ms-text)]">{client.name}</td>
+                    <td className="font-semibold text-[var(--ms-text)]">{formatCurrency(client.totalSpent)}</td>
+                    <td className="text-right"><Link to={clientPath(client)} className="ms-button ms-button-secondary ms-button-sm"><ArrowRight className="h-4 w-4" /> Profil</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DataTable>
+        ) : (
+          <EmptyState title="Pas assez de donnees clients." />
+        )}
+      </ChartCard>
+    </Workspace>
   );
 };
 

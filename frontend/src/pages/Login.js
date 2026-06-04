@@ -161,8 +161,8 @@ const Login = () => {
   const lockoutTime = getLockoutTime();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200/80 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--ms-bg)] p-4">
+      <div className="w-full max-w-md rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-8 shadow-[var(--ms-shadow)]">
         <div className="text-center mb-8">
           <div
             className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl shadow-sm"
@@ -187,24 +187,16 @@ const Login = () => {
         </div>
 
         {lockoutTime && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-center">
-            <div className="text-yellow-700 font-medium text-sm">
-              Compte temporairement verrouillé
-            </div>
-            <div className="text-2xl font-semibold text-yellow-800 mt-1">
-              {lockoutTime}
-            </div>
-            <p className="text-xs text-yellow-600 mt-1">
-              Suite à plusieurs tentatives échouées
-            </p>
+          <div className="mb-6 p-4 rounded-xl border border-[var(--ms-warning)]/30 bg-[#FFF8DF] text-center">
+            <div className="text-[#6B4A00] font-medium text-sm">Compte temporairement verrouille</div>
+            <div className="text-2xl font-semibold text-[#6B4A00] mt-1">{lockoutTime}</div>
+            <p className="text-xs text-[#6B4A00]/70 mt-1">Suite a plusieurs tentatives echouees</p>
           </div>
         )}
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-2">
-              Téléphone ou email
-            </label>
+            <label htmlFor="loginId" className="form-label mb-2 block">Telephone ou email</label>
             <div className="relative">
               <input
                 id="loginId"
@@ -240,9 +232,7 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Mot de passe
-            </label>
+            <label htmlFor="password" className="form-label mb-2 block">Mot de passe</label>
             <div className="relative">
               <input
                 id="password"
@@ -282,19 +272,9 @@ const Login = () => {
           </div>
 
           {error && (
-            <div className="flex items-center text-red-600 text-sm p-3 bg-red-50 rounded-xl border border-red-100">
-              <svg
-                className="w-4 h-4 mr-2 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               {error}
             </div>
@@ -302,7 +282,7 @@ const Login = () => {
 
           <button
             type="submit"
-            className="form-button-primary flex w-full items-center justify-center gap-2"
+            className="ms-button ms-button-primary w-full justify-center"
             disabled={isLoading || !!lockoutTime}
           >
             {isLoading ? (
@@ -349,29 +329,29 @@ const Login = () => {
             )}
           </button>
 
-          <div className="text-center pt-4 border-t border-gray-100">
-            <p className="text-sm text-gray-600">
-              Vous avez oublié votre mot de passe?{' '}
+          <div className="text-center pt-4 border-t border-[var(--ms-border)]">
+            <p className="text-sm text-[var(--ms-text-muted)]">
+              Vous avez oublie votre mot de passe?{' '}
               <button
                 type="button"
-                className="font-semibold text-gray-900 transition-colors hover:text-gray-700"
+                className="font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] transition-colors"
                 onClick={() => {
                   setPasswordRequestOpen((current) => !current);
                   setPasswordRequestError('');
                   setPasswordRequestMessage('');
                 }}
               >
-                Demander une mise à jour
+                Demander une mise a jour
               </button>
             </p>
           </div>
 
           {passwordRequestOpen && (
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-left">
+            <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 text-left">
               <div className="mb-3">
-                <p className="text-sm font-semibold text-gray-900">Demande de mise à jour du mot de passe</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Utilisez le même téléphone ou email que votre compte, puis expliquez pourquoi vous ne pouvez pas vous connecter.
+                <p className="text-sm font-semibold text-[var(--ms-text)]">Demande de mise a jour du mot de passe</p>
+                <p className="mt-1 text-xs text-[var(--ms-text-muted)]">
+                  Utilisez le meme telephone ou email que votre compte, puis expliquez pourquoi vous ne pouvez pas vous connecter.
                 </p>
               </div>
               <div className="space-y-3">
@@ -380,16 +360,16 @@ const Login = () => {
                   onChange={(e) => setPasswordRequestReason(e.target.value)}
                   rows={4}
                   maxLength={1000}
-                  className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:ring-4 focus:ring-gray-900/5"
-                  placeholder="Ex: mot de passe oublié, téléphone changé, compte verrouillé..."
+                  className="form-control resize-none"
+                  placeholder="Ex: mot de passe oublie, telephone change, compte verrouille..."
                 />
                 {passwordRequestError && (
-                  <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  <div className="rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-3 py-2 text-sm text-[var(--ms-danger)]">
                     {passwordRequestError}
                   </div>
                 )}
                 {passwordRequestMessage && (
-                  <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  <div className="rounded-lg border border-[var(--ms-success)]/20 bg-[#F1FAF1] px-3 py-2 text-sm text-[var(--ms-success)]">
                     {passwordRequestMessage}
                   </div>
                 )}
@@ -397,7 +377,7 @@ const Login = () => {
                   type="button"
                   onClick={handlePasswordUpdateRequest}
                   disabled={passwordRequestLoading}
-                  className="min-h-[44px] w-full rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ms-button ms-button-primary w-full justify-center"
                 >
                   {passwordRequestLoading ? 'Envoi en cours...' : 'Envoyer la demande'}
                 </button>

@@ -18,7 +18,12 @@ import {
     Legend
 } from 'chart.js';
 
-import AppLoader from './AppLoader';
+import {
+    EmptyState,
+    LoadingSkeleton,
+    PageHeader,
+    Workspace,
+} from './business';
 
 // Enregistrer les composants de Chart.js
 ChartJS.register(
@@ -512,26 +517,27 @@ const SaleDetailPage = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-[16rem]">
-                <AppLoader fullScreen={false} text="Chargement de la vente…" />
-            </div>
+            <Workspace>
+                <PageHeader eyebrow="Vente" title="Détails de la vente" description="Chargement de la fiche vente." />
+                <LoadingSkeleton rows={6} />
+            </Workspace>
         );
     }
 
     if (error) {
         return (
-            <div className="p-4 mx-4 mt-6 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 border border-red-200 dark:border-red-800">
-                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {error}
-            </div>
+            <Workspace>
+                <PageHeader eyebrow="Vente" title="Détails de la vente" description="Une erreur est survenue." />
+                <EmptyState title="Impossible de charger la vente" description={error} />
+            </Workspace>
         );
     }
 
     if (!sale) {
         return (
-            <div className="p-6 text-center text-gray-500 dark:text-gray-400">Vente non trouvée</div>
+            <Workspace>
+                <EmptyState title="Vente non trouvée" description="La fiche demandée n’existe pas ou n’est plus disponible." />
+            </Workspace>
         );
     }
 
@@ -606,8 +612,8 @@ const SaleDetailPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f6f7f9] text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-            <div className="max-w-6xl mx-auto px-3 sm:px-5 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="ms-workspace text-[var(--ms-text)]">
+            <div className="space-y-4 sm:space-y-6">
                 {/* Back + Page title */}
                 <header className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

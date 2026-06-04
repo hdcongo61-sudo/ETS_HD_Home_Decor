@@ -14,6 +14,7 @@ import {
   formatProductCurrency,
   formatProductNumber,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const OutOfStockProducts = () => {
   const [products, setProducts] = useState([]);
@@ -40,6 +41,7 @@ const OutOfStockProducts = () => {
   const totalValue = products.reduce((sum, p) => sum + (p.price || 0), 0);
 
   return (
+  <Workspace>
     <ProductPageShell>
       <ProductHero
         eyebrow="Alerte stock"
@@ -156,6 +158,7 @@ const OutOfStockProducts = () => {
         </>
       )}
     </ProductPageShell>
+  </Workspace>
   );
 };
 

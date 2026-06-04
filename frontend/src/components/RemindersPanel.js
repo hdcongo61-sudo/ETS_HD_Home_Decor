@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { employeePayrollNewPath } from "../utils/paths";
+import { KPICard, StatusBadge, Button } from "./business";
 
 const ReminderCard = ({ sale, color, label }) => (
   <motion.div
@@ -97,8 +98,8 @@ const SalaryReminderCard = ({ employee }) => (
 const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amount, tone }) => {
   const toneClass =
     tone === "rose"
-      ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
-      : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300";
+      ? "border-[var(--ms-danger)]/20 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+      : "border-[var(--ms-warning)]/20 bg-[var(--ms-warning)]/10 text-amber-700 dark:border-amber-500/20 dark:bg-[var(--ms-warning)]/100/10 dark:text-amber-300";
 
   return (
     <Link to={`/sales/${sale._id}`} className="group">
@@ -255,13 +256,13 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
     type === "overdue"
       ? {
           text: "text-red-700 dark:text-red-300",
-          border: "border-rose-200 dark:border-rose-500/20",
+          border: "border-[var(--ms-danger)]/20 dark:border-rose-500/20",
           badge: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
         }
       : {
           text: "text-orange-700 dark:text-orange-300",
-          border: "border-amber-200 dark:border-amber-500/20",
-          badge: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+          border: "border-[var(--ms-warning)]/20 dark:border-amber-500/20",
+          badge: "bg-[var(--ms-warning)]/10 text-amber-700 dark:bg-[var(--ms-warning)]/100/10 dark:text-amber-300",
         };
 
   const tabs = [

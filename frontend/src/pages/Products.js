@@ -7,7 +7,17 @@ import LoaderOverlay from '../components/LoaderOverlay';
 import AppLoader from '../components/AppLoader';
 import toast, { Toaster } from 'react-hot-toast';
 import { productPath } from '../utils/paths';
-import Modal from '../components/Modal';
+import {
+  Button,
+  CommandBar,
+  DataTable,
+  EmptyState,
+  KPICard,
+  PageHeader,
+  RightDetailPanel,
+  StatusBadge,
+  Workspace,
+} from '../components/business';
 import {
   Download,
   Edit3,
@@ -192,63 +202,81 @@ const Products = () => {
     }
   };
 
+  const totalStock = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
+  const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
+  const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
+
   return (
-    <div className="min-h-screen bg-[#f6f7f9]">
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-4 sm:py-6 lg:py-8 relative">
-        <Toaster position="top-right" />
+    <Workspace>
+      <Toaster position="top-right" />
 
-        <LoaderOverlay
-          show={formSubmitting}
-          text={editingProduct ? 'Modification produit...' : 'Création du produit...'}
-        />
+      <LoaderOverlay
+        show={formSubmitting}
+        text={editingProduct ? 'Modification produit...' : 'Création du produit...'}
+      />
 
-        {/* ===== Header (desktop-optimized) ===== */}
-        <header className="mb-4 sm:mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase text-slate-500">Catalogue</p>
-              <h1 className="mt-1 text-2xl font-semibold text-slate-950 sm:text-3xl">
-                Produits
-              </h1>
-              <p className="mt-1 text-sm text-slate-600 lg:text-base">
-                Gérez votre catalogue et vos stocks
-              </p>
-              {!loading && products.length > 0 && (
-                <p className="mt-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-950">{products.length}</span> produit{products.length > 1 ? 's' : ''} au catalogue
-                </p>
-              )}
-            </div>
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsFormOpen(true);
-                }}
-                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 lg:px-5"
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                Nouveau produit
-              </button>
-            )}
-          </div>
-        </header>
+      <PageHeader
+        eyebrow="Catalogue"
+        title="Produits"
+        description="Gérez le catalogue, les stocks, les prix et les fournisseurs."
+        meta={!loading && products.length > 0 ? `${products.length} produit${products.length > 1 ? 's' : ''} au catalogue` : null}
+        actions={isAdmin && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingProduct(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            Nouveau produit
+          </Button>
+        )}
+      />
 
-        {/* ===== Liste des produits ===== */}
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-          <ProductList
-            products={products}
-            loading={loading}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            isAdmin={isAdmin}
-          />
-        </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <KPICard title="Articles" value={loading ? '...' : products.length.toLocaleString('fr-FR')} context="Catalogue actif" icon={<Package className="h-4 w-4" />} />
+        <KPICard title="Stock total" value={loading ? '...' : totalStock.toLocaleString('fr-FR')} context="Unités disponibles" icon={<Package className="h-4 w-4" />} tone="success" />
+        <KPICard title="À surveiller" value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')} context={`${lowStockCount} bas, ${outOfStockCount} rupture`} icon={<Package className="h-4 w-4" />} tone="warning" />
       </div>
 
-      {/* ===== Modal Form ===== */}
       {isAdmin && (
-        <Modal
+        <CommandBar>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setEditingProduct(null);
+                setIsFormOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </Button>
+            <Button variant="secondary" size="sm" form="product-list-export-excel" disabled>
+              <Edit3 className="h-4 w-4" />
+              Modifier
+            </Button>
+          </div>
+          <div className="text-sm text-[var(--ms-text-muted)]">
+            Sélectionnez une ligne pour ouvrir les détails produit.
+          </div>
+        </CommandBar>
+      )}
+
+      <DataTable>
+        <ProductList
+          products={products}
+          loading={loading}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          isAdmin={isAdmin}
+        />
+      </DataTable>
+
+      {isAdmin && (
+        <RightDetailPanel
           isOpen={isFormOpen}
           onClose={() => {
             setIsFormOpen(false);
@@ -258,25 +286,24 @@ const Products = () => {
           subtitle={editingProduct ? 'Mettez à jour les informations du produit.' : 'Renseignez les informations du nouveau produit.'}
           footer={
             <>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setIsFormOpen(false);
                   setEditingProduct(null);
                 }}
-                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 font-medium transition"
                 disabled={formSubmitting}
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 form="product-form"
-                className="form-button-primary w-full sm:w-auto"
+                variant="primary"
                 disabled={formSubmitting}
               >
                 {editingProduct ? 'Enregistrer les modifications' : 'Créer le produit'}
-              </button>
+              </Button>
             </>
           }
         >
@@ -286,9 +313,9 @@ const Products = () => {
             loading={formSubmitting}
             lookups={lookups}
           />
-        </Modal>
+        </RightDetailPanel>
       )}
-    </div>
+    </Workspace>
   );
 };
 
@@ -432,7 +459,7 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 file:transition-colors"
+              className="block w-full text-sm text-[var(--ms-text-muted)] file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 file:transition-colors"
             />
             {previewUrl && (
               <img src={previewUrl} alt="Aperçu" className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0" />
@@ -507,6 +534,13 @@ const matchesNumericFilter = (value, operator, primaryValue, secondaryValue) => 
 const getFilterOptions = (items, accessor) =>
   [...new Set(items.map(accessor).map((value) => String(value || '').trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+
+const getProductStockStatus = (stock) => {
+  const numericStock = Number(stock) || 0;
+  if (numericStock <= 0) return { tone: 'danger', label: 'Rupture' };
+  if (numericStock < 5) return { tone: 'warning', label: 'Stock bas' };
+  return { tone: 'success', label: 'Disponible' };
+};
 
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const location = useLocation();
@@ -612,8 +646,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   };
 
   const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
-  const filterInputClass = 'w-full min-h-[40px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:text-sm';
-  const actionButtonClass = 'inline-flex items-center justify-center gap-2 min-h-[40px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
+  const filterInputClass = 'w-full min-h-[36px] rounded-md border border-[var(--ms-border)] bg-white px-2.5 py-1.5 text-base text-[var(--ms-text)] outline-none transition focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[rgba(0,120,212,0.16)] sm:text-sm';
+  const actionButtonClass = 'inline-flex items-center justify-center gap-2 min-h-[36px] rounded-md border border-[var(--ms-border)] bg-white px-3 py-1.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-50';
   const comparisonOptions = [
     { value: '', label: 'Toutes' },
     { value: 'eq', label: '=' },
@@ -834,7 +868,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   const renderNumericFilter = ({ label, operatorKey, valueKey, maxKey, valuePlaceholder, maxPlaceholder }) => (
     <div>
-      <label htmlFor={`${operatorKey}-operator`} className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+      <label htmlFor={`${operatorKey}-operator`} className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
         {label}
       </label>
       <div className="space-y-2">
@@ -873,10 +907,10 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   );
 
   const renderFilterPanel = () => (
-    <div className="border-b border-slate-200 bg-slate-50 p-4 lg:p-6">
+    <div className="border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 lg:p-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div>
-          <label htmlFor="product-filter-name" className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+          <label htmlFor="product-filter-name" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Produit
           </label>
           <div className="relative">
@@ -893,7 +927,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </div>
         </div>
         <div>
-          <label htmlFor="product-filter-category" className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+          <label htmlFor="product-filter-category" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Catégorie
           </label>
           <select
@@ -909,7 +943,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </select>
         </div>
         <div>
-          <label htmlFor="product-filter-container" className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+          <label htmlFor="product-filter-container" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Conteneur
           </label>
           <select
@@ -925,7 +959,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </select>
         </div>
         <div>
-          <label htmlFor="product-filter-warehouse" className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+          <label htmlFor="product-filter-warehouse" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Entrepôt
           </label>
           <select
@@ -957,7 +991,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           maxPlaceholder: 'Stock max',
         })}
         <div>
-          <label htmlFor="product-filter-supplier" className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+          <label htmlFor="product-filter-supplier" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Fournisseur
           </label>
           <select
@@ -977,7 +1011,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
             type="button"
             onClick={resetFilters}
             disabled={!hasActiveFilters}
-            className="inline-flex w-full min-h-[40px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-md border border-[var(--ms-border)] bg-white px-3 py-1.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
             Réinitialiser les filtres
@@ -985,7 +1019,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="text-sm text-slate-600">
+        <div className="text-sm text-[var(--ms-text-muted)]">
           {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
         </div>
         {isAdmin && (
@@ -1061,16 +1095,16 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-semibold text-slate-950 lg:text-lg line-clamp-2">{p.name}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                    <StatusBadge tone="neutral">
                       {p.container?.trim() || 'Non défini'}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                    </StatusBadge>
+                    <StatusBadge tone="success">
                       {p.warehouse?.trim() || 'Non défini'}
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <p className={`font-medium ${p.stock < 5 ? 'text-rose-700' : 'text-slate-700'}`}>
-                      Stock : <span className="font-semibold">{p.stock}</span>
+                    <p className="font-medium text-[var(--ms-text)]">
+                      Stock : <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
                     </p>
                     <p className="text-right font-semibold text-slate-950 tabular-nums">
                       {p.price?.toLocaleString('fr-FR')} CFA
@@ -1086,7 +1120,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
         {filtered.length === 0 && (
           <div className="text-center py-12 lg:py-16 text-slate-500">
-            <p className="text-base lg:text-lg">Aucun produit trouvé.</p>
+            <EmptyState title="Aucun produit trouvé" description="Ajustez les filtres pour afficher le catalogue." />
           </div>
         )}
       </div>
@@ -1095,8 +1129,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
   return (
     <div>
-      <div className="hidden md:flex items-center justify-between gap-4 px-4 py-4 lg:px-6 border-b border-slate-100 bg-slate-50">
-        <div className="text-sm text-slate-600">
+      <div className="hidden md:flex items-center justify-between gap-4 px-4 py-4 lg:px-6 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]">
+        <div className="text-sm text-[var(--ms-text-muted)]">
           {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
         </div>
         <div className="flex items-center gap-2">
@@ -1329,20 +1363,23 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-slate-600">{p.category}</td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  <StatusBadge tone="neutral">
                     {p.container?.trim() || 'Non défini'}
-                  </span>
+                  </StatusBadge>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  <StatusBadge tone="success">
                     {p.warehouse?.trim() || 'Non défini'}
-                  </span>
+                  </StatusBadge>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-right font-semibold text-slate-950 tabular-nums">
                   {p.price?.toLocaleString('fr-FR')} CFA
                 </td>
-                <td className={`px-4 py-3 lg:px-6 lg:py-4 text-right font-medium tabular-nums ${p.stock < 5 ? 'text-rose-700' : 'text-slate-800'}`}>
-                  {p.stock}
+                <td className="px-4 py-3 text-right font-medium tabular-nums lg:px-6 lg:py-4">
+                  <div className="flex flex-col items-end gap-1">
+                    <span>{p.stock}</span>
+                    <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                  </div>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-slate-700">
                   <div className="font-medium">{p.supplierName || '—'}</div>
@@ -1397,22 +1434,25 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 </Link>
                 <p className="text-sm text-slate-500">{p.category || '—'}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                  <StatusBadge tone="neutral">
                     {p.container?.trim() || 'Non défini'}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                  </StatusBadge>
+                  <StatusBadge tone="success">
                     {p.warehouse?.trim() || 'Non défini'}
-                  </span>
+                  </StatusBadge>
                 </div>
                 <p className="text-sm font-semibold text-slate-950 mt-1">
                   {p.price?.toLocaleString('fr-FR')} CFA
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm text-slate-600 mt-4">
+            <div className="grid grid-cols-2 gap-3 text-sm text-[var(--ms-text-muted)] mt-4">
               <div>
                 <p className="text-xs text-slate-500 uppercase">Stock</p>
-                <p className={`font-semibold ${p.stock < 5 ? 'text-rose-700' : 'text-slate-950'}`}>{p.stock}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-slate-950">{p.stock}</p>
+                  <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                </div>
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase">Fournisseur</p>
@@ -1446,7 +1486,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
       {filtered.length === 0 && (
         <div className="text-center py-12 lg:py-16 text-gray-500">
-          <p className="text-base lg:text-lg">Aucun produit trouvé.</p>
+          <EmptyState title="Aucun produit trouvé" description="Ajustez les filtres pour afficher le catalogue." />
         </div>
       )}
     </div>

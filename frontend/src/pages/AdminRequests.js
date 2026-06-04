@@ -3,6 +3,14 @@ import { Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
 import AppLoader from '../components/AppLoader';
+import {
+  Button,
+  EmptyState,
+  PageHeader,
+  StatusBadge,
+  Surface,
+  Workspace,
+} from '../components/business';
 
 const REQUEST_LABELS = {
   'sale.delete': 'Suppression vente',
@@ -106,27 +114,15 @@ const AdminRequests = () => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <header className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Demandes administrateur</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {canReview
-              ? `${pendingCount} demande(s) en attente de validation.`
-              : 'Suivez les demandes envoyées à un administrateur.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={fetchRequests}
-          className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Actualiser
-        </button>
-      </header>
+    <Workspace className="space-y-5">
+      <PageHeader
+        title="Demandes administrateur"
+        description={canReview ? `${pendingCount} demande(s) en attente de validation.` : 'Suivez les demandes envoyees a un administrateur.'}
+        actions={<Button variant="secondary" size="sm" onClick={fetchRequests}>Actualiser</Button>}
+      />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
           {error}
         </div>
       )}
@@ -134,22 +130,18 @@ const AdminRequests = () => {
       {loading ? (
         <AppLoader fullScreen={false} text="Chargement des demandes..." />
       ) : requests.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500">
-          Aucune demande pour le moment.
-        </div>
+        <EmptyState title="Aucune demande" description="Aucune demande pour le moment." />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {requests.map((request) => (
-            <article key={request._id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <Surface key={request._id} className="p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-base font-semibold text-gray-900">
                       {REQUEST_LABELS[request.type] || request.type}
                     </h2>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[request.status] || STATUS_STYLES.pending}`}>
-                      {STATUS_LABELS[request.status] || request.status}
-                    </span>
+                    <StatusBadge tone={request.status === 'approved' ? 'success' : request.status === 'rejected' ? 'danger' : 'warning'}>{STATUS_LABELS[request.status] || request.status}</StatusBadge>
                   </div>
                   <p className="mt-1 text-sm text-gray-500">
                     Demandé par {request.requestedBy?.name || 'Utilisateur'} · {formatDate(request.createdAt)}
@@ -203,30 +195,16 @@ const AdminRequests = () => {
                     className="min-h-[88px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleReview(request._id, 'rejected')}
-                      disabled={reviewingId === request._id}
-                      className="min-h-[44px] rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                    >
-                      Rejeter
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReview(request._id, 'approved')}
-                      disabled={reviewingId === request._id}
-                      className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      Approuver
-                    </button>
+                    <Button variant="danger" size="sm" onClick={() => handleReview(request._id, 'rejected')} disabled={reviewingId === request._id}>Rejeter</Button>
+                    <Button variant="primary" size="sm" onClick={() => handleReview(request._id, 'approved')} disabled={reviewingId === request._id}>Approuver</Button>
                   </div>
                 </div>
               )}
-            </article>
+            </Surface>
           ))}
         </div>
       )}
-    </div>
+    </Workspace>
   );
 };
 

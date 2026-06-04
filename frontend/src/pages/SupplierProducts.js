@@ -20,6 +20,7 @@ import {
   ProductPageShell,
   ProductSection,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const rangeOptions = [
   { value: 'day', label: '24 dernières heures' },
@@ -178,6 +179,7 @@ const SupplierProducts = () => {
   ];
 
   return (
+  <Workspace>
     <ProductPageShell>
       <ProductHero
         eyebrow="Inventaire fournisseur"
@@ -364,6 +366,7 @@ const SupplierProducts = () => {
         </>
       )}
     </ProductPageShell>
+  </Workspace>
   );
 };
 

@@ -32,7 +32,7 @@ const ExportModal = ({
       }
     >
       <div className="space-y-4">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+        <div className="rounded-2xl border border-[var(--ms-blue)]/20 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
           <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
             Choisissez la période à exporter
           </p>

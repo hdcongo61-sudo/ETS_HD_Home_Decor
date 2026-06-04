@@ -90,47 +90,47 @@ export const PaymentForm = ({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 sm:p-5">
+      <div className="rounded-md border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/50 p-4 sm:p-5">
         <div className="grid grid-cols-2 gap-y-2 text-sm">
-          <span className="text-gray-500">Client</span>
-          <span className="font-medium text-gray-900">
+          <span className="text-[var(--ms-text-muted)]">Client</span>
+          <span className="font-medium text-[var(--ms-text-strong)]">
             {sale.client?.name || 'Non spécifié'}
           </span>
 
-          <span className="text-gray-500">Total</span>
-          <span className="font-semibold text-gray-900">
+          <span className="text-[var(--ms-text-muted)]">Total</span>
+          <span className="font-semibold text-[var(--ms-text-strong)]">
             {formatAmount(sale.totalAmount)}
           </span>
 
-          <span className="text-gray-500">Déjà payé</span>
-          <span className="text-green-600 font-medium">
+          <span className="text-[var(--ms-text-muted)]">Déjà payé</span>
+          <span className="text-[var(--ms-success)] font-medium">
             {formatAmount(totalPaid)}
           </span>
 
-          <span className="text-gray-500">Solde restant</span>
-          <span className={`font-semibold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <span className="text-[var(--ms-text-muted)]">Solde restant</span>
+          <span className={`font-semibold ${balance > 0 ? 'text-[var(--ms-danger)]' : 'text-[var(--ms-success)]'}`}>
             {formatAmount(balance)}
           </span>
         </div>
 
         {sale.payments?.length > 0 && (
-          <div className="mt-4 border-t border-gray-200 pt-3">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <div className="mt-4 border-t border-[var(--ms-border)] pt-3">
+            <h3 className="text-sm font-medium text-[var(--ms-text)] mb-2">
               Historique des paiements
             </h3>
             <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 pr-1">
               {sale.payments.map((p, i) => (
                 <div
                   key={p._id || i}
-                  className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm"
+                  className="flex justify-between items-center bg-[var(--ms-white)] p-2.5 rounded-lg border border-[var(--ms-border)] shadow-[var(--ms-shadow-sm)]"
                 >
                   <div className="flex items-center gap-2 text-sm">
                     <div
                       className={`p-1.5 rounded-lg ${
                         p.method === 'cash'
-                          ? 'bg-blue-100 text-blue-600'
+                          ? 'bg-blue-100 text-[var(--ms-blue)]'
                           : p.method === 'MobileMoney'
-                          ? 'bg-green-100 text-green-600'
+                          ? 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]'
                           : 'bg-purple-100 text-purple-600'
                       }`}
                     >
@@ -139,11 +139,11 @@ export const PaymentForm = ({
                     <span className="capitalize">
                       {p.method === 'MobileMoney' ? 'Mobile Money' : p.method}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-[var(--ms-text-muted)]">
                       {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('fr-FR') : ''}
                     </span>
                   </div>
-                  <span className="font-semibold text-green-600">
+                  <span className="font-semibold text-[var(--ms-success)]">
                     {formatAmount(p.amount)}
                   </span>
                 </div>
@@ -156,7 +156,7 @@ export const PaymentForm = ({
       <form id={formId} onSubmit={handleSubmit} className="space-y-5">
         {manualPaymentDateEnabled && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[var(--ms-text)] mb-2">
               Date réelle du paiement
             </label>
             <input
@@ -166,16 +166,16 @@ export const PaymentForm = ({
                 setPaymentDate(e.target.value);
                 setError('');
               }}
-              className="w-full min-h-[44px] px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+              className="w-full min-h-[44px] px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
             />
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-[var(--ms-text-muted)]">
               Optionnel. Utilisez-la pour rattraper un paiement encaissé plus tôt.
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-[var(--ms-text)] mb-2">
             Montant à payer
           </label>
           <div className="relative">
@@ -191,9 +191,9 @@ export const PaymentForm = ({
               }}
               placeholder="0.00"
               required
-              className="w-full min-h-[44px] px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-12"
+              className="w-full min-h-[44px] px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-12"
             />
-            <span className="absolute right-3 top-3 text-gray-500 text-sm">CFA</span>
+            <span className="absolute right-3 top-3 text-[var(--ms-text-muted)] text-sm">CFA</span>
           </div>
         </div>
 
@@ -201,35 +201,35 @@ export const PaymentForm = ({
           <button
             type="button"
             onClick={() => setMarkAsDelivered((current) => !current)}
-            className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+            className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
               markAsDelivered
-                ? 'border-green-300 bg-green-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-green-300 bg-[var(--ms-success)]/10'
+                : 'border-[var(--ms-border)] bg-[var(--ms-white)] hover:border-[var(--ms-border-strong)]'
             }`}
             aria-pressed={markAsDelivered}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-[var(--ms-text-strong)]">
                   Marquer comme livrée automatiquement
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-[var(--ms-text-muted)]">
                   Cette vente sera marquée livrée dès que ce paiement solde le total.
                 </p>
               </div>
               <span
                 className={`mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  markAsDelivered ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'
+                  markAsDelivered ? 'bg-[var(--ms-success)]/100 justify-end' : 'bg-gray-300 justify-start'
                 }`}
               >
-                <span className="mx-1 h-4 w-4 rounded-full bg-white shadow-sm" />
+                <span className="mx-1 h-4 w-4 rounded-full bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)]" />
               </span>
             </div>
           </button>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label className="block text-sm font-medium text-[var(--ms-text)] mb-3">
             Méthode de paiement
           </label>
           <div className="grid grid-cols-3 gap-3">
@@ -238,19 +238,19 @@ export const PaymentForm = ({
                 key={opt}
                 type="button"
                 onClick={() => setMethod(opt)}
-                className={`min-h-[44px] p-3 rounded-xl border-2 text-sm font-medium transition-all touch-manipulation ${
+                className={`min-h-[44px] p-3 rounded-md border-2 text-sm font-medium transition-all touch-manipulation ${
                   method === opt
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-indigo-500 bg-[var(--ms-blue-soft)] text-indigo-700'
+                    : 'border-[var(--ms-border)] bg-[var(--ms-white)] hover:border-[var(--ms-border-strong)]'
                 }`}
               >
                 <div className="flex flex-col items-center gap-1">
                   <div
                     className={`p-2 rounded-lg ${
                       opt === 'cash'
-                        ? 'bg-blue-100 text-blue-600'
+                        ? 'bg-blue-100 text-[var(--ms-blue)]'
                         : opt === 'MobileMoney'
-                        ? 'bg-green-100 text-green-600'
+                        ? 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]'
                         : 'bg-purple-100 text-purple-600'
                     }`}
                   >
@@ -270,7 +270,7 @@ export const PaymentForm = ({
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <div className="p-3 bg-[var(--ms-danger)]/10 border border-red-200 text-[var(--ms-danger)] rounded-md text-sm flex items-center gap-2">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
@@ -302,7 +302,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors touch-manipulation disabled:opacity-70"
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-md font-medium border border-[var(--ms-border-strong)] text-[var(--ms-text)] bg-[var(--ms-white)] hover:bg-[var(--ms-bg-subtle)] transition-colors touch-manipulation disabled:opacity-70"
           >
             Annuler
           </button>
@@ -310,7 +310,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             type="submit"
             form="sale-payment-form"
             disabled={isSubmitting}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-md font-medium bg-[var(--ms-blue)] hover:bg-indigo-700 text-white disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
           >
             {isSubmitting ? (
               <>

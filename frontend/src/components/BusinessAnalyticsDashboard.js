@@ -17,30 +17,31 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
+import { KPICard, ChartCard } from "./business";
 
 const formatCFA = (value) =>
   `${Math.round(value || 0).toLocaleString("fr-FR")} CFA`;
 
 const StatCard = ({ icon: Icon, title, value, helper, tone = "slate" }) => {
   const toneClasses = {
-    green: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+    green: "bg-[var(--ms-success)]/10 text-emerald-700 border-emerald-200 dark:bg-[var(--ms-success)]/100/10 dark:text-emerald-300 dark:border-emerald-500/20",
     blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
-    red: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+    red: "bg-[var(--ms-danger)]/10 text-rose-700 border-rose-200 dark:bg-[var(--ms-danger)]/100/10 dark:text-rose-300 dark:border-rose-500/20",
     violet: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
-    slate: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700",
+    slate: "bg-gray-100 text-gray-700 border-gray-200   ",
   };
 
   return (
   <motion.div
     whileHover={{ y: -2 }}
-    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md  "
   >
     <div className="flex items-start justify-between gap-3">
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${toneClasses[tone] || toneClasses.slate}`}>
         <Icon size={20} />
       </span>
       {helper && (
-        <span className="rounded-full bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <span className="rounded-full bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500  ">
           {helper}
         </span>
       )}
@@ -48,7 +49,7 @@ const StatCard = ({ icon: Icon, title, value, helper, tone = "slate" }) => {
     <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
       {title}
     </p>
-    <h3 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+    <h3 className="mt-2 text-xl font-bold text-gray-950 ">
         {typeof value === "number"
           ? formatCFA(value)
           : value}
@@ -211,12 +212,12 @@ const BusinessAnalyticsDashboard = ({
 
   return (
     <motion.div
-      className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-gray-900"
+      className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] "
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
       {/* ====== Résumé Analytique ====== */}
-      <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+      <div className="border-b border-gray-100 p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)] dark:bg-white dark:text-gray-950">
@@ -226,10 +227,10 @@ const BusinessAnalyticsDashboard = ({
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
                 Semaine courante
               </p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-2xl">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950  sm:text-2xl">
                 Résumé analytique
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-sm text-gray-500 ">
                 Lecture rapide des ventes, encaissements, clients et produits du {weeklyLabel}.
               </p>
             </div>
@@ -259,13 +260,13 @@ const BusinessAnalyticsDashboard = ({
           {insightCards.map(({ label, value, helper, icon: Icon, tone }) => (
             <div
               key={label}
-              className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+              className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4  /70"
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
                   {label}
                 </p>
-                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-gray-700 shadow-sm  ">
                   <Icon size={17} />
                 </span>
               </div>
@@ -276,11 +277,11 @@ const BusinessAnalyticsDashboard = ({
                   ? "text-emerald-700 dark:text-emerald-300"
                   : tone === "blue"
                   ? "text-blue-700 dark:text-blue-300"
-                  : "text-gray-950 dark:text-white"
+                  : "text-gray-950 "
               }`}>
                 {value}
               </p>
-              <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-sm leading-5 text-gray-500 ">
                 {helper}
               </p>
             </div>
@@ -326,22 +327,22 @@ const BusinessAnalyticsDashboard = ({
         </div>
 
         {/* ====== Synthèse Intelligente ====== */}
-        <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70 sm:p-5">
+        <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-4  /70 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-gray-800 shadow-sm  ">
                 <Sparkles size={18} />
               </span>
               <div>
-                <h3 className="text-base font-semibold text-gray-950 dark:text-white">
+                <h3 className="text-base font-semibold text-gray-950 ">
                   Synthèse intelligente
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm text-gray-500 ">
                   Points à retenir avant de passer aux détails.
                 </p>
               </div>
             </div>
-            <span className="w-fit rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <span className="w-fit rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-600   ">
               {weeklySales.length} vente(s)
             </span>
           </div>
@@ -398,16 +399,16 @@ const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) 
   const hasChildren = React.Children.count(children) > 0;
 
   return (
-    <section className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <section className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm  ">
       <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-700  ">
           <Icon size={18} />
         </span>
         <div>
-          <h3 className="text-base font-semibold text-gray-950 dark:text-white">
+          <h3 className="text-base font-semibold text-gray-950 ">
             {title}
           </h3>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-0.5 text-sm text-gray-500 ">
             {description}
           </p>
         </div>
@@ -415,7 +416,7 @@ const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) 
       {hasChildren ? (
         <div className="space-y-2">{children}</div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500   ">
           {emptyText}
         </div>
       )}
@@ -426,54 +427,54 @@ const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) 
 const RankedRow = ({ index, title, subtitle, value }) => (
   <motion.div
     whileHover={{ x: 2 }}
-    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70"
+    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3  /70"
   >
     <div className="flex min-w-0 items-center gap-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-950 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
         {index + 1}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+        <p className="truncate text-sm font-semibold text-gray-950 ">
           {title}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
+        <p className="text-xs text-gray-500 ">{subtitle}</p>
       </div>
     </div>
-    <span className="shrink-0 text-sm font-bold text-gray-950 dark:text-white">
+    <span className="shrink-0 text-sm font-bold text-gray-950 ">
       {value}
     </span>
   </motion.div>
 );
 
 const CommerceMetric = ({ icon: Icon, label, count, amount }) => (
-  <div className="rounded-[20px] border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+  <div className="rounded-[20px] border border-gray-200 bg-white p-4  ">
     <div className="flex items-center justify-between gap-3">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
         {label}
       </p>
-      <Icon size={17} className="text-gray-500 dark:text-gray-400" />
+      <Icon size={17} className="text-gray-500 " />
     </div>
-    <p className="mt-3 text-2xl font-black text-gray-950 dark:text-white">
+    <p className="mt-3 text-2xl font-black text-gray-950 ">
       {count || 0}
     </p>
-    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+    <p className="mt-1 text-sm font-medium text-gray-500 ">
       {formatCFA(amount)}
     </p>
   </div>
 );
 
 const InsightNote = ({ title, value, helper }) => (
-  <div className="rounded-[20px] border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+  <div className="rounded-[20px] border border-gray-200 bg-white p-4  ">
     <div className="flex items-center justify-between gap-3">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
         {title}
       </p>
       <ArrowRight size={16} className="text-gray-400" />
     </div>
-    <p className="mt-3 truncate text-base font-bold text-gray-950 dark:text-white">
+    <p className="mt-3 truncate text-base font-bold text-gray-950 ">
       {value}
     </p>
-    <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 dark:text-gray-400">
+    <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 ">
       {helper}
     </p>
   </div>

@@ -2,6 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import toast, { Toaster } from 'react-hot-toast';
+import {
+  Button,
+  CommandBar,
+  EmptyState,
+  LoadingSkeleton,
+  PageHeader,
+  StatusBadge,
+  Workspace,
+} from '../components/business';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 
 const DOCUMENT_TYPES = [
   { value: 'fiscal', label: 'Fiscal' },
@@ -135,127 +145,45 @@ const Documents = () => {
   const typeLabel = (value) => DOCUMENT_TYPES.find((t) => t.value === value)?.label || value;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+    <Workspace className="space-y-5">
       <Toaster position="top-right" />
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-500 p-2 rounded-xl">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Documents de l’entreprise</h1>
-            <p className="text-sm text-gray-500">Fiscaux, loyers, contrats et autres pièces</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowUpload(true)}
-          className="min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Ajouter un document
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-center gap-2">
-          <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </div>
-      )}
-
-      {/* Filtre par année */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <label htmlFor="doc-year" className="text-sm font-medium text-gray-700">Année</label>
-        <select
-          id="doc-year"
-          value={yearFilter}
-          onChange={(e) => setYearFilter(e.target.value)}
-          className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-          <option value="">Toutes les années</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Liste */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-        </div>
-      ) : documents.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
-          <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p>Aucun document{yearFilter ? ` pour ${yearFilter}` : ''}.</p>
-          <button
-            type="button"
-            onClick={() => setShowUpload(true)}
-            className="mt-3 text-indigo-600 font-medium hover:underline"
-          >
-            Ajouter un document
-          </button>
-        </div>
+      <PageHeader
+        title="Documents de l'entreprise"
+        description="Fiscaux, loyers, contrats et autres pièces"
+        actions={<Button variant="primary" onClick={() => setShowUpload(true)}><Plus className="h-4 w-4" /> Ajouter un document</Button>}
+      />
+      {error && (<div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]"><svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>{error}</div>)}
+      <CommandBar><div className="flex items-center gap-3"><label htmlFor="doc-year" className="text-sm font-semibold text-[var(--ms-text)]">Année</label><select id="doc-year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="form-control max-w-[200px]"><option value="">Toutes les années</option>{years.map((y) => (<option key={y} value={y}>{y}</option>))}</select></div></CommandBar>
+      {loading ? (<LoadingSkeleton rows={5} />) : documents.length === 0 ? (
+        <EmptyState
+          title={`Aucun document${yearFilter ? ` pour ${yearFilter}` : ''}`}
+          description="Ajoutez des documents fiscaux, loyers, contrats et autres pieces."
+          action={<Button variant="primary" onClick={() => setShowUpload(true)}><Plus className="h-4 w-4" /> Ajouter un document</Button>}
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {documents.map((doc) => (
-            <div
-              key={doc._id}
-              className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm"
-            >
+            <div key={doc._id} className="ms-surface flex flex-col sm:flex-row sm:items-center gap-4 p-4">
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
-                    {typeLabel(doc.type)}
-                  </span>
-                  <span className="text-sm text-gray-500">{formatDate(doc.date)}</span>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <StatusBadge tone="neutral">{typeLabel(doc.type)}</StatusBadge>
+                  <span className="text-xs text-[var(--ms-text-muted)]">{formatDate(doc.date)}</span>
                 </div>
-                <p className="font-medium text-gray-900 truncate mt-0.5" title={doc.fileName}>
-                  {doc.fileName}
-                </p>
-                {doc.note && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{doc.note}</p>
-                )}
+                <p className="font-semibold text-[var(--ms-text)] truncate" title={doc.fileName}>{doc.fileName}</p>
+                {doc.note && <p className="text-sm text-[var(--ms-text-muted)] mt-1 line-clamp-2">{doc.note}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={doc.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
+                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-secondary ms-button-sm inline-flex items-center gap-2 no-underline">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   Ouvrir
                 </a>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(doc._id)}
-                  className="min-h-[44px] p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                  aria-label="Supprimer"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal d’upload */}
       <Modal
         show={showUpload}
         onClose={() => {
@@ -266,81 +194,38 @@ const Documents = () => {
           }
         }}
         title="Ajouter un document"
-        subtitle="Fiscal, loyer, contrat… (PDF, images, 5 Mo max, compression auto)"
+        subtitle="Fiscal, loyer, contrat... (PDF, images, 5 Mo max)"
         size="md"
       >
         <form onSubmit={handleUpload} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select
-              value={form.type}
-              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              className="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              required
-            >
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
+            <label className="form-label block mb-1">Type</label>
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="form-control" required>
+              {DOCUMENT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              className="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              required
-            />
+            <label className="form-label block mb-1">Date</label>
+            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="form-control" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Note (optionnel)</label>
-            <textarea
-              value={form.note}
-              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              rows={3}
-              placeholder="Ex. Reçu loyer mars 2024"
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
-            />
+            <label className="form-label block mb-1">Note (optionnel)</label>
+            <textarea value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} rows={3} placeholder="Ex. Recu loyer mars 2024" className="form-control" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fichier</label>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">PDF, Word, Excel ou images. Max 5 Mo (images compressées automatiquement).</p>
+            <label className="form-label block mb-1">Fichier</label>
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="block w-full text-sm text-[var(--ms-text)] file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-[var(--ms-blue-soft)] file:text-[var(--ms-blue)] file:font-semibold" required />
+            <p className="form-help mt-1">PDF, Word, Excel ou images. Max 5 Mo.</p>
           </div>
-          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setShowUpload(false)}
-              disabled={uploading}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium transition-colors w-full sm:w-auto"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={uploading}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto disabled:opacity-50"
-            >
-              {uploading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Envoi…
-                </>
-              ) : (
-                'Enregistrer'
-              )}
-            </button>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-[var(--ms-border)]">
+            <Button type="button" variant="secondary" onClick={() => setShowUpload(false)} disabled={uploading}>Annuler</Button>
+            <Button type="submit" variant="primary" disabled={uploading}>
+              {uploading ? (<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Envoi...</>) : 'Enregistrer'}
+            </Button>
           </div>
         </form>
       </Modal>
-    </div>
+    </Workspace>
   );
 };
 

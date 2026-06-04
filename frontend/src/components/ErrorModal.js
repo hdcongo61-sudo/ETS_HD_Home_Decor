@@ -1,5 +1,6 @@
 import React from "react";
 import Modal from "./Modal";
+import { Button } from "./business";
 
 export default function ErrorModal({ message, onRetry, onClose }) {
   return (
@@ -9,30 +10,17 @@ export default function ErrorModal({ message, onRetry, onClose }) {
       title="Erreur"
       size="sm"
       footer={
-        <>
+        <div className="flex gap-2 justify-end">
           {onRetry && (
-            <button
-              type="button"
-              onClick={() => {
-                onRetry();
-                onClose();
-              }}
-              className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white touch-manipulation"
-            >
-              Réessayer
-            </button>
+            <Button variant="primary" size="sm" onClick={() => { onRetry(); onClose(); }}>
+              Reessayer
+            </Button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 touch-manipulation"
-          >
-            Fermer
-          </button>
-        </>
+          <Button variant="secondary" size="sm" onClick={onClose}>Fermer</Button>
+        </div>
       }
     >
-      <p className="text-gray-700 dark:text-gray-300">{message}</p>
+      <p className="text-[var(--ms-text)]">{message}</p>
     </Modal>
   );
 }

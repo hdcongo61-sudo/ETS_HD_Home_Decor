@@ -19,6 +19,16 @@ import {
   Printer,
   UserRound,
 } from 'lucide-react';
+import {
+  Button,
+  ChartCard,
+  DataTable,
+  KPICard,
+  PageHeader,
+  StatusBadge,
+  Surface,
+  Workspace,
+} from '../components/business';
 
 const PROFILE_GENDER_LABELS = {
   male: 'Homme',
@@ -319,7 +329,7 @@ const ClientProfile = () => {
 
   if (error || !client) {
     return (
-      <div className="mx-auto max-w-4xl py-12 text-center">
+      <div className="py-12 text-center">
         <p className="mb-4 font-semibold text-rose-700">{error || "Client introuvable"}</p>
         <Link to={returnToClients} className="text-slate-700 hover:text-slate-950">
           Retour à la liste des clients
@@ -343,367 +353,138 @@ const ClientProfile = () => {
     }, {})
   );
 
-  // --- UI ---
   return (
-    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
-    <div className="mx-auto max-w-6xl space-y-5">
-
+    <Workspace className="space-y-5">
       {/* HEADER */}
-      <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link to={returnToClients} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white hover:text-slate-950">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Profil client</p>
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{client.name}</h1>
-            <p className="mt-1 truncate text-sm text-slate-500">{client.email || client.phone || 'Client enregistré'}</p>
+      <PageHeader
+        title={client.name}
+        description={client.email || client.phone || 'Client enregistre'}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {client.phone && (
+              <>
+                <a href={`tel:${client.phone}`} className="ms-button ms-button-secondary ms-button-sm"><Phone className="h-4 w-4" /> Appeler</a>
+                <a href={`https://wa.me/${client.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-primary ms-button-sm">WhatsApp</a>
+              </>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimer</Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="flex flex-wrap gap-2">
-          {client.phone && (
-            <>
-              <a href={`tel:${client.phone}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"><Phone className="h-4 w-4" /> Appeler</a>
-              <a
-                href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-              >
-                WhatsApp
-              </a>
-            </>
-          )}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-          >
-            <Printer className="h-4 w-4" />
-            Imprimer
-          </button>
-        </div>
-        </div>
-      </div>
-
-      {/* 🔔 Notifications */}
-      {notifications.length > 0 && (
-        <div className="space-y-3">
-          {notifications.map((n, i) => (
-            <div key={i} className={`p-4 rounded-xl border ${ALERT_STYLES[n.color] || ALERT_STYLES.gray}`}>
-              <p className="font-semibold">{n.title}</p>
-              <p className="text-sm">{n.message}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* CLIENT INFO CARD */}
-      <div className="space-y-6 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-6">
-        {/* Header Info */}
+      {/* CLIENT INFO */}
+      <Surface className="p-5 space-y-5">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-slate-200 bg-slate-100 text-slate-700 shadow-inner">
-              <UserRound className="h-8 w-8" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--ms-bg-subtle)] text-[var(--ms-text-muted)]">
+              <UserRound className="h-7 w-7" />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-xl font-semibold text-slate-950">{client.name}</h2>
-              <p className="truncate text-slate-600">{client.email || '—'}</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Genre : <span className="text-slate-800">{formatGenderLabel(client.gender)}</span>
-              </p>
+              <h2 className="truncate text-lg font-semibold text-[var(--ms-text-strong)]">{client.name}</h2>
+              <p className="truncate text-[var(--ms-text-muted)] text-sm">{client.email || '—'}</p>
+              <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Genre : <span className="text-[var(--ms-text)] font-medium">{formatGenderLabel(client.gender)}</span></p>
               {client.phone && (
-                <div className="flex items-center gap-2 mt-1 group">
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="flex items-center gap-1 text-slate-700 hover:text-slate-950 transition"
-                    title="Appeler ce numéro"
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span className="font-medium">{client.phone}</span>
-                  </a>
-
-                  {/* COPY BUTTON */}
-                  <button
-                    onClick={() => handleCopy(client.phone)}
-                    className="ml-2 text-slate-400 hover:text-slate-700 transition"
-                    title="Copier le numéro"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                  {copied && (
-                    <span className="ml-1 text-xs font-medium text-emerald-700 animate-fadeIn">copié !</span>
-                  )}
+                <div className="flex items-center gap-2 mt-1">
+                  <a href={`tel:${client.phone}`} className="flex items-center gap-1 text-[var(--ms-text)] hover:text-[var(--ms-blue)] transition text-sm"><Phone className="h-4 w-4" />{client.phone}</a>
+                  <button onClick={() => handleCopy(client.phone)} className="text-[var(--ms-text-muted)] hover:text-[var(--ms-text)] transition" title="Copier"><Copy className="h-4 w-4" /></button>
+                  {copied && <span className="text-xs font-medium text-[var(--ms-success)] animate-fadeIn">copie !</span>}
                 </div>
               )}
             </div>
-            
           </div>
-
-          {/* Mini Stats */}
           <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-              <p className="text-xs font-medium text-slate-500">Achats</p>
-              <p className="text-xl font-semibold text-slate-950">{stats.purchaseCount}</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-center">
-              <p className="text-xs font-medium text-emerald-700">Total</p>
-              <p className="text-xl font-semibold text-slate-950">
-                {stats.totalSpent.toLocaleString('fr-FR')} CFA
-              </p>
-            </div>
+            <KPICard title="Achats" value={stats.purchaseCount} tone="neutral" />
+            <KPICard title="Total" value={`${stats.totalSpent.toLocaleString('fr-FR')} CFA`} tone="success" />
           </div>
         </div>
-
-        {/* TIMELINE INFO */}
-        <div className="grid gap-3 border-t border-slate-100 pt-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <CalendarDays className="h-4 w-4 text-slate-500" />
-            <div>
-              <p className="font-semibold text-slate-800">Inscrit le</p>
-              <p className="text-slate-600">{formatDate(client.createdAt)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <CreditCard className="h-4 w-4 text-slate-500" />
-            <div>
-              <p className="font-semibold text-slate-800">Dernier achat</p>
-              <p className="text-slate-600">{formatDate(stats.lastPurchaseDate || client.lastPurchaseDate)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <CreditCard className="h-4 w-4 text-slate-500" />
-            <div>
-              <p className="font-semibold text-slate-800">Dernier paiement</p>
-              <p className="text-slate-600">{formatDate(stats.lastPaymentDate)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <Edit3 className="h-4 w-4 text-slate-500" />
-            <div>
-              <p className="font-semibold text-slate-800">Dernière modification</p>
-              <p className="text-slate-600">{formatDate(client.updatedAt)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-            <UserRound className="h-4 w-4 text-slate-500" />
-            <div>
-              <p className="font-semibold text-slate-800">Modifié par</p>
-              <p className="text-slate-600">
-                {client.updatedBy?.name || client.updatedBy?.email || '—'}
-              </p>
-            </div>
-          </div>
+        <div className="grid gap-3 border-t border-[var(--ms-border)] pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CalendarDays className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Inscrit le</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(client.createdAt)}</p></div></div>
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CreditCard className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Dernier achat</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(stats.lastPurchaseDate || client.lastPurchaseDate)}</p></div></div>
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CreditCard className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Dernier paiement</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(stats.lastPaymentDate)}</p></div></div>
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><Edit3 className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Derniere modification</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(client.updatedAt)}</p></div></div>
         </div>
-      </div>
+      </Surface>
 
       {purchases.length > 0 && (
-        <div className="space-y-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-slate-950">Statistiques commerciales</h2>
-            <p className="text-sm text-slate-500">
-              Lecture rapide du comportement d’achat et de paiement de ce client.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <ChartCard title="Statistiques commerciales" description="Lecture rapide du comportement d'achat et de paiement">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {insightCards.map((card) => (
-              <div key={card.label} className={`rounded-2xl border p-4 ${card.classes}`}>
-                <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{card.value}</p>
-                <p className="mt-1 text-sm opacity-90">{card.helper}</p>
-              </div>
+              <KPICard key={card.label} title={card.label} value={card.value} context={card.helper} tone="neutral" />
             ))}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase text-slate-500">Panier moyen</p>
-              <p className="mt-2 text-xl font-semibold text-slate-950">{stats.averagePurchase.toLocaleString('fr-FR')} CFA</p>
-              <p className="mt-1 text-sm text-slate-600">Moyenne par vente créée</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase text-slate-500">Articles par vente</p>
-              <p className="mt-2 text-xl font-semibold text-slate-950">{stats.averageItemsPerSale.toFixed(1)}</p>
-              <p className="mt-1 text-sm text-slate-600">Volume moyen du panier</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase text-slate-500">Profil de paiement</p>
-              <p className="mt-2 text-xl font-semibold text-slate-950">
-                {stats.multiplePaymentCount > stats.singlePaymentCount ? 'Échelonné' : 'Direct'}
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                {stats.multiplePaymentCount > stats.singlePaymentCount
-                  ? 'Ce client paie souvent en plusieurs fois.'
-                  : 'Ce client règle surtout en un seul paiement.'}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <KPICard title="Panier moyen" value={`${stats.averagePurchase.toLocaleString('fr-FR')} CFA`} context="Moyenne par vente" tone="neutral" />
+            <KPICard title="Articles/vente" value={stats.averageItemsPerSale.toFixed(1)} context="Volume moyen" tone="neutral" />
+            <KPICard title="Profil de paiement" value={stats.multiplePaymentCount > stats.singlePaymentCount ? 'Echelonne' : 'Direct'} context={stats.multiplePaymentCount > stats.singlePaymentCount ? 'Paie en plusieurs fois' : 'Un seul paiement'} tone="neutral" />
           </div>
-        </div>
+        </ChartCard>
       )}
 
-      {/* GRAPHS + PURCHASE HISTORY */}
+      {/* CHARTS */}
       {purchases.length > 0 && (
         <>
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-950">Évolution des achats</h2>
+          <ChartCard title="Evolution des achats">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                <Line type="monotone" dataKey="total" stroke="#0f172a" strokeWidth={2} dot />
+                <Line type="monotone" dataKey="total" stroke="#0078D4" strokeWidth={2} dot />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
 
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-950">Total dépensé par mois</h2>
+          <ChartCard title="Total depense par mois">
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={monthsSpending}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                <Bar dataKey="total" fill="#047857" radius={[5, 5, 0, 0]} />
+                <Bar dataKey="total" fill="#107C10" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
 
           {/* HISTORY */}
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-950">
-              <History className="h-5 w-5 text-slate-600" />
-              Historique des Achats
-            </h2>
-
-            {purchases.length > 0 ? (
-              <>
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-sm border-separate border-spacing-y-2">
-                    <thead>
-                      <tr className="bg-slate-50 text-left text-slate-600">
-                        <th className="px-4 py-2 rounded-l-lg font-medium">Date</th>
-                        <th className="px-4 py-2 font-medium">Montant total</th>
-                        <th className="px-4 py-2 font-medium">Statut</th>
-                        <th className="px-4 py-2 text-right rounded-r-lg font-medium">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {purchases.map((p, index) => (
-                        <tr
-                          key={p._id}
-                          className={`transition-all duration-200 cursor-pointer ${
-                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                          } hover:bg-slate-100`}
-                          onClick={() => navigate(`/sales/${p._id}`)}
-                        >
-                          <td className="rounded-l-lg px-4 py-3 font-medium text-slate-700">
-                            {formatDate(p.saleDate)}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-slate-950">
-                            {p.totalAmount.toLocaleString('fr-FR')} CFA
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ${
-                              p.status === 'completed'
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                : p.status === 'partially_paid'
-                                ? 'bg-indigo-100 text-indigo-800 border-indigo-200 animate-pulse'
-                                : p.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                : p.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800 border-red-200'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
-                            }`}>
-                              {p.status === 'partially_paid'
-                                ? 'Paiement partiel'
-                                : p.status === 'completed'
-                                ? 'Payé'
-                                : p.status === 'pending'
-                                ? 'En attente'
-                                : p.status === 'cancelled'
-                                ? 'Annulé'
-                                : 'Inconnu'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right rounded-r-lg">
-                            <Link
-                              to={`/sales/${p._id}`}
-                              className="inline-flex items-center justify-end gap-1 text-sm font-medium text-slate-700 hover:text-slate-950"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Voir détails <ArrowRight className="h-4 w-4" />
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="md:hidden space-y-4">
-                  {purchases.map((p, index) => (
-                    <div
-                      key={p._id}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                      onClick={() => navigate(`/sales/${p._id}`)}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <div>
-                          <p className="text-base font-semibold text-slate-950">
-                            {p.totalAmount.toLocaleString('fr-FR')} CFA
-                          </p>
-                          <p className="text-xs text-slate-500">{formatDate(p.saleDate)}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          p.status === 'completed'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : p.status === 'partially_paid'
-                            ? 'bg-indigo-100 text-indigo-800'
-                            : p.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {p.status === 'partially_paid'
-                            ? 'Paiement partiel'
-                            : p.status === 'completed'
-                            ? 'Payé'
-                            : p.status === 'pending'
-                            ? 'En attente'
-                            : 'Annulé'}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/sales/${p._id}`);
-                        }}
-                        className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-                      >
-                        Voir détails <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
+          <div>
+            <DataTable>
+              <table className="w-full">
+                <thead>
+                  <tr><th>Date</th><th>Montant</th><th>Statut</th><th className="text-right">Action</th></tr>
+                </thead>
+                <tbody>
+                  {purchases.map((p) => (
+                    <tr key={p._id} className="cursor-pointer" onClick={() => navigate(`/sales/${p._id}`)}>
+                      <td className="font-medium">{formatDate(p.saleDate)}</td>
+                      <td className="font-semibold">{p.totalAmount.toLocaleString('fr-FR')} CFA</td>
+                      <td><StatusBadge tone={p.status === 'completed' ? 'success' : p.status === 'partially_paid' ? 'warning' : p.status === 'cancelled' ? 'danger' : 'neutral'}>{p.status === 'partially_paid' ? 'Partiel' : p.status === 'completed' ? 'Paye' : p.status === 'pending' ? 'En attente' : p.status === 'cancelled' ? 'Annule' : 'Inconnu'}</StatusBadge></td>
+                      <td className="text-right">
+                        <Link to={`/sales/${p._id}`} className="ms-button ms-button-secondary ms-button-sm" onClick={(e) => e.stopPropagation()}><ArrowRight className="h-4 w-4" /> Details</Link>
+                      </td>
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+            </DataTable>
+
+            {/* Mobile */}
+            <div className="md:hidden space-y-3 mt-4">
+              {purchases.map((p) => (
+                <div key={p._id} className="ms-surface p-4 cursor-pointer" onClick={() => navigate(`/sales/${p._id}`)}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div><p className="font-semibold text-[var(--ms-text)]">{p.totalAmount.toLocaleString('fr-FR')} CFA</p><p className="text-xs text-[var(--ms-text-muted)]">{formatDate(p.saleDate)}</p></div>
+                    <StatusBadge tone={p.status === 'completed' ? 'success' : p.status === 'partially_paid' ? 'warning' : p.status === 'cancelled' ? 'danger' : 'neutral'}>{p.status === 'partially_paid' ? 'Partiel' : p.status === 'completed' ? 'Paye' : 'En attente'}</StatusBadge>
+                  </div>
+                  <Button variant="secondary" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); navigate(`/sales/${p._id}`); }}><ArrowRight className="h-4 w-4" /> Voir details</Button>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-lg text-slate-500">
-                  Aucun historique d’achat.
-                </p>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </>
       )}
-    </div>
-    </div>
+    </Workspace>
   );
 };
 

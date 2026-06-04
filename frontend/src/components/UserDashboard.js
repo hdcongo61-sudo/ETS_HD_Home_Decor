@@ -4,9 +4,10 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import UserForm from './UserForm';
 import Modal from './Modal';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from './AppLoader';
+import { PageHeader, Workspace, KPICard, StatusBadge, Button, DataTable } from './business';
 
 // Icônes SVG réutilisables
 const PencilIcon = ({ className }) => (
@@ -45,7 +46,7 @@ const ActivityIcon = ({ className }) => (
     </svg>
 );
 
-const CONNECTED_THRESHOLD_MINUTES = 15;
+const CONNECTED_THRESHOLD_MINUTES = 5;
 
 const PERMISSION_LABELS = {
     view_sensitive_financials: 'Données sensibles',
@@ -108,10 +109,11 @@ const UserDashboard = () => {
                 const thresholdMs = CONNECTED_THRESHOLD_MINUTES * 60 * 1000;
                 const nowMs = Date.now();
                 const connectedNow = data.filter(user => {
-                    if (!user.lastLogin) return false;
-                    const lastLoginDate = new Date(user.lastLogin);
-                    if (Number.isNaN(lastLoginDate.getTime())) return false;
-                    return (nowMs - lastLoginDate.getTime()) <= thresholdMs;
+                    const activity = user.lastActivity || user.lastLogin;
+                    if (!activity) return false;
+                    const activityDate = new Date(activity);
+                    if (Number.isNaN(activityDate.getTime())) return false;
+                    return (nowMs - activityDate.getTime()) <= thresholdMs;
                 }).length;
 
                 setStats({
@@ -165,6 +167,18 @@ const UserDashboard = () => {
         }
     };
 
+    const handleToggleActive = async (user) => {
+        const action = user.isActive !== false ? 'désactiver' : 'activer';
+        if (!window.confirm(`Êtes-vous sûr de vouloir ${action} le compte de ${user.name || user.email} ?`)) return;
+        try {
+            const { data } = await api.put(`/users/${user._id}/toggle-active`);
+            setUsers(users.map((u) => (u._id === user._id ? { ...u, isActive: data.user.isActive } : u)));
+            toast.success(data.message);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Échec de la modification');
+        }
+    };
+
     const handleFormSubmit = async ({ payload, config }) => {
         try {
             const requestConfig = config || { headers: { 'Content-Type': 'application/json' } };
@@ -187,28 +201,16 @@ const UserDashboard = () => {
         }
     };
 
-    const formatRemainingTime = (ms) => {
-        if (ms <= 0) return 'quelques instants';
-        const minutes = Math.floor(ms / 60000);
-        const seconds = Math.floor((ms % 60000) / 1000);
-        if (minutes === 0) {
-            return `${seconds}s`;
-        }
-        if (minutes < 5) {
-            const paddedSeconds = String(seconds).padStart(2, '0');
-            return `${minutes}min ${paddedSeconds}s`;
-        }
-        return `${minutes}min`;
-    };
 
     const connectedUsers = useMemo(() => {
         const thresholdMs = CONNECTED_THRESHOLD_MINUTES * 60 * 1000;
         const nowMs = Date.now();
         return users.filter(user => {
-            if (!user.lastLogin) return false;
-            const lastLoginDate = new Date(user.lastLogin);
-            if (Number.isNaN(lastLoginDate.getTime())) return false;
-            return (nowMs - lastLoginDate.getTime()) <= thresholdMs;
+            const activity = user.lastActivity || user.lastLogin;
+            if (!activity) return false;
+            const activityDate = new Date(activity);
+            if (Number.isNaN(activityDate.getTime())) return false;
+            return (nowMs - activityDate.getTime()) <= thresholdMs;
         });
     }, [users]);
 
@@ -231,16 +233,16 @@ const UserDashboard = () => {
 
     if (!auth.isAdmin) {
         return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-2xl mt-10">
+            <div className="p-6 bg-[var(--ms-white)] rounded-lg mt-10">
                 <div className="text-center py-12">
-                    <div className="bg-red-100 p-4 rounded-full inline-flex items-center justify-center mb-4 w-16 h-16">
+                    <div className="bg-[var(--ms-danger)]/15 p-4 rounded-full inline-flex items-center justify-center mb-4 w-16 h-16">
                         <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Accès administrateur requis</h2>
-                    <p className="text-gray-600 mb-6">Vous n'avez pas la permission d'accéder à cette page</p>
-                    <Link to="/" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text-strong)] mb-2">Accès administrateur requis</h2>
+                    <p className="text-[var(--ms-text)] mb-6">Vous n'avez pas la permission d'accéder à cette page</p>
+                    <Link to="/" className="px-5 py-2.5 bg-[var(--ms-blue)] text-white rounded-md hover:bg-blue-700 transition-colors font-medium">
                         Retour à l'accueil
                     </Link>
                 </div>
@@ -249,7 +251,7 @@ const UserDashboard = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
             {/* En-tête avec cartes de statistiques */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <StatCard
@@ -271,7 +273,7 @@ const UserDashboard = () => {
                 />
 
                 <StatCard
-                    title={`Connectés (${CONNECTED_THRESHOLD_MINUTES} min)`}
+                    title="En ligne"
                     value={`${stats.connectedNow} connectés • ${stats.activeToday} actifs aujourd'hui`}
                     icon={<ActivityIcon className="w-5 h-5" />}
                     color="purple"
@@ -293,11 +295,11 @@ const UserDashboard = () => {
             {/* Recherche et bouton d'ajout */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-                        <UserIcon className="w-7 h-7 text-blue-600 mr-3" />
+                    <h1 className="text-2xl font-semibold text-[var(--ms-text-strong)] flex items-center">
+                        <UserIcon className="w-7 h-7 text-[var(--ms-blue)] mr-3" />
                         Gestion des utilisateurs
                     </h1>
-                    <p className="text-gray-600 mt-2">Gérez tous les utilisateurs et leurs permissions</p>
+                    <p className="text-[var(--ms-text)] mt-2">Gérez tous les utilisateurs et leurs permissions</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -307,9 +309,9 @@ const UserDashboard = () => {
                             placeholder="Rechercher des utilisateurs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 border border-[var(--ms-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         />
-                        <svg className="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-[var(--ms-text-muted)] absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
@@ -319,7 +321,7 @@ const UserDashboard = () => {
                             setShowForm(true);
                         }}
                         disabled={stats.totalUsers >= 4}
-                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                        className="flex items-center justify-center gap-2 bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-4 py-2.5 rounded-md transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
                     >
                         <PlusIcon className="w-4 h-4 text-white" />
                         {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
@@ -328,7 +330,7 @@ const UserDashboard = () => {
             </div>
 
             {error && (
-                <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-center border border-red-100">
+                <div className="mb-6 p-4 bg-[var(--ms-danger)]/10 text-[var(--ms-danger)] rounded-md flex items-center border border-red-100">
                     <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -337,29 +339,29 @@ const UserDashboard = () => {
             )}
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-                <div className="inline-flex rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <div className="inline-flex rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] overflow-hidden">
                     <button
                         type="button"
                         onClick={() => setActiveTab('all')}
-                        className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)]'}`}
                     >
                         Tous les utilisateurs
-                        <span className={`ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs ${activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs ${activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-[var(--ms-bg-subtle)] text-[var(--ms-text)]'}`}>
                             {totalUsersCount}
                         </span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('connected')}
-                        className={`px-4 py-2 text-sm font-medium transition-colors border-l border-gray-200 ${activeTab === 'connected' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-4 py-2 text-sm font-medium transition-colors border-l border-[var(--ms-border)] ${activeTab === 'connected' ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)]'}`}
                     >
                         Connectés
-                        <span className={`ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs ${activeTab === 'connected' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs ${activeTab === 'connected' ? 'bg-white/20 text-white' : 'bg-[var(--ms-bg-subtle)] text-[var(--ms-text)]'}`}>
                             {connectedUsersCount}
                         </span>
                     </button>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[var(--ms-text-muted)]">
                     Un utilisateur est considéré comme connecté s'il s'est authentifié au cours des {CONNECTED_THRESHOLD_MINUTES} dernières minutes.
                 </p>
             </div>
@@ -380,33 +382,31 @@ const UserDashboard = () => {
             </Modal>
 
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-gray-200">
+                <div className="flex flex-col items-center justify-center py-20 bg-[var(--ms-white)] rounded-lg border border-[var(--ms-border)]">
                     <AppLoader fullScreen={false} text="Chargement des utilisateurs…" />
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="bg-[var(--ms-white)] rounded-lg border border-[var(--ms-border)] overflow-hidden">
                     {filteredUsers.length > 0 ? (
                         <>
                         <div className="hidden md:block overflow-visible md:overflow-x-auto">
                             <table ref={usersTableRef} className="w-full responsive-table">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-[var(--ms-bg-subtle)]">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créé le</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activité</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fenêtre d'accès</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modifications</th>
-                                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Utilisateur</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Rôle</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Statut</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Créé le</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Activité</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Fenêtre d'accès</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Modifications</th>
+                                        <th className="px-6 py-4 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {filteredUsers.map((user) => {
                                         const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
-                                        const disconnectDate = lastLoginDate
-                                            ? new Date(lastLoginDate.getTime() + CONNECTED_THRESHOLD_MINUTES * 60 * 1000)
-                                            : null;
-                                        const remainingMs = disconnectDate ? disconnectDate.getTime() - Date.now() : null;
+                                        const activityDate = user.lastActivity ? new Date(user.lastActivity) : null;
                                         const lastLoginDisplay = lastLoginDate ? formatDateTime(lastLoginDate) : null;
                                         const lastModifiedDisplay = formatDateTime(user.lastModifiedAt);
                                         const passwordModifiedDisplay = formatDateTime(user.passwordModifiedAt);
@@ -414,125 +414,134 @@ const UserDashboard = () => {
                                         const accessEndDisplay = formatDateTime(user.accessEnd);
 
                                         return (
-                                        <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={user._id} className="hover:bg-[var(--ms-bg-subtle)] transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center mr-3">
+                                                    <div className="w-10 h-10 rounded-md overflow-hidden bg-[var(--ms-blue-soft)] border border-[var(--ms-border)] flex items-center justify-center mr-3">
                                                         {user.photo ? (
                                                             <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                                                         ) : (
-                                                            <UserIcon className="w-5 h-5 text-blue-600" />
+                                                            <UserIcon className="w-5 h-5 text-[var(--ms-blue)]" />
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-semibold text-gray-900">{user.name}</div>
-                                                        <div className="text-sm text-gray-500">{user.email}</div>
+                                                        <div className="text-sm font-semibold text-[var(--ms-text-strong)]">{user.name}</div>
+                                                        <div className="text-sm text-[var(--ms-text-muted)]">{user.email}</div>
                                                         {user.phone && (
-                                                            <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                                                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <div className="text-sm text-[var(--ms-text-muted)] flex items-center gap-1 mt-1">
+                                                                <svg className="w-3.5 h-3.5 text-[var(--ms-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h1.5a1 1 0 01.95.684l1.2 3.6a1 1 0 01-.54 1.236l-1.1.48a12.042 12.042 0 006.13 6.13l.48-1.1a1 1 0 011.236-.54l3.6 1.2a1 1 0 01.684.95V19a2 2 0 01-2 2H17c-7.18 0-13-5.82-13-13V5z" />
                                                                 </svg>
                                                                 <span>{user.phone}</span>
                                                             </div>
                                                         )}
-                                                        <div className="text-xs text-gray-400 mt-1">ID: {user._id.substring(0, 8)}</div>
+                                                        <div className="text-xs text-[var(--ms-text-muted)] mt-1">ID: {user._id.substring(0, 8)}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                                 </span>
                                                 {!user.isAdmin && Array.isArray(user.permissions) && user.permissions.length > 0 && (
                                                     <div className="mt-2 flex flex-wrap gap-1">
                                                         {user.permissions.map((permission) => (
-                                                            <span key={permission} className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                                            <span key={permission} className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-[var(--ms-text)]">
                                                                 {PERMISSION_LABELS[permission] || permission}
                                                             </span>
                                                         ))}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <StatusBadge tone={user.isActive !== false ? 'success' : 'danger'}>
+                                                        {user.isActive !== false ? 'Actif' : 'Inactif'}
+                                                    </StatusBadge>
+                                                    <button
+                                                        onClick={() => handleToggleActive(user)}
+                                                        className="text-[11px] font-medium text-[var(--ms-text-muted)] hover:text-[var(--ms-text)] underline underline-offset-2 transition-colors"
+                                                        title={user.isActive !== false ? 'Désactiver le compte' : 'Activer le compte'}
+                                                    >
+                                                        {user.isActive !== false ? 'Désactiver' : 'Activer'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-[var(--ms-text-muted)]">
                                                 {new Date(user.createdAt).toLocaleDateString('fr-FR')}
-                                                <div className="text-xs text-gray-400">
+                                                <div className="text-xs text-[var(--ms-text-muted)]">
                                                     {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {lastLoginDate ? (
-                                                    <div className="text-sm text-gray-900">
-                                                        Dernière connexion: {lastLoginDisplay?.date}
-                                                        <div className="text-xs text-gray-400">
-                                                            {lastLoginDisplay?.time}
+                                                    <div className="text-sm text-[var(--ms-text)]">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {user.lastActivity && (new Date() - new Date(user.lastActivity)) <= CONNECTED_THRESHOLD_MINUTES * 60 * 1000 && (
+                                                                <StatusBadge tone="success">En ligne</StatusBadge>
+                                                            )}
                                                         </div>
-                                                        {activeTab === 'connected' && (
-                                                            <div className="text-xs text-green-600 mt-1">
-                                                                Déconnexion prévue à {disconnectDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                <span className="text-gray-400">
-                                                                    {' '}
-                                                                    · dans {formatRemainingTime(remainingMs)}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                        <span className="text-xs text-[var(--ms-text-muted)]">
+                                                            {lastLoginDisplay?.date} {lastLoginDisplay?.time}
+                                                        </span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-sm text-gray-500">Jamais connecté</span>
+                                                    <span className="text-sm text-[var(--ms-text-muted)]">Jamais connecté</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 {user.accessControlEnabled ? (
-                                                    <div className="text-xs text-gray-700 space-y-1">
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">Restriction active</span>
+                                                    <div className="text-xs text-[var(--ms-text)] space-y-1">
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--ms-warning)]/15 text-[var(--ms-warning)]">Restriction active</span>
                                                         <div>
-                                                            <span className="font-medium text-gray-800">Depuis :</span>{' '}
+                                                            <span className="font-medium text-[var(--ms-text-strong)]">Depuis :</span>{' '}
                                                             {accessStartDisplay
                                                                 ? `${accessStartDisplay.date}${accessStartDisplay.time ? ` à ${accessStartDisplay.time}` : ''}`
                                                                 : 'Non défini'}
                                                         </div>
                                                         <div>
-                                                            <span className="font-medium text-gray-800">Jusqu'à :</span>{' '}
+                                                            <span className="font-medium text-[var(--ms-text-strong)]">Jusqu'à :</span>{' '}
                                                             {accessEndDisplay
                                                                 ? `${accessEndDisplay.date}${accessEndDisplay.time ? ` à ${accessEndDisplay.time}` : ''}`
                                                                 : 'Sans limite'}
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-gray-400">Accès libre</span>
+                                                    <span className="text-xs text-[var(--ms-text-muted)]">Accès libre</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-xs text-gray-600 space-y-2">
+                                                <div className="text-xs text-[var(--ms-text)] space-y-2">
                                                     <div>
-                                                        <span className="font-medium text-gray-800">Profil :</span>{' '}
+                                                        <span className="font-medium text-[var(--ms-text-strong)]">Profil :</span>{' '}
                                                         {user.lastModifiedBy ? (
                                                             <span>
                                                                 {user.lastModifiedBy.name || 'Utilisateur inconnu'}
                                                                 {lastModifiedDisplay && (
-                                                                    <span className="text-gray-400">
+                                                                    <span className="text-[var(--ms-text-muted)]">
                                                                         {' '}• {lastModifiedDisplay.date}
                                                                         {lastModifiedDisplay.time && ` à ${lastModifiedDisplay.time}`}
                                                                     </span>
                                                                 )}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-gray-400">Jamais modifié</span>
+                                                            <span className="text-[var(--ms-text-muted)]">Jamais modifié</span>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <span className="font-medium text-gray-800">Mot de passe :</span>{' '}
+                                                        <span className="font-medium text-[var(--ms-text-strong)]">Mot de passe :</span>{' '}
                                                         {user.passwordModifiedBy ? (
                                                             <span>
                                                                 {user.passwordModifiedBy.name || 'Utilisateur inconnu'}
                                                                 {passwordModifiedDisplay && (
-                                                                    <span className="text-gray-400">
+                                                                    <span className="text-[var(--ms-text-muted)]">
                                                                         {' '}• {passwordModifiedDisplay.date}
                                                                         {passwordModifiedDisplay.time && ` à ${passwordModifiedDisplay.time}`}
                                                                     </span>
                                                                 )}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-gray-400">Jamais modifié</span>
+                                                            <span className="text-[var(--ms-text-muted)]">Jamais modifié</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -541,7 +550,7 @@ const UserDashboard = () => {
                                                 <div className="flex space-x-2">
                                                     <Link
                                                         to={`/sales/user/${user._id}`}
-                                                        className="flex items-center text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
+                                                        className="flex items-center text-[var(--ms-blue)] hover:text-blue-800 bg-[var(--ms-blue-soft)] hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
                                                         title="Voir le tableau de bord des ventes"
                                                     >
                                                         <ChartIcon className="w-4 h-4 mr-1" />
@@ -553,7 +562,7 @@ const UserDashboard = () => {
                                                             setSelectedUser(user);
                                                             setShowForm(true);
                                                         }}
-                                                        className="flex items-center text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
+                                                        className="flex items-center text-[var(--ms-text)] hover:text-[var(--ms-text-strong)] bg-[var(--ms-bg-subtle)] hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
                                                     >
                                                         <PencilIcon className="w-4 h-4 mr-1" />
                                                         Modifier
@@ -561,7 +570,7 @@ const UserDashboard = () => {
 
                                                     <button
                                                         onClick={() => handleDelete(user._id)}
-                                                        className="flex items-center text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
+                                                        className="flex items-center text-[var(--ms-danger)] hover:text-red-800 bg-[var(--ms-danger)]/10 hover:bg-[var(--ms-danger)]/15 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
                                                     >
                                                         <TrashIcon className="w-4 h-4 mr-1" />
                                                         Supprimer
@@ -578,10 +587,6 @@ const UserDashboard = () => {
                         <div className="md:hidden space-y-4 p-4">
                           {filteredUsers.map((user) => {
                             const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
-                            const disconnectDate = lastLoginDate
-                                ? new Date(lastLoginDate.getTime() + CONNECTED_THRESHOLD_MINUTES * 60 * 1000)
-                                : null;
-                            const remainingMs = disconnectDate ? disconnectDate.getTime() - Date.now() : null;
                             const lastLoginDisplay = lastLoginDate ? formatDateTime(lastLoginDate) : null;
                             const lastModifiedDisplay = formatDateTime(user.lastModifiedAt);
                             const passwordModifiedDisplay = formatDateTime(user.passwordModifiedAt);
@@ -589,98 +594,109 @@ const UserDashboard = () => {
                             const accessEndDisplay = formatDateTime(user.accessEnd);
 
                             return (
-                              <div key={user._id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm space-y-3">
+                              <div key={user._id} className="border border-[var(--ms-border)] rounded-lg p-4 bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)] space-y-3">
                                 <div className="flex justify-between items-start">
                                   <div className="flex gap-3">
-                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-blue-50 border border-gray-100 flex items-center justify-center">
+                                    <div className="w-12 h-12 rounded-md overflow-hidden bg-[var(--ms-blue-soft)] border border-[var(--ms-border)] flex items-center justify-center">
                                       {user.photo ? (
                                         <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <UserIcon className="w-6 h-6 text-blue-600" />
+                                        <UserIcon className="w-6 h-6 text-[var(--ms-blue)]" />
                                       )}
                                     </div>
                                     <div>
-                                      <p className="text-base font-semibold text-gray-900">{user.name}</p>
-                                      <p className="text-sm text-gray-500">{user.email}</p>
-                                      {user.phone && <p className="text-sm text-gray-500">📞 {user.phone}</p>}
+                                      <p className="text-base font-semibold text-[var(--ms-text-strong)]">{user.name}</p>
+                                      <p className="text-sm text-[var(--ms-text-muted)]">{user.email}</p>
+                                      {user.phone && <p className="text-sm text-[var(--ms-text-muted)]">📞 {user.phone}</p>}
                                     </div>
                                   </div>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                                    {user.isAdmin ? 'Admin' : 'Utilisateur'}
-                                  </span>
+                                  <div className="flex flex-col items-end gap-1.5">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                      {user.isAdmin ? 'Admin' : 'Utilisateur'}
+                                    </span>
+                                    <StatusBadge tone={user.isActive !== false ? 'success' : 'danger'}>
+                                      {user.isActive !== false ? 'Actif' : 'Inactif'}
+                                    </StatusBadge>
+                                  </div>
                                 </div>
+                                <button
+                                  onClick={() => handleToggleActive(user)}
+                                  className="text-[12px] font-medium text-[var(--ms-text-muted)] hover:text-[var(--ms-text)] underline underline-offset-2 transition-colors"
+                                >
+                                  {user.isActive !== false ? 'Désactiver le compte' : 'Activer le compte'}
+                                </button>
                                 {!user.isAdmin && Array.isArray(user.permissions) && user.permissions.length > 0 && (
                                   <div className="flex flex-wrap gap-1">
                                     {user.permissions.map((permission) => (
-                                      <span key={permission} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                      <span key={permission} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-[var(--ms-text)]">
                                         {PERMISSION_LABELS[permission] || permission}
                                       </span>
                                     ))}
                                   </div>
                                 )}
-                                <div className="text-sm text-gray-600">
-                                  <span className="font-medium text-gray-800">Créé le :</span>{' '}
+                                <div className="text-sm text-[var(--ms-text)]">
+                                  <span className="font-medium text-[var(--ms-text-strong)]">Créé le :</span>{' '}
                                   {new Date(user.createdAt).toLocaleDateString('fr-FR')} • {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                  <span className="font-medium text-gray-800">Dernière connexion :</span>{' '}
+                                <div className="text-sm text-[var(--ms-text)]">
+                                  <span className="font-medium text-[var(--ms-text-strong)]">Dernière connexion :</span>{' '}
                                   {lastLoginDisplay
                                     ? `${lastLoginDisplay.date}${lastLoginDisplay.time ? ` à ${lastLoginDisplay.time}` : ''}`
                                     : 'Jamais connecté'}
-                                  {activeTab === 'connected' && remainingMs > 0 && (
-                                    <span className="text-xs text-green-600 block">Déconnexion prévue dans {formatRemainingTime(remainingMs)}</span>
+                                  {user.lastActivity && (new Date() - new Date(user.lastActivity)) <= CONNECTED_THRESHOLD_MINUTES * 60 * 1000 && (
+                                    <span className="ml-2"><StatusBadge tone="success">En ligne</StatusBadge></span>
                                   )}
                                 </div>
-                                <div className="text-xs text-gray-600 space-y-1">
+                                <div className="text-xs text-[var(--ms-text)] space-y-1">
                                   <div>
-                                    <span className="font-medium text-gray-800">Accès :</span>{' '}
+                                    <span className="font-medium text-[var(--ms-text-strong)]">Accès :</span>{' '}
                                     {user.accessControlEnabled ? 'Restriction active' : 'Accès libre'}
                                   </div>
                                   {user.accessControlEnabled && (
                                     <>
                                       <div>
-                                        <span className="font-medium text-gray-800">Depuis :</span>{' '}
+                                        <span className="font-medium text-[var(--ms-text-strong)]">Depuis :</span>{' '}
                                         {accessStartDisplay ? `${accessStartDisplay.date}${accessStartDisplay.time ? ` à ${accessStartDisplay.time}` : ''}` : '—'}
                                       </div>
                                       <div>
-                                        <span className="font-medium text-gray-800">Jusqu'à :</span>{' '}
+                                        <span className="font-medium text-[var(--ms-text-strong)]">Jusqu'à :</span>{' '}
                                         {accessEndDisplay ? `${accessEndDisplay.date}${accessEndDisplay.time ? ` à ${accessEndDisplay.time}` : ''}` : 'Sans limite'}
                                       </div>
                                     </>
                                   )}
                                 </div>
-                                <div className="text-xs text-gray-600 space-y-1">
+                                <div className="text-xs text-[var(--ms-text)] space-y-1">
                                   <div>
-                                    <span className="font-medium text-gray-800">Modifié par :</span>{' '}
+                                    <span className="font-medium text-[var(--ms-text-strong)]">Modifié par :</span>{' '}
                                     {user.lastModifiedBy ? (
                                       <span>
                                         {user.lastModifiedBy.name || 'Utilisateur inconnu'}
                                         {lastModifiedDisplay && (
-                                          <span className="text-gray-400">{' '}• {lastModifiedDisplay.date}{lastModifiedDisplay.time && ` à ${lastModifiedDisplay.time}`}</span>
+                                          <span className="text-[var(--ms-text-muted)]">{' '}• {lastModifiedDisplay.date}{lastModifiedDisplay.time && ` à ${lastModifiedDisplay.time}`}</span>
                                         )}
                                       </span>
                                     ) : (
-                                      <span className="text-gray-400">Jamais modifié</span>
+                                      <span className="text-[var(--ms-text-muted)]">Jamais modifié</span>
                                     )}
                                   </div>
                                   <div>
-                                    <span className="font-medium text-gray-800">Mot de passe :</span>{' '}
+                                    <span className="font-medium text-[var(--ms-text-strong)]">Mot de passe :</span>{' '}
                                     {user.passwordModifiedBy ? (
                                       <span>
                                         {user.passwordModifiedBy.name || 'Utilisateur inconnu'}
                                         {passwordModifiedDisplay && (
-                                          <span className="text-gray-400">{' '}• {passwordModifiedDisplay.date}{passwordModifiedDisplay.time && ` à ${passwordModifiedDisplay.time}`}</span>
+                                          <span className="text-[var(--ms-text-muted)]">{' '}• {passwordModifiedDisplay.date}{passwordModifiedDisplay.time && ` à ${passwordModifiedDisplay.time}`}</span>
                                         )}
                                       </span>
                                     ) : (
-                                      <span className="text-gray-400">Jamais modifié</span>
+                                      <span className="text-[var(--ms-text-muted)]">Jamais modifié</span>
                                     )}
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-2">
                                   <Link
                                     to={`/sales/user/${user._id}`}
-                                    className="flex-1 min-w-[120px] text-center text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl text-sm font-medium"
+                                    className="flex-1 min-w-[120px] text-center text-[var(--ms-blue)] hover:text-blue-800 bg-[var(--ms-blue-soft)] hover:bg-blue-100 px-3 py-2 rounded-md text-sm font-medium"
                                   >
                                     Tableau des ventes
                                   </Link>
@@ -689,13 +705,13 @@ const UserDashboard = () => {
                                       setSelectedUser(user);
                                       setShowForm(true);
                                     }}
-                                    className="flex-1 min-w-[120px] text-center text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl text-sm font-medium"
+                                    className="flex-1 min-w-[120px] text-center text-[var(--ms-text)] hover:text-[var(--ms-text-strong)] bg-[var(--ms-bg-subtle)] hover:bg-gray-200 px-3 py-2 rounded-md text-sm font-medium"
                                   >
                                     Modifier
                                   </button>
                                   <button
                                     onClick={() => handleDelete(user._id)}
-                                    className="flex-1 min-w-[120px] text-center text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-xl text-sm font-medium"
+                                    className="flex-1 min-w-[120px] text-center text-[var(--ms-danger)] hover:text-red-800 bg-[var(--ms-danger)]/10 hover:bg-[var(--ms-danger)]/15 px-3 py-2 rounded-md text-sm font-medium"
                                   >
                                     Supprimer
                                   </button>
@@ -707,13 +723,13 @@ const UserDashboard = () => {
                         </>
                     ) : (
                         <div className="text-center py-12">
-                            <div className="bg-gray-100 p-4 rounded-xl inline-flex items-center justify-center mb-4 w-12 h-12">
-                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="bg-[var(--ms-bg-subtle)] p-4 rounded-md inline-flex items-center justify-center mb-4 w-12 h-12">
+                                <svg className="w-6 h-6 text-[var(--ms-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <h3 className="text-base font-medium text-gray-900 mb-1">Aucun utilisateur trouvé</h3>
-                            <p className="text-gray-500 mb-4 text-sm">
+                            <h3 className="text-base font-medium text-[var(--ms-text-strong)] mb-1">Aucun utilisateur trouvé</h3>
+                            <p className="text-[var(--ms-text-muted)] mb-4 text-sm">
                                 {searchTerm
                                     ? 'Essayez un autre terme de recherche'
                                     : activeTab === 'connected'
@@ -723,7 +739,7 @@ const UserDashboard = () => {
                             <button
                                 onClick={() => setShowForm(true)}
                                 disabled={stats.totalUsers >= 3}
-                                className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                                className="flex items-center gap-2 bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-4 py-2.5 rounded-md font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
                             >
                                 <PlusIcon className="w-4 h-4 text-white" />
                                 {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
@@ -739,8 +755,8 @@ const UserDashboard = () => {
 // StatCard Component with Apple Design
 const StatCard = ({ title, value, icon, color = 'blue', isName = false }) => {
     const colorClasses = {
-        blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
-        green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
+        blue: { bg: 'bg-blue-100', text: 'text-[var(--ms-blue)]', border: 'border-blue-200' },
+        green: { bg: 'bg-[var(--ms-success)]/15', text: 'text-[var(--ms-success)]', border: 'border-green-200' },
         purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
         orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
     };
@@ -748,13 +764,13 @@ const StatCard = ({ title, value, icon, color = 'blue', isName = false }) => {
     const colors = colorClasses[color] || colorClasses.blue;
 
     return (
-        <div className={`bg-white p-5 rounded-2xl border ${colors.border}`}>
+        <div className={`bg-[var(--ms-white)] p-5 rounded-lg border ${colors.border}`}>
             <div className="flex items-center">
-                <div className={`p-2.5 rounded-xl ${colors.bg} mr-3`}>
+                <div className={`p-2.5 rounded-md ${colors.bg} mr-3`}>
                     {icon}
                 </div>
                 <div>
-                    <p className="text-sm text-gray-600">{title}</p>
+                    <p className="text-sm text-[var(--ms-text)]">{title}</p>
                     <p className={`text-lg font-semibold ${isName ? 'truncate max-w-[120px]' : ''}`}>{value}</p>
                 </div>
             </div>

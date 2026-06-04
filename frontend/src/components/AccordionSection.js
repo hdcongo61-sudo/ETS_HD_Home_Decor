@@ -25,23 +25,23 @@ const AccordionSection = ({ title, children, defaultOpenDesktop = true, classNam
   const alwaysExpanded = isDesktop && defaultOpenDesktop;
 
   return (
-    <section className={`border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden ${className}`}>
+    <section className={`border border-[var(--ms-border)] rounded-lg overflow-hidden ${className}`}>
       <button
         type="button"
         onClick={() => !alwaysExpanded && setOpen((o) => !o)}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${!alwaysExpanded ? "cursor-pointer" : "cursor-default"}`}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left bg-[var(--ms-white)] hover:bg-[var(--ms-bg-subtle)] transition-colors ${!alwaysExpanded ? "cursor-pointer" : "cursor-default"}`}
         aria-expanded={open}
       >
-        <span className="font-semibold text-gray-900 dark:text-gray-100">{title}</span>
+        <span className="font-semibold text-[var(--ms-text)]">{title}</span>
         {!alwaysExpanded && (
-          <span className="text-gray-500 transform transition-transform" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
+          <span className="text-[var(--ms-text-muted)] transform transition-transform" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </span>
         )}
       </button>
-      {(alwaysExpanded || open) && <div className="border-t border-gray-200 dark:border-gray-700">{children}</div>}
+      {(alwaysExpanded || open) && <div className="border-t border-[var(--ms-border)]">{children}</div>}
     </section>
   );
 };

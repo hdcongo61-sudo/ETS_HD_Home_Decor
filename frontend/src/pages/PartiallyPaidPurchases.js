@@ -9,16 +9,20 @@ import {
 } from "chart.js";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
+import {
+  Button,
+  ChartCard,
+  EmptyState,
+  KPICard,
+  PageHeader,
+  SearchBox,
+  Surface,
+  Workspace,
+} from "../components/business";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const PaymentModal = lazy(() => import("../components/PaymentModal"));
-
-const Glass = ({ children }) => (
-  <div className="rounded-2xl border border-gray-200/70 bg-white/90 backdrop-blur-sm shadow-sm">
-    {children}
-  </div>
-);
 
 const PartiallyPaidPurchases = () => {
   const { auth } = useContext(AuthContext);
@@ -77,7 +81,7 @@ const PartiallyPaidPurchases = () => {
     datasets: [
       {
         data: [totals.paid, totals.due],
-        backgroundColor: ["rgba(34,197,94,.9)", "rgba(239,68,68,.9)"],
+        backgroundColor: ["#107C10", "#D13438"],
       },
     ],
   };
@@ -127,80 +131,46 @@ const PartiallyPaidPurchases = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-              💳 Ventes Partiellement Payées
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Suivi précis des encaissements et relances ciblées
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 w-full lg:w-auto">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher client, email ou #vente…"
-              className="w-full sm:flex-1 lg:w-64 px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+    <Workspace>
+        <PageHeader
+          eyebrow="Paiements"
+          title="Ventes partiellement payées"
+          description="Suivi précis des encaissements et relances ciblées."
+          actions={
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {isAdmin && (
-                <button
-                  onClick={exportCSV}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
-                >
+                <Button onClick={exportCSV}>
                   Exporter CSV
-                </button>
+                </Button>
               )}
               <Link
                 to="/sales"
-                className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-center"
+                className="ms-button ms-button-primary ms-button-md"
               >
                 Retour
               </Link>
             </div>
-          </div>
-        </div>
+          }
+        />
+
+        <Surface className="p-3">
+          <SearchBox
+              label="Rechercher dans les ventes partiellement payées"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher client, email ou #vente…"
+            />
+        </Surface>
 
         {/* KPIs & Donut */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Glass>
-            <div className="p-5">
-              <div className="text-gray-600 text-sm">Nombre</div>
-              <div className="text-2xl font-semibold text-gray-900">{partiallyPaid.length}</div>
-            </div>
-          </Glass>
-          <Glass>
-            <div className="p-5">
-              <div className="text-gray-600 text-sm">Total</div>
-              <div className="text-2xl font-semibold text-gray-900">
-                {totals.total.toLocaleString("fr-FR")} CFA
-              </div>
-            </div>
-          </Glass>
-          <Glass>
-            <div className="p-5">
-              <div className="text-gray-600 text-sm">Payé</div>
-              <div className="text-2xl font-semibold text-green-700">
-                {totals.paid.toLocaleString("fr-FR")} CFA
-              </div>
-            </div>
-          </Glass>
-          <Glass>
-            <div className="p-5">
-              <div className="text-gray-600 text-sm">Solde</div>
-              <div className="text-2xl font-semibold text-red-600">
-                {totals.due.toLocaleString("fr-FR")} CFA
-              </div>
-            </div>
-          </Glass>
+          <KPICard title="Nombre" value={partiallyPaid.length} context="Ventes filtrées" />
+          <KPICard title="Total" value={`${totals.total.toLocaleString("fr-FR")} CFA`} context="Montant facturé" />
+          <KPICard title="Payé" value={`${totals.paid.toLocaleString("fr-FR")} CFA`} context="Déjà encaissé" tone="success" />
+          <KPICard title="Solde" value={`${totals.due.toLocaleString("fr-FR")} CFA`} context="Reste à encaisser" tone="danger" />
         </div>
 
-        <Glass>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Répartition</h3>
+        <ChartCard title="Répartition" description="Payé contre restant dû">
             <div className="h-56">
               <Doughnut
                 data={donutData}
@@ -211,14 +181,13 @@ const PartiallyPaidPurchases = () => {
                 }}
               />
             </div>
-          </div>
-        </Glass>
+        </ChartCard>
 
-        <Glass>
+        <Surface>
           <div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Détail des ventes</h3>
             {partiallyPaid.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">Aucune vente partiellement payée</div>
+              <EmptyState title="Aucune vente partiellement payée" description="Les ventes avec solde restant apparaîtront ici." />
             ) : (
               <div className="space-y-4">
                 {partiallyPaid.map((s) => {
@@ -227,12 +196,12 @@ const PartiallyPaidPurchases = () => {
                   return (
                     <div
                       key={s._id}
-                      className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-4 rounded-md border border-[var(--ms-border)] bg-white p-4 md:flex-row md:items-center md:justify-between"
                     >
                       <div className="space-y-1">
                         <Link
                           to={`/sales/${s._id}`}
-                          className="text-blue-600 hover:underline font-semibold"
+                          className="font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)]"
                         >
                           Vente #{s._id.slice(-6)}
                         </Link>
@@ -262,15 +231,16 @@ const PartiallyPaidPurchases = () => {
                             </div>
                           </div>
                         </div>
-                        <button
+                        <Button
                           onClick={() => {
                             setSelectedSale(s);
                             setShowPaymentModal(true);
                           }}
-                          className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-center"
+                          variant="primary"
+                          className="w-full md:w-auto"
                         >
                           Ajouter un paiement
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   );
@@ -278,7 +248,7 @@ const PartiallyPaidPurchases = () => {
               </div>
             )}
           </div>
-        </Glass>
+        </Surface>
 
         <Suspense fallback={null}>
           <PaymentModal
@@ -288,8 +258,7 @@ const PartiallyPaidPurchases = () => {
             onAddPayment={handleAddPayment}
           />
         </Suspense>
-      </div>
-    </div>
+    </Workspace>
   );
 };
 

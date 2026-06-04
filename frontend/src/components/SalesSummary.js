@@ -79,9 +79,9 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
 
   if (sales.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-[var(--ms-white)] p-6 rounded-lg shadow-[var(--ms-shadow)]">
         <h2 className="text-xl font-bold mb-4">Résumé des ventes</h2>
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-[var(--ms-text-muted)]">
           Aucune donnée de vente disponible
         </div>
       </div>
@@ -89,7 +89,7 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-[var(--ms-white)] p-6 rounded-lg shadow-[var(--ms-shadow)]">
       <h2 className="text-xl font-bold mb-4">
         Résumé des ventes {dateRange.startDate && dateRange.endDate &&
           `(du ${formatDate(dateRange.startDate)} au ${formatDate(dateRange.endDate)})`
@@ -98,42 +98,42 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div className="space-y-4">
-          <div className="bg-green-50 p-4 rounded-lg flex items-center gap-4">
-            <div className="bg-green-100 p-3 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-[var(--ms-success)]/10 p-4 rounded-lg flex items-center gap-4">
+            <div className="bg-[var(--ms-success)]/15 p-3 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Chiffre d'affaires total</h3>
-              <p className="text-2xl font-bold text-green-600">
+              <h3 className="font-medium text-[var(--ms-text)]">Chiffre d'affaires total</h3>
+              <p className="text-2xl font-bold text-[var(--ms-success)]">
                 {formatCurrency(totalSales)}
               </p>
             </div>
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg flex items-center gap-4">
+          <div className="bg-[var(--ms-blue-soft)] p-4 rounded-lg flex items-center gap-4">
             <div className="bg-blue-100 p-3 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Montant payé</h3>
-              <p className="text-2xl font-bold text-blue-600">
+              <h3 className="font-medium text-[var(--ms-text)]">Montant payé</h3>
+              <p className="text-2xl font-bold text-[var(--ms-blue)]">
                 {formatCurrency(totalPaid)}
               </p>
             </div>
           </div>
 
-          <div className="bg-yellow-50 p-4 rounded-lg flex items-center gap-4">
-            <div className="bg-yellow-100 p-3 rounded-full">
+          <div className="bg-[var(--ms-warning)]/10 p-4 rounded-lg flex items-center gap-4">
+            <div className="bg-[var(--ms-warning)]/15 p-3 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Solde restant</h3>
+              <h3 className="font-medium text-[var(--ms-text)]">Solde restant</h3>
               <p className="text-2xl font-bold text-yellow-600">
                 {formatCurrency(outstandingBalance)}
               </p>
@@ -149,37 +149,37 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Transactions</h3>
+              <h3 className="font-medium text-[var(--ms-text)]">Transactions</h3>
               <p className="text-2xl font-bold text-purple-600">
                 {totalTransactions.toLocaleString('fr-FR')}
               </p>
             </div>
           </div>
 
-          <div className="bg-red-50 p-4 rounded-lg flex items-center gap-4">
-            <div className="bg-red-100 p-3 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-[var(--ms-danger)]/10 p-4 rounded-lg flex items-center gap-4">
+            <div className="bg-[var(--ms-danger)]/15 p-3 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-danger)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Produits vendus</h3>
-              <p className="text-2xl font-bold text-red-600">
+              <h3 className="font-medium text-[var(--ms-text)]">Produits vendus</h3>
+              <p className="text-2xl font-bold text-[var(--ms-danger)]">
                 {totalProductsSold.toLocaleString('fr-FR')}
               </p>
             </div>
           </div>
 
-          <div className="bg-indigo-50 p-4 rounded-lg flex items-center gap-4">
+          <div className="bg-[var(--ms-blue-soft)] p-4 rounded-lg flex items-center gap-4">
             <div className="bg-indigo-100 p-3 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-gray-600">Panier moyen</h3>
-              <p className="text-2xl font-bold text-indigo-600">
+              <h3 className="font-medium text-[var(--ms-text)]">Panier moyen</h3>
+              <p className="text-2xl font-bold text-[var(--ms-blue)]">
                 {formatCurrency(averageSale)}
               </p>
             </div>

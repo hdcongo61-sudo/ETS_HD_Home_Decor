@@ -32,11 +32,19 @@ const userSchema = mongoose.Schema(
       required: true,
       default: false,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     permissions: {
       type: [String],
       default: [],
     },
     lastLogin: {
+      type: Date,
+      default: null,
+    },
+    lastActivity: {
       type: Date,
       default: null,
     },

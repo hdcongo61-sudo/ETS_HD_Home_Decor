@@ -212,7 +212,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             {formError && (
                 <div
                     role="alert"
-                    className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 text-red-800 text-sm"
+                    className="flex items-start gap-3 p-4 rounded-md bg-[var(--ms-danger)]/10 border border-red-100 text-red-800 text-sm"
                 >
                     <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -222,41 +222,41 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             )}
 
             {/* Summary card */}
-            <section className="rounded-2xl border border-gray-200 bg-gray-50/50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-white">
-                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+            <section className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-[var(--ms-border)] bg-white">
+                    <h2 className="text-sm font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider">
                         Vente {saleRef}
                     </h2>
                 </div>
                 <div className="p-4 md:p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Client</p>
-                            <p className="mt-0.5 font-semibold text-gray-900">{sale.client?.name || '—'}</p>
+                            <p className="text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wide">Client</p>
+                            <p className="mt-0.5 font-semibold text-[var(--ms-text-strong)]">{sale.client?.name || '—'}</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date de vente</p>
-                            <p className="mt-0.5 text-gray-700">{new Date(sale.saleDate || sale.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wide">Date de vente</p>
+                            <p className="mt-0.5 text-[var(--ms-text)]">{new Date(sale.saleDate || sale.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Montant original</p>
-                            <p className="mt-0.5 font-semibold text-gray-700">{Number(sale.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
+                            <p className="text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wide">Montant original</p>
+                            <p className="mt-0.5 font-semibold text-[var(--ms-text)]">{Number(sale.totalAmount || 0).toLocaleString('fr-FR')} CFA</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nouveau total</p>
-                            <p className="mt-0.5 font-semibold text-emerald-600">{Number(calculateTotal()).toLocaleString('fr-FR')} CFA</p>
+                            <p className="text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wide">Nouveau total</p>
+                            <p className="mt-0.5 font-semibold text-[var(--ms-success)]">{Number(calculateTotal()).toLocaleString('fr-FR')} CFA</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type de vente</p>
-                            <p className="mt-0.5 font-semibold text-gray-700">{getSaleTypeText(sale.saleType)}</p>
-                            <p className="mt-1 text-xs text-gray-500">Non modifiable après création</p>
+                            <p className="text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wide">Type de vente</p>
+                            <p className="mt-0.5 font-semibold text-[var(--ms-text)]">{getSaleTypeText(sale.saleType)}</p>
+                            <p className="mt-1 text-xs text-[var(--ms-text-muted)]">Non modifiable après création</p>
                         </div>
                     </div>
                 </div>
             </section>
 
             {manualSaleDateEnabled && (
-                <section className="rounded-2xl border border-sky-200 bg-sky-50/60 overflow-hidden">
+                <section className="rounded-lg border border-sky-200 bg-sky-50/60 overflow-hidden">
                     <div className="px-4 py-3 border-b border-sky-200 bg-white/70">
                         <h3 className="text-sm font-semibold text-sky-900">Date réelle de la vente</h3>
                     </div>
@@ -265,7 +265,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                             type="datetime-local"
                             value={saleDate}
                             onChange={(e) => setSaleDate(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors text-gray-900 bg-white"
+                            className="w-full px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors text-[var(--ms-text-strong)] bg-white"
                             required
                         />
                         <p className="text-xs text-sky-800">
@@ -276,31 +276,31 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             )}
 
             {/* Modification reason */}
-            <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50/70">
-                    <h3 className="text-sm font-semibold text-gray-700">Raison de la modification <span className="text-red-500">*</span></h3>
+            <section className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] overflow-hidden">
+                <div className="px-4 py-3 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/70">
+                    <h3 className="text-sm font-semibold text-[var(--ms-text)]">Raison de la modification <span className="text-red-500">*</span></h3>
                 </div>
                 <div className="p-4 md:p-5">
                     <textarea
                         value={modificationNote}
                         onChange={(e) => setModificationNote(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-h-[120px] text-gray-900 placeholder-gray-400"
+                        className="w-full px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-h-[120px] text-[var(--ms-text-strong)] placeholder-gray-400"
                         placeholder="Expliquez pourquoi vous modifiez cette vente (quantités, prix, produits…)"
                         required
                         aria-describedby="modification-note-hint"
                     />
-                    <p id="modification-note-hint" className="mt-2 text-xs text-gray-500">Cette note sera enregistrée dans l’historique de la vente.</p>
+                    <p id="modification-note-hint" className="mt-2 text-xs text-[var(--ms-text-muted)]">Cette note sera enregistrée dans l’historique de la vente.</p>
                 </div>
             </section>
 
             {/* Products */}
-            <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50/70 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-gray-700">Lignes de produits</h3>
+            <section className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] overflow-hidden">
+                <div className="px-4 py-3 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/70 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[var(--ms-text)]">Lignes de produits</h3>
                     <button
                         type="button"
                         onClick={addProduct}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] hover:bg-blue-100 rounded-md transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -314,16 +314,16 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                         return (
                             <div
                                 key={index}
-                                className={`rounded-xl border p-4 transition-colors ${errors[index] ? 'border-red-300 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'}`}
+                                className={`rounded-md border p-4 transition-colors ${errors[index] ? 'border-red-300 bg-[var(--ms-danger)]/10/30' : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/50'}`}
                             >
                                 <div className="flex flex-col gap-4">
                                     {/* Search filter - full width */}
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Filtrer la liste</label>
+                                        <label className="block text-xs font-medium text-[var(--ms-text-muted)] mb-1">Filtrer la liste</label>
                                         <input
                                             type="text"
                                             placeholder="Nom ou conteneur..."
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                                            className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[var(--ms-text-strong)] placeholder-gray-400"
                                             value={productSearchTerms[index] || ''}
                                             onChange={(e) => {
                                                 const newTerms = [...productSearchTerms];
@@ -337,9 +337,9 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                     {/* Row: product select, quantity, price, remove */}
                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
                                         <div className="md:col-span-5">
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Produit</label>
+                                            <label className="block text-xs font-medium text-[var(--ms-text-muted)] mb-1">Produit</label>
                                             <select
-                                                className={`w-full px-3 py-2.5 border rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-gray-300'}`}
+                                                className={`w-full px-3 py-2.5 border rounded-md bg-[var(--ms-white)] text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
                                                 value={item.product}
                                                 onChange={(e) => handleProductChange(index, e.target.value)}
                                                 aria-invalid={!!errors[index]}
@@ -350,25 +350,25 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                                     <option
                                                         key={product._id}
                                                         value={product._id}
-                                                        className={product.stock < 1 ? 'text-red-600' : ''}
+                                                        className={product.stock < 1 ? 'text-[var(--ms-danger)]' : ''}
                                                     >
                                                         {product.name} — {product.container?.trim() || 'Non défini'} (Stock: {product.stock})
                                                     </option>
                                                 ))}
                                             </select>
                                             {selectedProduct && (
-                                                <p className="mt-1.5 text-xs text-gray-500">Revient à {Number(selectedProduct.costPrice || 0).toLocaleString('fr-FR')} CFA</p>
+                                                <p className="mt-1.5 text-xs text-[var(--ms-text-muted)]">Revient à {Number(selectedProduct.costPrice || 0).toLocaleString('fr-FR')} CFA</p>
                                             )}
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Quantité</label>
+                                            <label className="block text-xs font-medium text-[var(--ms-text-muted)] mb-1">Quantité</label>
                                             <input
                                                 type="number"
                                                 inputMode="numeric"
                                                 min="1"
                                                 step="1"
-                                                className={`w-full px-3 py-2.5 border rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-gray-300'}`}
+                                                className={`w-full px-3 py-2.5 border rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
                                                 value={item.quantity}
                                                 onChange={(e) => handleQuantityChange(index, e.target.value)}
                                                 aria-invalid={!!errors[index]}
@@ -376,11 +376,11 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                         </div>
 
                                         <div className="md:col-span-3">
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Prix unitaire (CFA)</label>
+                                            <label className="block text-xs font-medium text-[var(--ms-text-muted)] mb-1">Prix unitaire (CFA)</label>
                                             <input
                                                 type="number"
                                                 inputMode="decimal"
-                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 value={item.price || ''}
                                                 onChange={(e) => handlePriceChange(index, e.target.value)}
                                                 placeholder="0"
@@ -393,7 +393,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                             <button
                                                 type="button"
                                                 onClick={() => removeProduct(index)}
-                                                className="w-full md:w-auto min-h-[44px] md:min-h-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-200"
+                                                className="w-full md:w-auto min-h-[44px] md:min-h-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[var(--ms-danger)] hover:text-[var(--ms-danger)] hover:bg-[var(--ms-danger)]/10 rounded-md transition-colors border border-transparent hover:border-red-200"
                                                 aria-label={`Supprimer la ligne ${index + 1}`}
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -405,7 +405,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                     </div>
 
                                     {errors[index] && (
-                                        <p id={`product-error-${index}`} className="text-sm text-red-600 flex items-center gap-2" role="alert">
+                                        <p id={`product-error-${index}`} className="text-sm text-[var(--ms-danger)] flex items-center gap-2" role="alert">
                                             <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                             </svg>
@@ -423,16 +423,16 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="min-h-[44px] px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                    className="min-h-[44px] px-5 py-2.5 border border-[var(--ms-border-strong)] text-[var(--ms-text)] font-medium rounded-md hover:bg-[var(--ms-bg-subtle)] transition-colors"
                 >
                     Annuler
                 </button>
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`min-h-[44px] px-5 py-2.5 rounded-xl font-semibold inline-flex items-center gap-2 transition-colors ${isSubmitting
+                    className={`min-h-[44px] px-5 py-2.5 rounded-md font-semibold inline-flex items-center gap-2 transition-colors ${isSubmitting
                         ? 'bg-gray-400 text-white cursor-not-allowed'
-                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
+                        : 'bg-[var(--ms-warning)]/100 hover:bg-amber-600 text-white shadow-[var(--ms-shadow-sm)]'
                     }`}
                 >
                     {isSubmitting ? (

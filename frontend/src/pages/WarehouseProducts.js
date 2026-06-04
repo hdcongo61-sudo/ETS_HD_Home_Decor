@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { ProductHero, ProductPageShell } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const rangeOptions = [
   { value: 'day', label: '24 dernieres heures' },
@@ -103,6 +104,7 @@ const WarehouseProducts = () => {
   };
 
   return (
+  <Workspace>
     <ProductPageShell>
       <ProductHero
         eyebrow="Inventaire entrepôt"
@@ -289,6 +291,7 @@ const WarehouseProducts = () => {
         </>
       )}
     </ProductPageShell>
+  </Workspace>
   );
 };
 

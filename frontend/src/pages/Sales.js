@@ -31,20 +31,8 @@ import {
 import api from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
 import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  Filler,
-} from "chart.js";
 import AuthContext from "../context/AuthContext";
+import ChartSetup from "../components/ChartSetup";
 import useAutoClearMessage from "../hooks/useAutoClearMessage";
 import useResponsiveTable from "../hooks/useResponsiveTable";
 import {
@@ -62,20 +50,15 @@ import {
 } from "../utils/saleUtils";
 import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
-
-// Enregistrement Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  Filler
-);
+import {
+  Button,
+  ChartCard,
+  EmptyState,
+  KPICard,
+  LoadingSkeleton,
+  PageHeader,
+  Workspace,
+} from "../components/business";
 
 // Lazy components
 const SaleForm = lazy(() => import("../components/SaleForm"));
@@ -139,7 +122,7 @@ const GlassCard = ({ children, className = "" }) => (
     initial={{ opacity: 0, y: 6 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-    className={`rounded-[1.5rem] border border-slate-200 bg-white shadow-sm ${className}`}
+    className={`ms-surface ${className}`}
   >
     {children}
   </motion.div>
@@ -150,30 +133,13 @@ const truncateLabel = (str, max = 14) =>
 const CHART_LABEL_FONT = { size: 10, family: "system-ui" };
 
 const StatCard = ({ title, value, icon, color = "bg-slate-100 text-slate-700" }) => (
-  <GlassCard className="h-full">
-    <div className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-h-[4.5rem] sm:min-h-0">
-      <div
-        className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl ${color}`}
-        aria-hidden
-      >
-        {React.isValidElement(icon) ? icon : <span className="text-xl leading-none" aria-hidden>{icon}</span>}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs sm:text-sm font-medium text-slate-500 leading-snug mb-0.5">{title}</p>
-        <p className="text-base sm:text-lg md:text-xl font-semibold text-slate-950 tabular-nums break-words leading-snug">
-          {value}
-        </p>
-      </div>
-    </div>
-  </GlassCard>
+  <KPICard title={title} value={value} context="Période sélectionnée" icon={React.isValidElement(icon) ? icon : null} />
 );
 
 const AdvancedMetricCard = ({ title, value, change, icon, color, description }) => (
-  <GlassCard>
-    <div className="p-6">
+  <ChartCard title={title} description={description}>
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="text-slate-500 text-sm font-medium">{title}</h3>
           <p className="text-2xl font-semibold text-slate-950 mt-1">{value}</p>
           {change !== undefined && (
             <div
@@ -202,14 +168,12 @@ const AdvancedMetricCard = ({ title, value, change, icon, color, description }) 
           )}
         </div>
         <div
-          className={`p-3 rounded-2xl ${color}`}
+          className="ms-kpi-icon"
         >
           {icon}
         </div>
       </div>
-      {description && <p className="text-xs text-slate-500 mt-2">{description}</p>}
-    </div>
-  </GlassCard>
+  </ChartCard>
 );
 
 const ClientSegmentationChart = ({ segmentation }) => {
@@ -1839,45 +1803,40 @@ const Sales = () => {
   /* ========= Écrans d’attente / erreur ========= */
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <AppLoader fullScreen={false} text="Chargement des ventes…" />
-      </div>
+      <Workspace>
+        <PageHeader eyebrow="Ventes" title="Gestion des ventes" description="Chargement du module commercial." />
+        <LoadingSkeleton rows={6} />
+      </Workspace>
     );
   }
   if (error) {
     return (
-      <GlassCard>
-        <div className="p-4 text-red-700">{error}</div>
-      </GlassCard>
+      <Workspace>
+        <PageHeader eyebrow="Ventes" title="Gestion des ventes" description="Une erreur est survenue." />
+        <EmptyState title="Impossible de charger les ventes" description={error} />
+      </Workspace>
     );
   }
 
   // Vue simplifiée pour les utilisateurs non administrateurs
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
-        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
-          <header className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-500">Ventes</p>
-                <h1 className="mt-1 text-2xl font-semibold text-slate-950 lg:text-3xl">
-                  Gestion des ventes
-                </h1>
-                <p className="mt-1 text-sm text-slate-600">
-                  Enregistrez une vente, suivez les paiements et les livraisons du jour.
-                </p>
-              </div>
+      <Workspace>
+        <PageHeader
+          eyebrow="Ventes"
+          title="Gestion des ventes"
+          description="Enregistrez une vente, suivez les paiements et les livraisons du jour."
+          actions={
               <Link
                 to={{ pathname: "/sales/all", search: historyLinkSearch }}
-                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                className="ms-button ms-button-secondary ms-button-md"
                 {...desktopLinkProps}
               >
                 <ReceiptText className="h-4 w-4" />
                 {historyLinkLabel}
               </Link>
-            </div>
-          </header>
+          }
+        />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div id="sale-form">
@@ -1996,9 +1955,7 @@ const Sales = () => {
 
                 <div className="space-y-4">
                   {filteredSales.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
-                      Aucune vente trouvée
-                    </div>
+                    <EmptyState title="Aucune vente trouvée" description="Ajustez les filtres ou créez une nouvelle vente." />
                   ) : (
                     filteredSales.map((sale) => {
                       const { totalPaid, balance } = calculateSaleTotals(sale);
@@ -2019,28 +1976,29 @@ const Sales = () => {
                           actions={
                             <>
                               {sale.status !== "completed" && sale.status !== "cancelled" && (
-                                <button
+                                <Button
                                   onClick={() => {
                                     setSelectedSale(sale);
                                     setShowPaymentModal(true);
                                   }}
-                                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors text-sm font-medium"
+                                  variant="primary"
+                                  className="w-full sm:w-auto"
                                 >
                                   Ajouter un paiement
-                                </button>
+                                </Button>
                               )}
                               {sale.status === "completed" && (
-                                <button
+                                <Button
                                   onClick={() => {
                                     setSelectedSale(sale);
                                     setDeliveryStatus(sale.deliveryStatus || "pending");
                                     setDeliveryNote(sale.deliveryNote || "");
                                     setShowDeliveryModal(true);
                                   }}
-                                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors text-sm font-medium"
+                                  className="w-full sm:w-auto"
                                 >
                                   Gérer la livraison
-                                </button>
+                                </Button>
                               )}
                             </>
                           }
@@ -2151,81 +2109,58 @@ const Sales = () => {
               </div>
             </div>
           )}
-        </div>
-      </div>
+      </Workspace>
     );
   }
 
   /* ========= Rendu principal ========= */
   
   return (
-    <div className="min-h-screen bg-[#f6f7f9] px-3 py-4 sm:px-5 md:px-6 sm:py-6 safe-area-padding">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+    <Workspace>
+        <ChartSetup />
         <Toaster position="top-right" />
         {/* En-tête */}
-        <header className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_16px_50px_rgba(15,23,42,0.07)] backdrop-blur">
-          <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Ventes
-                </span>
-                {isAdmin && (
-                  <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-white">
-                    Admin
-                  </span>
-                )}
-              </div>
-              <h1 className="mt-3 text-[1.55rem] font-semibold leading-tight tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">
-                Tableau de bord commercial
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                Suivi des ventes, encaissements, marges et livraisons.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 lg:flex-shrink-0 lg:items-end">
-              {isAdmin && (
-                <>
-                  <div
-                    className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 lg:justify-end"
-                    role="tablist"
-                    aria-label="Mode d’affichage"
-                  >
-                    {[
-                      { value: "dashboard", label: "Vue Standard", icon: ReceiptText },
-                      { value: "analytics", label: "Analytics", icon: BarChart3 },
-                      { value: "profits", label: "Bénéfices", icon: Banknote },
-                      { value: "clients", label: "Clients", icon: Users },
-                    ].map(({ value, label, icon: Icon }) => (
-                      <button
-                        key={value}
-                        role="tab"
-                        aria-selected={viewMode === value}
-                        onClick={() => setViewMode(value)}
-                        className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition-all ${
-                          viewMode === value
-                            ? "bg-slate-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]"
-                            : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-white"
-                        }`}
-                      >
-                        <Icon className="h-4 w-4" aria-hidden />
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
+        <PageHeader
+          eyebrow="Ventes"
+          title="Tableau de bord commercial"
+          description="Suivi des ventes, encaissements, marges et livraisons."
+          meta={isAdmin ? "Admin" : null}
+          actions={
+            isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {[
+                  { value: "dashboard", label: "Vue Standard", icon: ReceiptText },
+                  { value: "analytics", label: "Analytics", icon: BarChart3 },
+                  { value: "profits", label: "Bénéfices", icon: Banknote },
+                  { value: "clients", label: "Clients", icon: Users },
+                ].map(({ value, label, icon: Icon }) => (
                   <button
-                    onClick={() => setShowExportModal(true)}
-                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
+                    key={value}
+                    role="tab"
+                    aria-selected={viewMode === value}
+                    onClick={() => setViewMode(value)}
+                    className={`ms-button ms-button-sm ${
+                      viewMode === value
+                        ? "ms-button-primary"
+                        : "ms-button-secondary"
+                    }`}
                   >
-                    <Download className="h-4 w-4" aria-hidden />
-                    Exporter
+                    <Icon className="h-4 w-4" aria-hidden />
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+                ))}
+                <span className="mx-0.5 hidden sm:block w-px h-6 bg-[var(--ms-border)]" aria-hidden="true" />
+                <Button
+                  onClick={() => setShowExportModal(true)}
+                  size="sm"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  <span>Exporter</span>
+                </Button>
+              </div>
+            )
+          }
+        />
 
         {/* Notification */}
         {message && (
@@ -2254,32 +2189,30 @@ const Sales = () => {
               <div className="flex flex-wrap gap-2">
                 {isAdmin ? (
                   <>
-                    <button
+                    <Button
                       onClick={() => setViewMode("dashboard")}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                      variant="primary"
                     >
                       Vue Standard
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setViewMode("profits")}
-                      className="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
                     >
                       Analyse Bénéfices
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setViewMode("clients")}
-                      className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
                     >
                       Analyse Clients
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <button
+                  <Button
                     onClick={() => setViewMode("clients")}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                    variant="primary"
                   >
                     Voir Les Analyses Clients
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -2398,19 +2331,20 @@ const Sales = () => {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Analyse Client</h2>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <button
+                  <Button
                     onClick={() => navigate("/sales/partially-paid")}
-                    className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-center"
+                    className="w-full sm:w-auto"
                   >
                     Consulter les ventes partiellement payées →
-                  </button>
+                  </Button>
                   {isAdmin && (
-                    <button
+                    <Button
                       onClick={() => setViewMode("analytics")}
-                      className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-center"
+                      variant="primary"
+                      className="w-full sm:w-auto"
                     >
                       Retour aux Analytics
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -2985,7 +2919,7 @@ const Sales = () => {
                                         <ExportSalesPdf sale={sale} />
                                       </Suspense>
                                     </div>
-                                    <button
+                                    <Button
                                       type="button"
                                       onClick={() => {
                                         setSelectedSale(sale);
@@ -2993,23 +2927,24 @@ const Sales = () => {
                                         setDeliveryNote(sale.deliveryNote || "");
                                         setShowDeliveryModal(true);
                                       }}
-                                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+                                      size="sm"
                                     >
                                       Gérer livraison
-                                    </button>
+                                    </Button>
                                   </div>
                                 )}
                                 {sale.status !== "completed" && sale.status !== "cancelled" && (
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() => {
                                       setSelectedSale(sale);
                                       setShowPaymentModal(true);
                                     }}
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition-colors w-full sm:w-auto"
+                                    variant="primary"
+                                    className="w-full sm:w-auto"
                                   >
                                     Ajouter Paiement
-                                  </button>
+                                  </Button>
                                 )}
                               </>
                             }
@@ -3163,8 +3098,7 @@ const Sales = () => {
             </Suspense>
           </>
         )}
-      </div>
-    </div>
+      </Workspace>
   );
 };
 

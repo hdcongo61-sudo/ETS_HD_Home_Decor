@@ -1,5 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Button, PageHeader, Workspace } from '../components/business';
+import { AlertTriangle } from 'lucide-react';
 
 const formatDateTime = (value) => {
   if (!value) return null;
@@ -45,51 +47,28 @@ const AccessRestricted = () => {
   const accessEnd = formatDateTime(restrictionInfo?.accessEnd);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="max-w-lg w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center space-y-6">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center">
-          <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.293 17.293a1 1 0 01-.083-1.32l6.41-9.015a1 1 0 011.64 0l6.41 9.015a1 1 0 01-.083 1.32A1 1 0 0118.41 18H5.59a1 1 0 01-.297-.707z" />
-          </svg>
+    <Workspace className="flex items-center justify-center" style={{ minHeight: '80vh' }}>
+      <div className="max-w-lg w-full text-center space-y-6">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--ms-warning)]/10">
+          <AlertTriangle className="h-8 w-8 text-[var(--ms-warning)]" />
         </div>
 
-        <div className="space-y-3">
-          <h1 className="text-2xl font-semibold text-gray-900">Accès restreint</h1>
-          <p className="text-gray-600 leading-relaxed">{message}</p>
-        </div>
+        <PageHeader title="Acces restreint" description={message} />
 
         {(accessStart || accessEnd) && (
-          <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 text-left text-sm text-gray-600 space-y-2">
-            {accessStart && (
-              <div>
-                <span className="font-medium text-gray-800">Accès autorisé à partir de&nbsp;:</span>
-                <br />
-                <span>{accessStart}</span>
-              </div>
-            )}
-            {accessEnd && (
-              <div>
-                <span className="font-medium text-gray-800">Accès disponible jusqu'au&nbsp;:</span>
-                <br />
-                <span>{accessEnd}</span>
-              </div>
-            )}
+          <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 text-left text-sm space-y-2">
+            {accessStart && <div><span className="font-medium text-[var(--ms-text)]">Acces autorise a partir de :</span><br /><span className="text-[var(--ms-text-muted)]">{accessStart}</span></div>}
+            {accessEnd && <div><span className="font-medium text-[var(--ms-text)]">Acces disponible jusqu'au :</span><br /><span className="text-[var(--ms-text-muted)]">{accessEnd}</span></div>}
           </div>
         )}
 
-        <div className="space-y-3 text-sm text-gray-500">
-          <p>Pour toute question, veuillez contacter un administrateur afin d'obtenir une autorisation ou davantage d'informations.</p>
-          <p className="italic">Votre accès sera automatiquement rétabli dès que la période autorisée commencera.</p>
-        </div>
+        <p className="text-sm text-[var(--ms-text-muted)]">Pour toute question, veuillez contacter un administrateur.</p>
 
-        <button
-          onClick={() => navigate('/login', { replace: true })}
-          className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          Retour à la connexion
-        </button>
+        <Button variant="primary" onClick={() => navigate('/login', { replace: true })}>
+          Retour a la connexion
+        </Button>
       </div>
-    </div>
+    </Workspace>
   );
 };
 

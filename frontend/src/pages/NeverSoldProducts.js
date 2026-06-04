@@ -14,6 +14,7 @@ import {
   ProductMetricCard,
   ProductPageShell,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 import { Download, FileText, PackageCheck, PackageX, Percent, Wallet } from 'lucide-react';
 
 const NeverSoldProducts = () => {
@@ -191,6 +192,7 @@ const exportToPDF = async () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
+    <Workspace>
       <ProductPageShell>
       <ProductHero
         eyebrow="Inventaire dormant"
@@ -407,6 +409,7 @@ const exportToPDF = async () => {
         </div>
       )}
       </ProductPageShell>
+    </Workspace>
     </motion.div>
   );
 };

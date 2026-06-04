@@ -2,6 +2,27 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from '../components/AppLoader';
+import {
+  Button,
+  CommandBar,
+  DataTable,
+  EmptyState,
+  KPICard,
+  LoadingSkeleton,
+  PageHeader,
+  SearchBox,
+  StatusBadge,
+  Workspace,
+} from '../components/business';
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Banknote,
+  Landmark,
+  Plus,
+  Search,
+  Wallet,
+} from 'lucide-react';
 
 const Bank = () => {
   const tableRef = useRef(null);
@@ -112,61 +133,67 @@ const Bank = () => {
   useResponsiveTable(tableRef, [transactions]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="bg-emerald-500 p-2 rounded-xl">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 6h16M4 10h16M4 14h16M4 18h16"
-            />
-          </svg>
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Caisse personnelle</h1>
-          <p className="text-sm text-gray-500">Depots et retraits visibles uniquement par vous.</p>
-        </div>
-      </div>
+    <Workspace className="space-y-5">
+      <PageHeader
+        title="Caisse personnelle"
+        description="Dépôts et retraits visibles uniquement par vous"
+      />
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 border border-red-100">
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-              clipRule="evenodd"
-            />
+        <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
+          <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
           {error}
         </div>
       )}
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Depots" value={`${stats.deposits.toLocaleString('fr-FR')} CFA`} color="emerald" />
-        <StatCard title="Retraits" value={`${stats.withdrawals.toLocaleString('fr-FR')} CFA`} color="rose" />
-        <StatCard title="Solde" value={`${stats.balance.toLocaleString('fr-FR')} CFA`} color="indigo" />
-        <StatCard title="Mouvements" value={stats.count.toLocaleString('fr-FR')} color="amber" />
+        <KPICard
+          title="Dépôts"
+          value={`${stats.deposits.toLocaleString('fr-FR')} CFA`}
+          tone="success"
+          icon={<ArrowDownCircle className="h-4 w-4" />}
+        />
+        <KPICard
+          title="Retraits"
+          value={`${stats.withdrawals.toLocaleString('fr-FR')} CFA`}
+          tone="danger"
+          icon={<ArrowUpCircle className="h-4 w-4" />}
+        />
+        <KPICard
+          title="Solde"
+          value={`${stats.balance.toLocaleString('fr-FR')} CFA`}
+          tone={stats.balance >= 0 ? 'neutral' : 'danger'}
+          icon={<Wallet className="h-4 w-4" />}
+        />
+        <KPICard
+          title="Mouvements"
+          value={stats.count.toLocaleString('fr-FR')}
+          tone="neutral"
+          icon={<Banknote className="h-4 w-4" />}
+        />
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Nouveau mouvement</h2>
+      {/* New Transaction Form */}
+      <section className="ms-surface p-5">
+        <h2 className="ms-section-title mb-4">Nouveau mouvement</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="form-label block mb-1">Type</label>
             <select
               name="type"
               value={formData.type}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+              className="form-control"
             >
-              <option value="deposit">Depot</option>
+              <option value="deposit">Dépôt</option>
               <option value="withdraw">Retrait</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Montant</label>
+            <label className="form-label block mb-1">Montant</label>
             <input
               type="number"
               name="amount"
@@ -174,123 +201,95 @@ const Bank = () => {
               step="0.01"
               value={formData.amount}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+              className="form-control"
               placeholder="0"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Libelle</label>
+            <label className="form-label block mb-1">Libellé</label>
             <input
               type="text"
               name="label"
               value={formData.label}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+              className="form-control"
               placeholder="Ex: Approvisionnement caisse"
             />
           </div>
           <div className="md:col-span-4 flex justify-end">
-            <button
+            <Button
               type="submit"
+              variant="primary"
               disabled={submitting}
-              className={`px-4 py-2 rounded-xl text-white ${
-                submitting ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
             >
               {submitting ? 'Enregistrement...' : 'Ajouter'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </section>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Historique</h2>
+      {/* History */}
+      <section className="ms-surface">
+        <CommandBar>
+          <h2 className="ms-section-title">Historique</h2>
           <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
+            <SearchBox
+              label="Rechercher un libellé"
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              placeholder="Rechercher un libelle..."
-              className="px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+              placeholder="Rechercher un libellé..."
             />
             <select
               value={filters.type}
               onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
-              className="px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500"
+              className="form-control max-w-[160px]"
             >
               <option value="">Tous</option>
-              <option value="deposit">Depots</option>
+              <option value="deposit">Dépôts</option>
               <option value="withdraw">Retraits</option>
             </select>
           </div>
-        </div>
+        </CommandBar>
 
         {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <AppLoader fullScreen={false} text="Chargement…" />
-          </div>
+          <LoadingSkeleton rows={5} />
         ) : transactions.length === 0 ? (
-          <div className="text-center text-gray-500 py-10">Aucun mouvement enregistre.</div>
+          <EmptyState
+            title="Aucun mouvement enregistré"
+            description="Ajoutez votre premier dépôt ou retrait ci-dessus."
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table ref={tableRef} className="responsive-table min-w-full text-sm">
-              <thead className="bg-emerald-50 text-emerald-700 uppercase text-xs">
+          <DataTable>
+            <table ref={tableRef} className="responsive-table w-full">
+              <thead>
                 <tr>
-                  <th className="py-2 px-3 text-left">Date</th>
-                  <th className="py-2 px-3 text-left">Libelle</th>
-                  <th className="py-2 px-3 text-left">Type</th>
-                  <th className="py-2 px-3 text-right">Montant</th>
+                  <th>Date</th>
+                  <th>Libellé</th>
+                  <th>Type</th>
+                  <th className="text-right">Montant</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((t) => (
-                  <tr key={t._id} className="border-b last:border-0 hover:bg-emerald-50/40">
-                    <td className="py-2 px-3 text-gray-600">{formatDateTime(t.createdAt)}</td>
-                    <td className="py-2 px-3 font-medium text-gray-900">{t.label}</td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          t.type === 'deposit'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-rose-100 text-rose-700'
-                        }`}
-                      >
-                        {t.type === 'deposit' ? 'Depot' : 'Retrait'}
-                      </span>
+                  <tr key={t._id}>
+                    <td className="text-[var(--ms-text-muted)] text-xs">{formatDateTime(t.createdAt)}</td>
+                    <td className="font-medium">{t.label}</td>
+                    <td>
+                      <StatusBadge tone={t.type === 'deposit' ? 'success' : 'danger'}>
+                        {t.type === 'deposit' ? 'Dépôt' : 'Retrait'}
+                      </StatusBadge>
                     </td>
-                    <td
-                      className={`py-2 px-3 text-right font-semibold ${
-                        t.type === 'deposit' ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
+                    <td className={`text-right font-semibold ${t.type === 'deposit' ? 'text-[var(--ms-success)]' : 'text-[var(--ms-danger)]'}`}>
                       {Number(t.amount || 0).toLocaleString('fr-FR')} CFA
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </DataTable>
         )}
-      </div>
-    </div>
-  );
-};
-
-const StatCard = ({ title, value, color }) => {
-  const colorMap = {
-    emerald: 'text-emerald-600',
-    rose: 'text-rose-600',
-    indigo: 'text-indigo-600',
-    amber: 'text-amber-600',
-  };
-  return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className={`text-xl font-semibold ${colorMap[color] || 'text-gray-700'}`}>
-        {value}
-      </p>
-    </div>
+      </section>
+    </Workspace>
   );
 };
 

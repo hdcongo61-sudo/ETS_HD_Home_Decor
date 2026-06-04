@@ -30,6 +30,16 @@ import {
 } from "../utils/saleUtils";
 import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
+import {
+  Button,
+  EmptyState,
+  KPICard,
+  LoadingSkeleton,
+  PageHeader,
+  StatusBadge,
+  Surface,
+  Workspace,
+} from "../components/business";
 
 const ExportSalesPdf = lazy(() => import("../components/ExportSalesPdf"));
 
@@ -343,46 +353,34 @@ const SalesArchive = () => {
   };
 
   return (
-    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 sm:px-5 lg:px-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header — compact on mobile */}
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center gap-3">
+    <Workspace>
+        <PageHeader
+          eyebrow="Archive ventes"
+          title="Toutes les ventes"
+          description="Liste complète et filtrée des ventes."
+          actions={
             <Link
               to="/sales"
-              className="flex items-center gap-2 shrink-0 w-10 h-10 justify-center rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-950 transition-colors md:w-auto md:h-auto md:px-3 md:py-2 md:rounded-full md:justify-start"
+              className="ms-button ms-button-secondary ms-button-md"
               aria-label="Retour au tableau des ventes"
             >
               <ArrowLeft className="w-5 h-5 shrink-0 md:w-4 md:h-4" />
-              <span className="hidden md:inline text-sm font-medium">
-                Tableau des ventes
-              </span>
+              <span>Tableau des ventes</span>
             </Link>
-            <div>
-              <p className="text-xs font-medium uppercase text-slate-500">Archive ventes</p>
-              <h1 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl md:text-3xl">
-                Toutes les ventes
-              </h1>
-              <p className="hidden sm:block text-sm text-slate-500 mt-0.5">
-                Liste complète et filtrée des ventes.
-              </p>
-            </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filters — collapsible on mobile */}
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <Surface>
           <button
             type="button"
             onClick={() => setFiltersOpen((o) => !o)}
-            className="w-full flex items-center justify-between p-4 text-left sm:hidden bg-white hover:bg-slate-50 transition-colors"
+            className="flex w-full items-center justify-between bg-white p-4 text-left transition-colors hover:bg-[var(--ms-bg)] sm:hidden"
             aria-expanded={filtersOpen}
           >
-            <span className="font-medium text-slate-900">Filtres</span>
+            <span className="font-semibold text-[var(--ms-text-strong)]">Filtres</span>
             {hasActiveFilters && (
-              <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded-full">
-                Actifs
-              </span>
+              <StatusBadge tone="neutral">Actifs</StatusBadge>
             )}
             <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
           </button>
@@ -413,21 +411,17 @@ const SalesArchive = () => {
               />
             </div>
           </div>
-        </div>
+        </Surface>
 
         {error && (
-          <div className="rounded-[1.5rem] bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
+          <EmptyState title="Erreur de chargement" description={error} />
         )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 sm:py-20">
-            <AppLoader fullScreen={false} text="Chargement des ventes…" />
-          </div>
+          <LoadingSkeleton rows={8} />
         ) : (
           <>
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <Surface className="p-4 sm:p-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">
@@ -440,9 +434,7 @@ const SalesArchive = () => {
                   </p>
                 </div>
                 {hasActiveFilters && (
-                  <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 sm:self-auto">
-                    Filtres actifs
-                  </span>
+                  <StatusBadge tone="neutral">Filtres actifs</StatusBadge>
                 )}
               </div>
 
@@ -451,7 +443,7 @@ const SalesArchive = () => {
                   <StatCard key={card.label} {...card} />
                 ))}
               </div>
-            </section>
+            </Surface>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-600">
@@ -467,10 +459,7 @@ const SalesArchive = () => {
 
             <div className="grid grid-cols-1 gap-4">
               {filteredSales.length === 0 ? (
-                <div className="col-span-full text-center py-12 sm:py-16 rounded-[1.5rem] border border-dashed border-slate-300 bg-white">
-                  <p className="text-slate-600 font-medium">Aucune vente correspondante</p>
-                  <p className="text-sm text-slate-400 mt-1">Modifiez les filtres ou revenez plus tard.</p>
-                </div>
+                <EmptyState title="Aucune vente correspondante" description="Modifiez les filtres ou revenez plus tard." />
               ) : (
                 <>
                   {visibleSales.map((sale, index) => {
@@ -514,17 +503,16 @@ const SalesArchive = () => {
 
                   {hasMoreSales && (
                     <div className="flex justify-center pt-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           setVisibleCount((current) =>
                             Math.min(current + VISIBLE_SALES_STEP, filteredSales.length)
                           )
                         }
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                       >
                         Afficher plus ({formatNumber(visibleSales.length)} sur {formatNumber(filteredSales.length)})
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </>
@@ -532,39 +520,12 @@ const SalesArchive = () => {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Workspace>
   );
 };
 
-const statTones = {
-  indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
-  emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  green: "bg-green-50 text-green-700 border-green-100",
-  rose: "bg-rose-50 text-rose-700 border-rose-100",
-  violet: "bg-violet-50 text-violet-700 border-violet-100",
-  amber: "bg-amber-50 text-amber-700 border-amber-100",
-  sky: "bg-sky-50 text-sky-700 border-sky-100",
-  slate: "bg-slate-50 text-slate-700 border-slate-100",
-};
-
-const StatCard = ({ label, value, helper, icon, tone = "indigo" }) => (
-  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase text-slate-500">
-          {label}
-        </p>
-        <p className="mt-1 break-words text-xl font-semibold text-slate-950 tabular-nums">
-          {value}
-        </p>
-      </div>
-      <div className={`shrink-0 rounded-xl border p-2.5 ${statTones[tone] || statTones.indigo}`}>
-        {icon}
-      </div>
-    </div>
-    <p className="mt-3 text-xs text-slate-500">{helper}</p>
-  </div>
+const StatCard = ({ label, value, helper, icon }) => (
+  <KPICard title={label} value={value} context={helper} icon={icon} />
 );
 
 export default SalesArchive;

@@ -15,6 +15,11 @@ import {
   LineChart,
   FileText,
 } from "lucide-react";
+import {
+  Button,
+  KPICard,
+  StatusBadge,
+} from './business';
 
 const DayDetailsModal = ({
   date,
@@ -103,7 +108,7 @@ const DayDetailsModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[260] flex items-end justify-center bg-gray-950/50 p-0 backdrop-blur-md sm:items-center sm:p-4"
+        className="fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.36)] p-0 backdrop-blur-sm sm:items-center sm:p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -114,219 +119,135 @@ const DayDetailsModal = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-white/80 bg-white/96 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl safe-area-bottom dark:border-gray-800 dark:bg-gray-900/96 sm:max-h-[calc(100dvh-4.5rem)] sm:max-w-6xl sm:rounded-[28px]"
+          className="flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[calc(100dvh-4.5rem)] sm:max-w-6xl sm:rounded-lg"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Mobile: minimal top bar (drag handle + date + close) */}
-          <div className="sm:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white/92 dark:bg-gray-900/92 backdrop-blur-xl shrink-0 safe-area-top">
-            <div className="w-10 shrink-0 flex justify-center">
-              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" aria-hidden />
-            </div>
-            <h2 className="flex-1 text-base font-semibold text-gray-900 dark:text-white truncate text-center">
+          {/* Mobile header */}
+          <div className="sm:hidden flex items-center gap-3 px-4 py-3 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] shrink-0">
+            <h2 className="flex-1 text-base font-semibold text-[var(--ms-text)] truncate text-center">
               {safeFormatDate(date, "EEEE d MMMM yyyy")}
             </h2>
             <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition touch-manipulation"
-              aria-label="Fermer"
-            >
-              <X size={22} />
-            </button>
+              type="button" onClick={onClose}
+              className="ms-icon-button" aria-label="Fermer"
+            ><X size={22} /></button>
           </div>
 
-          {/* Desktop: full header with gradient and summary */}
-          <div className="hidden border-b border-gray-200 bg-white/92 px-5 py-4 text-gray-900 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/92 dark:text-white sm:block">
+          {/* Desktop header */}
+          <div className="hidden border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-5 py-4 sm:block">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
-                    Détails du jour
-                  </p>
-                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                    {sales.length + expenses.length + payments.length} transaction{sales.length + expenses.length + payments.length !== 1 ? "s" : ""}
-                  </span>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">Details du jour</p>
+                  <StatusBadge tone="neutral">{sales.length + expenses.length + payments.length} transaction{sales.length + expenses.length + payments.length !== 1 ? "s" : ""}</StatusBadge>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-end gap-x-4 gap-y-2">
-                  <h2 className="text-xl font-bold leading-tight tracking-tight">
-                    {safeFormatDate(date)}
-                  </h2>
-                  <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <h2 className="text-xl font-bold text-[var(--ms-text-strong)]">{safeFormatDate(date)}</h2>
+                  <div className="flex items-center gap-2 rounded-full bg-[var(--ms-bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--ms-text)]">
                     {summary.trend.icon}
                     <span>{summary.trend.text}</span>
                   </div>
                 </div>
-                <p className="mt-2 line-clamp-2 max-w-4xl text-sm leading-6 text-gray-500 dark:text-gray-400">
-                  {summary.text}
-                </p>
+                <p className="mt-2 line-clamp-2 max-w-4xl text-sm text-[var(--ms-text-muted)]">{summary.text}</p>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex min-h-[42px] min-w-[42px] flex-shrink-0 items-center justify-center rounded-2xl bg-gray-100 transition hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-                aria-label="Fermer"
-              >
-                <X size={22} />
-              </button>
+              <button type="button" onClick={onClose} className="ms-icon-button" aria-label="Fermer"><X size={22} /></button>
             </div>
           </div>
 
-          {/* Stat Row: compact on mobile, clearer hierarchy */}
-          <div className="grid grid-cols-2 gap-2 border-b border-gray-200 bg-gray-50/90 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/80 sm:grid-cols-5 sm:p-3">
-            <MiniStat color="green" label="Ventes" value={totals.totalSales} />
-            <MiniStat color="blue" label="Encaissements" value={totals.totalPayments} />
-            <MiniStat color="red" label="Dépenses" value={totals.totalExpenses} />
-            <MiniStat color="purple" label="Profit" value={totals.profit} />
-            <MiniStat
-              color="amber"
-              label="Vente en gros"
-              value={wholesaleStats.totalAmount}
-              helperText={`${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}`}
-            />
+          {/* Stat Row */}
+          <div className="grid grid-cols-2 gap-2 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-3 sm:grid-cols-5 sm:px-4">
+            <KPICard title="Ventes" value={`${totals.totalSales.toLocaleString("fr-FR")} CFA`} tone="success" />
+            <KPICard title="Encaissements" value={`${totals.totalPayments.toLocaleString("fr-FR")} CFA`} tone="neutral" />
+            <KPICard title="Depenses" value={`${totals.totalExpenses.toLocaleString("fr-FR")} CFA`} tone="danger" />
+            <KPICard title="Profit" value={`${totals.profit.toLocaleString("fr-FR")} CFA`} tone={totals.profit >= 0 ? "success" : "danger"} />
+            <KPICard title="Vente en gros" value={`${wholesaleStats.totalAmount.toLocaleString("fr-FR")} CFA`} context={`${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}`} tone="warning" />
           </div>
 
-          {/* Body: more spacing and clarity on mobile */}
-          <div className="grid flex-grow gap-4 overflow-auto overscroll-contain bg-white px-4 py-4 dark:bg-gray-900 sm:grid-cols-3 sm:p-5">
+          {/* Body */}
+          <div className="grid flex-grow gap-4 overflow-auto overscroll-contain bg-[var(--ms-white)] px-4 py-4 sm:grid-cols-3 sm:p-5">
             <Section
-              icon={<ShoppingBag className="text-green-600 dark:text-green-400 shrink-0" size={18} />}
+              icon={<ShoppingBag size={18} />}
               title={`Ventes (${sales.length})`}
               link={`/sales?date=${formatDateForLink(date)}`}
-              emptyText="Aucune vente pour cette journée"
+              emptyText="Aucune vente pour cette journee"
             >
               {sales.map((s, i) => (
-                <motion.div
-                  key={s._id || i}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex min-h-[64px] flex-col justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600 sm:p-4"
-                >
+                <div key={s._id || i} className="ms-surface p-4">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100 truncate text-base">
-                        Vente #{s.saleNumber || `T${i + 1}`}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {s.client?.name || "Client non spécifié"}
-                      </div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        {safeFormatTime(s.createdAt)}
-                      </div>
+                      <div className="font-semibold text-[var(--ms-text)] truncate">Vente #{s.saleNumber || `T${i + 1}`}</div>
+                      <div className="text-sm text-[var(--ms-text-muted)] truncate mt-0.5">{s.client?.name || "Client non specifie"}</div>
+                      <div className="text-xs text-[var(--ms-text-muted)] mt-1">{safeFormatTime(s.createdAt)}</div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-green-600 dark:text-green-400 font-bold tabular-nums text-base sm:text-base">
-                        {formatCurrency(s.totalAmount)}
-                      </div>
-                    </div>
+                    <div className="text-right shrink-0 font-bold text-[var(--ms-success)]">{formatCurrency(s.totalAmount)}</div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </Section>
 
             <Section
-              icon={<Receipt className="text-red-600 dark:text-red-400 shrink-0" size={18} />}
-              title={`Dépenses (${expenses.length})`}
+              icon={<Receipt size={18} />}
+              title={`Depenses (${expenses.length})`}
               link={isAdmin ? `/expenses?date=${formatDateForLink(date)}` : null}
-              emptyText="Aucune dépense pour cette journée"
+              emptyText="Aucune depense pour cette journee"
             >
               {expenses.map((e, i) => (
-                <motion.div
-                  key={e._id || i}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex min-h-[64px] flex-col justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600 sm:p-4"
-                >
+                <div key={e._id || i} className="ms-surface p-4">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 text-base">
-                        {e.description || "Dépense sans description"}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg text-xs font-medium">
-                          {e.category || "Non catégorisé"}
-                        </span>
+                      <div className="font-semibold text-[var(--ms-text)] line-clamp-2">{e.description || "Depense sans description"}</div>
+                      <div className="text-xs text-[var(--ms-text-muted)] mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <StatusBadge tone="neutral">{e.category || "Non categorise"}</StatusBadge>
                         {e.supplier && <span className="truncate text-xs">Fourn.: {e.supplier}</span>}
                       </div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        {safeFormatTime(e.createdAt)}
-                      </div>
+                      <div className="text-xs text-[var(--ms-text-muted)] mt-1">{safeFormatTime(e.createdAt)}</div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-red-600 dark:text-red-400 font-bold tabular-nums text-base">
-                        {formatCurrency(e.amount)}
-                      </div>
-                    </div>
+                    <div className="text-right shrink-0 font-bold text-[var(--ms-danger)]">{formatCurrency(e.amount)}</div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </Section>
 
             <Section
-              icon={<CreditCard className="text-blue-600 dark:text-blue-400 shrink-0" size={18} />}
+              icon={<CreditCard size={18} />}
               title={`Encaissements (${payments.length})`}
-              emptyText="Aucun encaissement pour cette journée"
+              emptyText="Aucun encaissement pour cette journee"
             >
               {payments.map((p, i) => (
-                <motion.div
-                  key={p._id || i}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex min-h-[64px] flex-col justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600 sm:p-4"
-                >
+                <div key={p._id || i} className="ms-surface p-4">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100 text-base">
-                        Paiement #{i + 1}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {p.client?.name || "Client non spécifié"}
-                      </div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex flex-wrap items-center gap-2">
-                        <span className="capitalize">{p.method || "—"}</span>
-                        <span>·</span>
-                        <span>{safeFormatTime(p.paymentDate)}</span>
+                      <div className="font-semibold text-[var(--ms-text)]">Paiement #{i + 1}</div>
+                      <div className="text-sm text-[var(--ms-text-muted)] truncate mt-0.5">{p.client?.name || "Client non specifie"}</div>
+                      <div className="text-xs text-[var(--ms-text-muted)] mt-1 flex flex-wrap items-center gap-2">
+                        <span className="capitalize">{p.method || "—"}</span><span>·</span><span>{safeFormatTime(p.paymentDate)}</span>
                       </div>
                       {p.saleId && (
-                        <Link
-                          to={`/sales/${p.saleId}`}
-                          className="inline-flex items-center gap-1 mt-2 min-h-[44px] sm:min-h-0 py-2 -my-1 text-blue-600 dark:text-blue-400 hover:text-blue-500 text-sm font-medium touch-manipulation"
-                        >
+                        <Link to={`/sales/${p.saleId}`} className="inline-flex items-center gap-1 mt-2 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-sm font-medium">
                           Voir la vente <ChevronRight size={14} />
                         </Link>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-blue-600 dark:text-blue-400 font-bold tabular-nums text-base">
-                        {formatCurrency(p.amount)}
-                      </div>
-                    </div>
+                    <div className="text-right shrink-0 font-bold text-[var(--ms-blue)]">{formatCurrency(p.amount)}</div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </Section>
           </div>
 
-          {/* Footer: 3 columns on mobile, row on desktop */}
-          <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50/88 px-4 py-4 backdrop-blur-xl safe-area-bottom dark:border-gray-700 dark:bg-gray-800/88 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left order-2 sm:order-1">
+          {/* Footer */}
+          <div className="flex flex-col gap-3 border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+            <p className="text-xs sm:text-sm text-[var(--ms-text-muted)] text-center sm:text-left order-2 sm:order-1">
               {sales.length + expenses.length + payments.length} transaction{sales.length + expenses.length + payments.length !== 1 ? "s" : ""} au total
             </p>
             <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto order-1 sm:order-2">
-              <LinkButton
-                to={`/sales?date=${formatDateForLink(date)}`}
-                label="Ventes"
-              />
+              <Link to={`/sales?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center"><FileText size={14} /> Ventes</Link>
               {isAdmin ? (
-                <LinkButton
-                  to={`/expenses?date=${formatDateForLink(date)}`}
-                  label="Dépenses"
-                />
+                <Link to={`/expenses?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center"><FileText size={14} /> Depenses</Link>
               ) : (
-                <DisabledButton label="Dépenses" />
+                <span className="ms-button ms-button-sm justify-center opacity-40 cursor-not-allowed"><FileText size={14} /> Depenses</span>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="form-button-primary w-full touch-manipulation text-sm sm:w-auto sm:text-base"
-              >
-                Fermer
-              </button>
+              <Button variant="primary" size="sm" onClick={onClose}>Fermer</Button>
             </div>
           </div>
         </motion.div>
@@ -335,70 +256,28 @@ const DayDetailsModal = ({
   );
 };
 
-/* ------------------- Helper Components ------------------- */
-const MINI_STAT_STYLES = {
-  green: "border-emerald-100 text-emerald-700 dark:border-emerald-900/50 dark:text-emerald-300",
-  blue: "border-blue-100 text-blue-700 dark:border-blue-900/50 dark:text-blue-300",
-  red: "border-red-100 text-red-700 dark:border-red-900/50 dark:text-red-300",
-  purple: "border-violet-100 text-violet-700 dark:border-violet-900/50 dark:text-violet-300",
-  amber: "border-amber-100 text-amber-700 dark:border-amber-900/50 dark:text-amber-300",
-};
-
-const MiniStat = ({ color, label, value, helperText = "" }) => (
-  <div
-    className={`flex min-h-[64px] flex-col justify-center rounded-2xl border bg-white p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)] dark:bg-gray-900 sm:min-h-[60px] ${MINI_STAT_STYLES[color] || MINI_STAT_STYLES.blue}`}
-  >
-    <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</div>
-    <div className="mt-1 break-all text-sm font-bold tabular-nums sm:text-base">{Number(value || 0).toLocaleString("fr-FR")} CFA</div>
-    {helperText ? (
-      <div className="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">{helperText}</div>
-    ) : null}
-  </div>
-);
-
+/* ------------------- Section Helper ------------------- */
 const Section = ({ icon, title, link, children, emptyText }) => (
-  <section className="min-h-0 rounded-[24px] border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/55">
+  <section className="min-h-0 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h3 className="flex min-w-0 items-center gap-2.5 text-[15px] font-bold text-gray-900 dark:text-gray-100">
+      <h3 className="flex min-w-0 items-center gap-2.5 text-[15px] font-bold text-[var(--ms-text)]">
         {icon}
         <span className="truncate">{title}</span>
       </h3>
       {link ? (
-        <Link
-          to={link}
-          className="flex min-h-[36px] flex-shrink-0 items-center justify-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          Voir tout <ChevronRight size={14} />
-        </Link>
+        <Link to={link} className="ms-button ms-button-secondary ms-button-sm"><ChevronRight size={14} /> Voir tout</Link>
       ) : (
-        <span className="flex cursor-not-allowed items-center gap-1 px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500">
-          Voir tout <ChevronRight size={14} />
-        </span>
+        <span className="ms-button ms-button-sm opacity-40 cursor-not-allowed"><ChevronRight size={14} /> Voir tout</span>
       )}
     </div>
     {children?.length ? (
-      <div className="space-y-3">{children}</div>
+      <div className="space-y-2">{children}</div>
     ) : (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-10 text-center dark:border-gray-700 dark:bg-gray-900/70">
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{emptyText}</p>
+      <div className="rounded-lg border border-dashed border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-10 text-center">
+        <p className="text-sm text-[var(--ms-text-muted)]">{emptyText}</p>
       </div>
     )}
   </section>
-);
-
-const LinkButton = ({ to, label }) => (
-  <Link
-    to={to}
-    className="min-h-[44px] py-3 sm:py-2.5 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 px-2 sm:px-5 rounded-xl transition w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 touch-manipulation font-medium text-sm sm:text-base"
-  >
-    <FileText size={14} className="shrink-0 sm:w-4 sm:h-4" /> <span className="truncate">{label}</span>
-  </Link>
-);
-
-const DisabledButton = ({ label }) => (
-  <span className="min-h-[44px] py-3 sm:py-2.5 bg-white dark:bg-gray-900 text-gray-400 border border-gray-200 dark:border-gray-800 px-2 sm:px-5 rounded-xl w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 cursor-not-allowed font-medium text-sm sm:text-base">
-    <FileText size={14} className="shrink-0 sm:w-4 sm:h-4" /> <span className="truncate">{label}</span>
-  </span>
 );
 
 export default DayDetailsModal;

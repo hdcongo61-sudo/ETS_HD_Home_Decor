@@ -12,6 +12,7 @@ import {
   ProductPageShell,
   ProductSection,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const CriticalStockProducts = () => {
   const [products, setProducts] = useState([]);
@@ -42,6 +43,7 @@ const CriticalStockProducts = () => {
   }));
 
   return (
+  <Workspace>
     <ProductPageShell>
       <ProductHero
         eyebrow="Stock"
@@ -177,6 +179,7 @@ const CriticalStockProducts = () => {
       </div>
       </ProductSection>
     </ProductPageShell>
+  </Workspace>
   );
 };
 

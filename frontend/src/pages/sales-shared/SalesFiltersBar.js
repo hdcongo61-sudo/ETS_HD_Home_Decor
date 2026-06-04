@@ -5,26 +5,25 @@ import {
   DELIVERY_OPTIONS_ARCHIVE,
   DATE_FILTER_OPTIONS,
 } from "./constants";
+import { Button, StatusBadge } from "../../components/business";
 
 const FIELD_PANEL_CLASS =
-  "space-y-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm " +
-  "lg:min-h-[128px] lg:bg-gradient-to-b lg:from-white lg:to-gray-50/80 lg:shadow-[0_10px_30px_-18px_rgba(15,23,42,0.35)]";
+  "space-y-2 rounded-md border border-[var(--ms-border)] bg-white px-3 py-3";
 
 const LABEL_CLASS =
-  "flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500";
+  "flex items-center gap-2 text-[11px] font-semibold uppercase text-[var(--ms-text-muted)]";
 
 const INPUT_CLASS =
-  "w-full min-h-[46px] rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 " +
-  "shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+  "w-full min-h-[38px] rounded-md border border-[var(--ms-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--ms-text)] transition focus:outline-none focus:ring-2 focus:ring-[rgba(0,120,212,0.16)] focus:border-[var(--ms-blue)]";
 
 const ICON_DOT_CLASS = {
-  indigo: "bg-indigo-500",
-  emerald: "bg-emerald-500",
-  amber: "bg-amber-500",
-  sky: "bg-sky-500",
-  rose: "bg-rose-500",
-  violet: "bg-violet-500",
-  slate: "bg-slate-500",
+  indigo: "bg-[var(--ms-blue)]",
+  emerald: "bg-[var(--ms-success)]",
+  amber: "bg-[var(--ms-warning)]",
+  sky: "bg-[var(--ms-blue)]",
+  rose: "bg-[var(--ms-danger)]",
+  violet: "bg-[var(--ms-text-muted)]",
+  slate: "bg-[var(--ms-text-muted)]",
 };
 
 const FilterCard = ({ label, accent = "indigo", helper, className = "", children }) => (
@@ -34,7 +33,7 @@ const FilterCard = ({ label, accent = "indigo", helper, className = "", children
       <span>{label}</span>
     </div>
     {children}
-    {helper ? <p className="hidden lg:block text-xs text-gray-500">{helper}</p> : null}
+    {helper ? <p className="hidden text-xs text-[var(--ms-text-muted)] lg:block">{helper}</p> : null}
   </div>
 );
 
@@ -103,27 +102,24 @@ const SalesFiltersBar = ({
 
   return (
     <div className="space-y-4" role="group" aria-label="Filtres des ventes">
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-start gap-4 rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-sky-50 px-5 py-4">
+      <div className="hidden items-start gap-4 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900">Filtres des ventes</p>
-          <p className="mt-1 text-xs leading-5 text-gray-500">
-            Vue desktop en colonnes: lecture verticale plus propre, champs mieux séparés, et repérage plus rapide des filtres actifs.
+          <p className="text-sm font-semibold text-[var(--ms-text-strong)]">Filtres des ventes</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--ms-text-muted)]">
+            Affinez l’historique par statut, client, vendeur, date et livraison.
           </p>
         </div>
         <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
           {activeFilters.length > 0 ? (
             activeFilters.map((item) => (
-              <span
-                key={item.key}
-                className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-medium text-indigo-700"
-              >
+              <StatusBadge key={item.key} tone="neutral">
                 {item.label}
-              </span>
+              </StatusBadge>
             ))
           ) : (
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500">
+            <StatusBadge tone="neutral">
               Aucun filtre actif
-            </span>
+            </StatusBadge>
           )}
         </div>
       </div>
@@ -236,14 +232,14 @@ const SalesFiltersBar = ({
           {variant === "archive" ? (
             <label
               htmlFor="filter-date"
-              className="flex min-h-[46px] items-center rounded-xl border border-gray-200 bg-white px-3.5 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500"
+              className="flex min-h-[38px] items-center rounded-md border border-[var(--ms-border)] bg-white px-2.5 focus-within:border-[var(--ms-blue)] focus-within:ring-2 focus-within:ring-[rgba(0,120,212,0.16)]"
             >
               <input
                 id="filter-date"
                 type="date"
                 value={dateFilter}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="w-full border-0 bg-transparent p-0 text-sm text-gray-900 focus:outline-none focus:ring-0 [color-scheme:light]"
+                className="w-full border-0 bg-transparent p-0 text-sm text-[var(--ms-text)] focus:outline-none focus:ring-0 [color-scheme:light]"
                 style={{ fontSize: "16px" }}
                 aria-label="Filtrer par date"
               />
@@ -309,16 +305,17 @@ const SalesFiltersBar = ({
         </FilterCard>
 
         <div className="sm:col-span-2 lg:col-span-2 flex">
-          <button
+          <Button
             type="button"
             onClick={onReset}
-            className="w-full rounded-2xl border border-gray-900 bg-gray-900 px-4 py-4 text-left text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            variant="primary"
+            className="w-full justify-between px-4 py-3 text-left"
             aria-label="Réinitialiser les filtres"
           >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">Réinitialiser</div>
-                <div className="mt-1 text-xs text-gray-300">
+                <div className="mt-1 text-xs text-white/80">
                   Revenez instantanément à la vue complète des ventes.
                 </div>
               </div>
@@ -326,7 +323,7 @@ const SalesFiltersBar = ({
                 ↺
               </span>
             </div>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

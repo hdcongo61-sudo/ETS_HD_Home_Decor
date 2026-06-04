@@ -92,7 +92,7 @@ const PaySlipPrint = () => {
     if (loading) {
         return (
             <div className="flex min-h-[55vh] items-center justify-center bg-[#f6f7f9]">
-                <svg className="h-8 w-8 animate-spin text-gray-700" viewBox="0 0 24 24">
+                <svg className="h-8 w-8 animate-spin text-[var(--ms-text)]" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
@@ -102,7 +102,7 @@ const PaySlipPrint = () => {
 
     if (error) {
         return (
-            <div className="mx-auto mt-8 max-w-3xl rounded-[24px] border border-red-100 bg-red-50 p-5 text-red-700 shadow-sm">
+            <div className="mt-8 rounded-lg border border-red-100 bg-[var(--ms-danger)]/10 p-5 text-[var(--ms-danger)] shadow-[var(--ms-shadow-sm)]">
                 <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -113,7 +113,7 @@ const PaySlipPrint = () => {
                         <button
                             type="button"
                             onClick={() => navigate(employeePayrollPath(employeeReference))}
-                            className="mt-4 inline-flex min-h-[42px] items-center rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white"
+                            className="mt-4 inline-flex min-h-[42px] items-center rounded-lg bg-gray-950 px-4 py-2 text-sm font-semibold text-white"
                         >
                             Retour aux fiches
                         </button>
@@ -156,10 +156,10 @@ const PaySlipPrint = () => {
             </style>
 
             {/* Bouton Retour et actions */}
-            <div className="no-print mx-auto mb-5 flex max-w-5xl flex-col gap-3 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="no-print mb-5 flex flex-col gap-3 rounded-lg border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <button
                     onClick={() => navigate(employeePayrollPath(employeeReference))}
-                    className="inline-flex min-h-[44px] w-fit items-center rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white hover:text-gray-950"
+                    className="inline-flex min-h-[44px] w-fit items-center rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-2 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-white)] hover:text-[var(--ms-text-strong)]"
                 >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -170,7 +170,7 @@ const PaySlipPrint = () => {
                 <div className="flex gap-3">
                     <button
                         onClick={handleDownloadPDF}
-                        className="inline-flex min-h-[44px] items-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+                        className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-semibold text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition hover:bg-[var(--ms-bg-subtle)]"
                     >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -180,7 +180,7 @@ const PaySlipPrint = () => {
 
                     <button
                         onClick={() => window.print()}
-                        className="inline-flex min-h-[44px] items-center rounded-2xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800"
+                        className="inline-flex min-h-[44px] items-center rounded-lg bg-gray-950 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800"
                     >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -191,17 +191,17 @@ const PaySlipPrint = () => {
             </div>
 
             {/* Contenu de la fiche de paie */}
-            <div className="print-shell mx-auto max-w-5xl">
-            <div className="payslip-container overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+            <div className="print-shell max-w-5xl">
+            <div className="payslip-container overflow-hidden rounded-lg border border-white/80 bg-[var(--ms-white)] shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
                 {/* En-tête avec informations de la boutique */}
-                <div className="border-b border-gray-200 bg-gray-950 px-6 py-6 text-white sm:px-8">
+                <div className="border-b border-[var(--ms-border)] bg-gray-950 px-6 py-6 text-white sm:px-8">
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">Bulletin de salaire</p>
                             <h1 className="mt-2 text-2xl font-bold tracking-tight">ETS HD Home Decor</h1>
                             <p className="mt-1 text-sm text-gray-300">Document officiel de paie</p>
                         </div>
-                        <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left text-sm text-gray-200">
+                        <div className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-left text-sm text-gray-200">
                             <p className="font-semibold text-white">Période</p>
                             <p className="capitalize">{periodLabel}</p>
                             <p className="mt-1 text-xs">Réf. {paySlip._id.slice(-8).toUpperCase()}</p>
@@ -232,68 +232,68 @@ const PaySlipPrint = () => {
 
                 <div className="p-6 sm:p-8">
                 <div className="mb-8 grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-[22px] border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Salaire net</p>
-                        <p className="mt-2 text-2xl font-bold text-gray-950">{formatMoney(paySlip.netSalary)}</p>
+                    <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Salaire net</p>
+                        <p className="mt-2 text-2xl font-bold text-[var(--ms-text-strong)]">{formatMoney(paySlip.netSalary)}</p>
                     </div>
-                    <div className="rounded-[22px] border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Salaire de base</p>
-                        <p className="mt-2 text-xl font-semibold text-gray-950">{formatMoney(paySlip.baseSalary)}</p>
+                    <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Salaire de base</p>
+                        <p className="mt-2 text-xl font-semibold text-[var(--ms-text-strong)]">{formatMoney(paySlip.baseSalary)}</p>
                     </div>
-                    <div className="rounded-[22px] border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Date paiement</p>
-                        <p className="mt-2 text-xl font-semibold text-gray-950">{new Date(paySlip.paymentDate).toLocaleDateString('fr-FR')}</p>
+                    <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Date paiement</p>
+                        <p className="mt-2 text-xl font-semibold text-[var(--ms-text-strong)]">{new Date(paySlip.paymentDate).toLocaleDateString('fr-FR')}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <div className="rounded-[22px] border border-gray-200 p-5">
-                        <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-gray-900">Informations employé</h2>
+                    <div className="rounded-lg border border-[var(--ms-border)] p-5">
+                        <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ms-text-strong)]">Informations employé</h2>
                         <div className="space-y-3 text-sm">
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Nom</span><span className="font-semibold text-gray-950">{employee.name}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Poste</span><span className="font-semibold text-gray-950">{employee.position || '—'}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Département</span><span className="font-semibold text-gray-950">{employee.department || '—'}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Date d'embauche</span><span className="font-semibold text-gray-950">{employee.hireDate ? new Date(employee.hireDate).toLocaleDateString('fr-FR') : '—'}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Nom</span><span className="font-semibold text-[var(--ms-text-strong)]">{employee.name}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Poste</span><span className="font-semibold text-[var(--ms-text-strong)]">{employee.position || '—'}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Département</span><span className="font-semibold text-[var(--ms-text-strong)]">{employee.department || '—'}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Date d'embauche</span><span className="font-semibold text-[var(--ms-text-strong)]">{employee.hireDate ? new Date(employee.hireDate).toLocaleDateString('fr-FR') : '—'}</span></div>
                         </div>
                     </div>
 
-                    <div className="rounded-[22px] border border-gray-200 p-5">
-                        <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-gray-900">Informations paie</h2>
+                    <div className="rounded-lg border border-[var(--ms-border)] p-5">
+                        <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ms-text-strong)]">Informations paie</h2>
                         <div className="space-y-3 text-sm">
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Date de paiement</span><span className="font-semibold text-gray-950">{new Date(paySlip.paymentDate).toLocaleDateString('fr-FR')}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Période</span><span className="font-semibold text-gray-950">Du 1er au {new Date(paySlip.year, paySlip.month, 0).getDate()} {new Date(paySlip.year, paySlip.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Référence</span><span className="font-mono font-semibold text-gray-950">{paySlip._id.slice(-8).toUpperCase()}</span></div>
-                            <div className="flex justify-between gap-4"><span className="text-gray-500">Statut</span><span className="font-semibold capitalize text-gray-950">{paySlip.status || '—'}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Date de paiement</span><span className="font-semibold text-[var(--ms-text-strong)]">{new Date(paySlip.paymentDate).toLocaleDateString('fr-FR')}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Période</span><span className="font-semibold text-[var(--ms-text-strong)]">Du 1er au {new Date(paySlip.year, paySlip.month, 0).getDate()} {new Date(paySlip.year, paySlip.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Référence</span><span className="font-mono font-semibold text-[var(--ms-text-strong)]">{paySlip._id.slice(-8).toUpperCase()}</span></div>
+                            <div className="flex justify-between gap-4"><span className="text-[var(--ms-text-muted)]">Statut</span><span className="font-semibold capitalize text-[var(--ms-text-strong)]">{paySlip.status || '—'}</span></div>
                         </div>
                     </div>
                 </div>
 
                 <div className="mb-8">
-                    <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-900">Détails de la paie</h2>
-                    <table className="w-full overflow-hidden rounded-2xl border border-gray-200 text-sm">
+                    <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--ms-text-strong)]">Détails de la paie</h2>
+                    <table className="w-full overflow-hidden rounded-lg border border-[var(--ms-border)] text-sm">
                         <thead>
-                            <tr className="bg-gray-50">
-                                <th className="p-3 text-left font-semibold text-gray-600">Description</th>
-                                <th className="p-3 text-right font-semibold text-gray-600">Montant</th>
+                            <tr className="bg-[var(--ms-bg-subtle)]">
+                                <th className="p-3 text-left font-semibold text-[var(--ms-text)]">Description</th>
+                                <th className="p-3 text-right font-semibold text-[var(--ms-text)]">Montant</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             <tr>
-                                <td className="p-3 text-gray-700">Salaire de base</td>
-                                <td className="p-3 text-right font-semibold text-gray-950">{formatMoney(paySlip.baseSalary)}</td>
+                                <td className="p-3 text-[var(--ms-text)]">Salaire de base</td>
+                                <td className="p-3 text-right font-semibold text-[var(--ms-text-strong)]">{formatMoney(paySlip.baseSalary)}</td>
                             </tr>
 
                             {paySlip.bonuses > 0 && (
                                 <tr className="border-b">
-                                    <td className="p-3 text-gray-700">Bonus</td>
-                                    <td className="p-3 text-right font-semibold text-green-700">+ {formatMoney(paySlip.bonuses)}</td>
+                                    <td className="p-3 text-[var(--ms-text)]">Bonus</td>
+                                    <td className="p-3 text-right font-semibold text-[var(--ms-success)]">+ {formatMoney(paySlip.bonuses)}</td>
                                 </tr>
                             )}
 
                             {paySlip.deductions > 0 && (
                                 <tr className="border-b">
-                                    <td className="p-3 text-gray-700">Déductions</td>
-                                    <td className="p-3 text-right font-semibold text-red-700">- {formatMoney(paySlip.deductions)}</td>
+                                    <td className="p-3 text-[var(--ms-text)]">Déductions</td>
+                                    <td className="p-3 text-right font-semibold text-[var(--ms-danger)]">- {formatMoney(paySlip.deductions)}</td>
                                 </tr>
                             )}
 
@@ -307,22 +307,22 @@ const PaySlipPrint = () => {
 
                 {paySlip.notes && (
                     <div className="mb-8">
-                        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-900">Notes</h2>
-                        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">{paySlip.notes}</div>
+                        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--ms-text-strong)]">Notes</h2>
+                        <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 text-sm text-[var(--ms-text)]">{paySlip.notes}</div>
                     </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                     <div className="text-center">
-                        <div className="border-t border-gray-300 pt-4 mt-8 mx-8">
-                            <div className="text-sm text-gray-500">Signature employé</div>
-                            <div className="mt-2 text-xs text-gray-400">Date: {new Date().toLocaleDateString('fr-FR')}</div>
+                        <div className="border-t border-[var(--ms-border-strong)] pt-4 mt-8 mx-8">
+                            <div className="text-sm text-[var(--ms-text-muted)]">Signature employé</div>
+                            <div className="mt-2 text-xs text-[var(--ms-text-muted)]">Date: {new Date().toLocaleDateString('fr-FR')}</div>
                         </div>
                     </div>
                     <div className="text-center">
-                        <div className="border-t border-gray-300 pt-4 mt-8 mx-8">
-                            <div className="text-sm text-gray-500">Signature employeur</div>
-                            <div className="mt-2 text-xs text-gray-400">Date: {new Date().toLocaleDateString('fr-FR')}</div>
+                        <div className="border-t border-[var(--ms-border-strong)] pt-4 mt-8 mx-8">
+                            <div className="text-sm text-[var(--ms-text-muted)]">Signature employeur</div>
+                            <div className="mt-2 text-xs text-[var(--ms-text-muted)]">Date: {new Date().toLocaleDateString('fr-FR')}</div>
                         </div>
                     </div>
                 </div>
@@ -330,7 +330,7 @@ const PaySlipPrint = () => {
             </div>
             </div>
 
-            <div className="no-print mt-8 text-center text-sm text-gray-500">
+            <div className="no-print mt-8 text-center text-sm text-[var(--ms-text-muted)]">
                 <p>Document généré le {new Date().toLocaleDateString('fr-FR')} - © {new Date().getFullYear()} Système de Gestion des Fiches de Paie</p>
             </div>
         </div>

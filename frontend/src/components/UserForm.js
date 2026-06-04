@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 const toLocalDateTimeInput = (value) => {
     if (!value) return '';
@@ -44,6 +44,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
         password: '',
         confirmPassword: '',
         isAdmin: false,
+        isActive: true,
         accessControlEnabled: false,
         accessStart: '',
         accessEnd: '',
@@ -63,6 +64,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 password: '',
                 confirmPassword: '',
                 isAdmin: user.isAdmin,
+                isActive: user.isActive !== false,
                 accessControlEnabled: Boolean(user.accessControlEnabled),
                 accessStart: toLocalDateTimeInput(user.accessStart),
                 accessEnd: toLocalDateTimeInput(user.accessEnd),
@@ -78,6 +80,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 password: '',
                 confirmPassword: '',
                 isAdmin: false,
+                isActive: true,
                 accessControlEnabled: false,
                 accessStart: '',
                 accessEnd: '',
@@ -199,6 +202,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             email: formData.email,
             phone: trimmedPhone,
             isAdmin: formData.isAdmin,
+            isActive: formData.isActive,
             accessControlEnabled: formData.accessControlEnabled,
             accessStart: formData.accessControlEnabled ? toIsoStringOrNull(formData.accessStart) : null,
             accessEnd: formData.accessControlEnabled ? toIsoStringOrNull(formData.accessEnd) : null,
@@ -234,25 +238,25 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             <div className="form-panel flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
                 <div className="relative shrink-0">
                     {photoPreview ? (
-                        <img src={photoPreview} alt={formData.name || 'Utilisateur'} className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                        <img src={photoPreview} alt={formData.name || 'Utilisateur'} className="w-16 h-16 rounded-md object-cover border border-[var(--ms-border)] shadow-[var(--ms-shadow-sm)]" />
                     ) : (
-                        <div className="w-16 h-16 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center border border-dashed border-gray-300">
+                        <div className="w-16 h-16 rounded-md bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] flex items-center justify-center border border-dashed border-[var(--ms-border-strong)]">
                             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
                     )}
                     {photoPreview && (
-                        <button type="button" onClick={handlePhotoRemove} className="absolute -top-2 -right-2 bg-white border border-gray-200 text-gray-500 rounded-full p-1.5 shadow-sm hover:bg-gray-50 min-h-[32px] min-w-[32px] flex items-center justify-center" aria-label="Retirer la photo">
+                        <button type="button" onClick={handlePhotoRemove} className="absolute -top-2 -right-2 bg-[var(--ms-white)] border border-[var(--ms-border)] text-[var(--ms-text-muted)] rounded-full p-1.5 shadow-[var(--ms-shadow-sm)] hover:bg-[var(--ms-bg-subtle)] min-h-[32px] min-w-[32px] flex items-center justify-center" aria-label="Retirer la photo">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">Photo</p>
-                    <p className="text-xs text-gray-500 mt-0.5">JPG, PNG ou WEBP (max 5 Mo)</p>
+                    <p className="text-sm font-medium text-[var(--ms-text-strong)]">Photo</p>
+                    <p className="text-xs text-[var(--ms-text-muted)] mt-0.5">JPG, PNG ou WEBP (max 5 Mo)</p>
                     <label className="form-button-secondary mt-2 inline-flex cursor-pointer items-center text-sm">
-                        <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" /></svg>
+                        <svg className="w-4 h-4 mr-2 text-[var(--ms-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" /></svg>
                         Choisir une photo
                         <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                     </label>
@@ -284,20 +288,32 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
 
             <div className="form-panel flex items-center min-h-[48px] p-3">
                 <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="form-check rounded" />
-                <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">Accès administrateur</label>
+                <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-[var(--ms-text)] cursor-pointer">Accès administrateur</label>
             </div>
+
+            {user && (
+                <div className="form-panel flex items-center min-h-[48px] p-3">
+                    <input type="checkbox" id="isActive" name="isActive" checked={formData.isActive} onChange={handleChange} className="form-check rounded" />
+                    <label htmlFor="isActive" className="ml-3 text-sm font-medium text-[var(--ms-text)] cursor-pointer">
+                        Compte actif
+                        <span className="block text-xs text-[var(--ms-text-muted)] font-normal mt-0.5">
+                            {formData.isActive ? 'L\'utilisateur peut se connecter normalement.' : 'L\'utilisateur est bloqué et sera déconnecté de toutes ses sessions.'}
+                        </span>
+                    </label>
+                </div>
+            )}
 
             {!formData.isAdmin && (
                 <div className="form-panel p-4 space-y-3">
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-800">Permissions utilisateur</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <h3 className="text-sm font-semibold text-[var(--ms-text-strong)]">Permissions utilisateur</h3>
+                        <p className="text-xs text-[var(--ms-text-muted)] mt-0.5">
                             Donnez uniquement les accès sensibles nécessaires au travail quotidien.
                         </p>
                     </div>
                     <div className="space-y-2">
                         {PERMISSION_OPTIONS.map((permission) => (
-                            <label key={permission.value} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-gray-200 bg-white p-3 transition-colors hover:bg-gray-50">
+                            <label key={permission.value} className="flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 transition-colors hover:bg-[var(--ms-bg-subtle)]">
                                 <input
                                     type="checkbox"
                                     checked={(formData.permissions || []).includes(permission.value)}
@@ -305,8 +321,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                                     className="form-check mt-1 rounded"
                                 />
                                 <span>
-                                    <span className="block text-sm font-medium text-gray-800">{permission.label}</span>
-                                    <span className="block text-xs text-gray-500 mt-0.5">{permission.description}</span>
+                                    <span className="block text-sm font-medium text-[var(--ms-text-strong)]">{permission.label}</span>
+                                    <span className="block text-xs text-[var(--ms-text-muted)] mt-0.5">{permission.description}</span>
                                 </span>
                             </label>
                         ))}
@@ -317,10 +333,10 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             <div className="form-panel p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-800">Fenêtre de connexion</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">Restreindre les plages horaires de connexion.</p>
+                        <h3 className="text-sm font-semibold text-[var(--ms-text-strong)]">Fenêtre de connexion</h3>
+                        <p className="text-xs text-[var(--ms-text-muted)] mt-0.5">Restreindre les plages horaires de connexion.</p>
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer min-h-[44px]">
+                    <label className="flex items-center gap-2 text-sm text-[var(--ms-text)] cursor-pointer min-h-[44px]">
                         <input type="checkbox" name="accessControlEnabled" checked={formData.accessControlEnabled} onChange={handleChange} className="form-check rounded" />
                         Activer
                     </label>
@@ -339,7 +355,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-[var(--ms-border)]">
                 <button type="button" onClick={onCancel} className="form-button-secondary w-full sm:w-auto">
                     Annuler
                 </button>
@@ -359,8 +375,8 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
         <div className="max-w-md mx-auto">
             <div className="form-shell p-6">
                 <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">{user ? "Modifier l'utilisateur" : "Ajouter un utilisateur"}</h2>
-                    <p className="text-sm text-gray-500 mt-1">{user ? "Mettez à jour les informations du compte." : "Créez un nouveau compte utilisateur."}</p>
+                    <h2 className="text-xl font-semibold text-[var(--ms-text-strong)]">{user ? "Modifier l'utilisateur" : "Ajouter un utilisateur"}</h2>
+                    <p className="text-sm text-[var(--ms-text-muted)] mt-1">{user ? "Mettez à jour les informations du compte." : "Créez un nouveau compte utilisateur."}</p>
                 </div>
                 {formContent}
             </div>

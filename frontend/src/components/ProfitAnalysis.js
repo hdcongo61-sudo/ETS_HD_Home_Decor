@@ -39,7 +39,7 @@ const ProfitAnalysis = () => {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-12 flex flex-col items-center justify-center gap-3">
+      <div className="rounded-lg border border-[var(--ms-border)]/80 bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)] p-12 flex flex-col items-center justify-center gap-3">
         <AppLoader fullScreen={false} text="Chargement des données…" />
       </div>
     );
@@ -47,7 +47,7 @@ const ProfitAnalysis = () => {
 
   if (!profitData) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 text-sm">
+      <div className="rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-6 text-[var(--ms-danger)] text-sm">
         Erreur de chargement des données. Vérifiez votre connexion et réessayez.
       </div>
     );
@@ -87,21 +87,21 @@ const ProfitAnalysis = () => {
     ]
   };
 
-  const cardClass = 'rounded-2xl border border-gray-200/80 bg-white shadow-sm overflow-hidden';
+  const cardClass = 'rounded-lg border border-[var(--ms-border)]/80 bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)] overflow-hidden';
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Filtres */}
       <div className={cardClass}>
         <div className="p-4 sm:p-5">
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Filtres d'analyse</h3>
+          <h3 className="text-sm font-medium text-[var(--ms-text-muted)] uppercase tracking-wider mb-4">Filtres d'analyse</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Période</label>
+              <label className="block text-sm font-medium text-[var(--ms-text)] mb-1.5">Période</label>
               <select
                 value={filters.period}
                 onChange={(e) => handleFilterChange('period', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="day">Jour</option>
                 <option value="week">Semaine</option>
@@ -110,28 +110,28 @@ const ProfitAnalysis = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date début</label>
+              <label className="block text-sm font-medium text-[var(--ms-text)] mb-1.5">Date début</label>
               <input
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date fin</label>
+              <label className="block text-sm font-medium text-[var(--ms-text)] mb-1.5">Date fin</label>
               <input
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="flex items-end">
               <button
                 type="button"
                 onClick={() => setFilters({ period: 'month', startDate: '', endDate: '' })}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm font-medium transition-colors"
+                className="w-full px-4 py-2.5 rounded-md border border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] text-sm font-medium transition-colors"
               >
                 Réinitialiser
               </button>
@@ -143,25 +143,25 @@ const ProfitAnalysis = () => {
       {/* Statistiques générales */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className={`${cardClass} p-4 sm:p-5`}>
-          <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Bénéfice total</p>
-          <p className="text-base sm:text-lg font-semibold text-green-600 tabular-nums break-words">
+          <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Bénéfice total</p>
+          <p className="text-base sm:text-lg font-semibold text-[var(--ms-success)] tabular-nums break-words">
             {generalStats.totalProfit?.toLocaleString('fr-FR')} CFA
           </p>
         </div>
         <div className={`${cardClass} p-4 sm:p-5`}>
-          <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Marge moyenne</p>
-          <p className="text-base sm:text-lg font-semibold text-blue-600 tabular-nums">
+          <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Marge moyenne</p>
+          <p className="text-base sm:text-lg font-semibold text-[var(--ms-blue)] tabular-nums">
             {generalStats.averageMargin?.toFixed(2)}%
           </p>
         </div>
         <div className={`${cardClass} p-4 sm:p-5`}>
-          <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Bénéfice moyen/vente</p>
+          <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Bénéfice moyen/vente</p>
           <p className="text-base sm:text-lg font-semibold text-purple-600 tabular-nums break-words">
             {generalStats.averageProfitPerSale?.toLocaleString('fr-FR')} CFA
           </p>
         </div>
         <div className={`${cardClass} p-4 sm:p-5`}>
-          <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Ventes analysées</p>
+          <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Ventes analysées</p>
           <p className="text-base sm:text-lg font-semibold text-orange-600 tabular-nums">
             {generalStats.totalSales}
           </p>
@@ -172,7 +172,7 @@ const ProfitAnalysis = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={cardClass}>
           <div className="p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Évolution des bénéfices</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-[var(--ms-text-strong)] mb-4">Évolution des bénéfices</h3>
             <div className="min-h-[240px]">
               <Line data={profitTrendChart} />
             </div>
@@ -180,7 +180,7 @@ const ProfitAnalysis = () => {
         </div>
         <div className={cardClass}>
           <div className="p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Top produits rentables</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-[var(--ms-text-strong)] mb-4">Top produits rentables</h3>
             <div className="min-h-[240px]">
               <Bar data={topProductsChart} />
             </div>
@@ -191,27 +191,27 @@ const ProfitAnalysis = () => {
       {/* Tableau détaillé */}
       <div className={cardClass}>
         <div className="p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Produits les plus rentables</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-[var(--ms-text-strong)] mb-4">Produits les plus rentables</h3>
           <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="py-3 pr-4 text-left font-medium text-gray-500">Produit</th>
-                  <th className="py-3 px-2 text-right font-medium text-gray-500">Qté</th>
-                  <th className="py-3 px-2 text-right font-medium text-gray-500">CA</th>
-                  <th className="py-3 px-2 text-right font-medium text-gray-500">Coût</th>
-                  <th className="py-3 px-2 text-right font-medium text-gray-500">Bénéfice</th>
-                  <th className="py-3 pl-2 text-right font-medium text-gray-500">Marge</th>
+                <tr className="border-b border-[var(--ms-border)]">
+                  <th className="py-3 pr-4 text-left font-medium text-[var(--ms-text-muted)]">Produit</th>
+                  <th className="py-3 px-2 text-right font-medium text-[var(--ms-text-muted)]">Qté</th>
+                  <th className="py-3 px-2 text-right font-medium text-[var(--ms-text-muted)]">CA</th>
+                  <th className="py-3 px-2 text-right font-medium text-[var(--ms-text-muted)]">Coût</th>
+                  <th className="py-3 px-2 text-right font-medium text-[var(--ms-text-muted)]">Bénéfice</th>
+                  <th className="py-3 pl-2 text-right font-medium text-[var(--ms-text-muted)]">Marge</th>
                 </tr>
               </thead>
               <tbody>
                 {topProducts.map((product, index) => (
-                  <tr key={index} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                    <td className="py-3 pr-4 font-medium text-gray-900">{product.productName}</td>
+                  <tr key={index} className="border-b border-[var(--ms-border)] last:border-0 hover:bg-[var(--ms-bg-subtle)]/50">
+                    <td className="py-3 pr-4 font-medium text-[var(--ms-text-strong)]">{product.productName}</td>
                     <td className="py-3 px-2 text-right tabular-nums">{product.totalQuantity}</td>
                     <td className="py-3 px-2 text-right tabular-nums">{product.totalRevenue?.toLocaleString('fr-FR')} CFA</td>
                     <td className="py-3 px-2 text-right tabular-nums">{product.totalCost?.toLocaleString('fr-FR')} CFA</td>
-                    <td className="py-3 px-2 text-right tabular-nums font-semibold text-green-600">
+                    <td className="py-3 px-2 text-right tabular-nums font-semibold text-[var(--ms-success)]">
                       {product.totalProfit?.toLocaleString('fr-FR')} CFA
                     </td>
                     <td className="py-3 pl-2 text-right tabular-nums">{product.profitMargin?.toFixed(2)}%</td>

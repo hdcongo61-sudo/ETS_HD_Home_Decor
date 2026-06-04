@@ -36,6 +36,7 @@ import {
   formatProductCurrency,
   formatProductNumber,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const ProductDashboard = () => {
   const navigate = useNavigate();
@@ -173,6 +174,7 @@ const ProductDashboard = () => {
   }));
 
   return (
+  <Workspace>
     <ProductPageShell>
       <Toaster />
       <ProductHero
@@ -538,6 +540,7 @@ const ProductDashboard = () => {
         </div>
       </ProductSection>
     </ProductPageShell>
+  </Workspace>
   );
 };
 

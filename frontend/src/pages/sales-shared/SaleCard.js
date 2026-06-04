@@ -1,7 +1,21 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getSaleTypeClass, getSaleTypeText } from "../../utils/saleUtils";
+import { getSaleTypeText } from "../../utils/saleUtils";
+import { StatusBadge } from "../../components/business";
+
+const getSaleStatusTone = (status) => {
+  if (status === "completed") return "success";
+  if (status === "partially_paid") return "warning";
+  if (status === "cancelled") return "danger";
+  return "neutral";
+};
+
+const getDeliveryTone = (deliveryStatus) => {
+  if (deliveryStatus === "delivered") return "success";
+  if (deliveryStatus === "not_delivered") return "danger";
+  return "neutral";
+};
 
 /**
  * Reusable sale card for list views (Sales.js non-admin & admin, SalesArchive).
@@ -12,7 +26,6 @@ const SaleCard = ({
   totalPaid = 0,
   balance = 0,
   formatDate,
-  getStatusClass,
   getStatusText,
   getProfitCategoryClass,
   getProfitCategoryText,
@@ -32,9 +45,9 @@ const SaleCard = ({
   return (
     <motion.article
       key={sale._id}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ y: -1 }}
       transition={{ duration: 0.15 }}
-      className={`w-full h-full flex flex-col md:min-h-[378px] bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden active:shadow-md md:hover:shadow-md transition-shadow ${className}`}
+      className={`ms-surface w-full h-full flex flex-col md:min-h-[360px] overflow-hidden transition-shadow ${className}`}
     >
       <div className="p-4 sm:p-5 lg:p-5 flex-1 flex flex-col min-h-0">
         {/* Header: sale id + date + badges — mobile: stack; desktop: row */}
@@ -43,70 +56,62 @@ const SaleCard = ({
             <Link
               to={linkTo}
               state={linkState}
-              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors text-base sm:text-base touch-manipulation"
+              className="inline-flex touch-manipulation items-center gap-1 text-base font-semibold text-[var(--ms-blue)] transition-colors hover:text-[var(--ms-blue-dark)]"
               {...desktopLinkProps}
             >
               Vente #{sale._id.slice(-6)}
             </Link>
-            <p className="text-sm text-gray-500 mt-0.5 sm:mt-1">
-              <span aria-hidden>📅</span> {formatDate(sale.saleDate)}
+            <p className="mt-0.5 text-sm text-[var(--ms-text-muted)] sm:mt-1">
+              {formatDate(sale.saleDate)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`px-2.5 py-1.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
+            <StatusBadge tone={getSaleStatusTone(sale.status)}>
               {getStatusText(sale.status)}
-            </span>
-            <span className={`px-2.5 py-1.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium ${getSaleTypeClass(sale.saleType)}`}>
+            </StatusBadge>
+            <StatusBadge tone={sale.saleType === "wholesale" ? "warning" : "neutral"}>
               {getSaleTypeText(sale.saleType)}
-            </span>
+            </StatusBadge>
             {isModified && (
-              <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 font-medium">
+              <StatusBadge tone="warning">
                 Modifiée
-              </span>
+              </StatusBadge>
             )}
             {sale.status === "completed" && (
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  sale.deliveryStatus === "delivered"
-                    ? "bg-green-100 text-green-800"
-                    : sale.deliveryStatus === "not_delivered"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-              >
+              <StatusBadge tone={getDeliveryTone(sale.deliveryStatus)}>
                 {sale.deliveryStatus === "delivered" ? "Livré" : sale.deliveryStatus === "not_delivered" ? "Non livré" : "En attente"}
-              </span>
+              </StatusBadge>
             )}
             {showProfitBadge && profitCategory && getProfitCategoryClass && getProfitCategoryText && (
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProfitCategoryClass(profitCategory)}`}>
+              <StatusBadge tone="neutral">
                 {getProfitCategoryText(profitCategory)}
-              </span>
+              </StatusBadge>
             )}
           </div>
         </div>
 
         {/* Client name — prominent */}
-        <p className="font-medium text-gray-900 mt-3 sm:mt-2 text-base">
+        <p className="mt-3 text-base font-semibold text-[var(--ms-text-strong)] sm:mt-2">
           {sale.client?.name || "Client non spécifié"}
         </p>
 
         {/* Totals — 3 cols mobile & desktop, clear labels */}
         <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4">
-          <div className="bg-gray-50 rounded-xl p-3 sm:p-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Total</p>
-            <p className="text-sm sm:text-base font-semibold text-gray-900 mt-0.5 tabular-nums">
+          <div className="rounded-md border border-[var(--ms-border)] bg-[var(--ms-bg)] p-3">
+            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Total</p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--ms-text-strong)] sm:text-base">
               {(sale.totalAmount || 0).toLocaleString("fr-FR")} CFA
             </p>
           </div>
-          <div className="bg-green-50/80 rounded-xl p-3 sm:p-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Payé</p>
-            <p className="text-sm sm:text-base font-semibold text-green-700 mt-0.5 tabular-nums">
+          <div className="rounded-md border border-[rgba(16,124,16,0.22)] bg-[#F1FAF1] p-3">
+            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Payé</p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--ms-success)] sm:text-base">
               {totalPaid.toLocaleString("fr-FR")} CFA
             </p>
           </div>
-          <div className={`rounded-xl p-3 sm:p-3 ${balance > 0 ? "bg-red-50/80" : "bg-gray-50"}`}>
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Solde</p>
-            <p className={`text-sm sm:text-base font-semibold mt-0.5 tabular-nums ${balance > 0 ? "text-red-700" : "text-gray-900"}`}>
+          <div className={`rounded-md border p-3 ${balance > 0 ? "border-[rgba(209,52,56,0.22)] bg-[#FDF3F4]" : "border-[var(--ms-border)] bg-[var(--ms-bg)]"}`}>
+            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Solde</p>
+            <p className={`mt-0.5 text-sm font-semibold tabular-nums sm:text-base ${balance > 0 ? "text-[var(--ms-danger)]" : "text-[var(--ms-text-strong)]"}`}>
               {balance.toLocaleString("fr-FR")} CFA
             </p>
           </div>
@@ -114,17 +119,17 @@ const SaleCard = ({
 
         {/* Products — compact list */}
         {hasProducts && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Produits</p>
-            <ul className="space-y-1.5 text-sm text-gray-700">
+          <div className="mt-4 border-t border-[var(--ms-border)] pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Produits</p>
+            <ul className="space-y-1.5 text-sm text-[var(--ms-text)]">
               {sale.products.slice(0, 5).map((item, idx) => (
                 <li key={idx} className="flex justify-between gap-2">
                   <span className="truncate">{item.product?.name || "Produit"}</span>
-                  <span className="text-gray-500 shrink-0">×{item.quantity || 0}</span>
+                  <span className="shrink-0 text-[var(--ms-text-muted)]">x{item.quantity || 0}</span>
                 </li>
               ))}
               {sale.products.length > 5 && (
-                <li className="text-gray-500 text-xs">+{sale.products.length - 5} autre(s)</li>
+                <li className="text-xs text-[var(--ms-text-muted)]">+{sale.products.length - 5} autre(s)</li>
               )}
             </ul>
           </div>
@@ -132,7 +137,7 @@ const SaleCard = ({
 
         {/* Actions — full width on mobile, row on desktop; pushed to bottom on desktop */}
         {actions && (
-          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-2 md:mt-auto md:pt-4">
+          <div className="mt-4 flex flex-col gap-2 border-t border-[var(--ms-border)] pt-4 sm:flex-row sm:flex-wrap sm:gap-2 md:mt-auto md:pt-4">
             {actions}
           </div>
         )}

@@ -7,9 +7,17 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
-import AppLoader from '../components/AppLoader';
 import AuthContext from '../context/AuthContext';
 import Modal from '../components/Modal';
+import {
+  Button,
+  EmptyState,
+  LoadingSkeleton,
+  PageHeader,
+  StatusBadge,
+  Surface,
+  Workspace,
+} from '../components/business';
 
 /* ===================================================== */
 /* 🧩 UTILITAIRES DE FORMATTAGE */
@@ -222,22 +230,20 @@ const ProductDetails = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-screen">
-        <AppLoader fullScreen={false} text="Chargement du produit…" />
-      </div>
+      <Workspace>
+        <LoadingSkeleton rows={6} />
+      </Workspace>
     );
 
   if (!product)
     return (
-      <div className="text-center py-16">
-        <h2 className="text-gray-600">Produit introuvable</h2>
-        <button
-          onClick={() => navigate(returnToProducts)}
-          className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600"
-        >
-          Retour à la liste
-        </button>
-      </div>
+      <Workspace>
+        <EmptyState
+          title="Produit introuvable"
+          description="La fiche produit demandée n'est pas disponible."
+          action={<Button onClick={() => navigate(returnToProducts)}>Retour à la liste</Button>}
+        />
+      </Workspace>
     );
 
     const getActivityColor = (type) => {
@@ -308,108 +314,75 @@ const getActivityIcon = (type) => {
 
 
   return (
-    <div className="min-h-screen bg-[#f6f7f9]">
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8" ref={pageRef}>
-        {/* 🧭 HEADER */}
-        <div className="mb-6 overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <button
-            onClick={() => navigate(returnToProducts)}
-            className="inline-flex w-fit items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white hover:text-gray-950"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Retour
-          </button>
-
-          <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
+    <Workspace>
+      <div className="space-y-6" ref={pageRef}>
+        <PageHeader
+          eyebrow="Fiche produit"
+          title={product.name}
+          description={product.description || 'Aucune description enregistrée.'}
+          actions={
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
+            <Button onClick={() => navigate(returnToProducts)} className="col-span-2 sm:col-span-1">
+              Retour
+            </Button>
             {canSeeFinancials && (
-            <button
+            <Button
               onClick={() => setShowProfitSections((prev) => !prev)}
-              className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:col-span-1 sm:min-h-[44px] sm:px-4 sm:py-2"
+              className="col-span-2 sm:col-span-1"
               type="button"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {showProfitSections ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.004-3.196 3.565-5.675 6.73-6.588M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.364 6.364L3.636 5.636" />
-                ) : (
-                  <>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </>
-                )}
-              </svg>
-              <span className="sm:hidden">{showProfitSections ? 'Masquer marge' : 'Afficher marge'}</span>
-              <span className="hidden sm:inline">{showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}</span>
-            </button>
+              {showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}
+            </Button>
             )}
             {isAdmin && (
-              <button
+              <Button
                 onClick={handleExportPDF}
-                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800 sm:min-h-[44px] sm:px-4 sm:py-2"
+                variant="primary"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
                 Export PDF
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               onClick={() => setShowQRCode(true)}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:min-h-[44px] sm:px-3 sm:py-2"
               title="QR Code"
             >
-              <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z"
-                />
-              </svg>
               <span className="sm:hidden">QR Code</span>
-            </button>
+              <span className="hidden sm:inline">QR</span>
+            </Button>
             {isAdmin && (
-            <button
+            <Button
               onClick={() =>
                 navigate(productEditPath(product || id), {
                   state: { returnTo: productPath(product || id) },
                 })
               }
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:px-4 sm:py-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
               Modifier
-            </button>
+            </Button>
             )}
             {!isAdmin && (
               <>
-                <button
+                <Button
                   type="button"
                   onClick={() => openAdminRequest('price')}
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
                 >
                   Demander prix
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => openAdminRequest('stock')}
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2"
                 >
                   Demander stock
-                </button>
+                </Button>
               </>
             )}
           </div>
-        </div>
-        </div>
+          }
+        />
 
         {/* 🖼️ PRODUIT HEADER */}
-        <div className="flex flex-col gap-6 rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_16px_50px_rgba(15,23,42,0.06)] md:flex-row md:p-6">
+        <Surface className="flex flex-col gap-6 md:flex-row">
           <div className="md:w-1/2">
             <img
               src={product.image || '/placeholder.png'}
@@ -439,27 +412,19 @@ const getActivityIcon = (type) => {
               </div>
 
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                    product.stock < 5
-                      ? 'border-red-100 bg-red-50 text-red-700'
-                      : product.stock < 15
-                      ? 'border-yellow-100 bg-yellow-50 text-yellow-700'
-                      : 'border-green-100 bg-green-50 text-green-700'
-                  }`}
-                >
+                <StatusBadge tone={product.stock < 5 ? 'danger' : product.stock < 15 ? 'warning' : 'success'}>
                   {product.stock} en stock
-                </span>
-                <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700">
+                </StatusBadge>
+                <StatusBadge>
                   Conteneur: {product.container?.trim() || 'Non defini'}
-                </span>
-                <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700">
+                </StatusBadge>
+                <StatusBadge>
                   Entrepot: {product.warehouse?.trim() || 'Non defini'}
-                </span>
+                </StatusBadge>
                 {product.stock > 20 && (
-                  <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                  <StatusBadge tone="warning">
                     Top Seller
-                  </span>
+                  </StatusBadge>
                 )}
               </div>
 
@@ -474,7 +439,7 @@ const getActivityIcon = (type) => {
               )}
             </div>
           </div>
-        </div>
+        </Surface>
 
         {/* 🧭 ONGLETS */}
         <div className="mt-6">
@@ -815,7 +780,7 @@ const getActivityIcon = (type) => {
                 </label>
               </div>
         </Modal>
-    </div>
+    </Workspace>
   );
 };
 

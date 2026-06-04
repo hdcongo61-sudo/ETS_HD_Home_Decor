@@ -9,6 +9,7 @@ import {
   ProductPageShell,
   ProductSection,
 } from '../components/ProductAnalyticsUI';
+import { Workspace } from '../components/business';
 
 const TopSellingProducts = () => {
   const [data, setData] = useState([]);
@@ -45,6 +46,7 @@ const TopSellingProducts = () => {
   }
 
   return (
+  <Workspace>
     <ProductPageShell>
       <ProductHero
         eyebrow="Performance produits"
@@ -176,6 +178,7 @@ const TopSellingProducts = () => {
         />
       </div>
     </ProductPageShell>
+  </Workspace>
   );
 };
 

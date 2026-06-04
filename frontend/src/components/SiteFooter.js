@@ -14,51 +14,57 @@ const SiteFooter = () => {
   const hasMobileTabBar = Boolean(auth?.isAuthenticated);
 
   return (
-    <footer className="border-t border-white/70 bg-white/82 backdrop-blur-2xl">
-      <div className={`mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-6 text-[13px] text-gray-500 sm:px-6 md:flex-row md:items-center md:justify-between md:py-5 ${hasMobileTabBar ? 'footer-mobile-tab-clearance' : ''}`}>
-        <div className="flex min-w-0 items-center gap-3">
-          <img
-            src={resolvedLogoUrl}
-            alt={shortName || appName}
-            className="h-11 w-11 shrink-0 rounded-2xl border border-gray-200/80 bg-white object-contain shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">{appName}</p>
-            {tagline && <p className="truncate text-xs text-gray-500">{tagline}</p>}
+    <footer className="border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]">
+      <div className={`mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-4 ${hasMobileTabBar ? 'footer-mobile-tab-clearance' : ''}`}>
+        {/* Top row: brand + contact */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Brand */}
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={resolvedLogoUrl}
+              alt={shortName || appName}
+              className="h-9 w-9 shrink-0 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] object-contain"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold text-[var(--ms-text-strong)]">{appName}</p>
+              {tagline && <p className="truncate text-[11px] text-[var(--ms-text-muted)]">{tagline}</p>}
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-3 md:items-end">
+          {/* Contact links */}
           {(supportPhone || supportEmail) && (
             <div className="flex flex-wrap items-center gap-2">
               {supportPhone && (
                 <a
                   href={`tel:${supportPhone}`}
-                  className="inline-flex min-h-[38px] items-center gap-2 rounded-2xl border border-gray-200/80 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-50 active:translate-y-0"
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 text-[12px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)]"
                 >
-                  <Phone className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                  <Phone className="h-3.5 w-3.5 text-[var(--ms-text-muted)]" aria-hidden="true" />
                   <span>{supportPhone}</span>
                 </a>
               )}
               {supportEmail && (
                 <a
                   href={`mailto:${supportEmail}`}
-                  className="inline-flex min-h-[38px] items-center gap-2 rounded-2xl border border-gray-200/80 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-50 active:translate-y-0"
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 text-[12px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)]"
                 >
-                  <Mail className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                  <Mail className="h-3.5 w-3.5 text-[var(--ms-text-muted)]" aria-hidden="true" />
                   <span>{supportEmail}</span>
                 </a>
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 md:justify-end">
-            <span>© {currentYear} {footerText}</span>
-            <span className="hidden text-gray-300 sm:inline">/</span>
-            <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
-              Interface sécurisée
-            </span>
-          </div>
+        </div>
+
+        {/* Bottom row: copyright + badge */}
+        <div className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between pt-3 border-t border-[var(--ms-border)]">
+          <p className="text-[11px] text-[var(--ms-text-muted)]">
+            &copy; {currentYear} {footerText}
+          </p>
+          <span className="inline-flex items-center gap-1 text-[11px] text-[var(--ms-text-muted)]">
+            <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+            Interface s&eacute;curis&eacute;e
+          </span>
         </div>
       </div>
     </footer>

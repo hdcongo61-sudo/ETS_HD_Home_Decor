@@ -141,34 +141,32 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="sticky top-0 z-50 nav-safe-top border-b border-white/60 bg-white/88 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
-      <div className="mx-auto max-w-[1600px] px-3 py-1.5 sm:px-4 lg:px-5">
-        <div className="flex min-h-[48px] items-center gap-2.5">
+    <nav className="sticky top-0 z-50 nav-safe-top border-b border-[var(--ms-border)] bg-[var(--ms-white)]" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.04)' }}>
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6">
+        <div className="flex h-[48px] items-center gap-3">
           {/* === Logo === */}
           <Link
             to="/"
-            className="group flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-1 py-0.5 transition-all duration-200 hover:bg-gray-100/80 active:scale-[0.99]"
+            className="group flex shrink-0 items-center gap-2.5 rounded-md px-0.5 py-0.5 mr-1"
             onClick={closeMenu}
           >
             <img
               src={logoUrl}
               alt={branding.shortName || branding.appName}
-              className="h-8 w-8 shrink-0 rounded-xl border border-gray-200/80 bg-white object-contain shadow-[0_6px_18px_rgba(15,23,42,0.07)] transition-transform duration-200 group-hover:scale-[1.02] lg:h-9 lg:w-9"
+              className="h-7 w-7 shrink-0 rounded-sm border border-[var(--ms-border)] bg-white object-contain"
             />
             <div className="hidden min-w-0 lg:block">
-              <span className="block truncate text-[15px] font-semibold tracking-tight text-gray-900">
+              <span className="block truncate text-[14px] font-semibold text-[var(--ms-text-strong)] leading-tight">
                 {branding.appName}
               </span>
-              {branding.tagline && (
-                <span className="block truncate text-[10px] text-gray-500">
-                  {branding.tagline}
-                </span>
-              )}
             </div>
           </Link>
 
+          {/* === Separator === */}
+          <div className="hidden md:block w-px h-6 bg-[var(--ms-border)] mx-0.5" />
+
           {/* === Menu desktop === */}
-          <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-visible px-1 md:flex">
+          <div className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex">
             {renderNavigationLinks(auth, handleLogout, closeMenu, false, false, autresOpen, setAutresOpen)}
           </div>
 
@@ -178,46 +176,37 @@ const Navigation = () => {
               setQuery={setQuery}
               results={results}
               onSelectResult={handleSelectResult}
-              className="hidden w-56 shrink-0 md:block lg:w-64 xl:w-80"
+              className="hidden w-52 shrink-0 md:block lg:w-60 xl:w-72"
               compact
             />
           )}
 
+          {/* === Separator === */}
+          <div className="hidden md:block w-px h-6 bg-[var(--ms-border)]" />
+
           {/* === Profil & Actions === */}
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            {auth.isAuthenticated && (
-              <>
-                <Link
-                  to="/profile"
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200/80 bg-white/85 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 ease-apple hover:-translate-y-0.5 hover:bg-gray-50 active:translate-y-0"
-                  onClick={closeMenu}
-                  aria-label="Profil"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gray-100">
-                    {auth.user?.photo ? (
-                      <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-gray-700 font-medium text-sm">
-                        {userInitial}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              </>
-            )}
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            <Link
+              to="/profile"
+              onClick={closeMenu}
+              className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] hover:bg-[var(--ms-surface-muted)] transition-colors"
+              aria-label="Profil"
+            >
+              {auth.user?.photo ? (
+                <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[var(--ms-text)] font-semibold text-xs">{userInitial}</span>
+              )}
+            </Link>
 
             {!isDesktop && (
               <button
                 onClick={toggleMenu}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200/80 bg-white/90 text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 ease-apple hover:-translate-y-0.5 hover:bg-gray-50 hover:text-gray-950 focus:outline-none active:translate-y-0 active:bg-gray-100"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] transition-colors"
                 aria-label={isMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
                 aria-expanded={isMenuOpen}
               >
-                {isMenuOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
+                {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
             )}
           </div>
@@ -230,7 +219,7 @@ const Navigation = () => {
             setQuery={setQuery}
             results={results}
             onSelectResult={handleSelectResult}
-            className="md:hidden mt-3 w-full"
+            className="md:hidden pb-3 w-full"
             isMobile
           />
         )}
@@ -241,7 +230,7 @@ const Navigation = () => {
             type="button"
             aria-label="Fermer le menu"
             onClick={closeMenu}
-            className="fixed inset-0 z-40 bg-gray-950/18 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-[rgba(32,31,30,0.18)] backdrop-blur-sm md:hidden"
             style={{ top: 0, left: 0, right: 0, bottom: 0 }}
           />
         )}
@@ -256,7 +245,7 @@ const Navigation = () => {
               className="relative z-[51] md:hidden"
             >
           <div
-            className="mt-2 overflow-y-auto overflow-x-hidden rounded-[24px] border border-white/70 bg-[#f7f6f3]/96 px-3 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)] touch-manipulation backdrop-blur-2xl"
+            className="mt-1.5 overflow-y-auto overflow-x-hidden rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.1)] touch-manipulation"
             style={{
               paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
               WebkitOverflowScrolling: "touch",
@@ -265,21 +254,20 @@ const Navigation = () => {
           >
             {auth.isAuthenticated && (
               <div
-                className="mb-3 flex min-h-[64px] items-center gap-3 rounded-[22px] border border-white/70 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
-                style={{ backgroundColor: brandTint }}
+                className="mb-3 flex min-h-[64px] items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3"
               >
-                <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-[var(--ms-surface-muted)] border border-[var(--ms-border)] flex items-center justify-center shrink-0">
                   {auth.user?.photo ? (
                     <img src={auth.user.photo} alt={auth.user.name || 'Profil'} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-gray-700 font-semibold text-base">{userInitial}</span>
+                    <span className="text-[var(--ms-text)] font-semibold text-base">{userInitial}</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{auth.user?.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{auth.user?.email}</p>
+                  <p className="text-sm font-semibold text-[var(--ms-text-strong)] leading-tight truncate">{auth.user?.name}</p>
+                  <p className="text-xs text-[var(--ms-text-muted)] truncate">{auth.user?.email}</p>
                 </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-gray-700 shadow-sm">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--ms-white)] text-[var(--ms-text)] shadow-sm">
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
                 </div>
               </div>
@@ -298,23 +286,23 @@ const Navigation = () => {
 
 // === Mobile menu: section card (efficient grouping) ===
 const MobileMenuSection = ({ title, children }) => (
-  <div className="mb-3 overflow-hidden rounded-[22px] border border-white/80 bg-white/88 shadow-[0_10px_30px_rgba(15,23,42,0.06)] last:mb-0">
-    <div className="px-4 pb-1 pt-3">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{title}</span>
+  <div className="mb-2 overflow-hidden rounded-md border border-[var(--ms-border)] last:mb-0">
+    <div className="px-3 pb-1 pt-2.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ms-text-muted)]">{title}</span>
     </div>
-    <div className="flex flex-col px-1.5 pb-1.5">{children}</div>
+    <div className="flex flex-col px-1 pb-1">{children}</div>
   </div>
 );
 
 // === Liens du menu (desktop + mobile) ===
 const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
   const linkClass = isMobile
-    ? "group/nav flex min-h-[50px] w-full items-center rounded-2xl px-3 py-2.5 text-[15px] font-medium text-gray-800 transition-all duration-200 hover:bg-gray-50 active:scale-[0.99] active:bg-gray-100 touch-manipulation"
-    : "group/nav relative flex h-[44px] min-w-[62px] max-w-[92px] items-center justify-center rounded-2xl px-1.5 text-gray-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-100/85 hover:text-gray-950 active:translate-y-0";
+    ? "group/nav flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 py-2.5 text-[14px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] active:bg-[var(--ms-surface-muted)] touch-manipulation"
+    : "group/nav relative flex h-[36px] items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]";
 
   const iconClass = isMobile
-    ? "h-5 w-5 shrink-0 text-gray-500 transition-colors group-hover/nav:text-gray-800"
-    : "h-5 w-5 shrink-0 text-gray-500 transition-colors group-hover/nav:text-gray-800";
+    ? "h-[18px] w-[18px] shrink-0 text-[var(--ms-text-muted)] transition-colors group-hover/nav:text-[var(--ms-text)]"
+    : "h-[16px] w-[16px] shrink-0 text-[var(--ms-text-muted)] transition-colors group-hover/nav:text-[var(--ms-text-strong)]";
 
   const showPrimaryTabs = !(isMobile && hidePrimaryTabsOnMobile);
 
@@ -424,7 +412,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               <button
                 type="button"
                 onClick={() => setAutresOpen((o) => !o)}
-                className={`${linkClass} ${autresOpen ? "bg-gray-100 text-gray-950" : ""}`}
+                className={`${linkClass} ${autresOpen ? "bg-[var(--ms-bg-subtle)] text-[var(--ms-text-strong)]" : ""}`}
                 aria-expanded={autresOpen}
                 aria-haspopup="true"
               >
@@ -432,7 +420,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                   <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  <span className="max-w-full truncate text-[11px] font-medium leading-tight text-gray-500 group-hover/nav:text-gray-800">Autres</span>
+                  <span className="max-w-full truncate text-[11px] font-medium leading-tight text-[var(--ms-text-muted)] group-hover/nav:text-[var(--ms-text)]">Autres</span>
                 </div>
               </button>
               <AnimatePresence>
@@ -444,71 +432,71 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-                      className="absolute right-0 top-full z-[60] mt-3 w-[min(95vw,620px)] rounded-[24px] border border-white/80 bg-white/95 px-4 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl"
+                      className="absolute right-0 top-full z-[60] mt-1.5 w-[min(95vw,560px)] overflow-hidden rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[0_4px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)]"
                     >
                       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                         {/* Colonne gauche */}
                         <div className="space-y-3">
                           {auth.isAdmin && (
                             <>
-                              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Utilisateurs</div>
-                              <Link to="/users/stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
+                              <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider">Utilisateurs</div>
+                              <Link to="/users/stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
                             </>
                           )}
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Employés</div>
+                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Employés</div>
                           <div className="space-y-0.5">
-                            <Link to="/employees" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Employés</Link>
-                            <Link to="/employees/new" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Nouvel employé</Link>
+                            <Link to="/employees" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Employés</Link>
+                            <Link to="/employees/new" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Nouvel employé</Link>
                           </div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Ventes</div>
+                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Ventes</div>
                           <div className="space-y-0.5">
-                            <Link to="/sales#sale-form" className="block py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Enregistrer une vente</Link>
-                            <Link to="/sales" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des ventes</Link>
-                            <Link to="/sales/all" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Archives ventes</Link>
-                            <Link to="/sales/all?history=1&paymentStructure=full_payment" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiement complet</Link>
-                            <Link to="/sales/all?history=1&paymentStructure=multiple_payments" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiements multiples</Link>
-                            <Link to="/sales/partially-paid" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiements partiels</Link>
-                            {auth.isAdmin && <Link to="/sales/deleted" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Ventes supprimées</Link>}
+                            <Link to="/sales#sale-form" className="block py-1.5 text-sm text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Enregistrer une vente</Link>
+                            <Link to="/sales" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des ventes</Link>
+                            <Link to="/sales/all" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Archives ventes</Link>
+                            <Link to="/sales/all?history=1&paymentStructure=full_payment" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiement complet</Link>
+                            <Link to="/sales/all?history=1&paymentStructure=multiple_payments" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiements multiples</Link>
+                            <Link to="/sales/partially-paid" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiements partiels</Link>
+                            {auth.isAdmin && <Link to="/sales/deleted" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Ventes supprimées</Link>}
                           </div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Clients</div>
+                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Clients</div>
                           <div className="space-y-0.5">
-                            <Link to="/clients" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des clients</Link>
-                            <Link to="/clients/dashboard" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Tableau de bord clients</Link>
+                            <Link to="/clients" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des clients</Link>
+                            <Link to="/clients/dashboard" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Tableau de bord clients</Link>
                           </div>
                         </div>
                         {/* Colonne droite */}
                         <div className="space-y-3">
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Produits</div>
+                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider">Produits</div>
                           <div className="space-y-0.5">
-                            <Link to="/products" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Catalogue produits</Link>
+                            <Link to="/products" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Catalogue produits</Link>
                             {auth.isAdmin && (
                               <>
-                                <Link to="/product-dashboard" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Produits</Link>
-                                <Link to="/products/never-sold" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Jamais vendus</Link>
-                                <Link to="/products/top-sellers" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Meilleures ventes</Link>
-                                <Link to="/products/critical" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Stock critique</Link>
-                                <Link to="/products/out-of-stock" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Rupture de stock</Link>
-                                <Link to="/products/by-supplier" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par fournisseur</Link>
-                                <Link to="/products/by-container" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par conteneur</Link>
-                                <Link to="/products/by-warehouse" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par entrepôt</Link>
+                                <Link to="/product-dashboard" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Produits</Link>
+                                <Link to="/products/never-sold" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Jamais vendus</Link>
+                                <Link to="/products/top-sellers" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Meilleures ventes</Link>
+                                <Link to="/products/critical" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Stock critique</Link>
+                                <Link to="/products/out-of-stock" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Rupture de stock</Link>
+                                <Link to="/products/by-supplier" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par fournisseur</Link>
+                                <Link to="/products/by-container" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par conteneur</Link>
+                                <Link to="/products/by-warehouse" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Par entrepôt</Link>
                               </>
                             )}
                           </div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Autres</div>
+                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Autres</div>
                           <div className="space-y-0.5">
-                            <Link to="/bank" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Caisse</Link>
-                            {auth.isAdmin && <Link to="/expenses" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>}
-                            {auth.isAdmin && <Link to="/expenses/monthly-plan" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Objectif mensuel</Link>}
-                            <Link to="/admin-requests" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>{auth.isAdmin ? 'Demandes admin' : 'Mes demandes'}</Link>
+                            <Link to="/bank" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Caisse</Link>
+                            {auth.isAdmin && <Link to="/expenses" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>}
+                            {auth.isAdmin && <Link to="/expenses/monthly-plan" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Objectif mensuel</Link>}
+                            <Link to="/admin-requests" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>{auth.isAdmin ? 'Demandes admin' : 'Mes demandes'}</Link>
                           </div>
                           {auth.isAdmin && (
                             <>
-                              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider pt-0.5">Administration</div>
+                              <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Administration</div>
                               <div className="space-y-0.5">
-                                <Link to="/settings" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paramètres</Link>
-                                <Link to="/users/stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
-                                <Link to="/admin/users" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Gestion utilisateurs</Link>
-                                <Link to="/users/login-stats" className="block py-1.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Historique connexions</Link>
+                                <Link to="/settings" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paramètres</Link>
+                                <Link to="/users/stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
+                                <Link to="/admin/users" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Gestion utilisateurs</Link>
+                                <Link to="/users/login-stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Historique connexions</Link>
                               </div>
                             </>
                           )}
@@ -532,7 +520,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             {auth.isAdmin && <NavIcon to="/users/stats" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 13h8V3H3zm10 8h8V11h-8zm0-8h8V3h-8zM3 21h8v-6H3z" /></svg>} label="Dashboard Utilisateurs" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
           </MobileMenuSection>
           <MobileMenuSection title="Ventes">
-            <NavIcon to="/sales#sale-form" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} label="Enregistrer une vente" className={`${linkClass} text-indigo-600 hover:bg-indigo-50/80 active:bg-indigo-100/60`} onClick={closeMenu} isMobile={isMobile} />
+            <NavIcon to="/sales#sale-form" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} label="Enregistrer une vente" className={`${linkClass} text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)]/80 active:bg-indigo-100/60`} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} label="Liste des ventes" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales/all" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Archives" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales/all?history=1&paymentStructure=full_payment" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13l4 4L19 7" /></svg>} label="Paiement complet" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -719,12 +707,12 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
       rel={openInNewTab ? "noopener noreferrer" : undefined}
     >
       <div className={`flex w-full ${isMobile ? "flex-row items-center" : "h-full flex-col items-center justify-center gap-1 text-center"}`}>
-        <span className={isMobile ? `flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${isActive ? "bg-white/16 text-white" : "bg-gray-100/90 text-gray-600"}` : "flex h-6 w-6 items-center justify-center"}>
+        <span className={isMobile ? `flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${isActive ? "bg-white/16 text-white" : "bg-gray-100/90 text-[var(--ms-text)]"}` : "flex h-6 w-6 items-center justify-center"}>
           {renderedIcon}
         </span>
         {isMobile && <span className="ml-3 min-w-0 flex-1 truncate">{label}</span>}
         {!isMobile && (
-          <span className={`max-w-full truncate text-[11px] font-medium leading-tight transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover/nav:text-gray-800"}`}>
+          <span className={`max-w-full truncate text-[11px] font-medium leading-tight transition-colors ${isActive ? "text-white" : "text-[var(--ms-text-muted)] group-hover/nav:text-[var(--ms-text)]"}`}>
             {label}
           </span>
         )}
@@ -755,12 +743,12 @@ const SEARCH_RESULT_META = {
   employee: {
     label: "Employé",
     icon: BriefcaseBusiness,
-    tone: "bg-gray-100 text-gray-700 ring-gray-200",
+    tone: "bg-gray-100 text-[var(--ms-text)] ring-gray-200",
   },
   default: {
     label: "Résultat",
     icon: Search,
-    tone: "bg-gray-100 text-gray-700 ring-gray-200",
+    tone: "bg-gray-100 text-[var(--ms-text)] ring-gray-200",
   },
 };
 
@@ -794,17 +782,17 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
       onChange={(e) => setQuery(e.target.value)}
       placeholder={isMobile ? "Rechercher produits, clients, ventes..." : "Recherche rapide"}
       aria-label="Recherche globale"
-      className={`w-full rounded-2xl border border-gray-200/90 bg-white/92 pl-9 pr-9 text-sm font-medium text-gray-800 shadow-[0_8px_24px_rgba(15,23,42,0.05)] outline-none transition-all placeholder:text-gray-400 focus:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-900/5 ${
+      className={`w-full rounded-2xl border border-gray-200/90 bg-white/92 pl-9 pr-9 text-sm font-medium text-[var(--ms-text)] shadow-[0_8px_24px_rgba(15,23,42,0.05)] outline-none transition-all placeholder:text-[var(--ms-text-muted)] focus:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-900/5 ${
         isMobile ? "py-3" : compact ? "py-2" : "py-2.5"
       }`}
     />
     <Search
-      className={`absolute left-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} h-4 w-4 text-gray-400`}
+      className={`absolute left-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} h-4 w-4 text-[var(--ms-text-muted)]`}
     />
     {query && (
       <button
         onClick={() => setQuery("")}
-        className={`absolute right-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} text-gray-400 hover:text-gray-600`}
+        className={`absolute right-3 ${isMobile ? "top-3" : compact ? "top-2.5" : "top-2.5"} text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]`}
         aria-label="Effacer la recherche"
       >
         <X size={18} />
@@ -829,9 +817,9 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
                 <button
                   type="button"
                   onClick={() => onSelectResult(item)}
-                  className="group/search flex w-full items-center gap-3 rounded-[18px] border border-gray-200 bg-white px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.99]"
+                  className="group/search flex w-full items-center gap-3 rounded-[18px] border border-gray-200 bg-white px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-gray-300 hover:bg-[var(--ms-bg-subtle)] active:scale-[0.99]"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-gray-600">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-[var(--ms-text)]">
                     {isProduct && item.image ? (
                       <img src={item.image} alt={item.name || "Produit"} className="h-full w-full object-cover" />
                     ) : (
@@ -842,14 +830,14 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
                     <span className="block truncate text-sm font-semibold text-gray-900">
                       {getResultTitle(item)}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs font-medium text-gray-500">
+                    <span className="mt-0.5 block truncate text-xs font-medium text-[var(--ms-text-muted)]">
                       {getResultDescription(item)}
                     </span>
                   </span>
                   <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 sm:inline-flex ${meta.tone}`}>
                     {meta.label}
                   </span>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover/search:text-gray-500" aria-hidden="true" />
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover/search:text-[var(--ms-text-muted)]" aria-hidden="true" />
                 </button>
               </li>
             );

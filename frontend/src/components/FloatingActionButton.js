@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, CreditCard, Receipt, Users, Package, ChevronUp } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
+import { Button } from './business';
 
 const FloatingActionButton = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -76,7 +77,7 @@ const FloatingActionButton = () => {
         <button
           type="button"
           aria-label="Fermer le menu"
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] md:bg-black/10 transition-opacity"
+          className="fixed inset-0 z-40 bg-[rgba(32,31,30,0.2)] backdrop-blur-[2px] transition-opacity"
           onClick={() => setIsExpanded(false)}
         />
       )}
@@ -92,7 +93,7 @@ const FloatingActionButton = () => {
             <button
               type="button"
               onClick={handleNewSale}
-              className="flex items-center gap-3 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+              className="flex items-center gap-3 rounded-lg bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
             >
               <span className="text-sm font-medium">Nouvelle vente</span>
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
@@ -103,7 +104,7 @@ const FloatingActionButton = () => {
             <button
               type="button"
               onClick={handleNewPayment}
-              className="flex items-center gap-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+              className="flex items-center gap-3 rounded-lg bg-[var(--ms-success)] hover:bg-[#0B6310] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
             >
               <span className="text-sm font-medium">Ajouter paiement</span>
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
@@ -111,8 +112,8 @@ const FloatingActionButton = () => {
               </span>
             </button>
             {/* Divider / label */}
-            <div className="w-full border-t border-gray-200/80 pt-2 mt-1">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2 text-right">Accès rapide</p>
+            <div className="w-full border-t border-[var(--ms-border)] pt-2 mt-1">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--ms-text-muted)] font-medium mb-2 text-right">Acces rapide</p>
             </div>
             {/* Quick links */}
             {quickLinks.map((item) => {
@@ -122,7 +123,7 @@ const FloatingActionButton = () => {
                   key={item.label}
                   type="button"
                   onClick={item.onClick}
-                  className={`flex items-center gap-3 rounded-2xl ${item.bg} shadow hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-2.5 min-w-[160px] justify-end`}
+                  className={`flex items-center gap-3 rounded-lg bg-[var(--ms-white)] hover:bg-[var(--ms-bg-subtle)] border border-[var(--ms-border)] shadow-[var(--ms-shadow-sm)] hover:shadow-[var(--ms-shadow)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-2.5 min-w-[160px] justify-end`}
                 >
                   <span className="text-sm font-medium text-gray-700">{item.label}</span>
                   <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.accent}`}>
@@ -139,7 +140,7 @@ const FloatingActionButton = () => {
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex h-[22px] w-[21px] items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 shadow border border-gray-200 md:border-0"
+            className="flex h-[22px] w-[21px] items-center justify-center rounded-md bg-[var(--ms-bg-subtle)] hover:bg-[var(--ms-surface-muted)] text-[var(--ms-text-muted)] shadow-sm border border-[var(--ms-border)] md:border-0"
             aria-label={isExpanded ? 'Fermer le menu' : 'Plus d\'actions'}
           >
             <ChevronUp
@@ -150,7 +151,7 @@ const FloatingActionButton = () => {
           <button
             type="button"
             onClick={handleNewSale}
-            className="flex h-[34px] w-[38px] items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-blue-500/20"
+            className="flex h-[34px] w-[38px] items-center justify-center rounded-lg bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-[var(--ms-blue)]/15"
             aria-label="Nouvelle vente"
           >
             <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />

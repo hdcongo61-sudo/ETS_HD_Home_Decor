@@ -4,14 +4,20 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
-  Coins,
-  ListChecks,
   PiggyBank,
   ReceiptText,
-  Target,
   TrendingUp,
 } from 'lucide-react';
 import api from '../services/api';
+import {
+  ChartCard,
+  CommandBar,
+  DataTable,
+  EmptyState,
+  KPICard,
+  PageHeader,
+  Workspace,
+} from '../components/business';
 
 const categoryLabels = {
   rent: 'Loyer',
@@ -187,32 +193,27 @@ const MonthlySpendingPlan = () => {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
-              <Target size={22} />
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Objectif mensuel de bénéfice
-              </h1>
-              <p className="text-sm text-gray-500">
-                Suivez vos dépenses du mois et calculez le bénéfice à gagner par jour.
-              </p>
-            </div>
-          </div>
-        </div>
+    <Workspace>
+      <PageHeader
+        eyebrow="Caisse & charges"
+        title="Objectif mensuel de bénéfice"
+        description="Suivez vos dépenses du mois et calculez le bénéfice à gagner par jour."
+        actions={
+          <Link to="/expenses" className="ms-button ms-button-secondary ms-button-md">
+            Gérer les dépenses <ArrowRight size={16} />
+          </Link>
+        }
+      />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <CommandBar>
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="text-sm font-medium text-gray-700">
             Mois
             <input
               type="month"
               value={month}
               onChange={(event) => setMonth(event.target.value)}
-              className="mt-1 h-11 w-full rounded-xl border border-gray-300 px-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="form-control mt-1 text-sm"
             />
           </label>
           <label className="text-sm font-medium text-gray-700">
@@ -222,7 +223,7 @@ const MonthlySpendingPlan = () => {
               min="0"
               value={desiredProfit}
               onChange={(event) => setDesiredProfit(event.target.value)}
-              className="mt-1 h-11 w-full rounded-xl border border-gray-300 px-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="form-control mt-1 text-sm"
               placeholder="0"
             />
           </label>
@@ -234,14 +235,14 @@ const MonthlySpendingPlan = () => {
               max="100"
               value={targetMargin}
               onChange={(event) => setTargetMargin(event.target.value)}
-              className="mt-1 h-11 w-full rounded-xl border border-gray-300 px-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="form-control mt-1 text-sm"
             />
           </label>
         </div>
-      </header>
+      </CommandBar>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 border border-[var(--ms-danger)] bg-[rgba(209,52,56,0.08)] px-4 py-3 text-sm text-[var(--ms-danger)]">
           <AlertCircle size={18} />
           {error}
         </div>
@@ -278,24 +279,19 @@ const MonthlySpendingPlan = () => {
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Progression du mois
-              </h2>
-              <p className="text-sm text-gray-500">
-                Basé sur la marge/profit enregistré dans les ventes.
-              </p>
-            </div>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
+        <ChartCard
+          title="Progression du mois"
+          description="Basé sur la marge/profit enregistré dans les ventes."
+          className="lg:col-span-2"
+          actions={
+            <span className="ms-status-badge ms-status-info">
               {Math.min(summary.targetProgress, 100).toFixed(1)}%
             </span>
-          </div>
-
-          <div className="h-3 overflow-hidden rounded-full bg-gray-100">
+          }
+        >
+          <div className="h-3 overflow-hidden bg-[var(--ms-bg-muted)]">
             <div
-              className="h-full rounded-full bg-indigo-600 transition-all"
+              className="h-full bg-[var(--ms-primary)] transition-all"
               style={{ width: `${Math.min(summary.targetProgress, 100)}%` }}
             />
           </div>
@@ -310,23 +306,19 @@ const MonthlySpendingPlan = () => {
             />
           </div>
 
-          <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-            <p className="text-sm font-semibold text-indigo-900">
+          <div className="mt-5 border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+            <p className="text-sm font-semibold text-[var(--ms-text)]">
               Il reste {formatCFA(summary.remainingProfitTarget)} à générer.
             </p>
-            <p className="mt-1 text-sm text-indigo-700">
+            <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
               Sur {summary.remainingDays} jour(s) restant(s), cela fait{' '}
               <span className="font-bold">{formatCFA(summary.dailyRemainingProfit)}</span>{' '}
               de bénéfice brut par jour.
             </p>
           </div>
-        </div>
+        </ChartCard>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Coins size={20} className="text-amber-600" />
-            Par catégorie
-          </h2>
+        <ChartCard title="Par catégorie" description="Répartition des charges du mois.">
           <div className="space-y-3">
             {Object.entries(summary.categoryTotals).map(([category, total]) => {
               const percentage =
@@ -334,14 +326,14 @@ const MonthlySpendingPlan = () => {
               return (
                 <div key={category}>
                   <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-[var(--ms-text)]">
                       {getCategoryLabel(category)}
                     </span>
-                    <span className="text-gray-500">{formatCFA(total)}</span>
+                    <span className="text-[var(--ms-text-muted)]">{formatCFA(total)}</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-2 overflow-hidden bg-[var(--ms-bg-muted)]">
                     <div
-                      className="h-full rounded-full bg-amber-500"
+                      className="h-full bg-[var(--ms-warning)]"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -349,108 +341,80 @@ const MonthlySpendingPlan = () => {
               );
             })}
             {Object.keys(summary.categoryTotals).length === 0 && (
-              <p className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-                Aucune dépense enregistrée pour ce mois.
-              </p>
+              <EmptyState title="Aucune dépense" description="Aucune dépense enregistrée pour ce mois." />
             )}
           </div>
-        </div>
+        </ChartCard>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-              <ListChecks size={20} className="text-indigo-600" />
-              Liste des dépenses du mois
-            </h2>
-            <p className="text-sm text-gray-500">
-              {sortedExpenses.length} dépense(s) enregistrée(s).
-            </p>
-          </div>
-          <Link
-            to="/expenses"
-            className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            Gérer les dépenses <ArrowRight size={16} />
-          </Link>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+      <ChartCard
+        title="Liste des dépenses du mois"
+        description={`${sortedExpenses.length} dépense(s) enregistrée(s).`}
+      >
+        <DataTable>
+          <table>
+            <thead>
               <tr>
-                <th className="px-3 py-3">Date</th>
-                <th className="px-3 py-3">Description</th>
-                <th className="px-3 py-3">Catégorie</th>
-                <th className="px-3 py-3 text-right">Montant</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Catégorie</th>
+                <th className="text-right">Montant</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {sortedExpenses.map((expense) => (
-                <tr key={expense._id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-3 py-3 text-gray-600">
+                <tr key={expense._id}>
+                  <td className="whitespace-nowrap">
                     {expense.date
                       ? new Date(expense.date).toLocaleDateString('fr-FR')
                       : '-'}
                   </td>
-                  <td className="px-3 py-3 font-medium text-gray-900">
+                  <td className="font-medium text-[var(--ms-text)]">
                     {expense.description}
                   </td>
-                  <td className="px-3 py-3 text-gray-600">
+                  <td>
                     {getCategoryLabel(expense.category)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-gray-900">
+                  <td className="whitespace-nowrap text-right font-semibold">
                     {formatCFA(expense.amount)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </DataTable>
 
           {!loading && sortedExpenses.length === 0 && (
-            <div className="border-t border-gray-100 px-4 py-8 text-center text-sm text-gray-500">
-              Aucune dépense pour le mois sélectionné.
-            </div>
+            <EmptyState title="Aucune dépense" description="Aucune dépense pour le mois sélectionné." />
           )}
 
           {loading && (
-            <div className="border-t border-gray-100 px-4 py-8 text-center text-sm text-gray-500">
+            <div className="border-t border-[var(--ms-border)] px-4 py-8 text-center text-sm text-[var(--ms-text-muted)]">
               Chargement des dépenses...
             </div>
           )}
-        </div>
-      </section>
-    </div>
+      </ChartCard>
+    </Workspace>
   );
 };
 
 const MetricCard = ({ title, value, helper, icon, tone }) => {
   const tones = {
-    rose: 'bg-rose-50 text-rose-700 border-rose-100',
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
+    rose: 'danger',
+    indigo: 'info',
+    emerald: 'success',
+    amber: 'warning',
   };
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className={`rounded-xl border p-2.5 ${tones[tone] || tones.indigo}`}>
-          {icon}
-        </div>
-      </div>
-      <p className="mt-4 text-sm font-medium text-gray-500">{title}</p>
-      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
-      {helper && <p className="mt-2 text-xs text-gray-500">{helper}</p>}
-    </article>
+    <KPICard title={title} value={value} context={helper} icon={icon} tone={tones[tone] || 'info'} />
   );
 };
 
 const SmallStat = ({ title, value, negative = false }) => (
-  <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-    <p className="text-xs font-medium text-gray-500">{title}</p>
-    <p className={`mt-1 font-bold ${negative ? 'text-red-600' : 'text-gray-900'}`}>
+  <div className="border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
+    <p className="text-xs font-medium text-[var(--ms-text-muted)]">{title}</p>
+    <p className={`mt-1 font-bold ${negative ? 'text-[var(--ms-danger)]' : 'text-[var(--ms-text)]'}`}>
       {value}
     </p>
   </div>

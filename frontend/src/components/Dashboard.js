@@ -81,6 +81,7 @@ import {
 
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
+import { KPICard, ChartCard, PageHeader, Workspace } from "./business";
 
 const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 const RemindersPanel = lazy(() => import("../components/RemindersPanel"));
@@ -1241,7 +1242,7 @@ const Dashboard = () => {
     {
       bg: "from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20",
       border: "border-green-200/40 dark:border-green-800/30",
-      text: "text-green-600 dark:text-green-400",
+      text: "text-[var(--ms-success)] dark:text-green-400",
       iconWrap: "bg-white/70 dark:bg-gray-900/60",
     },
     {
@@ -1265,27 +1266,27 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+    <div className="min-h-full bg-gradient-to-b bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
+      <div className="space-y-6 sm:space-y-8">
         {/* ===== HOME HUB ===== */}
-        <header className="overflow-hidden rounded-[28px] border border-white/80 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-gray-800 dark:bg-gray-900/90">
+        <header className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow)]  dark:border-gray-800 dark:bg-gray-900/90">
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 lg:p-6">
             <div className="min-w-0">
               {userName && (
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Bienvenue, <span className="text-gray-900 dark:text-gray-100">{userName}</span>
+                <p className="text-sm font-medium text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                  Bienvenue, <span className="text-[var(--ms-text-strong)] dark:text-gray-100">{userName}</span>
                 </p>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                <h1 className="text-2xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white sm:text-3xl">
                   Accueil opérationnel
                 </h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                   <CalendarDays size={13} />
                   {periodLabel}
                 </span>
               </div>
-              <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+              <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
                 Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
               </p>
             </div>
@@ -1293,7 +1294,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={() => setIsHomeHubOpen((current) => !current)}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-semibold text-[var(--ms-text)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"
               aria-expanded={isHomeHubOpen}
               aria-controls="home-hub-content"
             >
@@ -1314,61 +1315,61 @@ const Dashboard = () => {
               transition={{ duration: 0.24, ease: "easeOut" }}
               className="overflow-hidden"
             >
-          <div className="grid gap-5 border-t border-gray-100 p-4 pt-5 dark:border-gray-800 sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+          <div className="grid gap-5 border-t border-[var(--ms-border)] p-4 pt-5 dark:border-gray-800 sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
             <div className="min-w-0">
               {userName && (
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Bienvenue, <span className="text-gray-900 dark:text-gray-100">{userName}</span>
+                <p className="text-sm font-medium text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                  Bienvenue, <span className="text-[var(--ms-text-strong)] dark:text-gray-100">{userName}</span>
                 </p>
               )}
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                  <h1 className="text-2xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white sm:text-3xl">
                     Vue rapide
                   </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+                  <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
                     Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
                   </p>
                 </div>
-                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
                   <CalendarDays size={15} />
                   {periodLabel}
                 </div>
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ventes</p>
-                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Ventes</p>
+                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
                     {totalSales.toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
-                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Encaissements</p>
-                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Encaissements</p>
+                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
                     {totalPaid.toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
-                <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Profit net</p>
-                  <p className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Profit net</p>
+                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
                     {profit.toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
+            <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
               <div className="flex items-start justify-between gap-3 px-1 pb-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-950 dark:text-white">
+                  <p className="text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">
                     Pilotage
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-0.5 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                     Période et comparaison
                   </p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                   <CalendarDays size={13} />
                   {periodLabel}
                 </span>
@@ -1399,7 +1400,7 @@ const Dashboard = () => {
               </div>
 
               <div className="mt-3 space-y-3">
-                <div className="rounded-[20px] border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-1 dark:border-gray-700 dark:bg-gray-900">
                   <div className="grid grid-cols-4 gap-1">
                     {periodOptions.map((option) => {
                       const isActive = timeRange === option.value;
@@ -1408,10 +1409,10 @@ const Dashboard = () => {
                           key={option.value}
                           type="button"
                           onClick={() => setTimeRange(option.value)}
-                          className={`min-h-[42px] rounded-2xl px-2 text-xs font-semibold transition-all duration-200 ${
+                          className={`min-h-[42px] rounded-lg px-2 text-xs font-semibold transition-all duration-200 ${
                             isActive
-                              ? "bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:bg-white dark:text-gray-950"
-                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                              ? "bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
+                              : "text-[var(--ms-text-muted)] hover:bg-gray-100 hover:text-[var(--ms-text-strong)] dark:text-[var(--ms-text-muted)] dark:hover:bg-gray-800 dark:hover:text-gray-100"
                           }`}
                           aria-pressed={isActive}
                         >
@@ -1423,13 +1424,13 @@ const Dashboard = () => {
                 </div>
 
                 {timeRange === "year" && (
-                  <div className="rounded-[20px] border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+                  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">
                       Détail annuel
                     </p>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1">
                       <label className="space-y-1.5">
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                        <span className="text-[11px] font-semibold text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                           Année
                         </span>
                         <input
@@ -1450,7 +1451,7 @@ const Dashboard = () => {
                         />
                       </label>
                       <label className="space-y-1.5">
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                        <span className="text-[11px] font-semibold text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                           Mois
                         </span>
                         <select
@@ -1468,7 +1469,7 @@ const Dashboard = () => {
                         </select>
                       </label>
                       <label className="space-y-1.5">
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                        <span className="text-[11px] font-semibold text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                           Semaine
                         </span>
                         <select
@@ -1491,12 +1492,12 @@ const Dashboard = () => {
                   </div>
                 )}
 
-                <div className="rounded-[20px] border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 dark:border-gray-700 dark:bg-gray-900">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">
                       Comparer à
                     </p>
-                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                    <span className="text-[11px] font-semibold text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                       {comparisonOptions.find((option) => option.value === compareMode)?.shortLabel}
                     </span>
                   </div>
@@ -1508,10 +1509,10 @@ const Dashboard = () => {
                           key={option.value}
                           type="button"
                           onClick={() => setCompareMode(option.value)}
-                          className={`min-h-[42px] rounded-2xl border px-3 text-left text-xs font-semibold transition-all duration-200 ${
+                          className={`min-h-[42px] rounded-lg border px-3 text-left text-xs font-semibold transition-all duration-200 ${
                             isActive
-                              ? "border-gray-950 bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-white dark:bg-white dark:text-gray-950"
-                              : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
+                              ? "border-gray-950 bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-white dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
+                              : "border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:border-gray-300 hover:bg-[var(--ms-white)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
                           }`}
                           aria-pressed={isActive}
                         >
@@ -1522,13 +1523,13 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="rounded-[18px] border border-gray-200 bg-white/80 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-400">
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-white/80 px-3 py-2 text-xs text-[var(--ms-text-muted)] dark:border-gray-700 dark:bg-gray-900/80 dark:text-[var(--ms-text-muted)]">
+                  <span className="font-semibold text-[var(--ms-text)] dark:text-gray-200">
                     Vue:
                   </span>{" "}
                   {periodLabel}
                   <span className="mx-2 text-gray-300">/</span>
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                  <span className="font-semibold text-[var(--ms-text)] dark:text-gray-200">
                     Comparaison:
                   </span>{" "}
                   {comparisonLabel}
@@ -1537,30 +1538,30 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5 lg:px-6">
+          <div className="border-t border-[var(--ms-border)] px-4 py-4 dark:border-gray-800 sm:px-5 lg:px-6">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                 Pages rattachées
               </h2>
-              <span className="text-xs font-medium text-gray-400">{homeShortcuts.length} accès</span>
+              <span className="text-xs font-medium text-[var(--ms-text-muted)]">{homeShortcuts.length} accès</span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
                 <Link
                   key={to}
                   to={to}
-                  className="group rounded-[22px] border border-gray-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+                  className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
                       <Icon size={20} />
                     </span>
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text)] dark:bg-gray-800 dark:text-gray-300">
                       {meta}
                     </span>
                   </div>
-                  <p className="mt-4 text-sm font-semibold text-gray-950 dark:text-white">{label}</p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                  <p className="mt-4 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{label}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                     {description}
                   </p>
                 </Link>
@@ -1574,8 +1575,8 @@ const Dashboard = () => {
         {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
         <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
           {chartLoading && (
-            <div className="absolute inset-0 z-20 flex items-start justify-center rounded-3xl bg-white/55 pt-5 backdrop-blur-[2px] dark:bg-gray-950/35">
-              <div className="rounded-full border border-indigo-100 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-lg dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-200">
+            <div className="absolute inset-0 z-20 flex items-start justify-center rounded-lg bg-[var(--ms-white)]/55 pt-5 dark:bg-gray-950/35">
+              <div className="rounded-full border border-indigo-100 bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-indigo-700 shadow-lg dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-200">
                 Mise à jour du graphique…
               </div>
             </div>
@@ -1627,7 +1628,7 @@ const Dashboard = () => {
               <motion.article
                 key={i}
                 whileHover={{ scale: 1.01 }}
-                className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
+                className={`p-4 sm:p-5 rounded-lg bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className={`p-2.5 sm:p-3 ${stat.style.iconWrap} rounded-xl shrink-0`}>
@@ -1636,21 +1637,21 @@ const Dashboard = () => {
                   <span
                     className={`text-xs font-medium shrink-0 ${
                       String(stat.trend).startsWith("+")
-                        ? "text-green-600 dark:text-green-400"
+                        ? "text-[var(--ms-success)] dark:text-green-400"
                         : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {String(stat.trend).startsWith("+") ? "↑" : "↓"} {stat.trend}
                   </span>
                 </div>
-                <h2 className="text-sm font-medium mt-3 text-gray-700 dark:text-gray-300">
+                <h2 className="text-sm font-medium mt-3 text-[var(--ms-text)] dark:text-gray-300">
                   {stat.title}
                 </h2>
                 <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
                   {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
                 </p>
                 {stat.prevValue != null && (
-                  <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
+                  <p className="mt-1.5 text-sm text-[var(--ms-text)] dark:text-[var(--ms-text-muted)] tabular-nums">
                     Vs période préc. : <span className="font-medium">{Number(stat.prevValue).toLocaleString("fr-FR")} CFA</span>
                   </p>
                 )}
@@ -1660,23 +1661,23 @@ const Dashboard = () => {
 
           {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
           <section
-            className={`relative overflow-hidden bg-white dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 transition-opacity ${
+            className={`relative overflow-hidden bg-[var(--ms-white)] dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-lg shadow-md border border-[var(--ms-border)] dark:border-gray-700 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
             }`}
             aria-label="Analyse financière"
           >
-            <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-indigo-600 text-white font-medium">
+            <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-[var(--ms-blue)] text-white font-medium">
               Comparaison {compareMode !== "none" ? "activée" : "désactivée"}
             </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 pr-24 sm:pr-28">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold text-[var(--ms-text-strong)] dark:text-white">
               Analyse financière
             </h2>
             <button
               type="button"
               onClick={() => handleOpenDayDetails(today)}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors"
             >
               <CalendarDays size={18} /> Détails du jour
             </button>
@@ -1780,32 +1781,32 @@ const Dashboard = () => {
 
           {encaissementHighlights && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extrêmes des encaissements">
-              <article className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-gray-900">
+              <article className="rounded-lg border border-emerald-200 bg-[var(--ms-success)]/5 to-[var(--ms-white)] p-4 shadow-sm dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-gray-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                   {encaissementHighlights.bestLabel}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
                   {encaissementHighlights.best.label}
                 </p>
                 <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
                   {Math.round(encaissementHighlights.best.total).toLocaleString("fr-FR")} CFA
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                   {encaissementHighlights.helperText}
                 </p>
               </article>
 
-              <article className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm dark:border-rose-900/60 dark:from-rose-950/30 dark:to-gray-900">
+              <article className="rounded-lg border border-rose-200 bg-[var(--ms-danger)]/5 to-[var(--ms-white)] p-4 shadow-sm dark:border-rose-900/60 dark:from-rose-950/30 dark:to-gray-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
                   {encaissementHighlights.lowestLabel}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
                   {encaissementHighlights.lowest.label}
                 </p>
                 <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-300 tabular-nums">
                   {Math.round(encaissementHighlights.lowest.total).toLocaleString("fr-FR")} CFA
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                   {encaissementHighlights.helperText}
                 </p>
               </article>
@@ -1814,18 +1815,18 @@ const Dashboard = () => {
         </div>
 
         {isAdmin && nonCriticalReady && (
-          <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+          <section className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                     <Lightbulb size={20} />
                   </span>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h2 className="text-lg font-semibold text-[var(--ms-text-strong)] dark:text-white">
                       Suggestions pour vendre les produits lents
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                       Produits avec peu ou pas de ventes sur les 30 derniers jours.
                     </p>
                   </div>
@@ -1833,24 +1834,24 @@ const Dashboard = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+                  <p className="text-[11px] font-medium uppercase text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                     À traiter
                   </p>
-                  <p className="mt-0.5 text-lg font-bold text-gray-900 dark:text-white">
+                  <p className="mt-0.5 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">
                     {productActionSuggestions.length}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-900/50 dark:bg-rose-950/30">
-                  <p className="text-[11px] font-medium uppercase text-rose-600 dark:text-rose-300">
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-900/50 dark:bg-rose-950/30">
+                  <p className="text-[11px] font-medium uppercase text-[var(--ms-danger)] dark:text-rose-300">
                     Urgent
                   </p>
                   <p className="mt-0.5 text-lg font-bold text-rose-700 dark:text-rose-300">
                     {highPriorityProductSuggestions}
                   </p>
                 </div>
-                <div className="col-span-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-                  <p className="text-[11px] font-medium uppercase text-indigo-600 dark:text-indigo-300">
+                <div className="col-span-2 rounded-lg border border-indigo-200 bg-[var(--ms-blue-soft)] px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+                  <p className="text-[11px] font-medium uppercase text-[var(--ms-blue)] dark:text-indigo-300">
                     Stock concerné
                   </p>
                   <p className="mt-0.5 text-lg font-bold text-indigo-700 dark:text-indigo-300">
@@ -1865,14 +1866,14 @@ const Dashboard = () => {
                 {productActionSuggestions.slice(0, 6).map((product) => (
                   <article
                     key={product._id}
-                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+                    className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-900"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        <p className="truncate text-sm font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
                           {product.name}
                         </p>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-1 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                           {product.category} • Stock {product.stock}
                         </p>
                       </div>
@@ -1886,27 +1887,27 @@ const Dashboard = () => {
                     </div>
 
                     <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
-                        <p className="text-gray-500 dark:text-gray-400">Vendus</p>
-                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                      <div className="rounded-xl bg-[var(--ms-white)] p-2 dark:bg-gray-800">
+                        <p className="text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">Vendus</p>
+                        <p className="mt-1 font-bold text-[var(--ms-text-strong)] dark:text-gray-100">
                           {product.sold}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
-                        <p className="text-gray-500 dark:text-gray-400">Écoulement</p>
-                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                      <div className="rounded-xl bg-[var(--ms-white)] p-2 dark:bg-gray-800">
+                        <p className="text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">Écoulement</p>
+                        <p className="mt-1 font-bold text-[var(--ms-text-strong)] dark:text-gray-100">
                           {product.sellThroughRate}%
                         </p>
                       </div>
-                      <div className="rounded-xl bg-white p-2 dark:bg-gray-800">
-                        <p className="text-gray-500 dark:text-gray-400">Marge</p>
-                        <p className="mt-1 font-bold text-gray-900 dark:text-gray-100">
+                      <div className="rounded-xl bg-[var(--ms-white)] p-2 dark:bg-gray-800">
+                        <p className="text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">Marge</p>
+                        <p className="mt-1 font-bold text-[var(--ms-text-strong)] dark:text-gray-100">
                           {product.marginRate == null ? "N/A" : `${product.marginRate}%`}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
                       <p className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                         <BadgePercent size={14} />
                         {product.highlight}
@@ -1915,9 +1916,9 @@ const Dashboard = () => {
                         {(product.actions || []).slice(0, 3).map((action) => (
                           <li
                             key={action}
-                            className="flex gap-2 text-xs leading-5 text-gray-700 dark:text-gray-300"
+                            className="flex gap-2 text-xs leading-5 text-[var(--ms-text)] dark:text-gray-300"
                           >
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ms-warning)] dark:text-amber-300" />
                             <span>{action}</span>
                           </li>
                         ))}
@@ -1925,12 +1926,12 @@ const Dashboard = () => {
                     </div>
 
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                      <span className="text-sm font-bold text-[var(--ms-text-strong)] dark:text-gray-100">
                         {Math.round(product.price || 0).toLocaleString("fr-FR")} CFA
                       </span>
                       <Link
                         to={`/products/${product._id}`}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--ms-blue)] hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
                       >
                         Voir produit <ArrowRight size={15} />
                       </Link>
@@ -1939,7 +1940,7 @@ const Dashboard = () => {
                 ))}
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-[var(--ms-bg-subtle)] px-4 py-6 text-sm text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                 Aucun produit lent détecté sur les 30 derniers jours.
               </div>
             )}
@@ -1948,7 +1949,7 @@ const Dashboard = () => {
               <div className="mt-4 flex justify-end">
                 <Link
                   to="/product-dashboard"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[var(--ms-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
                 >
                   Voir tout le dashboard produits <ArrowRight size={16} />
                 </Link>
@@ -1960,22 +1961,22 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <AccordionSection title="Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
-          className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-gray-900"
+          className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow)] dark:border-gray-800 dark:bg-gray-900"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
         >
           {/* 🔹 En-tête + contrôles (période + switch lissage + export ALL) */}
-          <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
+          <div className="border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
                 Home analytics
               </p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950 dark:text-white">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white">
                 Statistiques des ventes
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                 Tendance, encaissements, méthodes, statuts et top produits sur la période.
               </p>
             </div>
@@ -1998,10 +1999,10 @@ const Dashboard = () => {
               <button
                 type="button"
                 onClick={() => setSmoothTrend((v) => !v)}
-                className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5
+                className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5
                   ${smoothTrend
-                    ? "border-gray-950 bg-gray-950 text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] dark:border-white dark:bg-white dark:text-gray-950"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"}`}
+                    ? "border-gray-950 bg-gray-950 text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] dark:border-white dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
+                    : "border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"}`}
                 title="Lisser la tendance (moyenne mobile 3 j)"
               >
                 <Wand2 size={16} />
@@ -2012,7 +2013,7 @@ const Dashboard = () => {
               <button
                 type="button"
                 onClick={exportSalesStatsAll}
-                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-gray-950 px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)] dark:hover:bg-gray-100"
                 title="Exporter toutes les statistiques de ventes"
               >
                 <Download size={16} />
@@ -2027,7 +2028,7 @@ const Dashboard = () => {
           {/* 🔹 Label dynamique lissage */}
           {smoothTrend && (
             <div className="mb-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 <Wand2 size={14} /> Tendance lissée (3 j)
               </span>
             </div>
@@ -2053,13 +2054,13 @@ const Dashboard = () => {
               </div>
 
               {/* 🔹 Encart livraisons à droite */}
-              <div className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70 lg:col-span-1">
-                <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/70 lg:col-span-1">
+                <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                   <Truck size={16} />
                   Livraisons
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-white p-2.5 dark:border-emerald-500/20 dark:bg-gray-900">
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-[var(--ms-white)] p-2.5 dark:border-emerald-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-green-700 dark:text-green-300">
                       <PackageCheck size={16} /> Livrées
                     </span>
@@ -2067,7 +2068,7 @@ const Dashboard = () => {
                       {deliveryStats?.delivered?.count || 0}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-white p-2.5 dark:border-amber-500/20 dark:bg-gray-900">
+                  <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-[var(--ms-white)] p-2.5 dark:border-amber-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
                       <Clock3 size={16} /> En attente
                     </span>
@@ -2075,7 +2076,7 @@ const Dashboard = () => {
                       {deliveryStats?.pending?.count || 0}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-white p-2.5 dark:border-rose-500/20 dark:bg-gray-900">
+                  <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-[var(--ms-white)] p-2.5 dark:border-rose-500/20 dark:bg-gray-900">
                     <span className="flex items-center gap-2 text-red-700 dark:text-red-300">
                       <XCircle size={16} /> Non livrées
                     </span>
@@ -2091,34 +2092,34 @@ const Dashboard = () => {
           {salesStatsData && (
             <div className="mb-5">
               <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">
                   Types de commandes et structure des paiements
                 </h3>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                   Très visible sur la période sélectionnée
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 {highlightedSalesCards.map((card) => {
                   const cardContent = (
-                    <div className="h-full rounded-[calc(1.5rem-1px)] bg-white dark:bg-gray-900 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                    <div className="h-full rounded-[calc(1.5rem-1px)] bg-[var(--ms-white)] dark:bg-gray-900 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                         {card.title}
                       </p>
                       <div className={`mt-3 text-3xl font-black tabular-nums ${card.text}`}>
                         {card.count}
                       </div>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      <p className="mt-1 text-sm text-[var(--ms-text)] dark:text-gray-300">
                         {card.amount.toLocaleString("fr-FR")} CFA
                       </p>
-                      <div className="mt-3 flex items-center justify-between rounded-2xl bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Part des ventes</span>
+                      <div className="mt-3 flex items-center justify-between rounded-lg bg-[var(--ms-bg-subtle)] dark:bg-gray-800 px-3 py-2 text-xs">
+                        <span className="text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">Part des ventes</span>
                         <span className={`font-semibold ${card.text}`}>
                           {card.percentage.toFixed(1)}%
                         </span>
                       </div>
                       {card.linkTo && (
-                        <div className="mt-3 text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                        <div className="mt-3 text-xs font-medium text-[var(--ms-blue)] dark:text-indigo-300">
                           Voir les ventes
                         </div>
                       )}
@@ -2129,7 +2130,7 @@ const Dashboard = () => {
                     return (
                       <div
                         key={card.key}
-                        className={`rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
+                        className={`rounded-lg p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
                       >
                         {cardContent}
                       </div>
@@ -2140,7 +2141,7 @@ const Dashboard = () => {
                     <Link
                       key={card.key}
                       to={card.linkTo}
-                      className={`block rounded-3xl p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+                      className={`block rounded-lg p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
                       aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
                     >
                       {cardContent}
@@ -2152,10 +2153,10 @@ const Dashboard = () => {
           )}
 
           {salesStatsData && (
-            <section className="mb-5 rounded-[24px] border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-500/20 dark:bg-rose-500/10 sm:p-5">
+            <section className="mb-5 rounded-lg border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-500/20 dark:bg-rose-500/10 sm:p-5">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-600 dark:text-rose-300">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ms-danger)] dark:text-rose-300">
                     À encaisser
                   </p>
                   <h3 className="mt-1 text-base font-bold text-rose-950 dark:text-rose-100">
@@ -2166,10 +2167,10 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
+                  <span className="inline-flex items-center rounded-full bg-[var(--ms-white)] px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
                     {neverPaidSales.count} vente{neverPaidSales.count > 1 ? "s" : ""}
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
+                  <span className="inline-flex items-center rounded-full bg-[var(--ms-white)] px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
                     {Math.round(neverPaidSales.totalAmount || 0).toLocaleString("fr-FR")} CFA
                   </span>
                 </div>
@@ -2181,14 +2182,14 @@ const Dashboard = () => {
                     <Link
                       key={sale._id}
                       to={`/sales/${sale._id}`}
-                      className="rounded-[20px] border border-rose-200/80 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md dark:border-rose-500/20 dark:bg-gray-900 dark:hover:border-rose-700"
+                      className="rounded-lg border border-rose-200/80 bg-[var(--ms-white)] px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md dark:border-rose-500/20 dark:bg-gray-900 dark:hover:border-rose-700"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          <p className="text-sm font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
                             {sale.client?.name || "Client non spécifié"}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] mt-1">
                             Vente #{sale._id?.slice(-6)} • {sale.saleDate
                               ? new Date(sale.saleDate).toLocaleDateString("fr-FR")
                               : "Date indisponible"}
@@ -2214,7 +2215,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-rose-200 bg-white/75 px-4 py-6 text-center text-sm text-gray-600 dark:border-rose-500/20 dark:bg-gray-900/40 dark:text-gray-300">
+                <div className="rounded-lg border border-dashed border-rose-200 bg-white/75 px-4 py-6 text-center text-sm text-[var(--ms-text)] dark:border-rose-500/20 dark:bg-gray-900/40 dark:text-gray-300">
                   Aucune vente sans paiement sur cette période.
                 </div>
               )}
@@ -2224,15 +2225,15 @@ const Dashboard = () => {
           {/* 🔹 Sous-bloc "Encaissements" (paymentsTotal / paymentsCount) */}
           {salesStatsData?.paymentsSummary && (
             <div className="mt-2">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200 mb-2 flex items-center gap-2">
                 <Coins className="text-emerald-500" size={16} />
                 Encaissements
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
                   <DollarSign className="text-emerald-600" />
                   <div>
-                    <p className="text-xs text-gray-500">Montant total encaissé</p>
+                    <p className="text-xs text-[var(--ms-text-muted)]">Montant total encaissé</p>
                     <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
                       {Math.round(salesStatsData.paymentsSummary.paymentsTotal || 0).toLocaleString("fr-FR")}{" "}
                       CFA
@@ -2240,10 +2241,10 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl border border-cyan-200 dark:border-cyan-800 flex items-center gap-3">
+                <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800 flex items-center gap-3">
                   <Coins className="text-cyan-600" />
                   <div>
-                    <p className="text-xs text-gray-500">Nombre de paiements</p>
+                    <p className="text-xs text-[var(--ms-text-muted)]">Nombre de paiements</p>
                     <h3 className="text-lg font-bold text-cyan-700 dark:text-cyan-300">
                       {salesStatsData.paymentsSummary.paymentsCount || 0}
                     </h3>
@@ -2256,8 +2257,8 @@ const Dashboard = () => {
           {/* Grilles condensées : Tendance | Statuts | Top produits */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* 🔹 Tendance des ventes (+ lissage) */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
+            <div className="bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
+              <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
                 Tendance des ventes
               </h3>
               <div className="h-48">
@@ -2281,8 +2282,8 @@ const Dashboard = () => {
             </div>
 
             {/* Statuts des ventes */}
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
+            <div className="bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
+              <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
                 Statuts des ventes
               </h3>
               <ResponsiveContainer width="100%" height={180}>
@@ -2299,26 +2300,26 @@ const Dashboard = () => {
           </div>
 
           {/* Top produits */}
-          <div className="mt-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200 text-sm">
+          <div className="mt-4 bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
+            <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
               Top produits vendus
             </h3>
             <ul className="space-y-2">
               {(topProducts || []).map((p, i) => (
                 <li
                   key={i}
-                  className="flex justify-between text-sm bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700"
+                  className="flex justify-between text-sm bg-[var(--ms-white)] dark:bg-gray-800 p-2.5 rounded-xl border border-[var(--ms-border)] dark:border-gray-700"
                 >
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <span className="font-medium text-[var(--ms-text)] dark:text-gray-300">
                     {p.product?.name || "Produit"}
                   </span>
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-[var(--ms-text)] dark:text-[var(--ms-text-muted)]">
                     {p.quantity} vendus
                   </span>
                 </li>
               ))}
               {(!topProducts || topProducts.length === 0) && (
-                <div className="text-center text-gray-500 text-sm py-6">
+                <div className="text-center text-[var(--ms-text-muted)] text-sm py-6">
                   Aucune donnée disponible
                 </div>
               )}
@@ -2345,24 +2346,24 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <>
             {Object.values(bestDaysRanges).length > 0 && (
-              <section className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_20px_56px_rgba(15,23,42,0.07)] dark:border-gray-800 dark:bg-gray-900">
-                <div className="border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+              <section className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[0_20px_56px_rgba(15,23,42,0.07)] dark:border-gray-800 dark:bg-gray-900">
+                <div className="border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
                     Performance par période
                   </p>
-                  <h3 className="mt-1 text-lg font-bold text-gray-950 dark:text-white">
+                  <h3 className="mt-1 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">
                     Meilleurs jours par plage
                   </h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
                     Les pics de ventes, d’encaissements et de dépenses pour chaque fenêtre suivie.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
                   {Object.values(bestDaysRanges).map((entry) => (
-                    <article key={entry.label} className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70 sm:p-4">
+                    <article key={entry.label} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 dark:border-gray-700 dark:bg-gray-800/70 sm:p-4">
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-gray-950 dark:text-white">{entry.label}</p>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                        <p className="text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{entry.label}</p>
+                        <span className="rounded-full bg-[var(--ms-white)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text-muted)] dark:bg-gray-900 dark:text-[var(--ms-text-muted)]">
                           Plage
                         </span>
                       </div>
@@ -2370,7 +2371,7 @@ const Dashboard = () => {
                         <StatCard
                           title="Ventes"
                           entry={entry.days?.sales}
-                          accent="text-green-600 dark:text-green-300"
+                          accent="text-[var(--ms-success)] dark:text-green-300"
                         />
                         <StatCard
                           title="Encaissements"
@@ -2454,27 +2455,27 @@ const salesToneClasses = {
 const SalesMetricCard = ({ title, value, icon: Icon, tone = "emerald" }) => (
   <motion.article
     whileHover={{ y: -2 }}
-    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+    className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
   >
     <div className="flex items-start justify-between gap-3">
-      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
+      <span className={`flex h-10 w-10 items-center justify-center rounded-lg border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
         <Icon size={18} />
       </span>
     </div>
-    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</p>
-    <p className="mt-2 text-lg font-bold text-gray-950 dark:text-white">{value}</p>
+    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</p>
+    <p className="mt-2 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">{value}</p>
   </motion.article>
 );
 
 const SalesInsightCard = ({ title, value, amount, icon: Icon, tone = "emerald" }) => (
-  <article className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+  <article className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
     <div className="flex items-start justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</p>
-      <span className={`flex h-9 w-9 items-center justify-center rounded-2xl border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</p>
+      <span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
         <Icon size={17} />
       </span>
     </div>
-    <p className="mt-3 text-sm font-semibold text-gray-950 dark:text-white">{value}</p>
+    <p className="mt-3 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{value}</p>
     <p className={`mt-2 text-lg font-black tabular-nums ${tone === "rose" ? "text-rose-700 dark:text-rose-300" : tone === "blue" ? "text-blue-700 dark:text-blue-300" : "text-emerald-700 dark:text-emerald-300"}`}>
       {Math.round(amount || 0).toLocaleString("fr-FR")} CFA
     </p>
@@ -2482,9 +2483,9 @@ const SalesInsightCard = ({ title, value, amount, icon: Icon, tone = "emerald" }
 );
 
 const StatCard = ({ title, entry, accent }) => (
-  <div className="rounded-2xl border border-gray-200 bg-white p-3 text-[11px] shadow-sm dark:border-gray-700 dark:bg-gray-900">
-    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">{title}</div>
-    <div className="mt-2 text-xs font-semibold text-gray-900 dark:text-gray-100">
+  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 text-[11px] shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</div>
+    <div className="mt-2 text-xs font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
       {entry?.date ? new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(new Date(entry.date)) : "—"}
     </div>
     <div className={`mt-1 text-sm font-bold ${accent}`}>

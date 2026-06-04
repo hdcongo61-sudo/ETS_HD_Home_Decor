@@ -149,7 +149,7 @@ const ExportSales = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+    <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">

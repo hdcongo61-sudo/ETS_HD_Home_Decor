@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { getSaleTypeText } from '../utils/saleUtils';
+import { Button } from './business';
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -234,7 +235,7 @@ const SaleForm = ({
   const inputBase =
     'form-control text-gray-900 placeholder:text-gray-400';
 
-  const sectionTitleClass = 'text-sm font-semibold text-gray-900 uppercase tracking-[0.12em]';
+  const sectionTitleClass = 'text-sm font-semibold text-[var(--ms-text)] uppercase tracking-[0.12em]';
 
   /** UI **/
   return (
@@ -244,9 +245,9 @@ const SaleForm = ({
       className="form-shell"
     >
       {/* Header */}
-      <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-4 sm:px-6 sm:py-5">
-        <h3 className="text-lg font-semibold text-gray-900">Nouvelle vente</h3>
-        <p className="text-sm text-gray-500 mt-0.5">Renseignez le client, les produits et le paiement.</p>
+      <div className="border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4 sm:px-6 sm:py-5">
+        <h3 className="text-lg font-semibold text-[var(--ms-text-strong)]">Nouvelle vente</h3>
+        <p className="text-sm text-[var(--ms-text-muted)] mt-0.5">Renseignez le client, les produits et le paiement.</p>
       </div>
 
       <div className="p-5 sm:p-6 space-y-8">
@@ -277,7 +278,7 @@ const SaleForm = ({
               ))}
             </select>
             {safeClients.length === 0 && (
-              <p className="text-sm text-amber-600">Aucun client disponible.</p>
+              <p className="text-sm text-[var(--ms-warning)]">Aucun client disponible.</p>
             )}
           </div>
         </section>
@@ -288,7 +289,7 @@ const SaleForm = ({
             <h4 id="sale-form-products" className={sectionTitleClass}>
               Produits
             </h4>
-            <span className="text-xs text-gray-500">{selectedProducts.length} ligne(s)</span>
+            <span className="text-xs text-[var(--ms-text-muted)]">{selectedProducts.length} ligne(s)</span>
           </div>
 
           <div className="space-y-4">
@@ -299,8 +300,8 @@ const SaleForm = ({
                   key={index}
                   className={`rounded-[20px] border p-4 space-y-3 transition-colors ${
                     errors[index]
-                      ? 'border-red-200 bg-red-50/30'
-                      : 'border-gray-200/80 bg-gray-50/50'
+                      ? 'border-[var(--ms-danger)]/30 bg-[#FDF3F4]'
+                      : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]'
                   }`}
                 >
                   <input
@@ -361,7 +362,7 @@ const SaleForm = ({
                         <button
                           type="button"
                           onClick={() => removeProduct(index)}
-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                          className="ms-icon-button text-[var(--ms-text-muted)] hover:text-[var(--ms-danger)]"
                           aria-label="Supprimer cette ligne"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,21 +374,21 @@ const SaleForm = ({
                   </div>
 
                   {selectedProduct && (
-                    <div className="flex items-center gap-3 rounded-2xl border border-gray-200/80 bg-white p-3">
+                    <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
                       <img
                         src={selectedProduct.image || '/placeholder.png'}
                         alt=""
-                        className="w-14 h-14 object-cover rounded-lg border border-gray-200"
+                        className="w-14 h-14 object-cover rounded-md border border-[var(--ms-border)]"
                       />
-                      <div className="text-sm text-gray-600 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{selectedProduct.name}</p>
+                      <div className="text-sm text-[var(--ms-text-muted)] min-w-0">
+                        <p className="font-medium text-[var(--ms-text)] truncate">{selectedProduct.name}</p>
                         <p>Stock : {selectedProduct.stock} · Catalogue : {(selectedProduct.price || 0).toLocaleString('fr-FR')} CFA</p>
                       </div>
                     </div>
                   )}
 
                   {errors[index] && (
-                    <p id={`product-error-${index}`} className="text-sm text-red-600" role="alert">
+                    <p id={`product-error-${index}`} className="text-sm text-[var(--ms-danger)]" role="alert">
                       {errors[index]}
                     </p>
                   )}
@@ -414,7 +415,7 @@ const SaleForm = ({
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Commentaire ou remarque…"
+            placeholder="Commentaire ou remarque..."
             className={`${inputBase} min-h-[80px] resize-y`}
             rows={2}
             aria-describedby="sale-form-note"
@@ -455,8 +456,8 @@ const SaleForm = ({
                     key={type}
                     className={`cursor-pointer rounded-[20px] border p-4 transition-all ${
                       active
-                        ? 'border-gray-950 bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.14)]'
-                        : 'border-gray-200 bg-gray-50/60 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'border-[var(--ms-text-strong)] bg-[var(--ms-text-strong)] text-[var(--ms-white)] shadow-[var(--ms-shadow)]'
+                        : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:border-[var(--ms-border-strong)] hover:bg-[var(--ms-surface-muted)]'
                     }`}
                   >
                     <input
@@ -491,8 +492,8 @@ const SaleForm = ({
             Rappel de paiement
           </h4>
           {isFullyPaid && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              La vente est soldée. Le rappel de paiement est désactivé.
+            <div className="rounded-lg border border-[var(--ms-success)]/20 bg-[#F1FAF1] px-4 py-3 text-sm text-[var(--ms-success)]">
+              La vente est soldee. Le rappel de paiement est desactive.
             </div>
           )}
           <label className="flex items-center gap-3 cursor-pointer group">
@@ -535,10 +536,10 @@ const SaleForm = ({
             {['cash', 'MobileMoney', 'credit'].map((m) => (
               <label
                 key={m}
-                className={`flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 transition-all ${
+                className={`flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg border px-4 py-3 transition-all ${
                   paymentMethod === m
-                    ? 'border-gray-950 bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.14)]'
-                    : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'border-[var(--ms-text-strong)] bg-[var(--ms-text-strong)] text-[var(--ms-white)] shadow-[var(--ms-shadow)]'
+                    : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:border-[var(--ms-border-strong)] hover:bg-[var(--ms-surface-muted)]'
                 }`}
               >
                 <input
@@ -584,30 +585,30 @@ const SaleForm = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
-                <p className="text-gray-500">Total vente</p>
-                <p className="font-semibold text-gray-900">{totalAmount.toLocaleString('fr-FR')} CFA</p>
+              <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
+                <p className="text-[var(--ms-text-muted)]">Total vente</p>
+                <p className="font-semibold text-[var(--ms-text)]">{totalAmount.toLocaleString('fr-FR')} CFA</p>
               </div>
-              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
-                <p className="text-gray-500">Payé</p>
-                <p className="font-semibold text-green-700">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
+              <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
+                <p className="text-[var(--ms-text-muted)]">Paye</p>
+                <p className="font-semibold text-[var(--ms-success)]">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
               </div>
-              <div className="rounded-2xl bg-white border border-gray-200 px-3 py-2.5">
-                <p className="text-gray-500">Reste</p>
-                <p className="font-semibold text-amber-700">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
+              <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
+                <p className="text-[var(--ms-text-muted)]">Reste</p>
+                <p className="font-semibold text-[var(--ms-warning)]">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
               </div>
             </div>
 
             {isFullyPaid && (
-              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--ms-success)]/20 bg-[#F1FAF1] px-4 py-3">
                 <input
                   type="checkbox"
                   checked={markAsDelivered}
                   onChange={(e) => setMarkAsDelivered(e.target.checked)}
                   className="form-check rounded"
                 />
-                <span className="text-sm font-medium text-green-800">
-                  Confirmer la livraison immédiatement
+                <span className="text-sm font-medium text-[var(--ms-success)]">
+                  Confirmer la livraison immediatement
                 </span>
               </label>
             )}
@@ -615,9 +616,9 @@ const SaleForm = ({
         </section>
 
         {/* TOTAL */}
-        <div className="flex items-center justify-between rounded-[20px] border border-gray-200 bg-gray-50/80 px-5 py-4">
-          <span className="font-semibold text-gray-800">Total</span>
-          <span className="text-xl font-bold text-gray-950 tabular-nums">
+        <div className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4">
+          <span className="font-semibold text-[var(--ms-text)]">Total</span>
+          <span className="text-xl font-bold text-[var(--ms-text-strong)] tabular-nums">
             {totalAmount.toLocaleString('fr-FR')} CFA
           </span>
         </div>
@@ -628,13 +629,13 @@ const SaleForm = ({
             disabled={isSubmitting}
             className="form-button-primary w-full"
           >
-            {isSubmitting ? 'Enregistrement…' : 'Enregistrer la vente'}
+            {isSubmitting ? 'Enregistrement...' : 'Enregistrer la vente'}
           </button>
         )}
 
         {formError && (
           <div
-            className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm text-center"
+            className="p-4 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] text-[var(--ms-danger)] text-sm text-center"
             role="alert"
           >
             {formError}

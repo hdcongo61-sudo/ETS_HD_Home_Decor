@@ -11,7 +11,7 @@ const LoaderOverlay = ({ show = false, text = 'Chargement...' }) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-gray-950/42 backdrop-blur-md"
+          className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.9 }}

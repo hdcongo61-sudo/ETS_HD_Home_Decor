@@ -34,6 +34,13 @@ const protect = asyncHandler(async (req, res, next) => {
         }
       }
 
+      if (user.isActive === false) {
+        return res.status(403).json({ message: 'Votre compte a été désactivé. Veuillez contacter un administrateur.', code: 'ACCOUNT_INACTIVE' });
+      }
+
+      // Update lastActivity timestamp (non-blocking — fire and forget)
+      User.findByIdAndUpdate(user._id, { lastActivity: new Date() }, { timestamps: false }).catch(() => {});
+
       req.user = user;
       next();
     } catch (error) {

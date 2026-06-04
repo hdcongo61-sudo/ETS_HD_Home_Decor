@@ -30,6 +30,7 @@ import {
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import AppLoader from '../components/AppLoader';
+import { PageHeader, KPICard } from '../components/business';
 
 const UserManagement = lazy(() => import('../components/UserDashboard'));
 const LoginSummary = lazy(() => import('../components/ResumeConnexions'));
@@ -381,14 +382,14 @@ const DashboardAdmin = () => {
     return salesSummary.ranking
       .map((entry) => {
         let recommendation = 'Encaissement sain';
-        let recommendationTone = 'bg-emerald-100 text-emerald-700';
+        let recommendationTone = 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]';
 
         if (entry.balance >= 500000 || entry.collectionRate < 50) {
           recommendation = 'Relance prioritaire';
-          recommendationTone = 'bg-rose-100 text-rose-700';
+          recommendationTone = 'bg-[var(--ms-danger)]/15 text-[var(--ms-danger)]';
         } else if (entry.balance >= 150000 || entry.collectionRate < 75) {
           recommendation = 'Suivi cette semaine';
-          recommendationTone = 'bg-amber-100 text-amber-700';
+          recommendationTone = 'bg-[var(--ms-warning)]/15 text-[var(--ms-warning)]';
         } else if (entry.balance > 0 || entry.collectionRate < 90) {
           recommendation = 'Relance légère';
           recommendationTone = 'bg-sky-100 text-sky-700';
@@ -601,17 +602,17 @@ const DashboardAdmin = () => {
   if (!auth?.isLoading && !auth?.isAdmin) {
     return (
       <div className="flex min-h-full items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md rounded-[1.5rem] border border-red-100 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+        <div className="w-full max-w-md rounded-lg border border-red-100 bg-[var(--ms-white)] p-8 text-center shadow-[var(--ms-shadow-sm)]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[var(--ms-danger)]/15 text-[var(--ms-danger)]">
             <Shield className="h-8 w-8" />
           </div>
-          <h2 className="mt-5 text-xl font-semibold text-slate-900">Accès administrateur requis</h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <h2 className="mt-5 text-xl font-semibold text-[var(--ms-text)]">Accès administrateur requis</h2>
+          <p className="mt-2 text-sm text-[var(--ms-text-muted)]">
             Cette page centralise les indicateurs de pilotage et n’est accessible qu’aux administrateurs.
           </p>
           <Link
             to="/"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
           >
             <ChevronLeft className="h-4 w-4" /> Retour à l’accueil
           </Link>
@@ -629,28 +630,28 @@ const DashboardAdmin = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 text-slate-900 sm:px-6 lg:px-8">
-      <motion.div {...pageMotion} className="mx-auto max-w-7xl space-y-4 sm:space-y-5">
-        <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 text-[var(--ms-text)] sm:px-6 lg:px-8">
+      <motion.div {...pageMotion} className="space-y-4 sm:space-y-5">
+        <section className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)]">
           <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1.25fr_0.75fr] lg:p-7">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to="/"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3.5 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 hover:bg-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Accueil
                 </Link>
-                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                <span className="inline-flex rounded-full border border-emerald-200 bg-[var(--ms-success)]/10 px-3 py-1 text-xs font-medium text-emerald-800">
                   Admin
                 </span>
               </div>
 
-              <h1 className="mt-5 text-2xl font-semibold text-slate-950 sm:text-3xl">
+              <h1 className="mt-5 text-2xl font-semibold text-[var(--ms-text-strong)] sm:text-3xl">
                 Pilotage utilisateurs
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              <p className="mt-2 text-sm leading-6 text-[var(--ms-text)] sm:text-base">
                 Suivi des accès, activité de l’équipe et performance commerciale. Les données secondaires se chargent
                 séparément pour garder l’écran réactif.
               </p>
@@ -693,7 +694,7 @@ const DashboardAdmin = () => {
           </div>
         </section>
 
-        <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white/95 p-2.5 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-3">
+        <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-2.5 shadow-[var(--ms-shadow-sm)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-3">
           <nav className="flex gap-2 overflow-x-auto pb-1 sm:pb-0" aria-label="Sections du dashboard utilisateurs">
             {TAB_OPTIONS.map(({ id, label, icon: Icon }) => (
               <button
@@ -702,8 +703,8 @@ const DashboardAdmin = () => {
                 onClick={() => setActiveTab(id)}
                 className={`inline-flex min-h-[42px] shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition ${
                   activeTab === id
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-transparent bg-transparent text-slate-600 hover:bg-slate-50'
+                    ? 'bg-[var(--ms-text-strong)] text-white'
+                    : 'border border-transparent bg-transparent text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)]'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -717,7 +718,7 @@ const DashboardAdmin = () => {
               <select
                 value={salesRange}
                 onChange={(event) => setSalesRange(event.target.value)}
-                className="min-h-[42px] flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-400 sm:flex-none"
+                className="min-h-[42px] flex-1 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-2 text-sm text-[var(--ms-text)] outline-none transition focus:border-slate-400 sm:flex-none"
               >
                 {SALES_RANGE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -730,7 +731,7 @@ const DashboardAdmin = () => {
             <button
               type="button"
               onClick={handleRefresh}
-              className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 hover:bg-[var(--ms-bg-subtle)]"
             >
               <RefreshCw className="h-4 w-4" />
               Actualiser
@@ -739,10 +740,10 @@ const DashboardAdmin = () => {
         </div>
 
         {error ? (
-          <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-4 text-sm text-[var(--ms-danger)]">{error}</div>
         ) : null}
         {adminMessage ? (
-          <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
             {adminMessage}
           </div>
         ) : null}
@@ -762,28 +763,28 @@ const DashboardAdmin = () => {
                 title="Connectés maintenant"
                 value={stats.connectedNow}
                 helper="Fenêtre glissante de 15 minutes"
-                accent="text-emerald-700"
+                accent="text-[var(--ms-success)]"
               />
               <OverviewCard
                 icon={Clock3}
                 title="Utilisateurs dormants"
                 value={stats.dormantUsers}
                 helper="Pas de connexion sur 30 jours"
-                accent="text-amber-700"
+                accent="text-[var(--ms-warning)]"
               />
               <OverviewCard
                 icon={Lock}
                 title="Accès surveillés"
                 value={stats.accessControlledUsers}
                 helper={`${stats.lockedUsers} compte(s) actuellement verrouillé(s)`}
-                accent="text-rose-700"
+                accent="text-[var(--ms-danger)]"
               />
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <h2 className="text-xl font-semibold text-slate-900">Synthèse admin</h2>
-                <p className="mt-1 text-sm text-slate-500">
+          <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Synthèse admin</h2>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   Signaux à surveiller pour piloter l’équipe et anticiper les actions administratives.
                 </p>
 
@@ -823,14 +824,14 @@ const DashboardAdmin = () => {
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <h2 className="text-xl font-semibold text-slate-900">Pouls commercial</h2>
-                <p className="mt-1 text-sm text-slate-500">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Pouls commercial</h2>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   Chargement séparé pour garder l’ouverture de page rapide.
                 </p>
 
                 {salesError ? (
-                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <div className="mt-4 rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-4 text-sm text-[var(--ms-danger)]">
                     {salesError}
                   </div>
                 ) : salesLoading ? (
@@ -873,11 +874,11 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Top vendeurs</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Top vendeurs</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                       Classement rapide pour savoir qui tire la performance actuelle.
                     </p>
                   </div>
@@ -908,29 +909,29 @@ const DashboardAdmin = () => {
                 )}
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <h2 className="text-xl font-semibold text-slate-900">Nouveaux utilisateurs</h2>
-                <p className="mt-1 text-sm text-slate-500">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Nouveaux utilisateurs</h2>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   Liste courte pour voir rapidement les comptes créés récemment.
                 </p>
 
                 <div className="mt-4 space-y-3">
                   {stats.recentUsers.length ? (
                     stats.recentUsers.map((user) => (
-                      <div key={user._id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div key={user._id} className="flex flex-col gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-900">{user.name}</p>
-                          <p className="truncate text-sm text-slate-500">{user.email}</p>
+                          <p className="font-medium text-[var(--ms-text)]">{user.name}</p>
+                          <p className="truncate text-sm text-[var(--ms-text-muted)]">{user.email}</p>
                           <p className="mt-1 text-xs text-slate-400">
                             Créé le {formatDate(user.createdAt)} • Dernier accès {formatDate(user.lastLogin, true)}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
-                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${user.isAdmin ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${user.isAdmin ? 'bg-violet-100 text-violet-700' : 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]'}`}>
                             {user.isAdmin ? 'Admin' : 'Utilisateur'}
                           </span>
                           {user.accessControlEnabled ? (
-                            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+                            <span className="rounded-full bg-[var(--ms-warning)]/15 px-3 py-1 text-xs font-medium text-[var(--ms-warning)]">
                               Accès contrôlé
                             </span>
                           ) : null}
@@ -945,21 +946,21 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-slate-900 p-3 text-white">
+                  <div className="rounded-lg bg-[var(--ms-text-strong)] p-3 text-white">
                     <Target className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Objectifs par vendeur</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Objectifs par vendeur</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                       Définissez les objectifs mensuels de chiffre, marge et encaissement par utilisateur.
                     </p>
                   </div>
                 </div>
 
                 {usersCatalogError ? (
-                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <div className="mt-4 rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-4 text-sm text-[var(--ms-danger)]">
                     {usersCatalogError}
                   </div>
                 ) : usersCatalogLoading ? (
@@ -970,17 +971,17 @@ const DashboardAdmin = () => {
                   <div className="mt-5 space-y-4">
                     {goalsProgress.length ? (
                       goalsProgress.map(({ user, current, goals, revenueProgress, profitProgress, collectionGap }) => (
-                        <div key={user._id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                        <div key={user._id} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
-                              <p className="font-semibold text-slate-900">{user.name}</p>
-                              <p className="text-sm text-slate-500">{current ? `${formatCFA(current.totalAmount)} réalisés` : 'Aucune vente sur la période'}</p>
+                              <p className="font-semibold text-[var(--ms-text)]">{user.name}</p>
+                              <p className="text-sm text-[var(--ms-text-muted)]">{current ? `${formatCFA(current.totalAmount)} réalisés` : 'Aucune vente sur la période'}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => saveSellerGoals(user._id)}
                               disabled={savingGoalId === user._id}
-                              className="inline-flex min-h-[42px] items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+                              className="inline-flex min-h-[42px] items-center gap-2 rounded-full bg-[var(--ms-text-strong)] px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
                             >
                               <Save className="h-4 w-4" />
                               {savingGoalId === user._id ? 'Enregistrement...' : 'Enregistrer'}
@@ -988,7 +989,7 @@ const DashboardAdmin = () => {
                           </div>
 
                           <div className="mt-4 grid gap-3 md:grid-cols-3">
-                            <label className="space-y-2 text-sm text-slate-600">
+                            <label className="space-y-2 text-sm text-[var(--ms-text)]">
                               <span>Objectif CA</span>
                               <input
                                 type="number"
@@ -997,14 +998,14 @@ const DashboardAdmin = () => {
                                 onChange={(event) =>
                                   handleGoalDraftChange(user._id, 'monthlyRevenueTarget', event.target.value)
                                 }
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-400"
+                                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 outline-none focus:border-slate-400"
                               />
                               <span className="block text-xs text-slate-400">
                                 Progression: {goals.monthlyRevenueTarget > 0 ? formatPercent(revenueProgress) : 'Non défini'}
                               </span>
                             </label>
 
-                            <label className="space-y-2 text-sm text-slate-600">
+                            <label className="space-y-2 text-sm text-[var(--ms-text)]">
                               <span>Objectif bénéfice</span>
                               <input
                                 type="number"
@@ -1013,14 +1014,14 @@ const DashboardAdmin = () => {
                                 onChange={(event) =>
                                   handleGoalDraftChange(user._id, 'monthlyProfitTarget', event.target.value)
                                 }
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-400"
+                                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 outline-none focus:border-slate-400"
                               />
                               <span className="block text-xs text-slate-400">
                                 Progression: {goals.monthlyProfitTarget > 0 ? formatPercent(profitProgress) : 'Non défini'}
                               </span>
                             </label>
 
-                            <label className="space-y-2 text-sm text-slate-600">
+                            <label className="space-y-2 text-sm text-[var(--ms-text)]">
                               <span>Objectif encaissement</span>
                               <input
                                 type="number"
@@ -1029,7 +1030,7 @@ const DashboardAdmin = () => {
                                 onChange={(event) =>
                                   handleGoalDraftChange(user._id, 'monthlyCollectionTarget', event.target.value)
                                 }
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-400"
+                                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 outline-none focus:border-slate-400"
                               />
                               <span className="block text-xs text-slate-400">
                                 Écart: {goals.monthlyCollectionTarget > 0 ? formatCFA(collectionGap) : 'Non défini'}
@@ -1045,14 +1046,14 @@ const DashboardAdmin = () => {
                 )}
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
+                  <div className="rounded-lg bg-[var(--ms-warning)]/15 p-3 text-[var(--ms-warning)]">
                     <Lock className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Alertes d’inactivité</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Alertes d’inactivité</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                       Utilisateurs dormants, comptes verrouillés et accès expirés à traiter.
                     </p>
                   </div>
@@ -1077,14 +1078,14 @@ const DashboardAdmin = () => {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
+                  <div className="rounded-lg bg-[var(--ms-success)]/15 p-3 text-[var(--ms-success)]">
                     <Wallet className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Suivi des encaissements</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Suivi des encaissements</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                       Tous les utilisateurs actifs sur la période, avec score de recouvrement et niveau de suivi.
                     </p>
                   </div>
@@ -1093,15 +1094,15 @@ const DashboardAdmin = () => {
                 <div className="mt-5 space-y-3">
                   {collectionFollowUps.length ? (
                     collectionFollowUps.map((entry) => (
-                      <div key={entry.userId} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                      <div key={entry.userId} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-slate-900">{entry.userName}</p>
-                            <p className="text-sm text-slate-500">
+                            <p className="font-semibold text-[var(--ms-text)]">{entry.userName}</p>
+                            <p className="text-sm text-[var(--ms-text-muted)]">
                               {formatPercent(entry.collectionRate)} de recouvrement • {formatCFA(entry.balance)} à encaisser
                             </p>
                           </div>
-                          <span className={`rounded-full px-3 py-1 text-xs font-medium shadow-sm ${entry.recommendationTone}`}>
+                          <span className={`rounded-full px-3 py-1 text-xs font-medium shadow-[var(--ms-shadow-sm)] ${entry.recommendationTone}`}>
                             {entry.recommendation}
                           </span>
                         </div>
@@ -1118,21 +1119,21 @@ const DashboardAdmin = () => {
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
+                  <div className="rounded-lg bg-sky-100 p-3 text-sky-700">
                     <BellRing className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Rapport hebdomadaire auto</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Rapport hebdomadaire auto</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                       Préférences enregistrées, export immédiat et rappel push aux administrateurs abonnés.
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <label className="space-y-2 text-sm text-slate-600">
+                  <label className="space-y-2 text-sm text-[var(--ms-text)]">
                     <span>Format par défaut</span>
                     <select
                       value={reportPreferences.weeklyReportFormat}
@@ -1142,21 +1143,21 @@ const DashboardAdmin = () => {
                           weeklyReportFormat: event.target.value === 'pdf' ? 'pdf' : 'excel',
                         }))
                       }
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-400"
+                      className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 outline-none focus:border-slate-400"
                     >
                       <option value="excel">Excel</option>
                       <option value="pdf">PDF</option>
                     </select>
                   </label>
 
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                    <p className="font-medium text-slate-900">Dernier rappel envoyé</p>
+                  <div className="rounded-lg bg-[var(--ms-bg-subtle)] p-4 text-sm text-[var(--ms-text)]">
+                    <p className="font-medium text-[var(--ms-text)]">Dernier rappel envoyé</p>
                     <p className="mt-1">{formatDate(reportPreferences.weeklyReportLastSentAt, true)}</p>
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <label className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-sm text-[var(--ms-text)]">
                     <span>Activer le rappel hebdomadaire</span>
                     <input
                       type="checkbox"
@@ -1170,7 +1171,7 @@ const DashboardAdmin = () => {
                     />
                   </label>
 
-                  <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <label className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-sm text-[var(--ms-text)]">
                     <span>Afficher les alertes d’inactivité</span>
                     <input
                       type="checkbox"
@@ -1184,7 +1185,7 @@ const DashboardAdmin = () => {
                     />
                   </label>
 
-                  <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <label className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-sm text-[var(--ms-text)]">
                     <span>Afficher les alertes d’encaissement</span>
                     <input
                       type="checkbox"
@@ -1204,7 +1205,7 @@ const DashboardAdmin = () => {
                     type="button"
                     onClick={saveWeeklyPreferences}
                     disabled={savingReportPreferences}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[var(--ms-text-strong)] px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
                   >
                     <Save className="h-4 w-4" />
                     {savingReportPreferences ? 'Enregistrement...' : 'Enregistrer'}
@@ -1213,7 +1214,7 @@ const DashboardAdmin = () => {
                     type="button"
                     onClick={exportWeeklyExcel}
                     disabled={reportActionLoading.length > 0}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
                     {reportActionLoading === 'excel' ? 'Export...' : 'Excel hebdo'}
@@ -1222,7 +1223,7 @@ const DashboardAdmin = () => {
                     type="button"
                     onClick={exportWeeklyPdf}
                     disabled={reportActionLoading.length > 0}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
                     {reportActionLoading === 'pdf' ? 'Export...' : 'PDF hebdo'}
@@ -1250,14 +1251,14 @@ const DashboardAdmin = () => {
                 title="CA équipe"
                 value={formatCFA(salesSummary.totalRevenue)}
                 helper={`${salesSummary.sellersCount} vendeur(s) sur la période`}
-                accent="text-emerald-700"
+                accent="text-[var(--ms-success)]"
               />
               <OverviewCard
                 icon={Wallet}
                 title="À encaisser"
                 value={formatCFA(salesSummary.totalBalance)}
                 helper={formatPercent(salesSummary.collectionRate)}
-                accent="text-amber-700"
+                accent="text-[var(--ms-warning)]"
               />
               <OverviewCard
                 icon={BarChart3}
@@ -1271,12 +1272,12 @@ const DashboardAdmin = () => {
                 title="Utilisateurs sans vente"
                 value={salesSummary.usersWithoutSales}
                 helper="À accompagner ou réactiver"
-                accent="text-rose-700"
+                accent="text-[var(--ms-danger)]"
               />
             </div>
 
             {salesError ? (
-              <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{salesError}</div>
+              <div className="rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-4 text-sm text-[var(--ms-danger)]">{salesError}</div>
             ) : salesLoading ? (
               <div className="flex justify-center py-16">
                 <AppLoader fullScreen={false} text="Chargement commercial..." />
@@ -1284,8 +1285,8 @@ const DashboardAdmin = () => {
             ) : (
               <>
                 <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                    <h2 className="text-xl font-semibold text-slate-900">Classement vendeurs</h2>
+                  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Classement vendeurs</h2>
                     <div className="mt-4 h-96">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={salesSummary.chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
@@ -1330,21 +1331,21 @@ const DashboardAdmin = () => {
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                  <h2 className="text-xl font-semibold text-slate-900">Détail équipe</h2>
+                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+                  <h2 className="text-xl font-semibold text-[var(--ms-text)]">Détail équipe</h2>
                   <div className="mt-4 space-y-3 lg:hidden">
                     {salesSummary.ranking.map((entry) => (
                       <Link
                         key={entry.userId}
                         to={`/sales/user/${entry.userId}`}
-                        className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300"
+                        className="block rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 transition hover:border-slate-300"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-slate-900">{entry.userName}</p>
-                            <p className="text-sm text-slate-500">{entry.userEmail}</p>
+                            <p className="font-semibold text-[var(--ms-text)]">{entry.userName}</p>
+                            <p className="text-sm text-[var(--ms-text-muted)]">{entry.userEmail}</p>
                           </div>
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                          <span className="rounded-full bg-[var(--ms-white)] px-3 py-1 text-xs font-medium text-[var(--ms-text)]">
                             {entry.salesCount} vente(s)
                           </span>
                         </div>
@@ -1360,32 +1361,32 @@ const DashboardAdmin = () => {
 
                   <div className="mt-4 hidden overflow-x-auto lg:block">
                     <table className="min-w-full">
-                      <thead className="bg-slate-50">
+                      <thead className="bg-[var(--ms-bg-subtle)]">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Vendeur</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Ventes</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">CA</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Bénéfice</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Encaissement</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Solde</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Panier moyen</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Vendeur</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Ventes</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">CA</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Bénéfice</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Encaissement</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Solde</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Panier moyen</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {salesSummary.ranking.map((entry) => (
-                          <tr key={entry.userId} className="hover:bg-slate-50">
+                          <tr key={entry.userId} className="hover:bg-[var(--ms-bg-subtle)]">
                             <td className="px-4 py-4">
-                              <Link to={`/sales/user/${entry.userId}`} className="font-medium text-slate-900 hover:text-sky-700">
+                              <Link to={`/sales/user/${entry.userId}`} className="font-medium text-[var(--ms-text)] hover:text-sky-700">
                                 {entry.userName}
                               </Link>
-                              <p className="text-sm text-slate-500">{entry.userEmail}</p>
+                              <p className="text-sm text-[var(--ms-text-muted)]">{entry.userEmail}</p>
                             </td>
-                            <td className="px-4 py-4 text-sm text-slate-700">{entry.salesCount}</td>
-                            <td className="px-4 py-4 text-sm font-medium text-slate-900">{formatCFA(entry.totalAmount)}</td>
-                            <td className="px-4 py-4 text-sm text-emerald-700">{formatCFA(entry.totalProfit)}</td>
-                            <td className="px-4 py-4 text-sm text-slate-700">{formatPercent(entry.collectionRate)}</td>
-                            <td className="px-4 py-4 text-sm text-amber-700">{formatCFA(entry.balance)}</td>
-                            <td className="px-4 py-4 text-sm text-slate-700">{formatCFA(entry.averageSale)}</td>
+                            <td className="px-4 py-4 text-sm text-[var(--ms-text)]">{entry.salesCount}</td>
+                            <td className="px-4 py-4 text-sm font-medium text-[var(--ms-text)]">{formatCFA(entry.totalAmount)}</td>
+                            <td className="px-4 py-4 text-sm text-[var(--ms-success)]">{formatCFA(entry.totalProfit)}</td>
+                            <td className="px-4 py-4 text-sm text-[var(--ms-text)]">{formatPercent(entry.collectionRate)}</td>
+                            <td className="px-4 py-4 text-sm text-[var(--ms-warning)]">{formatCFA(entry.balance)}</td>
+                            <td className="px-4 py-4 text-sm text-[var(--ms-text)]">{formatCFA(entry.averageSale)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1414,27 +1415,27 @@ const DashboardAdmin = () => {
 };
 
 const HeroMetric = ({ title, value, helper }) => (
-  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-    <p className="text-sm text-slate-500">{title}</p>
-    <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
-    <p className="mt-1 text-sm text-slate-500">{helper}</p>
+  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+    <p className="text-sm text-[var(--ms-text-muted)]">{title}</p>
+    <p className="mt-2 text-2xl font-semibold text-[var(--ms-text-strong)]">{value}</p>
+    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{helper}</p>
   </div>
 );
 
 const PulseCard = ({ icon: Icon, title, value, helper, tone = 'teal' }) => {
   const toneClass = {
-    teal: 'border-emerald-200 bg-emerald-50 text-emerald-950',
-    amber: 'border-amber-200 bg-amber-50 text-amber-950',
+    teal: 'border-emerald-200 bg-[var(--ms-success)]/10 text-emerald-950',
+    amber: 'border-amber-200 bg-[var(--ms-warning)]/10 text-amber-950',
   }[tone];
 
   return (
-    <div className={`rounded-[1.5rem] border ${toneClass} p-4`}>
+    <div className={`rounded-lg border ${toneClass} p-4`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm opacity-75">{title}</p>
           <p className="mt-2 text-2xl font-semibold">{value}</p>
         </div>
-        <div className="rounded-2xl bg-white/70 p-3">
+        <div className="rounded-lg bg-white/70 p-3">
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -1444,15 +1445,15 @@ const PulseCard = ({ icon: Icon, title, value, helper, tone = 'teal' }) => {
 };
 
 const OverviewCard = ({ icon: Icon, title, value, helper, accent }) => (
-  <article className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+  <article className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
     <div className="flex items-start gap-4">
-      <div className="shrink-0 rounded-2xl bg-slate-100 p-3 text-slate-700">
+      <div className="shrink-0 rounded-lg bg-slate-100 p-3 text-[var(--ms-text)]">
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm text-slate-500">{title}</p>
+        <p className="text-sm text-[var(--ms-text-muted)]">{title}</p>
         <p className={`mt-2 break-words text-2xl font-semibold ${accent}`}>{value}</p>
-        <p className="mt-1 text-sm text-slate-500">{helper}</p>
+        <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{helper}</p>
       </div>
     </div>
   </article>
@@ -1460,10 +1461,10 @@ const OverviewCard = ({ icon: Icon, title, value, helper, accent }) => (
 
 const SignalCard = ({ title, value, helper, tone = 'slate' }) => {
   const toneClasses = {
-    slate: 'bg-slate-50 text-slate-900',
-    emerald: 'bg-emerald-50 text-emerald-900',
-    amber: 'bg-amber-50 text-amber-900',
-    rose: 'bg-rose-50 text-rose-900',
+    slate: 'bg-[var(--ms-bg-subtle)] text-[var(--ms-text)]',
+    emerald: 'bg-[var(--ms-success)]/10 text-emerald-900',
+    amber: 'bg-[var(--ms-warning)]/10 text-amber-900',
+    rose: 'bg-[var(--ms-danger)]/10 text-rose-900',
     sky: 'bg-sky-50 text-sky-900',
   }[tone];
 
@@ -1477,14 +1478,14 @@ const SignalCard = ({ title, value, helper, tone = 'slate' }) => {
 };
 
 const MiniMetric = ({ label, value }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
     <p className="text-xs uppercase text-slate-400">{label}</p>
-    <p className="mt-1 break-words text-sm font-medium text-slate-900">{value}</p>
+    <p className="mt-1 break-words text-sm font-medium text-[var(--ms-text)]">{value}</p>
   </div>
 );
 
 const EmptyPanel = ({ text }) => (
-  <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500 sm:p-8">
+  <div className="rounded-lg border border-dashed border-slate-300 bg-[var(--ms-bg-subtle)] p-6 text-center text-sm text-[var(--ms-text-muted)] sm:p-8">
     {text}
   </div>
 );

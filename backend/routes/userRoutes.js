@@ -13,7 +13,8 @@ const {
   updateUser,
   getUserById,
   getLoginStats,
-  getLoginActivity
+  getLoginActivity,
+  toggleUserActive
 } = require('../controllers/userController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
@@ -38,6 +39,7 @@ router.route('/:id').get(protect, getUserById);
 
 
 router.delete('/:id', protect, admin, deleteUser);
+router.put('/:id/toggle-active', protect, admin, toggleUserActive);
 router.put('/:id', protect, admin, imageUpload.single('photoFile'), updateUser);
 
 

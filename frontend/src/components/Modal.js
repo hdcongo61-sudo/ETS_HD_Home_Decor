@@ -75,7 +75,7 @@ const Modal = ({
       aria-describedby={subtitle ? subtitleId : undefined}
     >
       <motion.div
-        className="fixed inset-0 bg-gray-950/45 backdrop-blur-md"
+        className="fixed inset-0 bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -92,38 +92,35 @@ const Modal = ({
           transition={{ type: 'spring', stiffness: 360, damping: 34, mass: 0.9 }}
           className={`
             pointer-events-auto relative flex w-full ${sizeClasses[size] || sizeClasses.md} flex-col overflow-hidden
-            bg-white text-gray-950 shadow-[0_30px_100px_rgba(15,23,42,0.30)]
-            dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100
-            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-[28px]'}
-            border border-white/80 sm:max-h-[min(88dvh,860px)] sm:rounded-[28px] dark:border-gray-800
+            bg-[var(--ms-white)] text-[var(--ms-text)]
+            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-lg'}
+            border border-[var(--ms-border)] sm:max-h-[min(88dvh,860px)] sm:rounded-lg
+            shadow-[var(--ms-shadow-lg)]
             safe-area-bottom
             ${panelClassName}
           `}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex shrink-0 justify-center pb-2 pt-2.5 sm:hidden">
-            <div
-              className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700"
-              aria-hidden
-            />
+            <div className="h-1 w-10 rounded-full bg-[var(--ms-border)]" aria-hidden />
           </div>
 
-          <div className="shrink-0 border-b border-gray-200 bg-white/96 px-4 pb-4 pt-0 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950/96 sm:px-6 sm:pt-5">
+          <div className="shrink-0 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 pb-4 pt-0 sm:px-6 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 {icon && (
-                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)]">
                     {icon}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   {title && (
-                    <h2 id={titleId} className="truncate text-[17px] font-semibold tracking-tight text-gray-950 dark:text-gray-100 sm:text-xl">
+                    <h2 id={titleId} className="truncate text-[17px] font-semibold text-[var(--ms-text-strong)] sm:text-xl">
                       {title}
                     </h2>
                   )}
                   {subtitle && (
-                    <p id={subtitleId} className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 dark:text-gray-400 sm:text-[15px]">
+                    <p id={subtitleId} className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--ms-text-muted)] sm:text-[15px]">
                       {subtitle}
                     </p>
                   )}
@@ -135,7 +132,7 @@ const Modal = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100 dark:focus-visible:ring-white/20"
+                    className="ms-icon-button"
                     aria-label="Fermer"
                   >
                     <X size={20} strokeWidth={2.2} />
@@ -156,7 +153,7 @@ const Modal = ({
           </div>
 
           {footer && (
-            <div className={`shrink-0 border-t border-gray-200 bg-gray-50/95 px-4 py-3 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95 sm:px-6 sm:py-4 ${footerClassName}`}>
+            <div className={`shrink-0 border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 sm:px-6 sm:py-4 ${footerClassName}`}>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 {footer}
               </div>

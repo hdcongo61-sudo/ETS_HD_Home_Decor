@@ -60,11 +60,13 @@ const sanitizeUser = (userDoc) => {
     phone: rest.phone || '',
     permissions: Array.isArray(rest.permissions) ? rest.permissions : [],
     lastLogin: rest.lastLogin || null,
+    lastActivity: rest.lastActivity || null,
     lockUntil: rest.lockUntil || null,
     lastModifiedBy: normalizeRef(rest.lastModifiedBy),
     lastModifiedAt: rest.lastModifiedAt || null,
     passwordModifiedBy: normalizeRef(rest.passwordModifiedBy),
     passwordModifiedAt: rest.passwordModifiedAt || null,
+    isActive: rest.isActive !== false,
     accessControlEnabled: Boolean(rest.accessControlEnabled),
     accessStart: rest.accessStart || null,
     accessEnd: rest.accessEnd || null,
@@ -317,6 +319,21 @@ const loginUser = asyncHandler(async (req, res) => {
   if (user && (await user.matchPassword(password))) {
     const now = new Date();
 
+    if (user.isActive === false) {
+      await LoginHistory.create({
+        user: user._id,
+        ipAddress,
+        device,
+        success: false,
+        ...attemptedIdentifier,
+        error: 'Compte désactivé'
+      });
+      return res.status(403).json({
+        message: 'Votre compte a été désactivé. Veuillez contacter un administrateur.',
+        code: 'ACCOUNT_INACTIVE',
+      });
+    }
+
     if (user.accessControlEnabled) {
       const isAfterStart = !user.accessStart || now >= user.accessStart;
       const isBeforeEnd = !user.accessEnd || now <= user.accessEnd;
@@ -347,6 +364,7 @@ const loginUser = asyncHandler(async (req, res) => {
     });
 
     user.lastLogin = now;
+    user.lastActivity = now;
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save({ validateBeforeSave: false });
@@ -530,7 +548,7 @@ const getUserStats = async (req, res) => {
       User.find({ createdAt: { $gte: thirtyDaysAgo } })
         .sort({ createdAt: -1 })
         .limit(6)
-        .select('name email phone isAdmin createdAt lastLogin accessControlEnabled')
+        .select('name email phone isAdmin createdAt lastLogin lastActivity accessControlEnabled')
         .lean(),
       User.findOne({ lastLogin: { $ne: null } })
         .sort({ lastLogin: -1 })
@@ -560,7 +578,7 @@ const getUserStats = async (req, res) => {
 // @route   POST /api/users
 // @access  Private/Admin
 const createUserByAdmin = async (req, res) => {
-  const { name, email, password, isAdmin, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
+  const { name, email, password, isAdmin, isActive, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
 
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -578,6 +596,7 @@ const createUserByAdmin = async (req, res) => {
     email,
     password, // Le mot de passe sera hashé par le middleware pre-save du modèle User
     isAdmin: isAdmin || false,
+    isActive: isActive !== false,
     permissions: normalizePermissions(req.body.permissions),
     phone: phone ? phone.trim() : '',
     accessControlEnabled: Boolean(accessControlEnabled),
@@ -636,6 +655,9 @@ const updateUser = async (req, res) => {
     }
     if (typeof req.body.isAdmin !== 'undefined') {
       user.isAdmin = Boolean(req.body.isAdmin);
+    }
+    if (typeof req.body.isActive !== 'undefined') {
+      user.isActive = Boolean(req.body.isActive);
     }
     if (typeof req.body.permissions !== 'undefined') {
       user.permissions = normalizePermissions(req.body.permissions);
@@ -848,6 +870,37 @@ const getLoginActivity = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Toggle user active/inactive status (admin only)
+// @route   PUT /api/users/:id/toggle-active
+// @access  Private/Admin
+const toggleUserActive = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error('Utilisateur non trouvé');
+  }
+
+  // Prevent admin from deactivating themselves
+  if (user._id.toString() === req.user._id.toString()) {
+    res.status(400);
+    throw new Error('Vous ne pouvez pas désactiver votre propre compte');
+  }
+
+  user.isActive = !user.isActive;
+  user.lastModifiedBy = req.user._id;
+  user.lastModifiedAt = new Date();
+
+  const updatedUser = await user.save({ validateBeforeSave: false });
+  const sanitized = sanitizeUser(updatedUser);
+
+  res.json({
+    success: true,
+    message: user.isActive ? 'Compte activé avec succès' : 'Compte désactivé avec succès',
+    user: sanitized,
+  });
+});
+
 
 module.exports = {
   loginUser,
@@ -862,5 +915,6 @@ module.exports = {
   updateUser,
   getUserById,
   getLoginStats,
-  getLoginActivity
+  getLoginActivity,
+  toggleUserActive
 };

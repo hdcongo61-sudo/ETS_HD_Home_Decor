@@ -20,8 +20,8 @@ const AppLayout = ({ children, className = '', fullWidth = false }) => {
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className={`
         app-page-frame w-full mx-auto
-        px-4 sm:px-5 md:px-6 lg:px-8
-        py-4 sm:py-6 md:py-8
+        px-3 sm:px-4 md:px-5 lg:px-6
+        py-3 sm:py-4 md:py-5
         safe-area-padding
         ${fullWidth ? 'max-w-full' : 'max-w-[1600px]'}
         ${className}

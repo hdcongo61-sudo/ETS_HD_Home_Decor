@@ -1,12 +1,12 @@
 import React from 'react';
+import { KPICard } from './business';
 
 const StatisticsCard = ({ title, value, color, textColor }) => (
-  <div className={`${color} p-6 rounded-lg shadow-sm`}>
-    <h3 className="text-lg font-medium text-gray-600">{title}</h3>
-    <p className={`${textColor} text-3xl font-bold mt-2`}>
-      {typeof value === 'number' ? value.toFixed() : value} CFA
-    </p>
-  </div>
+  <KPICard
+    title={title}
+    value={`${typeof value === 'number' ? value.toFixed() : value} CFA`}
+    tone="neutral"
+  />
 );
 
 export default StatisticsCard;

@@ -18,28 +18,28 @@ const GlobalModalSkeleton = () => (
   <div className="space-y-5">
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {[0, 1, 2, 3].map((item) => (
-        <div key={item} className="h-20 animate-pulse rounded-2xl border border-gray-200 bg-gray-100/80" />
+        <div key={item} className="h-20 animate-pulse rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/80" />
       ))}
     </div>
-    <div className="space-y-3 rounded-3xl border border-gray-200 bg-white p-4">
+    <div className="space-y-3 rounded-3xl border border-[var(--ms-border)] bg-[var(--ms-white)] p-4">
       <div className="h-4 w-36 animate-pulse rounded-full bg-gray-200" />
       <div className="grid gap-3 sm:grid-cols-2">
         {[0, 1, 2, 3, 4, 5].map((item) => (
-          <div key={item} className="h-12 animate-pulse rounded-2xl bg-gray-100" />
+          <div key={item} className="h-12 animate-pulse rounded-lg bg-[var(--ms-bg-subtle)]" />
         ))}
       </div>
-      <div className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+      <div className="h-24 animate-pulse rounded-lg bg-[var(--ms-bg-subtle)]" />
     </div>
   </div>
 );
 
 const MetricPill = ({ icon, label, value }) => (
-  <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-    <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 shadow-[var(--ms-shadow-sm)]">
+    <div className="flex items-center gap-2 text-xs font-medium text-[var(--ms-text-muted)]">
       {icon}
       {label}
     </div>
-    <p className="mt-1 text-lg font-semibold text-gray-950">{value}</p>
+    <p className="mt-1 text-lg font-semibold text-[var(--ms-text-strong)]">{value}</p>
   </div>
 );
 
@@ -108,7 +108,7 @@ const GlobalSaleModal = () => {
       size="xl"
       mobileFullscreen
       icon={<ReceiptText size={20} />}
-      contentClassName="bg-gray-50/80"
+      contentClassName="bg-[var(--ms-bg-subtle)]/80"
       footerClassName="bg-white/96"
       footer={
         <>
@@ -116,7 +116,7 @@ const GlobalSaleModal = () => {
             type="button"
             onClick={closeModal}
             disabled={isSubmitting}
-            className="min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 sm:w-auto"
+            className="min-h-[44px] w-full rounded-lg border border-[var(--ms-border-strong)] bg-[var(--ms-white)] px-4 py-3 font-semibold text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] disabled:opacity-60 sm:w-auto"
           >
             Annuler
           </button>
@@ -124,10 +124,10 @@ const GlobalSaleModal = () => {
             type="submit"
             form="global-sale-form"
             disabled={isSubmitting || loading}
-            className={`min-h-[44px] w-full rounded-2xl px-4 py-3 font-semibold flex items-center justify-center gap-2 transition sm:w-auto ${
+            className={`min-h-[44px] w-full rounded-lg px-4 py-3 font-semibold flex items-center justify-center gap-2 transition sm:w-auto ${
               isSubmitting || loading
-                ? 'bg-gray-300 cursor-not-allowed text-gray-600'
-                : 'bg-gray-950 hover:bg-gray-800 text-white shadow-sm'
+                ? 'bg-gray-300 cursor-not-allowed text-[var(--ms-text)]'
+                : 'bg-gray-950 hover:bg-gray-800 text-white shadow-[var(--ms-shadow-sm)]'
             }`}
           >
             {isSubmitting ? (
@@ -148,16 +148,16 @@ const GlobalSaleModal = () => {
       {loading ? (
         <GlobalModalSkeleton />
       ) : loadError ? (
-        <div className="rounded-3xl border border-red-200 bg-white p-6 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+        <div className="rounded-3xl border border-red-200 bg-[var(--ms-white)] p-6 text-center shadow-[var(--ms-shadow-sm)]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ms-danger)]/10 text-[var(--ms-danger)]">
             <AlertCircle size={22} />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-gray-950">Chargement impossible</h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-gray-600">{loadError}</p>
+          <h3 className="mt-4 text-base font-semibold text-[var(--ms-text-strong)]">Chargement impossible</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--ms-text)]">{loadError}</p>
           <button
             type="button"
             onClick={fetchSaleFormData}
-            className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+            className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
           >
             <RefreshCw size={16} />
             Réessayer

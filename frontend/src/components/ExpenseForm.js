@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
-import { FormActionsSticky } from './FormLayout';
+import { Save } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
+import { Button } from './business';
 
 const toDateTimeLocalValue = (value) => {
   if (!value) return '';
@@ -353,36 +354,37 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         </div>
       )}
 
-      <FormActionsSticky>
+      <div className="flex flex-col-reverse gap-3 border-t border-[var(--ms-border)] pt-4 sm:flex-row sm:justify-end">
         {initialData && (
-          <button
+          <Button
             type="button"
             onClick={() => (typeof onCancel === 'function' ? onCancel() : onSubmit(null))}
-            className="form-button-secondary"
           >
             Annuler
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="form-button-primary"
+          variant="primary"
         >
           {submitting ? (
             <span className="flex items-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
               Enregistrement...
             </span>
           ) : initialData ? (
-            'Mettre à jour'
+            <>
+              <Save className="h-4 w-4" />
+              Mettre à jour
+            </>
           ) : (
-            'Ajouter Dépense'
+            <>
+              <Save className="h-4 w-4" />
+              Ajouter dépense
+            </>
           )}
-        </button>
-      </FormActionsSticky>
+        </Button>
+      </div>
     </form>
   );
 };

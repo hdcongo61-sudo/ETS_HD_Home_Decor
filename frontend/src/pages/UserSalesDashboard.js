@@ -17,6 +17,7 @@ import { fr } from 'date-fns/locale';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import AppLoader from '../components/AppLoader';
+import { PageHeader, Workspace, KPICard } from '../components/business';
 import {
   calculateSaleProfit,
   calculateSaleTotals,
@@ -75,7 +76,7 @@ const HISTORY_SORT_OPTIONS = [
 const PAYMENT_STRUCTURE_META = {
   full_payment: {
     label: 'Paiement unique',
-    accent: 'bg-emerald-100 text-emerald-700',
+    accent: 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]',
     chartColor: '#059669',
   },
   multiple_payments: {
@@ -85,7 +86,7 @@ const PAYMENT_STRUCTURE_META = {
   },
   pending_payment: {
     label: 'Paiement incomplet',
-    accent: 'bg-amber-100 text-amber-700',
+    accent: 'bg-[var(--ms-warning)]/15 text-[var(--ms-warning)]',
     chartColor: '#d97706',
   },
 };
@@ -234,12 +235,12 @@ const DashboardStatCard = ({ label, value, helper, tone = 'slate' }) => {
   const toneClass = {
     slate: 'from-slate-900 via-slate-800 to-slate-700 text-white',
     teal: 'from-teal-600 via-emerald-600 to-green-500 text-white',
-    amber: 'from-amber-400 via-orange-400 to-red-400 text-slate-950',
+    amber: 'from-amber-400 via-orange-400 to-red-400 text-[var(--ms-text-strong)]',
     sky: 'from-sky-500 via-cyan-500 to-teal-400 text-white',
   }[tone];
 
   return (
-    <div className={`rounded-3xl bg-gradient-to-br p-4 shadow-sm ${toneClass}`}>
+    <div className={`rounded-lg bg-gradient-to-br p-4 shadow-[var(--ms-shadow-sm)] ${toneClass}`}>
       <p className="text-xs uppercase tracking-[0.18em] opacity-80">{label}</p>
       <p className="mt-3 text-2xl font-semibold">{value}</p>
       <p className="mt-2 text-sm opacity-85">{helper}</p>
@@ -253,19 +254,19 @@ const FilterChip = ({ active, label, onClick }) => (
     onClick={onClick}
     className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
       active
-        ? 'border-slate-900 bg-slate-900 text-white'
-        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+        ? 'border-slate-900 bg-[var(--ms-text-strong)] text-white'
+        : 'border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:border-slate-300'
     }`}
   >
     {label}
   </button>
 );
 
-const MiniInsightCard = ({ title, value, helper, accent = 'text-slate-900' }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <p className="text-sm text-slate-500">{title}</p>
+const MiniInsightCard = ({ title, value, helper, accent = 'text-[var(--ms-text)]' }) => (
+  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
+    <p className="text-sm text-[var(--ms-text-muted)]">{title}</p>
     <p className={`mt-2 text-xl font-semibold ${accent}`}>{value}</p>
-    <p className="mt-1 text-sm text-slate-500">{helper}</p>
+    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{helper}</p>
   </div>
 );
 
@@ -274,9 +275,9 @@ const SaleBadge = ({ className, label }) => (
 );
 
 const EmptyState = ({ title, helper, action }) => (
-  <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-    <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-    <p className="mt-2 text-sm text-slate-500">{helper}</p>
+  <div className="rounded-lg border border-dashed border-slate-300 bg-[var(--ms-white)] p-8 text-center shadow-[var(--ms-shadow-sm)]">
+    <h3 className="text-lg font-semibold text-[var(--ms-text)]">{title}</h3>
+    <p className="mt-2 text-sm text-[var(--ms-text-muted)]">{helper}</p>
     {action ? <div className="mt-4">{action}</div> : null}
   </div>
 );
@@ -840,14 +841,14 @@ const UserSalesDashboard = () => {
 
   if (isUnauthorized) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+      <div className="flex min-h-screen items-center px-4 py-10">
         <EmptyState
           title="Accès non autorisé"
           helper="Cette page est réservée à l'administrateur ou au propriétaire du compte."
           action={
             <Link
               to="/"
-              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
             >
               Retour à l'accueil
             </Link>
@@ -867,7 +868,7 @@ const UserSalesDashboard = () => {
 
   if (error) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+      <div className="flex min-h-screen items-center px-4 py-10">
         <EmptyState
           title="Chargement impossible"
           helper={error}
@@ -875,7 +876,7 @@ const UserSalesDashboard = () => {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
             >
               Recharger
             </button>
@@ -887,14 +888,14 @@ const UserSalesDashboard = () => {
 
   if (!user) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
+      <div className="flex min-h-screen items-center px-4 py-10">
         <EmptyState
           title="Utilisateur introuvable"
           helper="Le profil demandé n'existe pas ou n'est plus disponible."
           action={
             <Link
               to={isAdmin ? '/users/stats' : '/profile'}
-              className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
             >
               Retour
             </Link>
@@ -906,7 +907,7 @@ const UserSalesDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="space-y-5">
         <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-teal-950 to-emerald-900 text-white shadow-xl">
           <div className="flex flex-col gap-6 p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -926,22 +927,22 @@ const UserSalesDashboard = () => {
               <div>
                 <p className="text-sm uppercase tracking-[0.28em] text-emerald-200/80">Vue utilisateur</p>
                 <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{user.name}</h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
+                <p className="mt-3 text-sm leading-6 text-slate-200 sm:text-base">
                   Toutes les statistiques, les insights commerciaux, les exportations et l'historique de ventes
                   suivent les filtres actifs ci-dessous. L'interface est pensée d'abord pour mobile puis s'étend en
                   cartes sur les grands écrans.
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
                     <p className="text-sm text-emerald-100/80">Email</p>
                     <p className="mt-2 text-sm font-medium text-white">{user.email || 'Non renseigné'}</p>
                   </div>
-                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
                     <p className="text-sm text-emerald-100/80">Dernière connexion</p>
                     <p className="mt-2 text-sm font-medium text-white">{formatDateTimeLabel(user.lastLogin)}</p>
                   </div>
-                  <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
                     <p className="text-sm text-emerald-100/80">Inscrit le</p>
                     <p className="mt-2 text-sm font-medium text-white">{formatDateLabel(user.createdAt)}</p>
                   </div>
@@ -966,12 +967,12 @@ const UserSalesDashboard = () => {
           </div>
         </section>
 
-        <section className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">{isAdmin ? 'Filtres et export' : 'Filtres'}</h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <h2 className="text-xl font-semibold text-[var(--ms-text)]">{isAdmin ? 'Filtres et export' : 'Filtres'}</h2>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   {isAdmin
                     ? 'Les statistiques, les graphiques et les exports PDF/Excel suivent uniquement les ventes filtrées.'
                     : 'Les statistiques et les graphiques suivent uniquement les ventes filtrées.'}
@@ -983,7 +984,7 @@ const UserSalesDashboard = () => {
                     type="button"
                     onClick={handleExportPdf}
                     disabled={!filteredSales.length || exporting.length > 0}
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
                   </button>
@@ -991,7 +992,7 @@ const UserSalesDashboard = () => {
                     type="button"
                     onClick={handleExportExcel}
                     disabled={!filteredSales.length || exporting.length > 0}
-                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-full bg-[var(--ms-text-strong)] px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
                   </button>
@@ -1012,45 +1013,45 @@ const UserSalesDashboard = () => {
 
             {rangePreset === 'custom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="space-y-2 text-sm text-slate-600">
+                <label className="space-y-2 text-sm text-[var(--ms-text)]">
                   <span>Date de début</span>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(event) => setStartDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                    className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                   />
                 </label>
-                <label className="space-y-2 text-sm text-slate-600">
+                <label className="space-y-2 text-sm text-[var(--ms-text)]">
                   <span>Date de fin</span>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(event) => setEndDate(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                    className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                   />
                 </label>
               </div>
             ) : null}
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-2 text-sm text-slate-600">
+              <label className="space-y-2 text-sm text-[var(--ms-text)]">
                 <span>Recherche</span>
                 <input
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Client, produit, conteneur..."
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                 />
               </label>
 
-              <label className="space-y-2 text-sm text-slate-600">
+              <label className="space-y-2 text-sm text-[var(--ms-text)]">
                 <span>Statut</span>
                 <select
                   value={status}
                   onChange={(event) => setStatus(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                 >
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -1060,12 +1061,12 @@ const UserSalesDashboard = () => {
                 </select>
               </label>
 
-              <label className="space-y-2 text-sm text-slate-600">
+              <label className="space-y-2 text-sm text-[var(--ms-text)]">
                 <span>Type de vente</span>
                 <select
                   value={saleType}
                   onChange={(event) => setSaleType(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                 >
                   {SALE_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -1075,12 +1076,12 @@ const UserSalesDashboard = () => {
                 </select>
               </label>
 
-              <label className="space-y-2 text-sm text-slate-600">
+              <label className="space-y-2 text-sm text-[var(--ms-text)]">
                 <span>Structure de paiement</span>
                 <select
                   value={paymentStructure}
                   onChange={(event) => setPaymentStructure(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
                 >
                   {PAYMENT_STRUCTURE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -1091,18 +1092,18 @@ const UserSalesDashboard = () => {
               </label>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-              <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-3">
+              <div className="flex flex-wrap gap-2 text-sm text-[var(--ms-text)]">
                 {filterEntries.map(([label, value]) => (
-                  <span key={label} className="rounded-full bg-white px-3 py-1 shadow-sm">
-                    <strong className="font-medium text-slate-900">{label}:</strong> {value}
+                  <span key={label} className="rounded-full bg-[var(--ms-white)] px-3 py-1 shadow-[var(--ms-shadow-sm)]">
+                    <strong className="font-medium text-[var(--ms-text)]">{label}:</strong> {value}
                   </span>
                 ))}
               </div>
               <button
                 type="button"
                 onClick={resetFilters}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-400"
               >
                 Réinitialiser
               </button>
@@ -1140,11 +1141,11 @@ const UserSalesDashboard = () => {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Performance commerciale</h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Performance commerciale</h2>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   Chiffre d'affaires et encaissements par {trendChart.granularity}.
                 </p>
               </div>
@@ -1176,9 +1177,9 @@ const UserSalesDashboard = () => {
             )}
           </div>
 
-          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
-            <h2 className="text-xl font-semibold text-slate-900">Structures de paiement</h2>
-            <p className="mt-1 text-sm text-slate-500">
+          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+            <h2 className="text-xl font-semibold text-[var(--ms-text)]">Structures de paiement</h2>
+            <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
               Paiement unique, paiements multiples et ventes encore ouvertes.
             </p>
 
@@ -1209,7 +1210,7 @@ const UserSalesDashboard = () => {
                     title="Paiement unique"
                     value={`${analytics.fullPayment.count}`}
                     helper={formatCFA(analytics.fullPayment.amount)}
-                    accent="text-emerald-700"
+                    accent="text-[var(--ms-success)]"
                   />
                   <MiniInsightCard
                     title="Paiements multiples"
@@ -1221,7 +1222,7 @@ const UserSalesDashboard = () => {
                     title="Encore ouverts"
                     value={`${analytics.pendingPayments.count}`}
                     helper={formatCFA(analytics.pendingPayments.amount)}
-                    accent="text-amber-700"
+                    accent="text-[var(--ms-warning)]"
                   />
                 </div>
               </>
@@ -1247,7 +1248,7 @@ const UserSalesDashboard = () => {
             title="Meilleur client"
             value={analytics.bestClient?.name || 'Aucun'}
             helper={analytics.bestClient ? formatCFA(analytics.bestClient.amount) : 'Pas encore de donnée'}
-            accent="text-slate-900"
+            accent="text-[var(--ms-text)]"
           />
           <MiniInsightCard
             title="Produit dominant"
@@ -1268,49 +1269,49 @@ const UserSalesDashboard = () => {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
-            <h2 className="text-xl font-semibold text-slate-900">Synthèse intelligente</h2>
-            <p className="mt-1 text-sm text-slate-500">
+          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+            <h2 className="text-xl font-semibold text-[var(--ms-text)]">Synthèse intelligente</h2>
+            <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
               Quelques signaux directement utiles pour piloter l'activité de cet utilisateur.
             </p>
 
             <div className="mt-5 space-y-3">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Méthode de paiement dominante</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="rounded-lg bg-[var(--ms-bg-subtle)] p-4">
+                <p className="text-sm text-[var(--ms-text-muted)]">Méthode de paiement dominante</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text)]">
                   {analytics.favoritePaymentMethod?.method || 'Aucune'}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   {analytics.favoritePaymentMethod ? formatCFA(analytics.favoritePaymentMethod.amount) : 'Aucune donnée'}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Jour le plus fort</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">{analytics.busiestDay?.label || 'Aucun'}</p>
-                <p className="mt-1 text-sm text-slate-500">
+              <div className="rounded-lg bg-[var(--ms-bg-subtle)] p-4">
+                <p className="text-sm text-[var(--ms-text-muted)]">Jour le plus fort</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text)]">{analytics.busiestDay?.label || 'Aucun'}</p>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   {analytics.busiestDay
                     ? `${formatCFA(analytics.busiestDay.amount)} • ${analytics.busiestDay.sales} vente(s)`
                     : 'Aucune donnée'}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Plus grosse vente</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="rounded-lg bg-[var(--ms-bg-subtle)] p-4">
+                <p className="text-sm text-[var(--ms-text-muted)]">Plus grosse vente</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text)]">
                   {analytics.largestSale ? formatCFA(analytics.largestSale.totalAmount) : 'Aucune'}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   {analytics.largestSale
                     ? `${analytics.largestSale.clientName} • ${formatDateLabel(analytics.largestSale.saleDateObject)}`
                     : 'Aucune donnée'}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Rythme d'activité</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">{analytics.activeDays} jour(s) actifs</p>
-                <p className="mt-1 text-sm text-slate-500">
+              <div className="rounded-lg bg-[var(--ms-bg-subtle)] p-4">
+                <p className="text-sm text-[var(--ms-text-muted)]">Rythme d'activité</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--ms-text)]">{analytics.activeDays} jour(s) actifs</p>
+                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   {formatPercent(analytics.collectionRate)} de recouvrement • {analytics.totalPayments} paiement(s)
                 </p>
               </div>
@@ -1318,54 +1319,54 @@ const UserSalesDashboard = () => {
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
-              <h2 className="text-xl font-semibold text-slate-900">Top clients</h2>
+            <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Top clients</h2>
               <div className="mt-4 space-y-3">
                 {analytics.topClients.length ? (
                   analytics.topClients.map((client, index) => (
-                    <div key={`${client.name}-${index}`} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <div key={`${client.name}-${index}`} className="flex items-center justify-between rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-3">
                       <div>
-                        <p className="font-medium text-slate-900">{client.name}</p>
-                        <p className="text-sm text-slate-500">{client.sales} vente(s)</p>
+                        <p className="font-medium text-[var(--ms-text)]">{client.name}</p>
+                        <p className="text-sm text-[var(--ms-text-muted)]">{client.sales} vente(s)</p>
                       </div>
-                      <p className="text-sm font-semibold text-slate-900">{formatCFA(client.amount)}</p>
+                      <p className="text-sm font-semibold text-[var(--ms-text)]">{formatCFA(client.amount)}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500">Aucun client sur la sélection.</p>
+                  <p className="text-sm text-[var(--ms-text-muted)]">Aucun client sur la sélection.</p>
                 )}
               </div>
             </div>
 
-            <div className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
-              <h2 className="text-xl font-semibold text-slate-900">Top produits</h2>
+            <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Top produits</h2>
               <div className="mt-4 space-y-3">
                 {analytics.topProducts.length ? (
                   analytics.topProducts.map((product, index) => (
                     <div
                       key={`${product.name}-${index}`}
-                      className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"
+                      className="flex items-center justify-between rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-3"
                     >
                       <div>
-                        <p className="font-medium text-slate-900">{product.name}</p>
-                        <p className="text-sm text-slate-500">{product.quantity} article(s)</p>
+                        <p className="font-medium text-[var(--ms-text)]">{product.name}</p>
+                        <p className="text-sm text-[var(--ms-text-muted)]">{product.quantity} article(s)</p>
                       </div>
-                      <p className="text-sm font-semibold text-slate-900">{formatCFA(product.amount)}</p>
+                      <p className="text-sm font-semibold text-[var(--ms-text)]">{formatCFA(product.amount)}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500">Aucun produit sur la sélection.</p>
+                  <p className="text-sm text-[var(--ms-text-muted)]">Aucun produit sur la sélection.</p>
                 )}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="rounded-[2rem] bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Historique filtré</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Historique filtré</h2>
+              <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                 {historySales.length} vente(s) affichée(s) sur {filteredSales.length} vente(s) déjà retenues par les
                 filtres globaux. Chaque carte reprend les
                 indicateurs utiles sans forcer le passage sur desktop.
@@ -1374,23 +1375,23 @@ const UserSalesDashboard = () => {
           </div>
 
           <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
-            <label className="space-y-2 text-sm text-slate-600">
+            <label className="space-y-2 text-sm text-[var(--ms-text)]">
               <span>Recherche dans l'historique</span>
               <input
                 type="text"
                 value={historySearch}
                 onChange={(event) => setHistorySearch(event.target.value)}
                 placeholder="Client, produit, conteneur..."
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
               />
             </label>
 
-            <label className="space-y-2 text-sm text-slate-600">
+            <label className="space-y-2 text-sm text-[var(--ms-text)]">
               <span>Vue rapide</span>
               <select
                 value={historyView}
                 onChange={(event) => setHistoryView(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
               >
                 {visibleHistoryViewOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1400,12 +1401,12 @@ const UserSalesDashboard = () => {
               </select>
             </label>
 
-            <label className="space-y-2 text-sm text-slate-600">
+            <label className="space-y-2 text-sm text-[var(--ms-text)]">
               <span>Trier par</span>
               <select
                 value={historySort}
                 onChange={(event) => setHistorySort(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400"
+                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
               >
                 {visibleHistorySortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1416,17 +1417,17 @@ const UserSalesDashboard = () => {
             </label>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-[var(--ms-text)]">
             <span className="rounded-full bg-slate-100 px-3 py-1">
-              <strong className="font-medium text-slate-900">Vue:</strong>{' '}
+              <strong className="font-medium text-[var(--ms-text)]">Vue:</strong>{' '}
               {visibleHistoryViewOptions.find((option) => option.value === historyView)?.label || 'Toutes les cartes'}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1">
-              <strong className="font-medium text-slate-900">Tri:</strong>{' '}
+              <strong className="font-medium text-[var(--ms-text)]">Tri:</strong>{' '}
               {visibleHistorySortOptions.find((option) => option.value === historySort)?.label || 'Plus récentes'}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1">
-              <strong className="font-medium text-slate-900">Recherche:</strong>{' '}
+              <strong className="font-medium text-[var(--ms-text)]">Recherche:</strong>{' '}
               {historySearch.trim() || 'Aucune'}
             </span>
           </div>
@@ -1434,7 +1435,7 @@ const UserSalesDashboard = () => {
           {historySales.length ? (
             <div className="mt-5 grid gap-4">
               {historySales.map((sale) => (
-                <article key={sale._id} className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <article key={sale._id} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 sm:p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-2">
@@ -1444,26 +1445,26 @@ const UserSalesDashboard = () => {
                           label={getSaleTypeText(sale.saleType)}
                         />
                         <SaleBadge
-                          className={PAYMENT_STRUCTURE_META[sale.paymentStructure]?.accent || 'bg-slate-100 text-slate-700'}
+                          className={PAYMENT_STRUCTURE_META[sale.paymentStructure]?.accent || 'bg-slate-100 text-[var(--ms-text)]'}
                           label={PAYMENT_STRUCTURE_META[sale.paymentStructure]?.label || sale.paymentStructure}
                         />
                       </div>
 
                       <div>
-                        <h3 className="text-lg font-semibold text-slate-900">{sale.clientName}</h3>
-                        <p className="text-sm text-slate-500">{formatDateTimeLabel(sale.saleDateObject)}</p>
+                        <h3 className="text-lg font-semibold text-[var(--ms-text)]">{sale.clientName}</h3>
+                        <p className="text-sm text-[var(--ms-text-muted)]">{formatDateTimeLabel(sale.saleDateObject)}</p>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Produits</p>
-                          <p className="mt-2 text-sm text-slate-700">
+                          <p className="mt-2 text-sm text-[var(--ms-text)]">
                             {sale.productNames.length ? sale.productNames.join(', ') : 'Aucun produit'}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Conteneurs / paiements</p>
-                          <p className="mt-2 text-sm text-slate-700">
+                          <p className="mt-2 text-sm text-[var(--ms-text)]">
                             {[...sale.containers, ...sale.paymentMethods].filter(Boolean).join(' • ') || 'Aucun détail'}
                           </p>
                         </div>
@@ -1471,21 +1472,21 @@ const UserSalesDashboard = () => {
                     </div>
 
                     <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:w-[22rem]">
-                      <div className="rounded-2xl bg-white p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">Montant total</p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">{formatCFA(sale.totalAmount)}</p>
+                      <div className="rounded-lg bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
+                        <p className="text-sm text-[var(--ms-text-muted)]">Montant total</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--ms-text)]">{formatCFA(sale.totalAmount)}</p>
                       </div>
-                      <div className="rounded-2xl bg-white p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">Encaisse</p>
-                        <p className="mt-2 text-lg font-semibold text-emerald-700">{formatCFA(sale.totalPaid)}</p>
+                      <div className="rounded-lg bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
+                        <p className="text-sm text-[var(--ms-text-muted)]">Encaisse</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--ms-success)]">{formatCFA(sale.totalPaid)}</p>
                       </div>
-                      <div className="rounded-2xl bg-white p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">Reste</p>
-                        <p className="mt-2 text-lg font-semibold text-amber-700">{formatCFA(sale.balance)}</p>
+                      <div className="rounded-lg bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
+                        <p className="text-sm text-[var(--ms-text-muted)]">Reste</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--ms-warning)]">{formatCFA(sale.balance)}</p>
                       </div>
                       {canSeeFinancials && (
-                        <div className="rounded-2xl bg-white p-4 shadow-sm">
-                          <p className="text-sm text-slate-500">Bénéfice</p>
+                        <div className="rounded-lg bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
+                          <p className="text-sm text-[var(--ms-text-muted)]">Bénéfice</p>
                           <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.profit)}</p>
                         </div>
                       )}
@@ -1507,7 +1508,7 @@ const UserSalesDashboard = () => {
                       setHistoryView('all');
                       setHistorySort('recent');
                     }}
-                    className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+                    className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
                   >
                     Réinitialiser l'historique
                   </button>

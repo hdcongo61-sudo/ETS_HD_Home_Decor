@@ -133,7 +133,7 @@ const PaySlipForm = () => {
             <div className="flex justify-center items-center h-screen">
                 <div className="relative">
                     <div className="w-12 h-12 rounded-full absolute border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin"></div>
-                    <div className="w-12 h-12 rounded-full absolute border-2 border-gray-100 opacity-20"></div>
+                    <div className="w-12 h-12 rounded-full absolute border-2 border-[var(--ms-border)] opacity-20"></div>
                 </div>
             </div>
         );
@@ -149,41 +149,41 @@ const PaySlipForm = () => {
             <div className="flex items-center mb-6">
                 <button
                     onClick={() => navigate(employeePayrollPath(employeeReference))}
-                    className="p-2 rounded-full hover:bg-gray-100 mr-2 transition-colors"
+                    className="p-2 rounded-full hover:bg-[var(--ms-bg-subtle)] mr-2 transition-colors"
                 >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[var(--ms-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h1 className="text-2xl font-semibold text-gray-900">
+                <h1 className="text-2xl font-semibold text-[var(--ms-text-strong)]">
                     {isEditMode ? 'Modifier le bulletin' : 'Nouveau bulletin'}
                 </h1>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div className="bg-[var(--ms-white)] rounded-lg border border-[var(--ms-border)] p-6 shadow-[var(--ms-shadow-sm)]">
                 {/* Employee Information */}
                 {employee && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                        <div className="text-sm font-medium text-gray-500 mb-1">Employé</div>
+                    <div className="mb-6 p-4 bg-[var(--ms-bg-subtle)] rounded-md">
+                        <div className="text-sm font-medium text-[var(--ms-text-muted)] mb-1">Employé</div>
                         <div className="flex items-center gap-4 mb-3">
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                <span className="text-gray-600 font-medium text-lg">
+                                <span className="text-[var(--ms-text)] font-medium text-lg">
                                     {employee.name.charAt(0)}
                                 </span>
                             </div>
                             <div>
-                                <div className="text-lg font-semibold text-gray-900">{employee.name}</div>
-                                <div className="text-sm text-gray-600">{employee.position}</div>
+                                <div className="text-lg font-semibold text-[var(--ms-text-strong)]">{employee.name}</div>
+                                <div className="text-sm text-[var(--ms-text)]">{employee.position}</div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <div className="text-xs text-gray-500">Département</div>
-                                <div className="text-sm font-medium text-gray-900">{employee.department}</div>
+                                <div className="text-xs text-[var(--ms-text-muted)]">Département</div>
+                                <div className="text-sm font-medium text-[var(--ms-text-strong)]">{employee.department}</div>
                             </div>
                             <div>
-                                <div className="text-xs text-gray-500">Salaire de base</div>
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-xs text-[var(--ms-text-muted)]">Salaire de base</div>
+                                <div className="text-sm font-medium text-[var(--ms-text-strong)]">
                                     {employee.salary?.toLocaleString('fr-FR')} CFA
                                 </div>
                             </div>
@@ -192,7 +192,7 @@ const PaySlipForm = () => {
                 )}
 
                 {errors.general && (
-                    <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-start gap-3 border border-red-100">
+                    <div className="mb-6 p-4 bg-[var(--ms-danger)]/10 text-[var(--ms-danger)] rounded-md flex items-start gap-3 border border-red-100">
                         <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
@@ -206,14 +206,14 @@ const PaySlipForm = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-[var(--ms-text)]">
                                 Mois
                             </label>
                             <select
                                 name="month"
                                 value={formData.month}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                                 required
                             >
                                 {Array.from({ length: 12 }, (_, i) => {
@@ -236,7 +236,7 @@ const PaySlipForm = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-[var(--ms-text)]">
                                 Année
                             </label>
                             <input
@@ -245,7 +245,7 @@ const PaySlipForm = () => {
                                 value={formData.year}
                                 onChange={handleChange}
                                 min="2000"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                                 required
                             />
                             {errors.year && (
@@ -259,7 +259,7 @@ const PaySlipForm = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-[var(--ms-text)]">
                                 Déductions (CFA)
                             </label>
                             <input
@@ -268,7 +268,7 @@ const PaySlipForm = () => {
                                 value={formData.deductions}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                             />
                             {errors.deductions && (
                                 <div className="text-red-500 text-sm flex items-center gap-1.5">
@@ -279,28 +279,28 @@ const PaySlipForm = () => {
                                 </div>
                             )}
                             {!isEditMode && (
-                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-3 text-sm">
+                                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/80 p-3 text-sm">
                                     <div className="flex items-center justify-between gap-3">
-                                        <span className="font-medium text-gray-700">Dépenses salaire du mois</span>
-                                        <span className="font-semibold text-gray-900">{formatCurrency(salaryExpensesTotal)}</span>
+                                        <span className="font-medium text-[var(--ms-text)]">Dépenses salaire du mois</span>
+                                        <span className="font-semibold text-[var(--ms-text-strong)]">{formatCurrency(salaryExpensesTotal)}</span>
                                     </div>
                                     {salaryExpensesLoading && (
-                                        <p className="mt-2 text-xs text-gray-500">Chargement des dépenses liées...</p>
+                                        <p className="mt-2 text-xs text-[var(--ms-text-muted)]">Chargement des dépenses liées...</p>
                                     )}
                                     {salaryExpensesError && (
-                                        <p className="mt-2 text-xs text-red-600">{salaryExpensesError}</p>
+                                        <p className="mt-2 text-xs text-[var(--ms-danger)]">{salaryExpensesError}</p>
                                     )}
                                     {!salaryExpensesLoading && !salaryExpensesError && salaryExpenses.length > 0 && (
                                         <div className="mt-3 space-y-2">
                                             {salaryExpenses.map((expense) => (
-                                                <div key={expense._id} className="flex items-start justify-between gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                <div key={expense._id} className="flex items-start justify-between gap-3 rounded-md bg-[var(--ms-white)] px-3 py-2 border border-[var(--ms-border)]">
                                                     <div className="min-w-0">
-                                                        <p className="truncate font-medium text-gray-800">{expense.description}</p>
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="truncate font-medium text-[var(--ms-text-strong)]">{expense.description}</p>
+                                                        <p className="text-xs text-[var(--ms-text-muted)]">
                                                             {expense.date ? new Date(expense.date).toLocaleDateString('fr-FR') : 'Date non définie'}
                                                         </p>
                                                     </div>
-                                                    <span className="shrink-0 font-semibold text-red-600">
+                                                    <span className="shrink-0 font-semibold text-[var(--ms-danger)]">
                                                         - {formatCurrency(expense.amount)}
                                                     </span>
                                                 </div>
@@ -308,14 +308,14 @@ const PaySlipForm = () => {
                                         </div>
                                     )}
                                     {!salaryExpensesLoading && !salaryExpensesError && salaryExpenses.length === 0 && (
-                                        <p className="mt-2 text-xs text-gray-500">Aucune dépense de salaire liée à ce mois.</p>
+                                        <p className="mt-2 text-xs text-[var(--ms-text-muted)]">Aucune dépense de salaire liée à ce mois.</p>
                                     )}
                                 </div>
                             )}
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="text-sm font-medium text-[var(--ms-text)]">
                                 Primes (CFA)
                             </label>
                             <input
@@ -324,7 +324,7 @@ const PaySlipForm = () => {
                                 value={formData.bonuses}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                             />
                             {errors.bonuses && (
                                 <div className="text-red-500 text-sm flex items-center gap-1.5">
@@ -340,14 +340,14 @@ const PaySlipForm = () => {
                     {/* Status Field (Edit Mode Only) */}
                     {isEditMode && (
                         <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-[var(--ms-text)]">
                             Statut
                             </label>
                             <div className="flex space-x-4">
                                 {[
-                                    { value: 'pending', label: 'En attente', color: 'bg-amber-100 text-amber-800' },
-                                    { value: 'paid', label: 'Payé', color: 'bg-green-100 text-green-800' },
-                                    { value: 'cancelled', label: 'Annulé', color: 'bg-red-100 text-red-800' }
+                                    { value: 'pending', label: 'En attente', color: 'bg-[var(--ms-warning)]/15 text-amber-800' },
+                                    { value: 'paid', label: 'Payé', color: 'bg-[var(--ms-success)]/15 text-green-800' },
+                                    { value: 'cancelled', label: 'Annulé', color: 'bg-[var(--ms-danger)]/15 text-red-800' }
                                 ].map((option) => (
                                     <label key={option.value} className="flex items-center">
                                         <input
@@ -360,7 +360,7 @@ const PaySlipForm = () => {
                                         />
                                         <span className={`px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors ${formData.status === option.value 
                                             ? option.color 
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                            : 'bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-gray-200'}`}>
                                             {option.label}
                                         </span>
                                     </label>
@@ -370,31 +370,31 @@ const PaySlipForm = () => {
                     )}
 
                     {/* Net Salary Calculation */}
-                    <div className="bg-gray-50 rounded-xl p-5">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Calcul du salaire</h3>
+                    <div className="bg-[var(--ms-bg-subtle)] rounded-md p-5">
+                        <h3 className="text-lg font-semibold text-[var(--ms-text-strong)] mb-4">Calcul du salaire</h3>
                         <div className="space-y-3">
                             <div className="flex justify-between">
-                                <span className="text-gray-600">Salaire de base</span>
+                                <span className="text-[var(--ms-text)]">Salaire de base</span>
                                 <span className="font-medium">
                                     {employee?.salary?.toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">+ Primes</span>
-                                <span className="text-green-600 font-medium">
+                                <span className="text-[var(--ms-text)]">+ Primes</span>
+                                <span className="text-[var(--ms-success)] font-medium">
                                     + {parseFloat(formData.bonuses || 0).toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">- Déductions</span>
-                                <span className="text-red-600 font-medium">
+                                <span className="text-[var(--ms-text)]">- Déductions</span>
+                                <span className="text-[var(--ms-danger)] font-medium">
                                     - {parseFloat(formData.deductions || 0).toLocaleString('fr-FR')} CFA
                                 </span>
                             </div>
-                            <div className="border-t border-gray-200 pt-3 mt-2">
+                            <div className="border-t border-[var(--ms-border)] pt-3 mt-2">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-800 font-semibold">Salaire net</span>
-                                    <span className="text-xl font-bold text-blue-600">
+                                    <span className="text-[var(--ms-text-strong)] font-semibold">Salaire net</span>
+                                    <span className="text-xl font-bold text-[var(--ms-blue)]">
                                         {netSalary.toLocaleString('fr-FR')} CFA
                                     </span>
                                 </div>
@@ -403,18 +403,18 @@ const PaySlipForm = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-6 border-t border-gray-100">
+                    <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-6 border-t border-[var(--ms-border)]">
                     <button
                         type="button"
                         onClick={() => navigate(employeePayrollPath(employeeReference))}
-                        className="px-5 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center gap-2 justify-center transition-colors"
+                        className="px-5 py-2.5 rounded-md text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] flex items-center gap-2 justify-center transition-colors"
                     >
                             Annuler
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-sm"
+                            className="bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-[var(--ms-shadow-sm)]"
                         >
                             {isSubmitting ? (
                                 <>
