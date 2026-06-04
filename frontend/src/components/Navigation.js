@@ -133,6 +133,9 @@ const Navigation = () => {
       case "employee":
         navigate(employeeBasePath(item));
         break;
+      case "supplier":
+        openPath(`/suppliers/${encodeURIComponent(item.name || item.slug || item._id)}`);
+        break;
       default:
         navigate("/");
     }
@@ -745,6 +748,11 @@ const SEARCH_RESULT_META = {
     icon: BriefcaseBusiness,
     tone: "bg-gray-100 text-[var(--ms-text)] ring-gray-200",
   },
+  supplier: {
+    label: "Fournisseur",
+    icon: Package,
+    tone: "bg-orange-50 text-orange-700 ring-orange-100",
+  },
   default: {
     label: "Résultat",
     icon: Search,
@@ -770,6 +778,9 @@ const getResultDescription = (item) => {
   }
   if (item.type === "employee") {
     return item.role || item.position || item.phone || "Fiche employé";
+  }
+  if (item.type === "supplier") {
+    return item.phone || "Fiche fournisseur";
   }
   return item.type || "";
 };

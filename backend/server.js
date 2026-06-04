@@ -17,6 +17,8 @@ dotenv.config();
 // Connect to database
 connectDB();
 
+const path = require('path');
+
 // Route files
 const productRoutes = require('./routes/productRoutes');
 const clientRoutes = require('./routes/clientRoutes');
@@ -41,6 +43,7 @@ app.disable('x-powered-by');
 // 1. Set security HTTP headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false, // Let the frontend build handle CSP
 }));
 
 // ✅ Trust proxy (important for Render)
@@ -124,11 +127,21 @@ app.use('/api/lookups', lookupRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
 
-// 10. Error handler middleware
+// 10. Serve frontend build (production)
+const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(frontendBuildPath));
+
+// 11. SPA fallback — all non-API routes serve index.html
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ success: false, error: 'API route not found' });
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+});
+
+// 12. Error handler middleware
 app.use(errorHandler);
 
-// 11. Handle 404 errors
-app.use((req, res, next) => {
+// 13. Handle 404 for unknown API routes
+app.use('/api/*', (req, res, next) => {
   res.status(404).json({
     success: false,
     error: 'Resource not found'

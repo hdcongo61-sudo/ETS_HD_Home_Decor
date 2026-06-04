@@ -4,6 +4,7 @@ const Product = require("../models/productModel");
 const Client = require("../models/clientModel");
 const Sale = require("../models/saleModel");
 const Employee = require("../models/employeeModel");
+const Supplier = require("../models/supplierModel");
 const { protect } = require("../middlewares/authMiddleware");
 
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -19,11 +20,12 @@ router.get("/", protect, async (req, res) => {
 
     const regex = new RegExp(escapeRegExp(q), "i");
 
-    const [products, clients, sales, employees] = await Promise.all([
+    const [products, clients, sales, employees, suppliers] = await Promise.all([
       Product.find({ name: regex }).select("name _id image slug stock").sort({ stock: -1, name: 1 }).limit(5),
       Client.find({ name: regex }).select("name _id slug").limit(5),
       Sale.find({ clientName: regex }).select("clientName totalAmount _id").limit(5),
       Employee.find({ name: regex }).select("name _id slug").limit(5),
+      Supplier.find({ name: regex }).select("name _id phone").limit(5),
     ]);
 
     const results = [
@@ -31,6 +33,7 @@ router.get("/", protect, async (req, res) => {
       ...clients.map((c) => ({ ...c._doc, type: "client" })),
       ...sales.map((s) => ({ ...s._doc, type: "sale" })),
       ...employees.map((e) => ({ ...e._doc, type: "employee" })),
+      ...suppliers.map((s) => ({ ...s._doc, type: "supplier" })),
     ];
 
     res.json({ results });

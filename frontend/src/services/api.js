@@ -30,7 +30,8 @@ const getInitialBaseUrl = () => {
     if (storedBaseUrl) return storedBaseUrl;
     return DEV_API_CANDIDATES[0];
   }
-  return 'http://localhost:5001/api';
+  // Production: use relative URL (same origin as frontend)
+  return '/api';
 };
 
 const isRetriableDevFallback = (error) => {
