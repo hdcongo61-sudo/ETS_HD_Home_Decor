@@ -12,6 +12,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
       // Validation des dates personnalisées
       const start = new Date(startDate);
       const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include the full end day
 
       if (start > end) {
         return res.status(400).json({
@@ -26,7 +27,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
         });
       }
 
-      filter.createdAt = {
+      filter.saleDate = {
         $gte: start,
         $lte: end
       };
@@ -40,7 +41,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
           const endOfDay = new Date(now);
           endOfDay.setHours(23, 59, 59, 999);
 
-          filter.createdAt = {
+          filter.saleDate = {
             $gte: startOfDay,
             $lte: endOfDay
           };
@@ -54,7 +55,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
           endWeek.setDate(startWeek.getDate() + 6);
           endWeek.setHours(23, 59, 59, 999);
 
-          filter.createdAt = {
+          filter.saleDate = {
             $gte: startWeek,
             $lte: endWeek
           };
@@ -64,7 +65,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
           const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           endMonth.setHours(23, 59, 59, 999);
 
-          filter.createdAt = {
+          filter.saleDate = {
             $gte: startMonth,
             $lte: endMonth
           };
@@ -88,7 +89,7 @@ const generateSalesReport = asyncHandler(async (req, res) => {
         path: 'payments.user',
         select: 'name role'
       })
-      .sort({ createdAt: -1 });
+      .sort({ saleDate: -1 });
 
     // Créer le fichier Excel
     const workbook = new excel.Workbook();

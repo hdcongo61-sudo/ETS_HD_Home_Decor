@@ -909,6 +909,10 @@ const Sales = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showPaymentsDetailModal, setShowPaymentsDetailModal] = useState(false);
+  const [paymentsDetailData, setPaymentsDetailData] = useState([]);
+  const [paymentsDetailLoading, setPaymentsDetailLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Livraison
   const [deliveryStatus, setDeliveryStatus] = useState("");
@@ -1433,6 +1437,24 @@ const Sales = () => {
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
   /* ========= Manipulations ========= */
+  const handleOpenPaymentsDetail = async () => {
+    setPaymentsDetailLoading(true);
+    setShowPaymentsDetailModal(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFilter) {
+        params.append('startDate', dateFilter);
+        params.append('endDate', dateFilter);
+      }
+      const { data } = await api.get(`/sales/payments/date-range?${params.toString()}`);
+      setPaymentsDetailData(data || []);
+    } catch {
+      setPaymentsDetailData([]);
+    } finally {
+      setPaymentsDetailLoading(false);
+    }
+  };
+
   const handleSubmitSale = async (saleData) => {
     try {
       setMessage("");
@@ -1778,6 +1800,8 @@ const Sales = () => {
         value: `${filteredHistoryStats.paymentsOnSelectedDate.toLocaleString("fr-FR")} CFA`,
         helper: `${filteredHistoryStats.paymentsOnSelectedDateCount} paiement(s). ${paymentHelper}`,
         color: "border-blue-100 bg-blue-50 text-blue-700",
+        clickable: dateFilter,
+        onClick: () => handleOpenPaymentsDetail(),
       },
       {
         label: "Reste à encaisser",
@@ -1789,13 +1813,27 @@ const Sales = () => {
 
     return (
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className={`rounded-2xl border p-4 ${card.color}`}>
-            <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
-            <p className="mt-2 text-lg font-semibold tabular-nums text-slate-950">{card.value}</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">{card.helper}</p>
-          </div>
-        ))}
+        {cards.map((card) => {
+          const content = (
+            <div className={`rounded-2xl border p-4 ${card.color} ${card.clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all' : ''}`}>
+              <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
+              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-950">{card.value}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{card.helper}</p>
+              {card.clickable && (
+                <p className="mt-2 text-[11px] font-medium text-blue-600 underline underline-offset-2">
+                  Voir le détail →
+                </p>
+              )}
+            </div>
+          );
+          return card.clickable ? (
+            <button key={card.label} type="button" onClick={card.onClick} className="text-left w-full">
+              {content}
+            </button>
+          ) : (
+            <div key={card.label}>{content}</div>
+          );
+        })}
       </div>
     );
   };
@@ -1827,14 +1865,14 @@ const Sales = () => {
           title="Gestion des ventes"
           description="Enregistrez une vente, suivez les paiements et les livraisons du jour."
           actions={
-              <Link
-                to={{ pathname: "/sales/all", search: historyLinkSearch }}
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
                 className="ms-button ms-button-secondary ms-button-md"
-                {...desktopLinkProps}
               >
                 <ReceiptText className="h-4 w-4" />
                 {historyLinkLabel}
-              </Link>
+              </button>
           }
         />
 
@@ -1859,13 +1897,13 @@ const Sales = () => {
                     Historique des Ventes
                   </h2>
                   <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Actions historique">
-                    <Link
-                      to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                    <button
+                      type="button"
+                      onClick={() => setShowHistoryModal(true)}
                       className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                      {...desktopLinkProps}
                     >
                       {historyLinkLabel}
-                    </Link>
+                    </button>
                     {isAdmin && (
                       <Link
                         to="/sales/deleted"
@@ -2784,13 +2822,13 @@ const Sales = () => {
                       Historique des Ventes
                     </h2>
                     <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Actions historique">
-                      <Link
-                        to={{ pathname: "/sales/all", search: historyLinkSearch }}
+                      <button
+                        type="button"
+                        onClick={() => setShowHistoryModal(true)}
                         className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        {...desktopLinkProps}
                       >
                         {historyLinkLabel}
-                      </Link>
+                      </button>
                       {isAdmin && (
                         <Link
                           to="/sales/deleted"
@@ -3096,6 +3134,151 @@ const Sales = () => {
                 onAddPayment={handleAddPayment}
               />
             </Suspense>
+
+            {/* Modal Détail Paiements */}
+            {showPaymentsDetailModal && (
+              <div
+                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+                onClick={() => setShowPaymentsDetailModal(false)}
+              >
+                <div
+                  className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      Paiements encaissés{dateFilter ? ` — ${new Date(dateFilter + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentsDetailModal(false)}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100"
+                      aria-label="Fermer"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                    {paymentsDetailLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+                      </div>
+                    ) : paymentsDetailData.length === 0 ? (
+                      <div className="text-center py-8 text-[var(--ms-text-muted)]">
+                        Aucun paiement trouvé pour cette période.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="text-sm text-[var(--ms-text-muted)] mb-3">
+                          {paymentsDetailData.length} paiement(s) · {paymentsDetailData.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString('fr-FR')} CFA
+                        </div>
+                        {paymentsDetailData.map((payment) => (
+                          <div
+                            key={payment._id}
+                            className="flex flex-col gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-[var(--ms-text-strong)]">
+                                  {payment.amount?.toLocaleString('fr-FR')} CFA
+                                </p>
+                                <p className="text-xs text-[var(--ms-text-muted)]">
+                                  {payment.client?.name || 'Client inconnu'} · {payment.method || 'N/A'}
+                                </p>
+                                <p className="text-[11px] text-[var(--ms-text-muted)]">
+                                  {payment.paymentDate ? new Date(payment.paymentDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                </p>
+                              </div>
+                              <Link
+                                to={`/sales/${payment.saleId}`}
+                                onClick={() => setShowPaymentsDetailModal(false)}
+                                className="shrink-0 text-[11px] font-medium text-[var(--ms-blue)] hover:underline"
+                                {...(isDesktop ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                              >
+                                Voir vente →
+                              </Link>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-1.5">
+                              <ReceiptText className="h-3.5 w-3.5 text-[var(--ms-text-muted)] shrink-0" />
+                              <p className="text-[12px] text-[var(--ms-text)] truncate">
+                                Vente {payment.saleNumber ? `#${payment.saleNumber}` : `#${payment.saleId?.slice(-8)}`}
+                                {payment.client?.name ? ` — ${payment.client.name}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Historique (sales/all) */}
+            {showHistoryModal && (
+              <div
+                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+                onClick={() => setShowHistoryModal(false)}
+              >
+                <div
+                  className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <ReceiptText className="h-5 w-5 text-indigo-600" />
+                      Historique des ventes
+                      <span className="text-sm font-normal text-[var(--ms-text-muted)]">({filteredSales.length} ventes)</span>
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowHistoryModal(false)}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100"
+                      aria-label="Fermer"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                    {filteredSales.length === 0 ? (
+                      <div className="text-center py-8 text-[var(--ms-text-muted)]">
+                        Aucune vente trouvée avec ces filtres.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {filteredSales.map((sale) => {
+                          const { totalPaid, balance } = calculateSaleTotals(sale);
+                          const isModified = (sale.modificationCount || 0) > 0;
+                          return (
+                            <SaleCard
+                              key={sale._id}
+                              sale={sale}
+                              totalPaid={totalPaid}
+                              balance={balance}
+                              formatDate={formatDate}
+                              getStatusClass={getStatusClass}
+                              getStatusText={getStatusText}
+                              isModified={isModified}
+                              desktopLinkProps={desktopLinkProps}
+                              linkState={saleLinkState}
+                              returnTo={salesReturnPath}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-3 px-5 py-4 sm:px-6 border-t border-gray-100 bg-gray-50/30">
+                    <SalesListExportButtons
+                      sales={filteredSales}
+                      filenamePrefix="ventes-filtrees"
+                      label="Ventes filtrées"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </Workspace>

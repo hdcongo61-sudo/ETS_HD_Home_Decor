@@ -936,6 +936,7 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
     if (!endDate) endDate = new Date();
     const start = new Date(startDate);
     const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Include the full end day
 
     const paymentsMatch = buildSaleAccessFilter(req.user, {
       payments: {
