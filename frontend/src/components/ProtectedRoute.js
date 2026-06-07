@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import AppLoader from './AppLoader';
 
 const storeRestrictionInfo = (payload) => {
   try {
@@ -37,11 +36,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
     };
   })();
 
-  if (auth.isLoading) {
-    return <AppLoader />;
-  }
-
-  if (!auth.isAuthenticated) {
+  if (!auth.isAuthenticated && !auth.isLoading) {
     return <Navigate to="/login" replace />;
   }
 

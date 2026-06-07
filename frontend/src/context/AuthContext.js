@@ -4,28 +4,25 @@ import api from '../services/api';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  const token = localStorage.getItem('token');
   const [auth, setAuth] = useState({
-    isAuthenticated: false,
+    isAuthenticated: Boolean(token),
     user: null,
     isAdmin: false,
-    isLoading: true // Ajout d'un état de chargement
+    isLoading: false
   });
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!localStorage.getItem('token')) return;
       try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const { data } = await api.get('/users/me');
-          setAuth({
-            isAuthenticated: true,
-            user: data,
-            isAdmin: data.isAdmin,
-            isLoading: false
-          });
-        } else {
-          setAuth(prev => ({ ...prev, isLoading: false }));
-        }
+        const { data } = await api.get('/users/me');
+        setAuth({
+          isAuthenticated: true,
+          user: data,
+          isAdmin: data.isAdmin,
+          isLoading: false
+        });
       } catch (error) {
         if (error.response?.status === 403) {
           const payload = {
