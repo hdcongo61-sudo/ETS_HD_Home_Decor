@@ -1646,6 +1646,109 @@ const getProductsByWarehouse = async (req, res) => {
 };
 
 
+// @desc    Bulk import products from JSON array
+// @route   POST /api/products/import
+// @access  Private/Admin
+const importProducts = async (req, res) => {
+  try {
+    const { products: rows } = req.body;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ message: 'Aucune donnée à importer. Envoyez un tableau "products".' });
+    }
+
+    const userId = req.user?._id;
+    const userName = req.user?.name || 'Admin';
+    const results = { created: 0, skipped: 0, errors: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // Excel row number (1 = header)
+
+      // Validate required fields
+      const name = String(row.name || row.Name || row.Nom || row.nom || '').trim();
+      if (!name) {
+        results.errors.push({ row: rowNum, message: 'Nom du produit manquant' });
+        results.skipped++;
+        continue;
+      }
+
+      const price = parseFloat(row.price || row.Price || row.Prix || row.prix);
+      if (isNaN(price) || price < 0) {
+        results.errors.push({ row: rowNum, message: `Prix invalide: "${row.price || row.Prix}"` });
+        results.skipped++;
+        continue;
+      }
+
+      const stock = parseInt(row.stock || row.Stock || row.Quantité || row.quantite || row.qty || 0, 10);
+      if (isNaN(stock) || stock < 0) {
+        results.errors.push({ row: rowNum, message: `Stock invalide: "${row.stock || row.Stock}"` });
+        results.skipped++;
+        continue;
+      }
+
+      const description = String(row.description || row.Description || row.Description || row.desc || '').trim() || `${name} - Importé`;
+      const category = String(row.category || row.Category || row.Catégorie || row.categorie || '').trim() || 'Non catégorisé';
+
+      // Optional fields
+      const costPrice = parseFloat(row.costPrice || row.costprice || row['Prix de revient'] || row['prix de revient'] || row.cost || 0);
+      const supplierName = String(row.supplierName || row.supplier || row.Fournisseur || row.fournisseur || '').trim();
+      const supplierPhone = String(row.supplierPhone || row['Téléphone fournisseur'] || row.telephone || '').trim();
+      const container = String(row.container || row.Conteneur || row.conteneur || '').trim();
+      const warehouse = String(row.warehouse || row.Entrepôt || row.entrepot || '').trim();
+      const sku = String(row.sku || row.SKU || row.Référence || row.reference || '').trim().toUpperCase() || undefined;
+      const minStockLevel = parseInt(row.minStockLevel || row['Stock minimum'] || row['stock minimum'] || 5, 10);
+
+      // Check for duplicate SKU
+      if (sku) {
+        const existing = await Product.findOne({ sku });
+        if (existing) {
+          results.errors.push({ row: rowNum, message: `SKU "${sku}" existe déjà (${existing.name})` });
+          results.skipped++;
+          continue;
+        }
+      }
+
+      try {
+        await Product.create({
+          name,
+          description,
+          price,
+          costPrice: costPrice || undefined,
+          stock,
+          category,
+          supplierName,
+          supplierPhone,
+          container,
+          warehouse,
+          sku,
+          minStockLevel,
+          createdBy: userId,
+          updatedBy: userId,
+          activities: [{
+            type: 'creation',
+            description: `Produit importé par ${userName}`,
+            user: userId,
+          }],
+        });
+        results.created++;
+      } catch (err) {
+        results.errors.push({ row: rowNum, message: err.message });
+        results.skipped++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${results.created} produit(s) créé(s), ${results.skipped} ignoré(s)`,
+      ...results,
+    });
+  } catch (error) {
+    console.error('❌ Erreur import produits:', error);
+    res.status(500).json({ message: 'Erreur serveur lors de l\'import' });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -1658,5 +1761,6 @@ module.exports = {
   getProductsBySupplier,
   getProductsByContainer,
   getProductsByWarehouse,
-  getProductSalesHistory
+  getProductSalesHistory,
+  importProducts
 };

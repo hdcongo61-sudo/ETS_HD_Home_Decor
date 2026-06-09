@@ -21,12 +21,14 @@ import {
 import {
   Download,
   Edit3,
+  FileSpreadsheet,
   Package,
   Plus,
   RotateCcw,
   Search,
   Trash2,
 } from 'lucide-react';
+import ProductImportModal from '../components/ProductImportModal';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
@@ -86,6 +88,7 @@ const Products = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
 
@@ -258,6 +261,14 @@ const Products = () => {
               <Edit3 className="h-4 w-4" />
               Modifier
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowImportModal(true)}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Importer Excel
+            </Button>
           </div>
           <div className="text-sm text-[var(--ms-text-muted)]">
             Sélectionnez une ligne pour ouvrir les détails produit.
@@ -315,6 +326,14 @@ const Products = () => {
           />
         </RightDetailPanel>
       )}
+
+      <ProductImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImported={() => {
+          fetchProducts();
+        }}
+      />
     </Workspace>
   );
 };

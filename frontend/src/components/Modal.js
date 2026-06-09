@@ -2,6 +2,7 @@ import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useModal } from '../context/ModalContext';
 
 let openModalCount = 0;
 let previousBodyOverflow = '';
@@ -32,6 +33,7 @@ const Modal = ({
   'aria-label': ariaLabel,
 }) => {
   const open = isOpen ?? show;
+  const { suppressGlobalModals } = useModal();
   const titleId = useId();
   const subtitleId = useId();
   const sizeClasses = {
@@ -44,6 +46,7 @@ const Modal = ({
 
   useEffect(() => {
     if (!open) return;
+    const releaseSuppression = suppressGlobalModals();
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose?.();
     };
@@ -55,19 +58,21 @@ const Modal = ({
     openModalCount += 1;
 
     return () => {
+      releaseSuppression();
       document.removeEventListener('keydown', handleEscape);
       openModalCount = Math.max(0, openModalCount - 1);
       if (openModalCount === 0) {
         document.body.style.overflow = previousBodyOverflow;
       }
     };
-  }, [open, onClose]);
+  }, [open, onClose, suppressGlobalModals]);
 
   if (!open) return null;
 
   const modal = (
     <div
-      className="fixed inset-0 z-[260] overflow-hidden"
+      className="fixed inset-x-0 bottom-0 z-[260] overflow-hidden"
+      style={{ top: 'var(--app-nav-offset, 0px)' }}
       aria-modal="true"
       role="dialog"
       aria-label={ariaLabel || (title ? undefined : 'Fenêtre de dialogue')}
@@ -75,7 +80,8 @@ const Modal = ({
       aria-describedby={subtitle ? subtitleId : undefined}
     >
       <motion.div
-        className="fixed inset-0 bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
+        className="fixed inset-x-0 bottom-0 bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
+        style={{ top: 'var(--app-nav-offset, 0px)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

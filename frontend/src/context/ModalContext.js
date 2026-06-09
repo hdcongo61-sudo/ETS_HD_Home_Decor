@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 const ModalContext = createContext();
 
@@ -13,23 +13,34 @@ export const useModal = () => {
 export const ModalProvider = ({ children }) => {
   const [activeModal, setActiveModal] = useState(null);
   const [modalData, setModalData] = useState(null);
+  const [globalModalSuppressions, setGlobalModalSuppressions] = useState(0);
 
-  const openModal = (modalName, data = null) => {
+  const openModal = useCallback((modalName, data = null) => {
     setActiveModal(modalName);
     setModalData(data);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setActiveModal(null);
     setModalData(null);
-  };
+  }, []);
 
-  const value = {
+  const suppressGlobalModals = useCallback(() => {
+    setGlobalModalSuppressions((count) => count + 1);
+
+    return () => {
+      setGlobalModalSuppressions((count) => Math.max(0, count - 1));
+    };
+  }, []);
+
+  const value = useMemo(() => ({
     activeModal,
     modalData,
     openModal,
-    closeModal
-  };
+    closeModal,
+    suppressGlobalModals,
+    areGlobalModalsSuppressed: globalModalSuppressions > 0,
+  }), [activeModal, closeModal, globalModalSuppressions, modalData, openModal, suppressGlobalModals]);
 
   return (
     <ModalContext.Provider value={value}>

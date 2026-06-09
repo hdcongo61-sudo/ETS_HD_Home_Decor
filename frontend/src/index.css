@@ -27,6 +27,8 @@
   --ms-shadow-lg: 0 8px 24px rgba(32, 31, 30, 0.14);
   --ms-transition: cubic-bezier(0.33, 0, 0.2, 1);
   --ms-touch: 44px;
+  --app-nav-offset: calc(64px + env(safe-area-inset-top, 0px));
+  --app-bottom-nav-offset: calc(96px + env(safe-area-inset-bottom, 0px));
   --apple-radius: var(--ms-radius);
   --apple-radius-lg: var(--ms-radius-lg);
   --apple-radius-xl: var(--ms-radius-lg);
@@ -65,6 +67,7 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   font-feature-settings: "kern" 1, "liga" 1;
+  scroll-padding-top: var(--app-nav-offset);
 }
 
 body {
@@ -93,10 +96,19 @@ body {
 
 .app-page-frame {
   isolation: isolate;
+  scroll-padding-top: var(--app-nav-offset);
 }
 
 .app-page-frame > * {
   letter-spacing: 0;
+}
+
+.app-page-frame [id],
+.form-shell,
+.ms-surface,
+.ms-chart-card,
+.ms-page-header {
+  scroll-margin-top: var(--app-nav-offset);
 }
 
 /* Touch-friendly tap targets (min 44px) */
@@ -134,6 +146,11 @@ body {
 }
 
 @media (min-width: 768px) {
+  :root {
+    --app-nav-offset: calc(56px + env(safe-area-inset-top, 0px));
+    --app-bottom-nav-offset: 0px;
+  }
+
   .main-with-tab-bar {
     padding-bottom: 0;
   }
@@ -1135,7 +1152,10 @@ button:focus {
 
 .ms-panel-layer {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: var(--app-nav-offset);
+  bottom: 0;
   z-index: 80;
 }
 
@@ -1150,7 +1170,7 @@ button:focus {
   bottom: 0;
   right: 0;
   display: flex;
-  height: min(100dvh, 860px);
+  height: min(calc(100dvh - var(--app-nav-offset)), 860px);
   width: min(100vw, 720px);
   flex-direction: column;
   border-left: 1px solid var(--ms-border);
@@ -1190,6 +1210,8 @@ button:focus {
   flex: 1;
   overflow: auto;
   padding: 18px;
+  scroll-padding-top: 18px;
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
 }
 
 @media (max-width: 767px) {
@@ -1205,7 +1227,8 @@ button:focus {
   }
 
   .ms-right-panel {
-    height: 94dvh;
+    bottom: var(--app-bottom-nav-offset);
+    height: calc(100dvh - var(--app-nav-offset) - var(--app-bottom-nav-offset));
     width: 100vw;
     border-left: 0;
     border-radius: 12px 12px 0 0;

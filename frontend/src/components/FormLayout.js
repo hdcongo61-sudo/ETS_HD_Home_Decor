@@ -25,13 +25,14 @@ export const FormActionsSticky = ({ children, className = "" }) => (
   <div
     className={`
       flex flex-wrap items-center justify-end gap-3 mt-6 pt-4 border-t border-[var(--ms-border)]
-      sticky bottom-0 left-0 right-0 z-10 bg-[var(--ms-white)] -mx-4 px-4 py-3
+      sticky left-0 right-0 z-10 bg-[var(--ms-white)] -mx-4 px-4 py-3
       md:static md:bg-transparent md:-mx-0 md:px-0 md:py-0 md:border-t md:mt-6
       safe-area-padding
       ${className}
     `}
     style={{
-      paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+      bottom: "var(--app-bottom-nav-offset, 0px)",
+      paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
     }}
   >
     {children}

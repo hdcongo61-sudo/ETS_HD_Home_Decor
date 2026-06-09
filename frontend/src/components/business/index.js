@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Search, X } from 'lucide-react';
+import { useModal } from '../../context/ModalContext';
 
 const cx = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -115,6 +116,13 @@ export const RightDetailPanel = React.memo(({
   onClose,
   labelledBy = 'right-detail-panel-title',
 }) => {
+  const { suppressGlobalModals } = useModal();
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    return suppressGlobalModals();
+  }, [isOpen, suppressGlobalModals]);
+
   if (!isOpen) return null;
 
   return (

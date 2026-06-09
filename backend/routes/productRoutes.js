@@ -12,7 +12,8 @@ const {
   getProductsBySupplier,
   getProductsByContainer,
   getProductsByWarehouse,
-  getProductSalesHistory
+  getProductSalesHistory,
+  importProducts
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
@@ -35,6 +36,9 @@ router.route('/by-warehouse')
 router.route('/')
   .get(protect, getProducts)
   .post(protect, admin, imageUpload.single('imageFile'), createProduct);
+
+router.route('/import')
+  .post(protect, admin, importProducts);
 
 router.route('/:id/stats')
   .get(protect,getProductStats);  

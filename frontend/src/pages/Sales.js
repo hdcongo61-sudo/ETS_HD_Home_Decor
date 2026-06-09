@@ -965,7 +965,11 @@ const Sales = () => {
     if (location.pathname === "/sales" && location.hash === "#sale-form") {
       const t = setTimeout(() => {
         const el = document.getElementById("sale-form");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (el) {
+          const navOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-nav-offset")) || 72;
+          const top = el.getBoundingClientRect().top + window.scrollY - navOffset - 12;
+          window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+        }
       }, 150);
       return () => clearTimeout(t);
     }
@@ -1877,7 +1881,7 @@ const Sales = () => {
         />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div id="sale-form">
+            <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
               <GlassCard>
                 <div className="p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -2802,7 +2806,7 @@ const Sales = () => {
 
             {/* Formulaire & Historique */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div id="sale-form">
+              <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
                 <GlassCard>
                   <div className="p-6">
                     <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
