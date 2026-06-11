@@ -330,7 +330,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         className={linkClass}
         onClick={closeMenu}
         isMobile={isMobile}
-        openInNewTab={!isMobile}
       />
       <NavIcon
         to="/bank"
@@ -348,7 +347,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         className={linkClass}
         onClick={closeMenu}
         isMobile={isMobile}
-        openInNewTab={!isMobile}
       />
 
       {/* === Clients === */}
@@ -368,7 +366,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         className={linkClass}
         onClick={closeMenu}
         isMobile={isMobile}
-        openInNewTab={!isMobile}
       />
       
       <NavIcon
@@ -387,7 +384,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             className={linkClass}
             onClick={closeMenu}
             isMobile={isMobile}
-            openInNewTab={!isMobile}
           />
           {/* Desktop: Dépenses then Autres dropdown */}
           {!isMobile && auth.isAdmin && (
@@ -407,7 +403,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               className={linkClass}
               onClick={closeMenu}
               isMobile={isMobile}
-              openInNewTab={!isMobile}
             />
           )}
           {!isMobile && (
