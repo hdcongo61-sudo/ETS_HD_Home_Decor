@@ -12,6 +12,7 @@ const {
 } = require('../utils/pushNotifications');
 
 const mongoose = require('mongoose');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -227,7 +228,7 @@ const getSales = asyncHandler(async (req, res) => {
       query = query
         .select('_id client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
         .populate('client', 'name email')
-        .populate('user', 'name email isAdmin role')
+        .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
         .populate({
           path: 'products.product',
           select: 'name container',
@@ -241,7 +242,7 @@ const getSales = asyncHandler(async (req, res) => {
           select: 'name costPrice container',
           model: 'Product'
         })
-        .populate('user', 'name');
+        .populate({ path: 'user', select: 'name', options: { skipTenantGuard: true } });
     }
 
     const sales = await query.lean();
@@ -321,7 +322,7 @@ const getUserSales = asyncHandler(async (req, res) => {
   }
 
   // Récupérer les ventes avec les données associées
-  const sales = await Sale.find({ user: userId })
+  const sales = await Sale.find({ ...tenantFilter(req), user: userId })
     .populate('client', 'name')
     .populate({
       path: 'products.product',
@@ -473,7 +474,7 @@ const createSale = asyncHandler(async (req, res) => {
       salePrice: Number(item.price)
     }));
     const uniqueProductIds = [...new Set(requestedItems.map((item) => item.productId).filter(Boolean))];
-    const productDocuments = await Product.find({ _id: { $in: uniqueProductIds } })
+    const productDocuments = await Product.find({ ...tenantFilter(req), _id: { $in: uniqueProductIds } })
       .select('_id name stock costPrice')
       .lean();
     const productMap = new Map(productDocuments.map((product) => [String(product._id), product]));
@@ -701,9 +702,9 @@ const addPayment = asyncHandler(async (req, res) => {
     await sale.populate([
       { path: 'client', select: 'name email phone' },
       { path: 'products.product', select: 'name price costPrice slug' },
-      { path: 'payments.user', select: 'name email isAdmin role' },
-      { path: 'modificationHistory.user', select: 'name email isAdmin role' },
-      { path: 'user', select: 'name email isAdmin role' }
+      { path: 'payments.user', select: 'name email isAdmin role', options: { skipTenantGuard: true } },
+      { path: 'modificationHistory.user', select: 'name email isAdmin role', options: { skipTenantGuard: true } },
+      { path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } }
     ]);
 
     notifyPaymentRecorded({
@@ -1705,14 +1706,16 @@ const getSaleById = asyncHandler(async (req, res) => {
       .populate({
         path: 'payments.user',
         select: 'name email isAdmin role',
-        model: 'User'
+        model: 'User',
+        options: { skipTenantGuard: true }
       })
       .populate({
         path: 'modificationHistory.user',
         select: 'name email isAdmin role',
-        model: 'User'
+        model: 'User',
+        options: { skipTenantGuard: true }
       })
-      .populate('user', 'name email isAdmin role')
+      .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
       .lean();
 
     const access = assertSaleAccess(sale, req.user);
@@ -1945,7 +1948,7 @@ const updateSale = asyncHandler(async (req, res) => {
     const existingSale = await Sale.findById(id)
       .populate('client')
       .populate('products.product')
-      .populate('user');
+      .populate({ path: 'user', options: { skipTenantGuard: true } });
 
     if (!existingSale) {
       return res.status(404).json({
@@ -2145,14 +2148,16 @@ const updateSale = asyncHandler(async (req, res) => {
       const populatedSale = await Sale.findById(updatedSaleDoc._id)
         .populate('client')
         .populate('products.product')
-        .populate('user', 'name email isAdmin role')
+        .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
         .populate({
           path: 'payments.user',
-          select: 'name email isAdmin role'
+          select: 'name email isAdmin role',
+          options: { skipTenantGuard: true }
         })
         .populate({
           path: 'modificationHistory.user',
-          select: 'name email isAdmin role'
+          select: 'name email isAdmin role',
+          options: { skipTenantGuard: true }
         });
 
       const saleObject = populatedSale.toObject();
@@ -2198,7 +2203,7 @@ const deleteSale = asyncHandler(async (req, res) => {
         path: 'products.product',
         select: 'name costPrice'
       })
-      .populate('user', 'name email')
+      .populate({ path: 'user', select: 'name email', options: { skipTenantGuard: true } })
       .session(session);
     if (!sale) {
       await session.abortTransaction();
@@ -2260,7 +2265,7 @@ const deleteSale = asyncHandler(async (req, res) => {
 // @route   GET /api/sales/deleted
 // @access  Private/Admin
 const getDeletedSales = asyncHandler(async (req, res) => {
-  const deletedSales = await DeletedSale.find({})
+  const deletedSales = await DeletedSale.find(tenantFilter(req))
     .populate('deletedBy', 'name email')
     .sort({ deletedAt: -1 })
     .lean();
@@ -2313,9 +2318,9 @@ const deletePayment = asyncHandler(async (req, res) => {
     await sale.populate([
       { path: 'client', select: 'name email phone' },
       { path: 'products.product', select: 'name price costPrice slug' },
-      { path: 'payments.user', select: 'name email isAdmin role' },
-      { path: 'modificationHistory.user', select: 'name email isAdmin role' },
-      { path: 'user', select: 'name email isAdmin role' }
+      { path: 'payments.user', select: 'name email isAdmin role', options: { skipTenantGuard: true } },
+      { path: 'modificationHistory.user', select: 'name email isAdmin role', options: { skipTenantGuard: true } },
+      { path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } }
     ]);
 
     res.status(200).json({
@@ -2345,8 +2350,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     const currentYear = now.getFullYear();
 
     const [overdue, upcoming, neverPaid, salaryEmployees] = await Promise.all([
-      Sale.find({
-        ...baseReminderFilter,
+      Sale.find({ ...tenantFilter(req), ...baseReminderFilter,
         'paymentReminder.isSet': true,
         'paymentReminder.reminderDate': { $lte: now },
         'paymentReminder.status': 'pending',
@@ -2357,8 +2361,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         .lean()
         .sort({ 'paymentReminder.reminderDate': 1 }),
 
-      Sale.find({
-        ...baseReminderFilter,
+      Sale.find({ ...tenantFilter(req), ...baseReminderFilter,
         'paymentReminder.isSet': true,
         'paymentReminder.reminderDate': {
           $gt: now,
@@ -2372,8 +2375,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         .lean()
         .sort({ 'paymentReminder.reminderDate': 1 }),
 
-      Sale.find({
-        ...baseReminderFilter,
+      Sale.find({ ...tenantFilter(req), ...baseReminderFilter,
         status: 'pending',
         $expr: {
           $eq: [{ $size: { $ifNull: ['$payments', []] } }, 0]
@@ -2385,8 +2387,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         .sort({ saleDate: 1 }),
 
       isAdminUser(req.user)
-        ? Employee.find({
-            isActive: { $ne: false },
+        ? Employee.find({ ...tenantFilter(req), isActive: { $ne: false },
             $expr: { $eq: [{ $dayOfMonth: '$hireDate' }, currentDay] },
             paySlips: {
               $not: {

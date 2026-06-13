@@ -1,10 +1,12 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const BankTransaction = require('../models/bankTransactionModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const buildFilters = (req) => {
   const filters = {
-    user: req.user?._id
+    ...tenantFilter(req),
+    user: req.user?._id,
   };
 
   if (req.query.type) {
@@ -91,10 +93,11 @@ const createBankTransaction = asyncHandler(async (req, res) => {
   }
 
   const transaction = await BankTransaction.create({
+    tenantId: req.tenantId,
     user: req.user?._id,
     type,
     amount: numericAmount,
-    label: trimmedLabel
+    label: trimmedLabel,
   });
 
   res.status(201).json(transaction);

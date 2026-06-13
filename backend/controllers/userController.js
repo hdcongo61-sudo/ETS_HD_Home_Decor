@@ -144,11 +144,12 @@ const normalizePermissions = (value) => {
   )];
 };
 
-// @desc    Get all users
+// @desc    Get all users (tenant-scoped)
 // @route   GET /api/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({})
+  const filter = req.user.isSuperAdmin ? {} : { tenantId: req.tenantId };
+  const users = await User.find(filter)
     .select('-password -loginAttempts')
     .populate('lastModifiedBy', 'name email')
     .populate('passwordModifiedBy', 'name email')
@@ -187,10 +188,22 @@ const getUserProfile = asyncHandler(async (req, res) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, isAdmin, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
 
-  const userExists = await User.findOne({ email });
+  // ── Plan limit: max users per tenant ──
+  if (req.tenantId && req.tenant) {
+    const Tenant = require('../models/tenantModel');
+    const currentCount = await User.countDocuments({ tenantId: req.tenantId });
+    const maxUsers = req.tenant.maxUsers || 3;
+    if (currentCount >= maxUsers) {
+      res.status(403);
+      throw new Error(`Limite atteinte : votre plan autorise ${maxUsers} utilisateur(s) maximum. Contactez le support pour augmenter la limite.`);
+    }
+  }
+
+  // Check email uniqueness within the same tenant
+  const userExists = await User.findOne({ email, tenantId: req.tenantId || null });
   if (userExists) {
     res.status(400);
-    throw new Error('User already exists');
+    throw new Error('Un utilisateur avec cet email existe déjà dans cette boutique.');
   }
 
   let photoUrl = req.body.photo;
@@ -199,6 +212,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.create({
+    tenantId: req.tenantId || null,
     name,
     email,
     password,
@@ -221,7 +235,7 @@ const registerUser = asyncHandler(async (req, res) => {
       permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin,
-      token: generateToken(user._id)
+      token: generateToken(user._id, user.tenantId),
     });
   } else {
     res.status(400);
@@ -369,16 +383,25 @@ const loginUser = asyncHandler(async (req, res) => {
     user.lockUntil = null;
     await user.save({ validateBeforeSave: false });
 
+    // Keep tenant lastActiveAt fresh (fire-and-forget)
+    if (user.tenantId) {
+      const Tenant = require('../models/tenantModel');
+      Tenant.findByIdAndUpdate(user.tenantId, { 'stats.lastActiveAt': now }, { timestamps: false })
+        .catch(() => {});
+    }
+
     return res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin || false,
       permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin,
-      token: generateToken(user._id)
+      tenantId: user.tenantId ? user.tenantId.toString() : null,
+      token: generateToken(user._id, user.tenantId),
     });
   }
 

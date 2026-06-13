@@ -30,6 +30,7 @@ const Modal = ({
   headerAction = null,
   icon = null,
   mobileFullscreen = false,
+  suppressGlobal = true,
   'aria-label': ariaLabel,
 }) => {
   const open = isOpen ?? show;
@@ -46,7 +47,10 @@ const Modal = ({
 
   useEffect(() => {
     if (!open) return;
-    const releaseSuppression = suppressGlobalModals();
+    // Page-level modals suppress the global FAB/modals. The global sale/payment
+    // modals themselves must opt out, otherwise opening one suppresses (and
+    // closes) itself via GlobalModals.
+    const releaseSuppression = suppressGlobal ? suppressGlobalModals() : null;
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose?.();
     };
@@ -58,14 +62,14 @@ const Modal = ({
     openModalCount += 1;
 
     return () => {
-      releaseSuppression();
+      releaseSuppression?.();
       document.removeEventListener('keydown', handleEscape);
       openModalCount = Math.max(0, openModalCount - 1);
       if (openModalCount === 0) {
         document.body.style.overflow = previousBodyOverflow;
       }
     };
-  }, [open, onClose, suppressGlobalModals]);
+  }, [open, onClose, suppressGlobalModals, suppressGlobal]);
 
   if (!open) return null;
 

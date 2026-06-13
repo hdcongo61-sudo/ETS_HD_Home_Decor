@@ -18,7 +18,7 @@ const Login = () => {
   const [passwordRequestMessage, setPasswordRequestMessage] = useState('');
   const [passwordRequestError, setPasswordRequestError] = useState('');
   const { setAuth } = useContext(AuthContext);
-  const { appSettings } = useAppSettings();
+  const { appSettings, refreshAppSettings } = useAppSettings();
   const navigate = useNavigate();
   const branding = appSettings.branding;
   const logoUrl = resolveAppLogo(branding.logoUrl);
@@ -55,6 +55,7 @@ const Login = () => {
 
       // Store token securely (consider using HTTP-only cookies in production)
       localStorage.setItem('token', data.token);
+      if (data.tenantId) localStorage.setItem('tenantId', data.tenantId);
 
       // Fetch user profile
       const { data: userData } = await api.get('/users/me');
@@ -64,11 +65,18 @@ const Login = () => {
         isAuthenticated: true,
         user: userData,
         isAdmin: userData.isAdmin,
-        isLoading: false
+        isSuperAdmin: Boolean(userData.isSuperAdmin),
+        tenantId: userData.tenantId || data.tenantId || null,
+        isLoading: false,
       });
 
+      // Reload branding so the menu/app immediately reflect THIS shop.
+      if (refreshAppSettings) refreshAppSettings();
+
       // Redirect based on role
-      if (userData.isAdmin) {
+      if (userData.isSuperAdmin) {
+        navigate('/super-admin');
+      } else if (userData.isAdmin) {
         navigate('/');
       } else {
         navigate(`/sales/user/${userData._id}`);

@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const saleSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Client',

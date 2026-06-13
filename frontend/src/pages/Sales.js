@@ -11,7 +11,9 @@ import React, {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
+  Award,
   BarChart3,
   Banknote,
   Boxes,
@@ -19,11 +21,17 @@ import {
   ChevronDown,
   Clock3,
   CreditCard,
+  Crown,
   Download,
   Gem,
   ReceiptText,
   Repeat2,
   TrendingUp,
+  TrendingDown,
+  Percent,
+  Coins,
+  Package,
+  UserPlus,
   Users,
   Wallet,
   X,
@@ -52,7 +60,6 @@ import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-share
 import AppLoader from "../components/AppLoader";
 import {
   Button,
-  ChartCard,
   EmptyState,
   KPICard,
   LoadingSkeleton,
@@ -118,75 +125,91 @@ const getSaleSellerName = (sale) => {
    Sous-composants UI
    =============================== */
 const GlassCard = ({ children, className = "" }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 6 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-    className={`ms-surface ${className}`}
-  >
-    {children}
-  </motion.div>
+  <div className={`fluent-card-filled ${className}`}>{children}</div>
 );
 
 const truncateLabel = (str, max = 14) =>
   typeof str === "string" && str.length > max ? str.slice(0, max) + "…" : str || "";
 const CHART_LABEL_FONT = { size: 10, family: "system-ui" };
 
+// Payment-method display (label + Fluent status tone) for the encaissements modal.
+const PAYMENT_METHOD_META = {
+  cash:         { label: "Espèces",      cls: "ms-status-success" },
+  especes:      { label: "Espèces",      cls: "ms-status-success" },
+  "espèces":    { label: "Espèces",      cls: "ms-status-success" },
+  mobile_money: { label: "Mobile Money", cls: "ms-status-neutral" },
+  mobile:       { label: "Mobile Money", cls: "ms-status-neutral" },
+  momo:         { label: "Mobile Money", cls: "ms-status-neutral" },
+  card:         { label: "Carte",        cls: "ms-status-neutral" },
+  carte:        { label: "Carte",        cls: "ms-status-neutral" },
+  bank:         { label: "Virement",     cls: "ms-status-neutral" },
+  virement:     { label: "Virement",     cls: "ms-status-neutral" },
+  cheque:       { label: "Chèque",       cls: "ms-status-neutral" },
+  "chèque":     { label: "Chèque",       cls: "ms-status-neutral" },
+};
+const paymentMethodMeta = (method) => {
+  const key = String(method || "").toLowerCase().trim();
+  return PAYMENT_METHOD_META[key] || { label: method || "Autre", cls: "ms-status-neutral" };
+};
+
 const StatCard = ({ title, value, icon, color = "bg-slate-100 text-slate-700" }) => (
   <KPICard title={title} value={value} context="Période sélectionnée" icon={React.isValidElement(icon) ? icon : null} />
 );
 
-const AdvancedMetricCard = ({ title, value, change, icon, color, description }) => (
-  <ChartCard title={title} description={description}>
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 mt-1">{value}</p>
-          {change !== undefined && (
-            <div
-              className={`flex items-center mt-1 text-sm ${
-                change > 0
-                  ? "text-emerald-700"
-                  : change < 0
-                  ? "text-rose-700"
-                  : "text-slate-500"
-              }`}
-            >
-              <svg
-                className={`w-4 h-4 mr-1 ${change > 0 ? "rotate-0" : "rotate-180"}`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              {change > 0 ? "+" : ""}
-              {typeof change === "number" ? change.toFixed(1) : change}%
-            </div>
-          )}
-        </div>
-        <div
-          className="ms-kpi-icon"
-        >
+const METRIC_TONES = {
+  brand:   { bg: 'var(--ms-blue-soft)',                  color: 'var(--colorBrandForeground1)' },
+  success: { bg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' },
+  warning: { bg: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' },
+  neutral: { bg: 'var(--colorNeutralBackground3)',       color: 'var(--colorNeutralForeground2)' },
+};
+
+const AdvancedMetricCard = ({ title, value, change, icon, description, tone = 'brand' }) => {
+  const t = METRIC_TONES[tone] || METRIC_TONES.brand;
+  const hasChange = change !== undefined && change !== null;
+  const up = Number(change) >= 0;
+  return (
+    <div className="fluent-card-filled p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: t.bg, color: t.color }}>
           {icon}
         </div>
+        {hasChange && (
+          <span className="fui-caption1-strong inline-flex items-center gap-0.5" style={{ color: up ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>
+            {up ? '↑' : '↓'} {up ? '+' : ''}{typeof change === 'number' ? change.toFixed(1) : change}%
+          </span>
+        )}
       </div>
-  </ChartCard>
-);
+      <p className="ms-kpi-title mt-3">{title}</p>
+      <p className="ms-kpi-value" style={{ fontSize: 22 }}>{value}</p>
+      {description && <p className="ms-kpi-context">{description}</p>}
+    </div>
+  );
+};
+
+// Stable French segment metadata (label, brand-aligned color, order).
+const SEGMENT_META = {
+  VIP:      { label: 'VIP',      color: '#7c3aed' },
+  Fidèle:   { label: 'Fidèle',   color: '#0f6cbd' },
+  Régulier: { label: 'Régulier', color: '#0e7490' },
+  Nouveau:  { label: 'Nouveau',  color: '#107c10' },
+  Inactif:  { label: 'Inactif',  color: '#a19f9d' },
+  Perdu:    { label: 'Perdu',    color: '#c50f1f' },
+};
+const segmentColor = (seg) => SEGMENT_META[seg]?.color || '#8a8886';
 
 const ClientSegmentationChart = ({ segmentation }) => {
-  const segments = segmentation.reduce((acc, client) => {
-    acc[client.segment] = (acc[client.segment] || 0) + 1;
+  const counts = segmentation.reduce((acc, c) => {
+    acc[c.segment] = (acc[c.segment] || 0) + 1;
     return acc;
   }, {});
+  const labels = Object.keys(counts);
   const data = {
-    labels: Object.keys(segments),
+    labels,
     datasets: [
       {
-        data: Object.values(segments),
-        backgroundColor: ["#a78bfa", "#34d399", "#60a5fa", "#fbbf24", "#f87171"],
+        data: labels.map((l) => counts[l]),
+        backgroundColor: labels.map(segmentColor),
+        borderWidth: 0,
       },
     ],
   };
@@ -197,7 +220,8 @@ const ClientSegmentationChart = ({ segmentation }) => {
         options={{
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom" } },
+          cutout: "62%",
+          plugins: { legend: { position: "bottom", labels: { font: CHART_LABEL_FONT, usePointStyle: true, padding: 14 } } },
         }}
       />
     </div>
@@ -211,7 +235,9 @@ const ProductPerformanceChart = ({ products }) => {
       {
         label: "Revenus (CFA)",
         data: products.slice(0, 6).map((p) => p.quantity * (p.product?.price || 0)),
-        backgroundColor: "rgba(59, 130, 246, .85)",
+        backgroundColor: "#0f6cbd",
+        borderRadius: 6,
+        maxBarThickness: 38,
       },
     ],
   };
@@ -224,11 +250,124 @@ const ProductPerformanceChart = ({ products }) => {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { maxRotation: 45, minRotation: 0, font: CHART_LABEL_FONT, maxTicksLimit: 8 } },
+            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0, font: CHART_LABEL_FONT, maxTicksLimit: 8 } },
             y: { ticks: { font: CHART_LABEL_FONT } },
           },
         }}
       />
+    </div>
+  );
+};
+
+const SEGMENT_ICONS = {
+  VIP: Crown,
+  Fidèle: Award,
+  Régulier: Repeat2,
+  Nouveau: UserPlus,
+  Inactif: Clock3,
+  Perdu: AlertTriangle,
+};
+
+const formatRecency = (days) => {
+  if (days == null) return "—";
+  if (days <= 0) return "Aujourd'hui";
+  if (days === 1) return "Hier";
+  if (days < 30) return `il y a ${days} j`;
+  if (days < 365) return `il y a ${Math.round(days / 30)} mois`;
+  return `il y a ${Math.round(days / 365)} an(s)`;
+};
+
+const ClientAnalysisPanel = ({ segmentation, navigate }) => {
+  const totalClients = segmentation.length;
+  const grandSpent = segmentation.reduce((s, c) => s + (c.totalSpent || 0), 0);
+
+  const bySegment = segmentation.reduce((acc, c) => {
+    const k = c.segment || "Nouveau";
+    if (!acc[k]) acc[k] = { count: 0, spent: 0 };
+    acc[k].count += 1;
+    acc[k].spent += c.totalSpent || 0;
+    return acc;
+  }, {});
+  const orderedSegments = Object.keys(SEGMENT_META).filter((s) => bySegment[s]);
+  const topClients = segmentation.slice(0, 8);
+
+  return (
+    <div className="space-y-5">
+      {/* Cartes récapitulatives par segment */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {orderedSegments.map((seg) => {
+          const Icon = SEGMENT_ICONS[seg] || Users;
+          const m = bySegment[seg];
+          const share = totalClients ? Math.round((m.count / totalClients) * 100) : 0;
+          const color = segmentColor(seg);
+          return (
+            <div key={seg} className="fluent-card-filled p-4">
+              <div className="flex items-center justify-between">
+                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: `${color}1f`, color }}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{share}%</span>
+              </div>
+              <p className="ms-kpi-title mt-3">{SEGMENT_META[seg]?.label || seg}</p>
+              <p className="ms-kpi-value" style={{ fontSize: 22 }}>{m.count}</p>
+              <p className="ms-kpi-context">{Math.round(m.spent).toLocaleString("fr-FR")} CFA</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
+        {/* Répartition */}
+        <div className="fluent-card-filled p-5 lg:col-span-2">
+          <h3 className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Répartition des segments</h3>
+          <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            {totalClients} clients · {Math.round(grandSpent).toLocaleString("fr-FR")} CFA
+          </p>
+          <ClientSegmentationChart segmentation={segmentation} />
+        </div>
+
+        {/* Meilleurs clients */}
+        <div className="fluent-card-filled p-5 lg:col-span-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Meilleurs clients</h3>
+            <button onClick={() => navigate("/clients")} className="ms-button ms-button-secondary ms-button-sm">
+              Tous les clients →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  <th className="pb-2 font-medium">Client</th>
+                  <th className="pb-2 font-medium text-right">Total dépensé</th>
+                  <th className="pb-2 font-medium text-right hidden sm:table-cell">Achats</th>
+                  <th className="pb-2 font-medium text-right">Dernier achat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topClients.map((c, i) => (
+                  <tr key={i} className="border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                    <td className="py-2.5 pr-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: segmentColor(c.segment) }} />
+                        <div className="min-w-0">
+                          <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{c.client?.name || "Client"}</p>
+                          <span className="fui-caption1" style={{ color: segmentColor(c.segment) }}>{SEGMENT_META[c.segment]?.label || c.segment}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-right fui-body1-strong whitespace-nowrap" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      {Math.round(c.totalSpent).toLocaleString("fr-FR")}
+                    </td>
+                    <td className="py-2.5 text-right hidden sm:table-cell" style={{ color: 'var(--colorNeutralForeground2)' }}>{c.purchaseCount}</td>
+                    <td className="py-2.5 text-right fui-caption1 whitespace-nowrap" style={{ color: 'var(--colorNeutralForeground3)' }}>{formatRecency(c.recency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -272,429 +411,281 @@ const ProfitAnalysis = () => {
     fetchProfitData();
   }, [fetchProfitData]);
 
-  const handleFilterChange = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
+  const setFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
+  const resetFilters = () => setFilters({ period: "month", startDate: "", endDate: "", category: "", container: "" });
 
-  const topProductsTableRef = useRef(null);
-  const categoryTableRef = useRef(null);
-  useResponsiveTable(topProductsTableRef, [profitData?.topProducts || []]);
-  useResponsiveTable(categoryTableRef, [profitData?.profitByCategory || []]);
+  const cfa = (v) => `${Math.round(Number(v) || 0).toLocaleString("fr-FR")} CFA`;
+  const pctOf = (v) => `${Number(v || 0).toFixed(1)} %`;
 
-  if (loading)
+  const PERIODS = [
+    { value: "day", label: "Jour" },
+    { value: "week", label: "Semaine" },
+    { value: "month", label: "Mois" },
+    { value: "year", label: "Année" },
+  ];
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500" />
+      <div className="space-y-3">
+        <LoadingSkeleton rows={6} />
       </div>
     );
+  }
 
-  if (!profitData)
+  if (!profitData) {
     return (
-      <GlassCard>
-        <div className="text-center p-6 text-red-600">
-          Impossible de charger l’analyse des bénéfices
-        </div>
-      </GlassCard>
+      <EmptyState title="Analyse indisponible" description="Impossible de charger l'analyse des bénéfices." />
     );
+  }
 
-  // generalStats reserved for future use
-  // eslint-disable-next-line no-unused-vars
-  const { periodAnalytics, topProducts, generalStats, profitByCategory, profitByContainer = [] } = profitData;
+  const { periodAnalytics = [], topProducts = [], generalStats = {}, profitByCategory = [], profitByContainer = [] } = profitData;
+  const gs = generalStats;
 
-  const profitTrendChart = {
-    labels: periodAnalytics.map((item) =>
-      filters.period === "day"
-        ? `Jour ${item._id}`
-        : filters.period === "week"
-        ? `Semaine ${item._id}`
-        : filters.period === "month"
-        ? `Mois ${item._id}`
-        : `Année ${item._id}`
-    ),
+  const trendChart = {
+    labels: periodAnalytics.map((i) => i._id),
     datasets: [
       {
-        label: "Bénéfice (CFA)",
-        data: periodAnalytics.map((i) => i.totalProfit || 0),
-        borderColor: "rgb(34,197,94)",
-        backgroundColor: "rgba(34,197,94,.12)",
-        fill: true,
-        tension: 0.35,
+        type: "bar",
+        label: "Chiffre d'affaires",
+        data: periodAnalytics.map((i) => i.totalSales || 0),
+        backgroundColor: "rgba(15,108,189,0.18)",
+        borderColor: "rgba(15,108,189,0.5)",
+        borderWidth: 1,
+        yAxisID: "y",
+        order: 2,
       },
       {
-        label: "Chiffre d'affaires (CFA)",
-        data: periodAnalytics.map((i) => i.totalSales || 0),
-        borderColor: "rgb(59,130,246)",
-        backgroundColor: "rgba(59,130,246,.12)",
-        fill: true,
+        type: "bar",
+        label: "Bénéfice",
+        data: periodAnalytics.map((i) => i.totalProfit || 0),
+        backgroundColor: "rgba(16,124,16,0.55)",
+        borderColor: "rgb(16,124,16)",
+        borderWidth: 1,
+        yAxisID: "y",
+        order: 1,
+      },
+      {
+        type: "line",
+        label: "Marge (%)",
+        data: periodAnalytics.map((i) => i.margin || 0),
+        borderColor: "rgb(234,88,12)",
+        backgroundColor: "rgb(234,88,12)",
         tension: 0.35,
+        yAxisID: "y1",
+        order: 0,
+        pointRadius: 2,
       },
     ],
   };
 
   const topProductsChart = {
-    labels: topProducts.slice(0, 8).map((p) => truncateLabel(p.productName, 12)),
+    labels: topProducts.slice(0, 8).map((p) => truncateLabel(p.productName, 14)),
     datasets: [
       {
         label: "Bénéfice (CFA)",
         data: topProducts.slice(0, 8).map((p) => p.totalProfit || 0),
-        backgroundColor: "rgba(34,197,94,.9)",
-        borderColor: "rgb(34,197,94)",
-        borderWidth: 1,
+        backgroundColor: "rgba(16,124,16,0.8)",
+        borderRadius: 6,
       },
     ],
   };
 
-  const profitByCategoryChart = {
-    labels: profitByCategory.map((c) => c._id || "Non catégorisé"),
+  const categoryChart = {
+    labels: profitByCategory.slice(0, 6).map((c) => c._id || "Non catégorisé"),
     datasets: [
       {
-        label: "Bénéfice (CFA)",
-        data: profitByCategory.map((c) => c.totalProfit || 0),
-        backgroundColor: [
-          "rgba(99,102,241,.85)",
-          "rgba(34,197,94,.85)",
-          "rgba(59,130,246,.85)",
-          "rgba(234,179,8,.85)",
-          "rgba(239,68,68,.85)",
-        ],
+        data: profitByCategory.slice(0, 6).map((c) => c.totalProfit || 0),
+        backgroundColor: ["#0F6CBD", "#107C10", "#EA580C", "#7C3AED", "#D13438", "#605E5C"],
       },
     ],
   };
 
+  const kpis = [
+    { title: "Chiffre d'affaires", value: cfa(gs.totalRevenue), icon: <Wallet className="h-4 w-4" />, tone: "neutral", ctx: `${(gs.saleCount || 0).toLocaleString("fr-FR")} vente(s)` },
+    { title: "Coût des marchandises", value: cfa(gs.totalCost), icon: <Package className="h-4 w-4" />, tone: "neutral", ctx: "COGS sur la période" },
+    { title: "Bénéfice net", value: cfa(gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: `Moy. ${cfa(gs.averageProfit)} / vente` },
+    { title: "Marge nette", value: pctOf(gs.averageMargin), icon: <Percent className="h-4 w-4" />, tone: gs.averageMargin >= 0 ? "success" : "danger", ctx: "Bénéfice ÷ CA" },
+    { title: "Ventes rentables", value: `${gs.profitableSales || 0}/${gs.saleCount || 0}`, icon: <CheckCircle2 className="h-4 w-4" />, tone: "success", ctx: "Bénéfice positif" },
+    { title: "Ventes à perte", value: (gs.lossSales || 0).toLocaleString("fr-FR"), icon: <TrendingDown className="h-4 w-4" />, tone: (gs.lossSales || 0) > 0 ? "danger" : "neutral", ctx: "Vendues sous le coût" },
+  ];
+
   return (
-    
-    <div className="space-y-6">
-      
-      {/* Filtres */}
-      <GlassCard>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Filtres d’analyse
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Période
-              </label>
-              <select
-                value={filters.period}
-                onChange={(e) => handleFilterChange("period", e.target.value)}
-                className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
-              >
-                <option value="day">Jour</option>
-                <option value="week">Semaine</option>
-                <option value="month">Mois</option>
-                <option value="year">Année</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date début
-              </label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date fin
-              </label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-            {containers.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Conteneur
-                </label>
-                <select
-                  value={filters.container}
-                  onChange={(e) => handleFilterChange("container", e.target.value)}
-                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Tous</option>
-                  {containers.map((c) => (
-                    <option key={c._id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="flex items-end">
-              <button
-                onClick={() =>
-                  setFilters({ period: "month", startDate: "", endDate: "", category: "", container: "" })
-                }
-                className="w-full p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-              >
-                Réinitialiser
-              </button>
-            </div>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <span className="fui-caption1-strong uppercase mr-1" style={{ color: "var(--colorNeutralForeground3)", letterSpacing: "0.06em" }}>Période</span>
+        <div className="flex flex-wrap gap-2">
+          {PERIODS.map((p) => (
+            <button key={p.value} onClick={() => setFilter("period", p.value)} className={`ms-button ms-button-sm ${filters.period === p.value ? "ms-button-primary" : "ms-button-secondary"}`}>{p.label}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          <input type="date" value={filters.startDate} onChange={(e) => setFilter("startDate", e.target.value)} className="form-control w-auto text-sm min-h-[36px]" title="Date début" />
+          <input type="date" value={filters.endDate} onChange={(e) => setFilter("endDate", e.target.value)} className="form-control w-auto text-sm min-h-[36px]" title="Date fin" />
+          {containers.length > 0 && (
+            <select value={filters.container} onChange={(e) => setFilter("container", e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
+              <option value="">Tous conteneurs</option>
+              {containers.map((c) => <option key={c._id} value={c.name}>{c.name}</option>)}
+            </select>
+          )}
+          {(filters.startDate || filters.endDate || filters.container || filters.period !== "month") && (
+            <button onClick={resetFilters} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"><X size={12} /> Réinitialiser</button>
+          )}
+        </div>
+      </div>
+
+      {/* Coverage note */}
+      {gs.detailCoverage != null && gs.detailCoverage < 95 && (
+        <div className="rounded-[var(--radiusLarge)] px-4 py-2.5 fui-caption1" style={{ background: "var(--colorStatusWarningBackground1)", color: "var(--colorStatusWarningForeground1)", border: "1px solid var(--colorStatusWarningStroke1)" }}>
+          Le détail par produit/catégorie couvre {gs.detailCoverage}% du chiffre d'affaires (certaines anciennes ventes n'ont pas le détail de marge enregistré).
+        </div>
+      )}
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {kpis.map((k) => (
+          <KPICard key={k.title} title={k.title} value={k.value} context={k.ctx} icon={k.icon} tone={k.tone} />
+        ))}
+      </div>
+
+      {/* Trend + top products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Évolution — CA, bénéfice & marge</p>
+          <div className="h-72">
+            <Bar
+              data={trendChart}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: { legend: { position: "top", labels: { font: CHART_LABEL_FONT, usePointStyle: true } } },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${Math.round(v / 1000)}k` } },
+                  y1: { beginAtZero: true, position: "right", grid: { display: false }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${v}%` } },
+                  x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } },
+                },
+              }}
+            />
           </div>
         </div>
-      </GlassCard>
 
-      {/* KPIs Bénéfices */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Bénéfice total"
-          value={`${(profitData.generalStats.totalProfit || 0).toLocaleString("fr-FR")} CFA`}
-          icon={<Banknote className="h-5 w-5" />}
-          color="bg-emerald-50 text-emerald-700"
-        />
-        <StatCard
-          title="Marge moyenne"
-          value={`${(profitData.generalStats.averageMargin || 0).toFixed(2)}%`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          color="bg-sky-50 text-sky-700"
-        />
-        <StatCard
-          title="Bénéfice moyen / vente"
-          value={`${(profitData.generalStats.averageProfit || 0).toLocaleString("fr-FR")} CFA`}
-          icon={<BarChart3 className="h-5 w-5" />}
-          color="bg-violet-50 text-violet-700"
-        />
-        <StatCard
-          title="Ventes rentables"
-          value={`${profitData.generalStats.profitableSales || 0}/${profitData.generalStats.saleCount || 0}`}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          color="bg-teal-50 text-teal-700"
-        />
-      </div>
-
-      {/* Graphiques bénéfices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GlassCard>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Évolution des bénéfices
-            </h3>
-            <div className="h-64">
-              <Line
-                data={profitTrendChart}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: "top" } },
-                  scales: {
-                    y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } },
-                    x: { grid: { display: false } },
-                  },
-                }}
-              />
-            </div>
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Top produits rentables</p>
+          <div className="h-72">
+            <Bar
+              data={topProductsChart}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: "y",
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${Math.round(v / 1000)}k` } },
+                  y: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } },
+                },
+              }}
+            />
           </div>
-        </GlassCard>
-
-                <GlassCard>
-                  <div className="p-4 sm:p-6">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
-                      Top produits rentables
-                    </h3>
-                    <div className="h-48 sm:h-64 min-h-[180px]">
-                      <Bar
-                        data={topProductsChart}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: { legend: { display: false } },
-                          scales: {
-                            y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
-                            x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT, maxRotation: 45, minRotation: 0, maxTicksLimit: 8 } },
-                          },
-                        }}
-                      />
-                    </div>
-                  </div>
-                </GlassCard>
+        </div>
       </div>
 
-      {/* Détails produits & par catégorie */}
-      <GlassCard>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Détail des produits les plus rentables
-          </h3>
-          <div className="overflow-visible md:overflow-x-auto">
-            <table ref={topProductsTableRef} className="w-full responsive-table">
-              <thead className="bg-gray-50">
+      {/* Top products table */}
+      <div className="fluent-card-filled overflow-hidden">
+        <div className="px-4 py-3 border-b" style={{ borderColor: "var(--colorNeutralStroke2)" }}>
+          <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Détail des produits les plus rentables</p>
+        </div>
+        {topProducts.length === 0 ? (
+          <EmptyState title="Aucune donnée" description="Aucune vente détaillée sur la période." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead style={{ background: "var(--colorNeutralBackground2)" }}>
                 <tr>
-                  <th className="p-3 text-left text-sm font-medium text-gray-600">Produit</th>
-                  <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Qté</th>
-                  <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">CA</th>
-                  <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Coût</th>
-                  <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Bénéfice</th>
-                  <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">Marge</th>
+                  {["Produit", "Catégorie", "Qté", "CA", "Coût", "Bénéfice", "Marge"].map((h, i) => (
+                    <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? "text-right" : "text-left"}`} style={{ color: "var(--colorNeutralForeground3)", borderBottom: "1px solid var(--colorNeutralStroke2)" }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="md:divide-y md:divide-gray-100">
-                {profitData.topProducts.slice(0, 10).map((p, i) => (
-                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 md:p-4 responsive-table__product-cell">
-                      <div className="md:min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{p.productName}</p>
-                        {/* Mobile: card-style stats */}
-                        <div className="mt-3 md:hidden rounded-xl bg-gray-50/80 border border-gray-100 p-3 space-y-2">
-                          <div className="flex justify-between items-baseline gap-2">
-                            <span className="text-xs text-gray-500">Qté</span>
-                            <span className="text-sm font-medium text-gray-900 tabular-nums">{p.totalQuantity}</span>
-                          </div>
-                          <div className="flex justify-between items-baseline gap-2">
-                            <span className="text-xs text-gray-500">CA</span>
-                            <span className="text-sm tabular-nums text-gray-900">{(p.totalRevenue || 0).toLocaleString("fr-FR")} CFA</span>
-                          </div>
-                          <div className="flex justify-between items-baseline gap-2">
-                            <span className="text-xs text-gray-500">Coût</span>
-                            <span className="text-sm tabular-nums text-gray-900">{(p.totalCost || 0).toLocaleString("fr-FR")} CFA</span>
-                          </div>
-                          <div className="flex justify-between items-baseline gap-2">
-                            <span className="text-xs text-gray-500">Bénéfice</span>
-                            <span className="text-sm font-semibold text-green-600 tabular-nums">{(p.totalProfit || 0).toLocaleString("fr-FR")} CFA</span>
-                          </div>
-                          <div className="flex justify-between items-baseline gap-2">
-                            <span className="text-xs text-gray-500">Marge</span>
-                            <span className="text-sm font-semibold text-blue-600 tabular-nums">{(p.profitMargin || 0).toFixed(2)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
-                      {p.totalQuantity}
-                    </td>
-                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
-                      {(p.totalRevenue || 0).toLocaleString("fr-FR")} CFA
-                    </td>
-                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right tabular-nums">
-                      {(p.totalCost || 0).toLocaleString("fr-FR")} CFA
-                    </td>
-                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right font-semibold text-green-600 tabular-nums">
-                      {(p.totalProfit || 0).toLocaleString("fr-FR")} CFA
-                    </td>
-                    <td className="hidden md:table-cell p-3 md:p-4 text-sm text-right font-semibold text-blue-600 tabular-nums">
-                      {(p.profitMargin || 0).toFixed(2)}%
-                    </td>
+              <tbody>
+                {topProducts.map((p) => (
+                  <tr key={p._id} style={{ borderBottom: "1px solid var(--colorNeutralStroke3)" }}>
+                    <td className="px-3 py-2 fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{p.productName}</td>
+                    <td className="px-3 py-2 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>{p.category || "Non catégorisé"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{(p.totalQuantity || 0).toLocaleString("fr-FR")}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(p.totalRevenue)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(p.totalCost)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(p.totalProfit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(p.profitMargin)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      </GlassCard>
+        )}
+      </div>
 
-      {profitData.profitByCategory.length > 0 && (
-        <GlassCard>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Bénéfices par catégorie
-            </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="h-64">
-                <Bar
-                  data={profitByCategoryChart}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                  }}
-                />
-              </div>
-              <div className="overflow-visible md:overflow-x-auto">
-                <table ref={categoryTableRef} className="w-full responsive-table">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="p-3 text-left text-sm font-medium text-gray-600">
-                        Catégorie
-                      </th>
-                      <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">
-                        Bénéfice
-                      </th>
-                      <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">
-                        Marge
-                      </th>
-                      <th className="hidden md:table-cell p-3 text-right text-sm font-medium text-gray-600">
-                        Ventes
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="md:divide-y md:divide-gray-100">
-                    {profitData.profitByCategory.map((c, i) => (
-                      <tr key={i} className="border-b border-gray-100">
-                        <td className="p-3 text-sm font-medium text-gray-900">
-                          {c._id || "Non catégorisé"}
-                          <div className="mt-2 text-xs text-gray-500 space-y-1 md:hidden">
-                            <p>Bénéfice: {(c.totalProfit || 0).toLocaleString("fr-FR")} CFA</p>
-                            <p>Marge: {(c.profitMargin || 0).toFixed(2)}%</p>
-                            <p>Ventes: {c.saleCount}</p>
-                          </div>
-                        </td>
-                        <td className="hidden md:table-cell p-3 text-sm font-semibold text-green-600 md:text-right">
-                          {(c.totalProfit || 0).toLocaleString("fr-FR")} CFA
-                        </td>
-                        <td className="hidden md:table-cell p-3 text-sm text-blue-600 md:text-right">
-                          {(c.profitMargin || 0).toFixed(2)}%
-                        </td>
-                        <td className="hidden md:table-cell p-3 text-sm text-gray-700 md:text-right">
-                          {c.saleCount}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Bénéfices par conteneur */}
-      {profitByContainer.length > 0 && (
-        <GlassCard>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Gains par conteneur
-            </h3>
+      {/* Category breakdown */}
+      {profitByCategory.length > 0 && (
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Bénéfices par catégorie</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="h-64"><Doughnut data={categoryChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { font: CHART_LABEL_FONT } } } }} /></div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead style={{ background: "var(--colorNeutralBackground2)" }}>
                   <tr>
-                    <th className="p-3 text-left font-medium text-gray-600">Conteneur</th>
-                    <th className="p-3 text-right font-medium text-gray-600">Chiffre d'affaires</th>
-                    <th className="p-3 text-right font-medium text-gray-600">Coût</th>
-                    <th className="p-3 text-right font-medium text-gray-600">Bénéfice</th>
-                    <th className="p-3 text-right font-medium text-gray-600">Marge</th>
-                    <th className="p-3 text-right font-medium text-gray-600">Qté</th>
+                    {["Catégorie", "CA", "Bénéfice", "Marge"].map((h, i) => (
+                      <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 1 ? "text-right" : "text-left"}`} style={{ color: "var(--colorNeutralForeground3)", borderBottom: "1px solid var(--colorNeutralStroke2)" }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {profitByContainer.map((c, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="p-3 font-medium text-gray-900">{c._id || "Non défini"}</td>
-                      <td className="p-3 text-right tabular-nums text-gray-800">
-                        {(c.totalRevenue || 0).toLocaleString("fr-FR")} CFA
-                      </td>
-                      <td className="p-3 text-right tabular-nums text-gray-600">
-                        {(c.totalCost || 0).toLocaleString("fr-FR")} CFA
-                      </td>
-                      <td className="p-3 text-right tabular-nums font-semibold text-green-600">
-                        {(c.totalProfit || 0).toLocaleString("fr-FR")} CFA
-                      </td>
-                      <td className="p-3 text-right tabular-nums text-blue-600">
-                        {(c.profitMargin || 0).toFixed(1)}%
-                      </td>
-                      <td className="p-3 text-right tabular-nums text-gray-700">
-                        {c.totalQuantity}
-                      </td>
+                <tbody>
+                  {profitByCategory.map((c) => (
+                    <tr key={c._id} style={{ borderBottom: "1px solid var(--colorNeutralStroke3)" }}>
+                      <td className="px-3 py-2 fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{c._id || "Non catégorisé"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(c.totalRevenue)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(c.totalProfit)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(c.profitMargin)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-        </GlassCard>
+        </div>
+      )}
+
+      {/* Container breakdown */}
+      {profitByContainer.length > 0 && (
+        <div className="fluent-card-filled overflow-hidden">
+          <div className="px-4 py-3 border-b" style={{ borderColor: "var(--colorNeutralStroke2)" }}>
+            <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Gains par conteneur</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead style={{ background: "var(--colorNeutralBackground2)" }}>
+                <tr>
+                  {["Conteneur", "CA", "Coût", "Bénéfice", "Marge", "Qté"].map((h, i) => (
+                    <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 1 ? "text-right" : "text-left"}`} style={{ color: "var(--colorNeutralForeground3)", borderBottom: "1px solid var(--colorNeutralStroke2)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {profitByContainer.map((c) => (
+                  <tr key={c._id} style={{ borderBottom: "1px solid var(--colorNeutralStroke3)" }}>
+                    <td className="px-3 py-2 fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{c._id || "Non défini"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(c.totalRevenue)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(c.totalCost)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(c.totalProfit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(c.profitMargin)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{(c.totalQuantity || 0).toLocaleString("fr-FR")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1092,7 +1083,7 @@ const Sales = () => {
     [setMessage]
   );
 
-  // Essaye d'utiliser l’endpoint /sales/delivery-stats sinon calcule localement
+  // Essaye d'utiliser l'endpoint /sales/delivery-stats sinon calcule localement
   const hydrateDeliveryStats = useCallback(
     async (salesArray) => {
       try {
@@ -1737,40 +1728,31 @@ const Sales = () => {
     quickFilters.highProfit;
 
   const QuickFilterBar = () => (
-    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:p-4 mb-2">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <span className="text-xs font-medium text-slate-500 uppercase w-full sm:w-auto sm:mr-1">
-          Filtres rapides
-        </span>
-        {quickFilterConfig.map(({ key, label, icon: Icon, active, activeClass }) => (
+    <div className="ms-command-bar flex-wrap gap-y-2">
+      <span className="fui-caption1-strong uppercase shrink-0" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+        Filtres rapides
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {quickFilterConfig.map(({ key, label, icon: Icon, active }) => (
           <button
             key={key}
             type="button"
             onClick={() => setQuickFilters((p) => ({ ...p, [key]: !p[key] }))}
-            className={`inline-flex items-center gap-2 min-h-[2.75rem] px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
-              active ? activeClass : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300"
-            }`}
+            className={`ms-button ms-button-sm flex items-center gap-1.5 ${active ? 'ms-button-primary' : 'ms-button-secondary'}`}
             aria-pressed={active}
           >
-            <Icon className="h-4 w-4" aria-hidden />
+            <Icon className="h-3.5 w-3.5" aria-hidden />
             <span>{label}</span>
           </button>
         ))}
         {hasActiveFilter && (
           <button
             type="button"
-            onClick={() =>
-              setQuickFilters({
-                highValue: false,
-                latePayments: false,
-                recurring: false,
-                highProfit: false,
-              })
-            }
-            className="inline-flex items-center gap-2 min-h-[2.75rem] px-3 py-2 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors sm:ml-auto"
+            onClick={() => setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false })}
+            className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5 ml-auto"
             aria-label="Effacer tous les filtres"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <X className="h-3.5 w-3.5" aria-hidden />
             Effacer
           </button>
         )}
@@ -1819,15 +1801,19 @@ const Sales = () => {
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const content = (
-            <div className={`rounded-2xl border p-4 ${card.color} ${card.clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all' : ''}`}>
-              <p className="text-xs font-semibold uppercase opacity-80">{card.label}</p>
-              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-950">{card.value}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">{card.helper}</p>
-              {card.clickable && (
-                <p className="mt-2 text-[11px] font-medium text-blue-600 underline underline-offset-2">
-                  Voir le détail →
-                </p>
-              )}
+            <div
+              className={`ms-kpi-card h-full ${card.clickable ? 'cursor-pointer fluent-card-interactive' : ''}`}
+            >
+              <div>
+                <p className="ms-kpi-title">{card.label}</p>
+                <p className="ms-kpi-value" style={{ fontSize: 18 }}>{card.value}</p>
+                <p className="ms-kpi-context">{card.helper}</p>
+                {card.clickable && (
+                  <p className="mt-2 fui-caption1" style={{ color: 'var(--colorBrandForeground1)' }}>
+                    Voir le détail →
+                  </p>
+                )}
+              </div>
             </div>
           );
           return card.clickable ? (
@@ -1842,7 +1828,7 @@ const Sales = () => {
     );
   };
 
-  /* ========= Écrans d’attente / erreur ========= */
+  /* ========= Écrans d'attente / erreur ========= */
   if (loading) {
     return (
       <Workspace>
@@ -1883,7 +1869,7 @@ const Sales = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
               <GlassCard>
-                <div className="p-6">
+                <div className="p-5 sm:p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
                     <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
                   </Suspense>
@@ -1893,32 +1879,22 @@ const Sales = () => {
 
             <GlassCard>
               <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
-                  <h2 id="history-heading-main" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
-                    <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-700 shrink-0" aria-hidden="true">
-                      <ReceiptText className="h-5 w-5" />
-                    </span>
+                <div className="ms-command-bar mb-5 flex-wrap gap-y-2">
+                  <h2 id="history-heading-main" className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    <span className="ms-kpi-icon shrink-0" aria-hidden="true"><ReceiptText className="h-4 w-4" /></span>
                     Historique des Ventes
                   </h2>
-                  <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Actions historique">
-                    <button
-                      type="button"
-                      onClick={() => setShowHistoryModal(true)}
-                      className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    >
+                  <div className="flex flex-wrap items-center gap-2 ml-auto">
+                    <button type="button" onClick={() => setShowHistoryModal(true)} className="ms-button ms-button-secondary ms-button-sm">
                       {historyLinkLabel}
                     </button>
                     {isAdmin && (
-                      <Link
-                        to="/sales/deleted"
-                        className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
-                        {...desktopLinkProps}
-                      >
+                      <Link to="/sales/deleted" className="ms-button ms-button-danger ms-button-sm" {...desktopLinkProps}>
                         Ventes supprimées
                       </Link>
                     )}
-                  </nav>
-                </header>
+                  </div>
+                </div>
 
                 {/* Filtres — collapsible on mobile, always visible on sm+ */}
                 <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 overflow-hidden mb-5">
@@ -1984,15 +1960,13 @@ const Sales = () => {
 
                 <HistoryStatsSummary />
 
-                <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm font-medium text-gray-600">
-                    Export des ventes affichées: <span className="font-semibold text-gray-950">{filteredSales.length}</span>
+                <div className="ms-command-bar flex-wrap gap-y-2 mb-4">
+                  <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <span className="fui-body1-strong">{filteredSales.length}</span> ventes affichées
                   </p>
-                  <SalesListExportButtons
-                    sales={filteredSales}
-                    filenamePrefix="ventes-filtrees"
-                    label="Ventes filtrées"
-                  />
+                  <div className="ml-auto">
+                    <SalesListExportButtons sales={filteredSales} filenamePrefix="ventes-filtrees" label="Ventes filtrées" />
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -2169,251 +2143,215 @@ const Sales = () => {
           meta={isAdmin ? "Admin" : null}
           actions={
             isAdmin && (
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                {[
-                  { value: "dashboard", label: "Vue Standard", icon: ReceiptText },
-                  { value: "analytics", label: "Analytics", icon: BarChart3 },
-                  { value: "profits", label: "Bénéfices", icon: Banknote },
-                  { value: "clients", label: "Clients", icon: Users },
-                ].map(({ value, label, icon: Icon }) => (
-                  <button
-                    key={value}
-                    role="tab"
-                    aria-selected={viewMode === value}
-                    onClick={() => setViewMode(value)}
-                    className={`ms-button ms-button-sm ${
-                      viewMode === value
-                        ? "ms-button-primary"
-                        : "ms-button-secondary"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                ))}
-                <span className="mx-0.5 hidden sm:block w-px h-6 bg-[var(--ms-border)]" aria-hidden="true" />
-                <Button
-                  onClick={() => setShowExportModal(true)}
-                  size="sm"
-                >
-                  <Download className="h-4 w-4" aria-hidden />
-                  <span>Exporter</span>
-                </Button>
-              </div>
+              <Button onClick={() => setShowExportModal(true)} size="sm">
+                <Download className="h-4 w-4" aria-hidden />
+                <span>Exporter</span>
+              </Button>
             )
           }
         />
 
+        {/* Fluent 2 Pivot — view modes */}
+        {isAdmin && (
+          <div className="fluent-card-filled overflow-hidden">
+            <div className="fui-pivot px-2">
+              {[
+                { value: "dashboard", label: "Vue Standard",    icon: ReceiptText },
+                { value: "analytics", label: "Analytics",       icon: BarChart3 },
+                { value: "profits",   label: "Bénéfices",       icon: Banknote },
+                { value: "clients",   label: "Clients",         icon: Users },
+              ].map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  role="tab"
+                  aria-selected={viewMode === value}
+                  onClick={() => setViewMode(value)}
+                  className={`fui-pivot__tab flex items-center gap-1.5 ${viewMode === value ? 'fui-pivot__tab--active' : ''}`}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Notification */}
         {message && (
-          <GlassCard>
-            <div
-              className={`p-4 flex items-center gap-3 ${
-                message.includes("succès")
-                  ? "text-green-700 bg-green-50 rounded-2xl"
-                  : "text-red-700 bg-red-50 rounded-2xl"
-              }`}
-            >
-              {message}
-            </div>
-          </GlassCard>
+          <div
+            className="rounded-[var(--radiusLarge)] px-4 py-3 fui-body1 flex items-center gap-3"
+            style={{
+              background: message.includes('succès') ? 'var(--colorStatusSuccessBackground1)' : 'var(--colorStatusDangerBackground1)',
+              color: message.includes('succès') ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+              border: `1px solid ${message.includes('succès') ? 'var(--colorStatusSuccessStroke1)' : 'var(--colorStatusDangerStroke1)'}`,
+            }}
+          >
+            {message}
+          </div>
         )}
 
         {/* Vues alternatives */}
         {viewMode === "analytics" && (
-          <div className="space-y-6">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="space-y-5">
+            <div className="ms-command-bar flex-wrap gap-y-2">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Analytics Avancées</h2>
-                <p className="text-gray-600">Données prédictives et analyses détaillées</p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {isAdmin ? (
-                  <>
-                    <Button
-                      onClick={() => setViewMode("dashboard")}
-                      variant="primary"
-                    >
-                      Vue Standard
-                    </Button>
-                    <Button
-                      onClick={() => setViewMode("profits")}
-                    >
-                      Analyse Bénéfices
-                    </Button>
-                    <Button
-                      onClick={() => setViewMode("clients")}
-                    >
-                      Analyse Clients
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => setViewMode("clients")}
-                    variant="primary"
-                  >
-                    Voir Les Analyses Clients
-                  </Button>
-                )}
+                <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Analytics Avancées</h2>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>Données prédictives et analyses détaillées</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               <AdvancedMetricCard
                 title="Prévision 30 jours"
                 value={`${Math.round(predictiveData?.next30Days || 0).toLocaleString("fr-FR")} CFA`}
                 change={predictiveData?.growthRate}
                 icon={<BarChart3 className="h-5 w-5" />}
-                color="bg-sky-50 text-sky-700"
+                tone="brand"
                 description={`Confiance: ${predictiveData?.confidence || 0}%`}
               />
               <AdvancedMetricCard
                 title="CLV (Valeur Client)"
                 value={`${Math.round(dashboardData.kpis.customerLifetimeValue).toLocaleString("fr-FR")} CFA`}
-                change={12.5}
                 icon={<Users className="h-5 w-5" />}
-                color="bg-emerald-50 text-emerald-700"
-                description="Valeur moyenne par client"
+                tone="success"
+                description="Revenus moyens par client"
               />
               <AdvancedMetricCard
                 title="Taux de conversion"
                 value={`${dashboardData.kpis.conversionRate.toFixed(1)}%`}
-                change={8.2}
                 icon={<CheckCircle2 className="h-5 w-5" />}
-                color="bg-amber-50 text-amber-700"
-                description="Clients actifs / prospects"
+                tone="warning"
+                description="Clients actifs / fichier clients"
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <GlassCard>
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Segmentation Client (RFM)
-                  </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+              <div className="fluent-card-filled p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Segmentation Client (RFM)</h3>
+                  <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{clientSegmentation.length} clients</span>
+                </div>
+                <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>Récence · Fréquence · Montant</p>
+                {clientSegmentation.length > 0 ? (
                   <ClientSegmentationChart segmentation={clientSegmentation} />
-                </div>
-              </GlassCard>
+                ) : (
+                  <div className="h-64 flex items-center justify-center fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune donnée client</div>
+                )}
+              </div>
 
-              <GlassCard>
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Performance des Produits
-                  </h3>
+              <div className="fluent-card-filled p-5">
+                <h3 className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Performance des Produits</h3>
+                <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>Top 6 par revenus générés</p>
+                {dashboardData.topProducts?.length > 0 ? (
                   <ProductPerformanceChart products={dashboardData.topProducts} />
-                </div>
-              </GlassCard>
+                ) : (
+                  <div className="h-64 flex items-center justify-center fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune donnée produit</div>
+                )}
+              </div>
             </div>
 
             {anomalies.length > 0 && (
-              <GlassCard>
-                <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-2xl">
-                  <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-                    Alertes d’anomalies ({anomalies.length})
+              <div
+                className="fluent-card-filled p-5"
+                style={{ borderColor: 'var(--colorStatusWarningBorder1)', background: 'var(--colorStatusWarningBackground1)' }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4" style={{ color: 'var(--colorStatusWarningForeground1)' }} />
+                  <h3 className="fui-subtitle2" style={{ color: 'var(--colorStatusWarningForeground1)' }}>
+                    Ventes atypiques détectées ({anomalies.length})
                   </h3>
-                  <div className="space-y-2">
-                    {anomalies.slice(0, 3).map((a, i) => (
+                </div>
+                <div className="space-y-2">
+                  {anomalies.slice(0, 5).map((a, i) => {
+                    const high = a.deviation > 0;
+                    return (
                       <div
                         key={i}
-                        className="flex justify-between items-center p-3 bg-white rounded-lg"
+                        className="flex items-center justify-between gap-3 rounded-[var(--radiusMedium)] p-3"
+                        style={{ background: 'var(--colorNeutralBackground1)' }}
                       >
-                        <div>
-                          <span className="font-medium">
+                        <div className="min-w-0">
+                          <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
                             Vente #{a._id?.slice(-6) || "N/A"}
-                          </span>
-                          <span className="text-sm text-gray-600 ml-2">
-                            {a.client?.name} - {formatDate(a.saleDate)}
-                          </span>
+                          </p>
+                          <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                            {a.client?.name || "Client inconnu"} · {formatDate(a.saleDate)} · {(a.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                          </p>
                         </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            a.deviation > 0
-                              ? "bg-red-100 text-red-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {a.deviation > 0 ? "+" : ""}
-                          {a.deviation}%
+                        <span className={`ms-status-badge ${high ? 'ms-status-danger' : 'ms-status-success'} shrink-0`}>
+                          {high ? "+" : ""}{a.deviation}%
                         </span>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              </GlassCard>
+              </div>
             )}
           </div>
         )}
 
         {viewMode === "profits" && (
-          <div className="space-y-4 sm:space-y-6">
-            <header className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-4">
+            <div className="ms-command-bar flex-wrap gap-y-2">
               <div>
-                <h2 className="text-xl sm:text-2xl font-semibold text-slate-950">
-                  Analyse des Bénéfices
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">Bénéfices, marges et produits les plus rentables</p>
+                <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Analyse des Bénéfices</h2>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>Bénéfices, marges et produits les plus rentables</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setViewMode("analytics")}
-                className="self-start sm:self-auto inline-flex min-h-[42px] items-center gap-2 px-4 py-2.5 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Analytics
-              </button>
-            </header>
+            </div>
             <ProfitAnalysis />
           </div>
         )}
 
         {viewMode === "clients" && (
-          <GlassCard>
-            <div className="p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Analyse Client</h2>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button
-                    onClick={() => navigate("/sales/partially-paid")}
-                    className="w-full sm:w-auto"
-                  >
-                    Consulter les ventes partiellement payées →
-                  </Button>
-                  {isAdmin && (
-                    <Button
-                      onClick={() => setViewMode("analytics")}
-                      variant="primary"
-                      className="w-full sm:w-auto"
-                    >
-                      Retour aux Analytics
-                    </Button>
-                  )}
-                </div>
+          <div className="space-y-5">
+            <div className="ms-command-bar flex-wrap gap-y-2">
+              <div>
+                <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Analyse Client</h2>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>Segmentation RFM, meilleurs clients et relances</p>
               </div>
-
-              {isAdmin ? (
-                <ClientSegmentationChart segmentation={clientSegmentation} />
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-gray-700">
-                    Accédez rapidement aux ventes partiellement payées pour suivre les encaissements
-                    en attente ou à relancer.
-                  </p>
+              <div className="flex flex-wrap gap-2 ml-auto">
+                <button
+                  onClick={() => navigate("/sales/partially-paid")}
+                  className="ms-button ms-button-secondary ms-button-md"
+                >
+                  Paiements partiels →
+                </button>
+                {isAdmin && (
                   <button
-                    onClick={() =>
-                      navigate({
-                        pathname: "/sales/partially-paid",
-                        search: `?status=partially_paid`,
-                      })
-                    }
-                    className="w-full sm:w-auto px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors"
+                    onClick={() => setViewMode("analytics")}
+                    className="ms-button ms-button-primary ms-button-md"
                   >
-                    Ouvrir les ventes partiellement payées
+                    Analytics
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </GlassCard>
+
+            {isAdmin ? (
+              clientSegmentation.length > 0 ? (
+                <ClientAnalysisPanel segmentation={clientSegmentation} navigate={navigate} />
+              ) : (
+                <div className="fluent-card-filled p-8">
+                  <EmptyState
+                    title="Aucune donnée client"
+                    description="Les segments apparaîtront dès que des ventes seront enregistrées."
+                  />
+                </div>
+              )
+            ) : (
+              <div className="fluent-card-filled p-5 sm:p-6 space-y-4">
+                <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                  Accédez rapidement aux ventes partiellement payées pour suivre les encaissements en attente ou à relancer.
+                </p>
+                <button
+                  onClick={() => navigate({ pathname: "/sales/partially-paid", search: `?status=partially_paid` })}
+                  className="ms-button ms-button-primary ms-button-md"
+                >
+                  Ouvrir les ventes partiellement payées
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Vue Standard (Dashboard) */}
@@ -2422,31 +2360,20 @@ const Sales = () => {
             {/* Filtres rapides */}
             {isAdmin && <QuickFilterBar />}
 
-            {/* Range & actions */}
-            <div className="flex flex-col rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4">
-              <h2 className="text-base sm:text-lg md:text-xl font-semibold text-slate-950 flex items-center gap-2 min-w-0">
-                <span className="bg-slate-100 p-2 rounded-xl text-slate-700 shrink-0" aria-hidden><TrendingUp className="h-4 w-4" /></span>
-                <span className="break-words">Tableau de bord des ventes</span>
+            {/* Range selector */}
+            <div className="ms-command-bar flex-wrap gap-y-2">
+              <h2 className="fui-subtitle1 flex items-center gap-2 min-w-0" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                <span className="ms-kpi-icon shrink-0" aria-hidden><TrendingUp className="h-4 w-4" /></span>
+                Tableau de bord des ventes
               </h2>
-
-              <div className="flex flex-wrap gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2 ml-auto shrink-0">
                 {["7days", "30days", "90days", "all"].map((r) => (
                   <button
                     key={r}
                     onClick={() => setTimeRange(r)}
-                    className={`min-h-[38px] px-3 py-1.5 rounded-full text-sm font-medium transition ${
-                      timeRange === r
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-50 text-slate-700 border border-slate-200 hover:bg-white"
-                    }`}
+                    className={`ms-button ms-button-sm ${timeRange === r ? 'ms-button-primary' : 'ms-button-secondary'}`}
                   >
-                    {r === "7days"
-                      ? "7 jours"
-                      : r === "30days"
-                      ? "30 jours"
-                      : r === "90days"
-                      ? "90 jours"
-                      : "Tous"}
+                    {r === "7days" ? "7 jours" : r === "30days" ? "30 jours" : r === "90days" ? "90 jours" : "Tous"}
                   </button>
                 ))}
               </div>
@@ -2504,236 +2431,155 @@ const Sales = () => {
                 <section aria-label="Types de commandes et structures de paiement" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                   {highlightedOrderCards.map((card) => {
                     const cardContent = (
-                      <div className={`h-full rounded-[1.5rem] border p-5 ${card.accent}`}>
-                        <p className="text-xs font-semibold uppercase text-slate-500">
+                      <div className="fluent-card-filled h-full p-5">
+                        <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
                           {card.title}
                         </p>
-                        <div className={`mt-3 text-3xl font-semibold tabular-nums ${card.text}`}>
+                        <div className="fui-large-title mt-3 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
                           {card.count}
                         </div>
-                        <p className="mt-1 text-sm text-slate-600">
+                        <p className="fui-body1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
                           {card.amount.toLocaleString("fr-FR")} CFA
                         </p>
-                        <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 text-xs">
-                          <span className="text-slate-500">Part des ventes</span>
-                          <span className={`font-semibold ${card.text}`}>
+                        <div className="mt-3 flex items-center justify-between rounded-[var(--radiusMedium)] px-3 py-2 fui-caption1" style={{ background: 'var(--colorNeutralBackground2)' }}>
+                          <span style={{ color: 'var(--colorNeutralForeground3)' }}>Part des ventes</span>
+                          <span className="fui-caption1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>
                             {card.percentage.toFixed(1)}%
                           </span>
                         </div>
                         {card.linkTo && (
-                          <div className="mt-3 text-xs font-medium text-slate-700">
-                            Voir les ventes
-                          </div>
+                          <p className="mt-3 fui-caption1" style={{ color: 'var(--colorBrandForeground1)' }}>Voir les ventes →</p>
                         )}
                       </div>
                     );
 
-                    if (!card.linkTo) {
-                      return (
-                        <div
-                          key={card.key}
-                          className="rounded-[1.5rem] shadow-sm"
-                        >
-                          {cardContent}
-                        </div>
-                      );
-                    }
-
-                    return (
+                    return card.linkTo ? (
                       <Link
                         key={card.key}
                         to={card.linkTo}
-                        className="block rounded-[1.5rem] shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500"
+                        className="block fluent-card-interactive"
                         aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
                       >
                         {cardContent}
                       </Link>
+                    ) : (
+                      <div key={card.key}>{cardContent}</div>
                     );
                   })}
                 </section>
 
-                {/* ↘︎ Sous-bloc Encaissements (lisible et compact) */}
+                {/* Encaissements */}
                 <GlassCard>
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Encaissements (période sélectionnée)
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {dashboardData.paymentsSummary.paymentsCount} paiements, pour un total de{" "}
-                      <span className="font-semibold text-gray-900">
-                        {dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA
-                      </span>
-                      .
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
-                        <div className="text-sm text-gray-600">Aujourd’hui</div>
-                        <div className="text-xl font-semibold">
-                          {(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {dashboardData.dailySummary.paymentsCount || 0} paiements
-                        </div>
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                          Encaissements
+                        </h3>
+                        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          {dashboardData.paymentsSummary.paymentsCount} paiements — total{' '}
+                          <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                            {dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA
+                          </span>
+                        </p>
                       </div>
-                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                        <div className="text-sm text-gray-600">Moyenne / vente</div>
-                        <div className="text-xl font-semibold">
-                          {dashboardData.salesCount
-                            ? Math.round(
-                                dashboardData.paymentsSummary.paymentsTotal / dashboardData.salesCount
-                              ).toLocaleString("fr-FR")
-                            : 0}{" "}
-                          CFA
-                        </div>
-                        <div className="text-xs text-gray-500">Sur {dashboardData.salesCount} ventes</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusInfoBackground1)', border: '1px solid rgba(15,108,189,0.15)' }}>
+                        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aujourd'hui</p>
+                        <p className="fui-title3 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                          {(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA
+                        </p>
+                        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          {dashboardData.dailySummary.paymentsCount || 0} paiements
+                        </p>
+                      </div>
+                      <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusSuccessBackground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}>
+                        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Moyenne / vente</p>
+                        <p className="fui-title3 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                          {dashboardData.salesCount ? Math.round(dashboardData.paymentsSummary.paymentsTotal / dashboardData.salesCount).toLocaleString("fr-FR") : 0} CFA
+                        </p>
+                        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          Sur {dashboardData.salesCount} ventes
+                        </p>
                       </div>
                     </div>
                   </div>
                 </GlassCard>
 
-                {/* Statistiques de livraison (NOUVEAU BLOC) */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Livraison — 3 colonnes */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Statistiques de livraison
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Taux de livraison (commandes complétées) :{" "}
-                        <span className="font-semibold text-gray-900">
-                          {deliveryStats.deliveryRate}%
-                        </span>
+                    <div className="p-5">
+                      <p className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Statistiques de livraison</p>
+                      <p className="fui-caption1 mb-4" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        Taux : <strong style={{ color: 'var(--colorNeutralForeground1)' }}>{deliveryStats.deliveryRate}%</strong>
                       </p>
-
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="rounded-xl bg-green-50 p-4">
-                          <div className="text-sm text-gray-600">Livrées</div>
-                          <div className="text-xl font-semibold text-green-700">
-                            {deliveryStats.delivered}
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Livrées', value: deliveryStats.delivered, bg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)', stroke: 'var(--colorStatusSuccessStroke1)' },
+                          { label: 'En attente', value: deliveryStats.pending, bg: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)', stroke: 'var(--colorStatusWarningStroke1)' },
+                          { label: 'Non livrées', value: deliveryStats.not_delivered, bg: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', stroke: 'var(--colorStatusDangerStroke1)' },
+                        ].map(({ label, value, bg, color, stroke }) => (
+                          <div key={label} className="rounded-[var(--radiusLarge)] p-3 text-center" style={{ background: bg, border: `1px solid ${stroke}` }}>
+                            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+                            <p className="fui-title3 mt-1 tabular-nums" style={{ color }}>{value}</p>
                           </div>
-                        </div>
-                        <div className="rounded-xl bg-amber-50 p-4">
-                          <div className="text-sm text-gray-600">En attente</div>
-                          <div className="text-xl font-semibold text-amber-600">
-                            {deliveryStats.pending}
-                          </div>
-                        </div>
-                        <div className="rounded-xl bg-rose-50 p-4">
-                          <div className="text-sm text-gray-600">Non livrées</div>
-                          <div className="text-xl font-semibold text-rose-600">
-                            {deliveryStats.not_delivered}
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   </GlassCard>
 
                   <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Répartition (Donut)
-                      </h3>
-                      <div className="h-56">
-                        <Doughnut
-                          data={deliveryChartData}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { position: "bottom" } },
-                          }}
-                        />
+                    <div className="p-5">
+                      <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Répartition</p>
+                      <div className="h-48">
+                        <Doughnut data={deliveryChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} />
                       </div>
                     </div>
                   </GlassCard>
 
                   <GlassCard>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Timeline (7 jours)
-                      </h3>
-                      <div className="h-56">
-                        <Bar
-                          data={deliveryTimelineData}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } },
-                              x: { grid: { display: false } },
-                            },
-                          }}
-                        />
+                    <div className="p-5">
+                      <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Timeline (7 jours)</p>
+                      <div className="h-48">
+                        <Bar data={deliveryTimelineData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } }, x: { grid: { display: false } } } }} />
                       </div>
                     </div>
                   </GlassCard>
                 </div>
 
                 {/* Tendance & Top produits */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <GlassCard>
-                    <div className="p-4 sm:p-6">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                          Tendance des ventes
-                        </h3>
-                        <button
-                          onClick={() => navigate("/sales/partially-paid")}
-                          className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 w-full sm:w-auto text-center"
-                        >
-                          Ventes partiellement payées →
+                    <div className="p-5">
+                      <div className="flex items-center justify-between mb-4 gap-3">
+                        <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Tendance des ventes</p>
+                        <button onClick={() => navigate("/sales/partially-paid")} className="ms-button ms-button-secondary ms-button-sm shrink-0">
+                          Paiements partiels →
                         </button>
                       </div>
-                      <div className="h-48 sm:h-56 min-h-[180px]">
-                        <Line
-                          data={salesTrendChart}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { position: "top", labels: { font: CHART_LABEL_FONT } } },
-                            scales: {
-                              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
-                              x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } },
-                            },
-                          }}
-                        />
+                      <div className="h-48 sm:h-52 min-h-[180px]">
+                        <Line data={salesTrendChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", labels: { font: CHART_LABEL_FONT } } }, scales: { y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } }, x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } } } }} />
                       </div>
                     </div>
                   </GlassCard>
 
                   <GlassCard>
-                    <div className="p-4 sm:p-6">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                        Top produits (quantités)
-                      </h3>
-                      <div className="h-48 sm:h-56 min-h-[180px]">
-                        <Bar
-                          data={topProductsChart}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } },
-                              x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT, maxRotation: 45, minRotation: 0, maxTicksLimit: 8 } },
-                            },
-                          }}
-                        />
+                    <div className="p-5">
+                      <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Top produits (quantités)</p>
+                      <div className="h-48 sm:h-52 min-h-[180px]">
+                        <Bar data={topProductsChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } }, x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT, maxRotation: 45, minRotation: 0, maxTicksLimit: 8 } } } }} />
                       </div>
                     </div>
                   </GlassCard>
 
                   {/* Statut des ventes */}
                   <GlassCard>
-                    <section className="p-5 sm:p-6" aria-labelledby="status-sales-heading">
-                      <h3 id="status-sales-heading" className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 shrink-0" aria-hidden="true">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                          </svg>
-                        </span>
+                    <section className="p-5" aria-labelledby="status-sales-heading">
+                      <p id="status-sales-heading" className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
                         Statut des ventes
-                      </h3>
+                      </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="flex justify-center md:justify-start">
                           <div className="w-full max-w-[260px] h-[220px] sm:h-[260px] mx-auto md:max-w-none md:w-full md:h-[200px]">

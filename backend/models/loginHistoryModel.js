@@ -1,7 +1,13 @@
 const mongoose = require('mongoose');
 
 const loginHistorySchema = mongoose.Schema(
-    {
+  {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

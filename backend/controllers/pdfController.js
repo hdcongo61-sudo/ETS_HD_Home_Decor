@@ -1,9 +1,43 @@
 const PDFDocument = require('pdfkit');
 const Client = require('../models/clientModel');
 const Sale = require('../models/saleModel');
+const AppSettings = require('../models/appSettingsModel');
+
+// Load the current tenant's company identity for document headers.
+const loadCompany = async (req) => {
+  try {
+    const filter = req.tenantId ? { tenantId: req.tenantId } : { key: 'main', tenantId: null };
+    const settings = await AppSettings.findOne(filter).lean();
+    const b = settings?.branding || {};
+    return {
+      name: b.appName || 'Ma Boutique',
+      address: b.address || '',
+      phone: b.supportPhone || '',
+      email: b.supportEmail || '',
+      logoUrl: b.logoUrl || '',
+    };
+  } catch {
+    return { name: 'Ma Boutique', address: '', phone: '', email: '', logoUrl: '' };
+  }
+};
+
+// Fetch a remote (or data) logo URL into a Buffer for pdfkit.
+const loadLogoBuffer = async (logoUrl) => {
+  if (!logoUrl) return null;
+  try {
+    const res = await fetch(logoUrl);
+    if (!res.ok) return null;
+    const arrayBuf = await res.arrayBuffer();
+    return Buffer.from(arrayBuf);
+  } catch {
+    return null;
+  }
+};
 
 exports.exportClientsPdf = async (req, res) => {
   try {
+    const company = await loadCompany(req);
+    const logoBuffer = await loadLogoBuffer(company.logoUrl);
     const clients = await Client.find().lean();
 
     const clientsWithTotal = await Promise.all(
@@ -22,21 +56,23 @@ exports.exportClientsPdf = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=Rapport_Clients.pdf');
     doc.pipe(res);
 
-    // === HEADER ===
-    try {
-      doc.image('./public/logo.png', 50, 45, { width: 60 });
-    } catch {
-      console.warn('⚠️ Logo manquant');
+    // === HEADER — tenant (shop) identity ===
+    if (logoBuffer) {
+      try { doc.image(logoBuffer, 50, 45, { width: 60 }); } catch { /* ignore bad image */ }
     }
 
+    const headerX = logoBuffer ? 120 : 50;
+    const contactLine = [company.phone && `Tel: ${company.phone}`, company.email && `Email: ${company.email}`]
+      .filter(Boolean).join('   ');
     doc
       .fillColor('#333')
       .fontSize(20)
-      .text('ETS HD Home Decor', 120, 50)
-      .fontSize(10)
-      .text('61 Rue Lénine, Moungali – Brazzaville', 120, 70)
-      .text('Tel: +242 069 822 930   Email: hdcongo61@gmail.com', 120, 85)
-      .moveDown(1.5);
+      .text(company.name, headerX, 50)
+      .fontSize(10);
+    let hy = 70;
+    if (company.address) { doc.text(company.address, headerX, hy); hy += 15; }
+    if (contactLine) { doc.text(contactLine, headerX, hy); }
+    doc.moveDown(1.5);
 
     // === TITLE ===
     doc

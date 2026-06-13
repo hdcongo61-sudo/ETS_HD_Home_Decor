@@ -18,30 +18,40 @@ const GlobalModalSkeleton = () => (
   <div className="space-y-5">
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {[0, 1, 2, 3].map((item) => (
-        <div key={item} className="h-20 animate-pulse rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/80" />
+        <div key={item} className="h-[72px] animate-pulse rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]" />
       ))}
     </div>
-    <div className="space-y-3 rounded-3xl border border-[var(--ms-border)] bg-[var(--ms-white)] p-4">
-      <div className="h-4 w-36 animate-pulse rounded-full bg-gray-200" />
+    <div className="space-y-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-4">
+      <div className="h-4 w-36 animate-pulse rounded-full bg-[var(--ms-bg-subtle)]" />
       <div className="grid gap-3 sm:grid-cols-2">
         {[0, 1, 2, 3, 4, 5].map((item) => (
-          <div key={item} className="h-12 animate-pulse rounded-lg bg-[var(--ms-bg-subtle)]" />
+          <div key={item} className="h-12 animate-pulse rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)]" />
         ))}
       </div>
-      <div className="h-24 animate-pulse rounded-lg bg-[var(--ms-bg-subtle)]" />
+      <div className="h-24 animate-pulse rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)]" />
     </div>
   </div>
 );
 
-const MetricPill = ({ icon, label, value }) => (
-  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 shadow-[var(--ms-shadow-sm)]">
-    <div className="flex items-center gap-2 text-xs font-medium text-[var(--ms-text-muted)]">
-      {icon}
-      {label}
+const MetricPill = ({ icon, label, value, tone = 'neutral' }) => {
+  const tones = {
+    brand:   { bg: 'var(--ms-blue-soft)',                  fg: 'var(--colorBrandForeground1)' },
+    success: { bg: 'var(--colorStatusSuccessBackground1)', fg: 'var(--colorStatusSuccessForeground1)' },
+    neutral: { bg: 'var(--colorNeutralBackground3)',       fg: 'var(--colorNeutralForeground2)' },
+  };
+  const t = tones[tone] || tones.neutral;
+  return (
+    <div className="fluent-card-filled flex items-center gap-3 p-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radiusMedium)]" style={{ background: t.bg, color: t.fg }}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+        <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+      </div>
     </div>
-    <p className="mt-1 text-lg font-semibold text-[var(--ms-text-strong)]">{value}</p>
-  </div>
-);
+  );
+};
 
 const GlobalSaleModal = () => {
   const { activeModal, closeModal } = useModal();
@@ -107,16 +117,15 @@ const GlobalSaleModal = () => {
       subtitle="Créer une vente complète sans quitter votre page actuelle."
       size="xl"
       mobileFullscreen
+      suppressGlobal={false}
       icon={<ReceiptText size={20} />}
-      contentClassName="bg-[var(--ms-bg-subtle)]/80"
-      footerClassName="bg-white/96"
       footer={
         <>
           <button
             type="button"
             onClick={closeModal}
             disabled={isSubmitting}
-            className="min-h-[44px] w-full rounded-lg border border-[var(--ms-border-strong)] bg-[var(--ms-white)] px-4 py-3 font-semibold text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] disabled:opacity-60 sm:w-auto"
+            className="ms-button ms-button-secondary ms-button-md w-full disabled:opacity-60 sm:w-auto"
           >
             Annuler
           </button>
@@ -124,11 +133,7 @@ const GlobalSaleModal = () => {
             type="submit"
             form="global-sale-form"
             disabled={isSubmitting || loading}
-            className={`min-h-[44px] w-full rounded-lg px-4 py-3 font-semibold flex items-center justify-center gap-2 transition sm:w-auto ${
-              isSubmitting || loading
-                ? 'bg-gray-300 cursor-not-allowed text-[var(--ms-text)]'
-                : 'bg-gray-950 hover:bg-gray-800 text-white shadow-[var(--ms-shadow-sm)]'
-            }`}
+            className="ms-button ms-button-primary ms-button-md w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isSubmitting ? (
               <>
@@ -148,16 +153,16 @@ const GlobalSaleModal = () => {
       {loading ? (
         <GlobalModalSkeleton />
       ) : loadError ? (
-        <div className="rounded-3xl border border-red-200 bg-[var(--ms-white)] p-6 text-center shadow-[var(--ms-shadow-sm)]">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ms-danger)]/10 text-[var(--ms-danger)]">
+        <div className="fluent-card-filled p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
             <AlertCircle size={22} />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-[var(--ms-text-strong)]">Chargement impossible</h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--ms-text)]">{loadError}</p>
+          <h3 className="fui-subtitle2 mt-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Chargement impossible</h3>
+          <p className="fui-body1 mx-auto mt-2 max-w-sm" style={{ color: 'var(--colorNeutralForeground2)' }}>{loadError}</p>
           <button
             type="button"
             onClick={fetchSaleFormData}
-            className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+            className="ms-button ms-button-primary ms-button-md mx-auto mt-5"
           >
             <RefreshCw size={16} />
             Réessayer
@@ -166,10 +171,10 @@ const GlobalSaleModal = () => {
       ) : (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MetricPill icon={<Users size={14} />} label="Clients" value={clients.length} />
-            <MetricPill icon={<Boxes size={14} />} label="Produits" value={products.length} />
-            <MetricPill icon={<ReceiptText size={14} />} label="Mode" value="Complet" />
-            <MetricPill icon={<Check size={14} />} label="Stock" value="Automatique" />
+            <MetricPill icon={<Users size={16} />} label="Clients" value={clients.length} tone="brand" />
+            <MetricPill icon={<Boxes size={16} />} label="Produits" value={products.length} tone="success" />
+            <MetricPill icon={<ReceiptText size={16} />} label="Mode" value="Complet" />
+            <MetricPill icon={<Check size={16} />} label="Stock" value="Automatique" />
           </div>
 
           <SaleForm

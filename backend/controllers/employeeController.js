@@ -1,6 +1,7 @@
 const Employee = require('../models/employeeModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const uploadEmployeePhoto = (buffer) => new Promise((resolve, reject) => {
   const stream = cloudinary.uploader.upload_stream(
@@ -35,7 +36,7 @@ const parseBoolean = (value, fallback = true) => {
 // @access  Private/Admin
 const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find({});
+    const employees = await Employee.find(tenantFilter(req));
     res.json(employees);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -68,7 +69,7 @@ const createEmployee = async (req, res) => {
       photoUrl = await uploadEmployeePhoto(req.file.buffer);
     }
 
-    const employee = new Employee({
+    const employee = new Employee({ tenantId: req.tenantId,
       name: req.body.name,
       email: req.body.email,
       phone: req.body.phone,

@@ -179,7 +179,7 @@ const Dashboard = () => {
   // ===== DATA (comparaison) =====
   const [prevCombinedData, setPrevCombinedData] = useState([]);
 
-  // ===== Delivery (utilisé dans l’encart du bloc Statistiques des ventes) =====
+  // ===== Delivery (utilisé dans l'encart du bloc Statistiques des ventes) =====
   const [deliveryStats, setDeliveryStats] = useState(null);
 
   // ===== Reminders / UI =====
@@ -1120,15 +1120,17 @@ const Dashboard = () => {
       );
     } catch (e) {
       console.error("Export stats ventes ALL échoué:", e);
-      alert("Impossible d’exporter les statistiques (ALL).");
+      alert("Impossible d'exporter les statistiques (ALL).");
     }
   };
 
   // ===== LOADING =====
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-[40vh] bg-transparent">
-        <AppLoader fullScreen={false} text="Chargement du tableau de bord…" />
+      <div className="p-5 space-y-4">
+        <div className="ms-loading-skeleton" aria-hidden="true">
+          {Array.from({ length: 8 }).map((_, i) => <span key={i} />)}
+        </div>
       </div>
     );
 
@@ -1237,39 +1239,19 @@ const Dashboard = () => {
     },
   ];
 
-  // ===== UI — styles des cartes principales =====
+  // ===== UI — styles des cartes principales (Fluent 2 tokens) =====
   const CARD_STYLES = [
-    {
-      bg: "from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20",
-      border: "border-green-200/40 dark:border-green-800/30",
-      text: "text-[var(--ms-success)] dark:text-green-400",
-      iconWrap: "bg-white/70 dark:bg-gray-900/60",
-    },
-    {
-      bg: "from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20",
-      border: "border-blue-200/40 dark:border-blue-800/30",
-      text: "text-blue-600 dark:text-blue-400",
-      iconWrap: "bg-white/70 dark:bg-gray-900/60",
-    },
-    {
-      bg: "from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/20",
-      border: "border-red-200/40 dark:border-red-800/30",
-      text: "text-red-600 dark:text-red-400",
-      iconWrap: "bg-white/70 dark:bg-gray-900/60",
-    },
-    {
-      bg: "from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20",
-      border: "border-purple-200/40 dark:border-purple-800/30",
-      text: "text-purple-600 dark:text-purple-400",
-      iconWrap: "bg-white/70 dark:bg-gray-900/60",
-    },
+    { iconBg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }, // Ventes
+    { iconBg: 'var(--ms-blue-soft)',                  color: 'var(--colorBrandForeground1)' },          // Encaissements
+    { iconBg: 'var(--colorStatusDangerBackground1)',  color: 'var(--colorStatusDangerForeground1)' },   // Dépenses
+    { iconBg: '#EDE9FE',                              color: '#6D28D9' },                               // Profit net
   ];
 
   return (
-    <div className="min-h-full bg-gradient-to-b bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
+    <div className="min-h-full bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
       <div className="space-y-6 sm:space-y-8">
         {/* ===== HOME HUB ===== */}
-        <header className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow)]  dark:border-gray-800 dark:bg-gray-900/90">
+        <header className="overflow-hidden fluent-card-filled">
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 lg:p-6">
             <div className="min-w-0">
               {userName && (
@@ -1287,7 +1269,7 @@ const Dashboard = () => {
                 </span>
               </div>
               <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
+                Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe.
               </p>
             </div>
 
@@ -1328,7 +1310,7 @@ const Dashboard = () => {
                     Vue rapide
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                    Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l’équipe.
+                    Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe.
                   </p>
                 </div>
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
@@ -1409,11 +1391,12 @@ const Dashboard = () => {
                           key={option.value}
                           type="button"
                           onClick={() => setTimeRange(option.value)}
-                          className={`min-h-[42px] rounded-lg px-2 text-xs font-semibold transition-all duration-200 ${
+                          className={`min-h-[38px] rounded-[var(--radiusLarge)] px-2 text-xs font-semibold transition-all duration-150 ${
                             isActive
-                              ? "bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
-                              : "text-[var(--ms-text-muted)] hover:bg-gray-100 hover:text-[var(--ms-text-strong)] dark:text-[var(--ms-text-muted)] dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                              ? "text-white shadow-[var(--shadow4)]"
+                              : "text-[var(--colorNeutralForeground3)] hover:bg-[var(--colorNeutralBackground3)] hover:text-[var(--colorNeutralForeground1)]"
                           }`}
+                          style={isActive ? { background: 'var(--colorBrandBackground)' } : {}}
                           aria-pressed={isActive}
                         >
                           {option.label}
@@ -1509,11 +1492,7 @@ const Dashboard = () => {
                           key={option.value}
                           type="button"
                           onClick={() => setCompareMode(option.value)}
-                          className={`min-h-[42px] rounded-lg border px-3 text-left text-xs font-semibold transition-all duration-200 ${
-                            isActive
-                              ? "border-gray-950 bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-white dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
-                              : "border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:border-gray-300 hover:bg-[var(--ms-white)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
-                          }`}
+                          className={`ms-button ms-button-sm text-left ${isActive ? 'ms-button-primary' : 'ms-button-secondary'}`}
                           aria-pressed={isActive}
                         >
                           {option.label}
@@ -1553,10 +1532,10 @@ const Dashboard = () => {
                   className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}>
                       <Icon size={20} />
                     </span>
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text)] dark:bg-gray-800 dark:text-gray-300">
+                    <span className="ms-status-badge ms-status-neutral">
                       {meta}
                     </span>
                   </div>
@@ -1625,43 +1604,39 @@ const Dashboard = () => {
                 style: CARD_STYLES[3],
               },
             ].map((stat, i) => (
-              <motion.article
-                key={i}
-                whileHover={{ scale: 1.01 }}
-                className={`p-4 sm:p-5 rounded-lg bg-gradient-to-br ${stat.style.bg} shadow-md border ${stat.style.border} backdrop-blur-sm transition-shadow hover:shadow-lg`}
-              >
+              <article key={i} className="fluent-card-filled p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className={`p-2.5 sm:p-3 ${stat.style.iconWrap} rounded-xl shrink-0`}>
-                    <span className={stat.style.text}>{stat.icon}</span>
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+                    style={{ background: stat.style.iconBg, color: stat.style.color }}
+                  >
+                    {stat.icon}
                   </div>
                   <span
-                    className={`text-xs font-medium shrink-0 ${
-                      String(stat.trend).startsWith("+")
-                        ? "text-[var(--ms-success)] dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
+                    className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
+                    style={{ color: String(stat.trend).startsWith('+') ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
                   >
-                    {String(stat.trend).startsWith("+") ? "↑" : "↓"} {stat.trend}
+                    {String(stat.trend).startsWith('+') ? '↑' : '↓'} {stat.trend}
                   </span>
                 </div>
-                <h2 className="text-sm font-medium mt-3 text-[var(--ms-text)] dark:text-gray-300">
+                <h2 className="fui-caption1 mt-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {stat.title}
                 </h2>
-                <p className={`mt-1 text-xl sm:text-2xl font-bold tabular-nums ${stat.style.text}`}>
-                  {stat.value.toLocaleString("fr-FR")} <span className="text-sm font-normal opacity-90">CFA</span>
+                <p className="mt-1 fui-title2 tabular-nums" style={{ color: stat.style.color }}>
+                  {stat.value.toLocaleString('fr-FR')} <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>CFA</span>
                 </p>
                 {stat.prevValue != null && (
-                  <p className="mt-1.5 text-sm text-[var(--ms-text)] dark:text-[var(--ms-text-muted)] tabular-nums">
-                    Vs période préc. : <span className="font-medium">{Number(stat.prevValue).toLocaleString("fr-FR")} CFA</span>
+                  <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Vs période préc. : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
                   </p>
                 )}
-              </motion.article>
+              </article>
             ))}
           </motion.section>
 
           {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
           <section
-            className={`relative overflow-hidden bg-[var(--ms-white)] dark:bg-gray-800/90 backdrop-blur-sm p-4 sm:p-5 rounded-lg shadow-md border border-[var(--ms-border)] dark:border-gray-700 transition-opacity ${
+            className={`relative overflow-hidden fluent-card-filled p-4 sm:p-5 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
             }`}
             aria-label="Analyse financière"
@@ -1780,33 +1755,33 @@ const Dashboard = () => {
           </section>
 
           {encaissementHighlights && (
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extrêmes des encaissements">
-              <article className="rounded-lg border border-emerald-200 bg-[var(--ms-success)]/5 to-[var(--ms-white)] p-4 shadow-sm dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-gray-900">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extremes des encaissements">
+              <article className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusSuccessBackground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}>
+                <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorStatusSuccessForeground1)', letterSpacing: '0.06em' }}>
                   {encaissementHighlights.bestLabel}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
+                <p className="fui-subtitle1 mt-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
                   {encaissementHighlights.best.label}
                 </p>
-                <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                <p className="fui-title3 mt-2 tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
                   {Math.round(encaissementHighlights.best.total).toLocaleString("fr-FR")} CFA
                 </p>
-                <p className="mt-1 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {encaissementHighlights.helperText}
                 </p>
               </article>
 
-              <article className="rounded-lg border border-rose-200 bg-[var(--ms-danger)]/5 to-[var(--ms-white)] p-4 shadow-sm dark:border-rose-900/60 dark:from-rose-950/30 dark:to-gray-900">
-                <p className="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+              <article className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusDangerBackground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
+                <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorStatusDangerForeground1)', letterSpacing: '0.06em' }}>
                   {encaissementHighlights.lowestLabel}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
+                <p className="fui-subtitle1 mt-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
                   {encaissementHighlights.lowest.label}
                 </p>
-                <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-300 tabular-nums">
+                <p className="fui-title3 mt-2 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
                   {Math.round(encaissementHighlights.lowest.total).toLocaleString("fr-FR")} CFA
                 </p>
-                <p className="mt-1 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {encaissementHighlights.helperText}
                 </p>
               </article>
@@ -1815,7 +1790,7 @@ const Dashboard = () => {
         </div>
 
         {isAdmin && nonCriticalReady && (
-          <section className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+          <section className="fluent-card-filled p-4 sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -1842,19 +1817,15 @@ const Dashboard = () => {
                     {productActionSuggestions.length}
                   </p>
                 </div>
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-900/50 dark:bg-rose-950/30">
-                  <p className="text-[11px] font-medium uppercase text-[var(--ms-danger)] dark:text-rose-300">
-                    Urgent
-                  </p>
-                  <p className="mt-0.5 text-lg font-bold text-rose-700 dark:text-rose-300">
+                <div className="rounded-[var(--radiusLarge)] px-3 py-2" style={{ background: 'var(--colorStatusDangerBackground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
+                  <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorStatusDangerForeground1)' }}>Urgent</p>
+                  <p className="fui-subtitle1 mt-0.5 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
                     {highPriorityProductSuggestions}
                   </p>
                 </div>
-                <div className="col-span-2 rounded-lg border border-indigo-200 bg-[var(--ms-blue-soft)] px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-                  <p className="text-[11px] font-medium uppercase text-[var(--ms-blue)] dark:text-indigo-300">
-                    Stock concerné
-                  </p>
-                  <p className="mt-0.5 text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                <div className="col-span-2 rounded-[var(--radiusLarge)] px-3 py-2" style={{ background: 'var(--colorStatusInfoBackground1)', border: '1px solid rgba(15,108,189,0.2)' }}>
+                  <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorBrandForeground1)' }}>Stock concerne</p>
+                  <p className="fui-subtitle1 mt-0.5 tabular-nums" style={{ color: 'var(--colorBrandForeground1)' }}>
                     {Math.round(productSuggestionStockValue).toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
@@ -1907,8 +1878,8 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
-                      <p className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                    <div className="mt-3 rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorStatusWarningBackground1)', border: '1px solid var(--colorStatusWarningStroke1)' }}>
+                      <p className="fui-caption1-strong flex items-center gap-2" style={{ color: 'var(--colorStatusWarningForeground1)' }}>
                         <BadgePercent size={14} />
                         {product.highlight}
                       </p>
@@ -1961,7 +1932,7 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <AccordionSection title="Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
-          className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow)] dark:border-gray-800 dark:bg-gray-900"
+          className="overflow-hidden fluent-card-filled"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
@@ -1995,28 +1966,23 @@ const Dashboard = () => {
                 <option value="all">Toutes les données</option>
               </select>
 
-              {/* 🔹 Switch “Lisser la tendance” */}
               <button
                 type="button"
                 onClick={() => setSmoothTrend((v) => !v)}
-                className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:-translate-y-0.5
-                  ${smoothTrend
-                    ? "border-gray-950 bg-gray-950 text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] dark:border-white dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)]"
-                    : "border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"}`}
+                className={`ms-button ms-button-sm flex items-center gap-2 ${smoothTrend ? 'ms-button-primary' : 'ms-button-secondary'}`}
                 title="Lisser la tendance (moyenne mobile 3 j)"
               >
-                <Wand2 size={16} />
-                {smoothTrend ? "Lissé" : "Lisser la tendance"}
+                <Wand2 size={15} />
+                {smoothTrend ? "Lisse" : "Lisser"}
               </button>
 
-              {/* 🔹 Export ALL (toutes données) */}
               <button
                 type="button"
                 onClick={exportSalesStatsAll}
-                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-gray-950 px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-[var(--ms-white)] dark:text-[var(--ms-text-strong)] dark:hover:bg-gray-100"
+                className="ms-button ms-button-secondary ms-button-sm flex items-center gap-2"
                 title="Exporter toutes les statistiques de ventes"
               >
-                <Download size={16} />
+                <Download size={15} />
                 Export (ALL)
               </button>
             </div>
@@ -2060,30 +2026,18 @@ const Dashboard = () => {
                   Livraisons
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-[var(--ms-white)] p-2.5 dark:border-emerald-500/20 dark:bg-gray-900">
-                    <span className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                      <PackageCheck size={16} /> Livrées
-                    </span>
-                    <span className="font-semibold">
-                      {deliveryStats?.delivered?.count || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-[var(--ms-white)] p-2.5 dark:border-amber-500/20 dark:bg-gray-900">
-                    <span className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
-                      <Clock3 size={16} /> En attente
-                    </span>
-                    <span className="font-semibold">
-                      {deliveryStats?.pending?.count || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-[var(--ms-white)] p-2.5 dark:border-rose-500/20 dark:bg-gray-900">
-                    <span className="flex items-center gap-2 text-red-700 dark:text-red-300">
-                      <XCircle size={16} /> Non livrées
-                    </span>
-                    <span className="font-semibold">
-                      {deliveryStats?.not_delivered?.count || 0}
-                    </span>
-                  </div>
+                  {[
+                    { icon: PackageCheck, label: 'Livrees',      value: deliveryStats?.delivered?.count || 0,     bg: 'var(--colorStatusSuccessBackground1)', border: 'var(--colorStatusSuccessStroke1)', color: 'var(--colorStatusSuccessForeground1)' },
+                    { icon: Clock3,       label: 'En attente',   value: deliveryStats?.pending?.count || 0,       bg: 'var(--colorStatusWarningBackground1)', border: 'var(--colorStatusWarningStroke1)', color: 'var(--colorStatusWarningForeground1)' },
+                    { icon: XCircle,      label: 'Non livrees',  value: deliveryStats?.not_delivered?.count || 0, bg: 'var(--colorStatusDangerBackground1)',  border: 'var(--colorStatusDangerStroke1)',  color: 'var(--colorStatusDangerForeground1)' },
+                  ].map(({ icon: Icon, label, value, bg, border, color }) => (
+                    <div key={label} className="flex items-center justify-between rounded-[var(--radiusLarge)] p-2.5" style={{ background: bg, border: `1px solid ${border}` }}>
+                      <span className="fui-caption1-strong flex items-center gap-2" style={{ color }}>
+                        <Icon size={15} /> {label}
+                      </span>
+                      <span className="fui-subtitle2 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -2127,21 +2081,14 @@ const Dashboard = () => {
                   );
 
                   if (!card.linkTo) {
-                    return (
-                      <div
-                        key={card.key}
-                        className={`rounded-lg p-[1px] bg-gradient-to-br ${card.accent} shadow-md`}
-                      >
-                        {cardContent}
-                      </div>
-                    );
+                    return <div key={card.key} className="fluent-card-filled">{cardContent}</div>;
                   }
 
                   return (
                     <Link
                       key={card.key}
                       to={card.linkTo}
-                      className={`block rounded-lg p-[1px] bg-gradient-to-br ${card.accent} shadow-md hover:-translate-y-0.5 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500`}
+                      className="block fluent-card-filled fluent-card-interactive"
                       aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
                     >
                       {cardContent}
@@ -2346,7 +2293,7 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <>
             {Object.values(bestDaysRanges).length > 0 && (
-              <section className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[0_20px_56px_rgba(15,23,42,0.07)] dark:border-gray-800 dark:bg-gray-900">
+              <section className="overflow-hidden fluent-card-filled">
                 <div className="border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:p-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
                     Performance par période
@@ -2355,7 +2302,7 @@ const Dashboard = () => {
                     Meilleurs jours par plage
                   </h3>
                   <p className="mt-1 text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                    Les pics de ventes, d’encaissements et de dépenses pour chaque fenêtre suivie.
+                    Les pics de ventes, d'encaissements et de dépenses pour chaque fenêtre suivie.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">

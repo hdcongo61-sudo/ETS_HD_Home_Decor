@@ -15,7 +15,21 @@ export const AppSettingsProvider = ({ children }) => {
 
   const loadAppSettings = async () => {
     try {
-      const { data } = await api.get('/app-settings/public');
+      // When logged in, load THIS shop's settings (tenant-scoped). Otherwise
+      // fall back to the public branding for the login page.
+      const hasToken = typeof localStorage !== 'undefined' && localStorage.getItem('token');
+      const endpoint = hasToken ? '/app-settings' : '/app-settings/public';
+      let data;
+      try {
+        ({ data } = await api.get(endpoint));
+      } catch (err) {
+        // If the authenticated call fails (e.g. token expired), fall back to public.
+        if (hasToken) {
+          ({ data } = await api.get('/app-settings/public'));
+        } else {
+          throw err;
+        }
+      }
       setAppSettingsState(normalizeAppSettings(data));
     } catch (error) {
       console.error('Unable to load app settings', error);

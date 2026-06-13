@@ -23,7 +23,9 @@ import {
   Button,
   ChartCard,
   DataTable,
+  EmptyState,
   KPICard,
+  LoadingSkeleton,
   PageHeader,
   StatusBadge,
   Surface,
@@ -37,11 +39,7 @@ const PROFILE_GENDER_LABELS = {
   unknown: 'Non renseigné'
 };
 
-const ALERT_STYLES = {
-  yellow: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-  gray: 'bg-gray-50 border-gray-200 text-gray-800',
-  green: 'bg-green-50 border-green-200 text-green-800'
-};
+const ALERT_TONES = { yellow: 'warning', gray: 'neutral', green: 'success' };
 
 const PAYMENT_METHOD_LABELS = {
   cash: 'Espèces',
@@ -232,7 +230,7 @@ const ClientProfile = () => {
         alerts.push({
           type: 'warning',
           title: 'Client inactif',
-          message: `Ce client n’a pas effectué d’achat depuis ${diffDays} jours.`,
+          message: `Ce client n'a pas effectué d'achat depuis ${diffDays} jours.`,
           color: 'yellow'
         });
       }
@@ -240,7 +238,7 @@ const ClientProfile = () => {
       alerts.push({
         type: 'info',
         title: 'Aucun achat',
-        message: "Ce client n’a encore effectué aucun achat.",
+        message: "Ce client n'a encore effectué aucun achat.",
         color: 'gray'
       });
     }
@@ -267,46 +265,12 @@ const ClientProfile = () => {
   }, [stats]);
 
   const insightCards = useMemo(() => ([
-    {
-      label: 'Vente en gros',
-      value: `${stats.wholesaleAmount.toLocaleString('fr-FR')} CFA`,
-      helper: `${stats.wholesaleCount} vente${stats.wholesaleCount > 1 ? 's' : ''}`,
-      classes: 'bg-amber-50 border-amber-100 text-amber-700'
-    },
-    {
-      label: 'Paiement unique',
-      value: `${stats.singlePaymentAmount.toLocaleString('fr-FR')} CFA`,
-      helper: `${stats.singlePaymentCount} vente${stats.singlePaymentCount > 1 ? 's' : ''}`,
-      classes: 'bg-emerald-50 border-emerald-100 text-emerald-700'
-    },
-    {
-      label: 'Paiements multiples',
-      value: `${stats.multiplePaymentAmount.toLocaleString('fr-FR')} CFA`,
-      helper: `${stats.multiplePaymentCount} vente${stats.multiplePaymentCount > 1 ? 's' : ''}`,
-      classes: 'bg-indigo-50 border-indigo-100 text-indigo-700'
-    },
-    {
-      label: 'Solde restant',
-      value: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA`,
-      helper: `${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''} à suivre`,
-      classes: 'bg-rose-50 border-rose-100 text-rose-700'
-    },
-    {
-      label: 'Mode favori',
-      value: stats.favoritePaymentMethod?.label || '—',
-      helper: stats.favoritePaymentMethod
-        ? `${stats.favoritePaymentMethod.amount.toLocaleString('fr-FR')} CFA encaissés`
-        : 'Aucun paiement enregistré',
-      classes: 'bg-sky-50 border-sky-100 text-sky-700'
-    },
-    {
-      label: 'Rythme moyen',
-      value: stats.averagePurchaseGapDays !== null ? `${Math.round(stats.averagePurchaseGapDays)} j` : '—',
-      helper: stats.bestMonthLabel
-        ? `Mois fort : ${stats.bestMonthLabel}`
-        : 'Pas assez d’historique',
-      classes: 'bg-violet-50 border-violet-100 text-violet-700'
-    }
+    { label: 'Vente en gros',       value: `${stats.wholesaleAmount.toLocaleString('fr-FR')} CFA`,     helper: `${stats.wholesaleCount} vente${stats.wholesaleCount > 1 ? 's' : ''}`,           tone: 'warning' },
+    { label: 'Paiement unique',     value: `${stats.singlePaymentAmount.toLocaleString('fr-FR')} CFA`, helper: `${stats.singlePaymentCount} vente${stats.singlePaymentCount > 1 ? 's' : ''}`,   tone: 'success' },
+    { label: 'Paiements multiples', value: `${stats.multiplePaymentAmount.toLocaleString('fr-FR')} CFA`,helper: `${stats.multiplePaymentCount} vente${stats.multiplePaymentCount > 1 ? 's' : ''}`, tone: 'neutral' },
+    { label: 'Solde restant',       value: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA`,    helper: `${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''} à suivre`, tone: stats.totalOutstanding > 0 ? 'danger' : 'success' },
+    { label: 'Mode favori',         value: stats.favoritePaymentMethod?.label || '—',                  helper: stats.favoritePaymentMethod ? `${stats.favoritePaymentMethod.amount.toLocaleString('fr-FR')} CFA encaissés` : 'Aucun paiement', tone: 'neutral' },
+    { label: 'Rythme moyen',        value: stats.averagePurchaseGapDays !== null ? `${Math.round(stats.averagePurchaseGapDays)} j` : '—', helper: stats.bestMonthLabel ? `Mois fort : ${stats.bestMonthLabel}` : 'Pas assez d\'historique', tone: 'neutral' },
   ]), [stats]);
 
   const handleCopy = async (number) => {
@@ -321,20 +285,25 @@ const ClientProfile = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f6f7f9]">
-        <AppLoader fullScreen={false} text="Chargement du profil client…" />
-      </div>
+      <Workspace>
+        <LoadingSkeleton rows={8} />
+      </Workspace>
     );
   }
 
   if (error || !client) {
     return (
-      <div className="py-12 text-center">
-        <p className="mb-4 font-semibold text-rose-700">{error || "Client introuvable"}</p>
-        <Link to={returnToClients} className="text-slate-700 hover:text-slate-950">
-          Retour à la liste des clients
-        </Link>
-      </div>
+      <Workspace>
+        <EmptyState
+          title={error || 'Client introuvable'}
+          description="Impossible de charger les données de ce client."
+          action={
+            <Link to={returnToClients} className="ms-button ms-button-secondary ms-button-md">
+              Retour aux clients
+            </Link>
+          }
+        />
+      </Workspace>
     );
   }
 
@@ -371,6 +340,28 @@ const ClientProfile = () => {
           </div>
         }
       />
+
+      {/* Notifications */}
+      {notifications.length > 0 && (
+        <div className="space-y-2">
+          {notifications.map((n, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 rounded-[var(--radiusLarge)] px-4 py-3"
+              style={{
+                background: n.color === 'yellow' ? 'var(--colorStatusWarningBackground1)' : n.color === 'green' ? 'var(--colorStatusSuccessBackground1)' : 'var(--colorNeutralBackground2)',
+                color: n.color === 'yellow' ? 'var(--colorStatusWarningForeground1)' : n.color === 'green' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorNeutralForeground2)',
+                border: `1px solid ${n.color === 'yellow' ? 'var(--colorStatusWarningStroke1)' : n.color === 'green' ? 'var(--colorStatusSuccessStroke1)' : 'var(--colorNeutralStroke2)'}`,
+              }}
+            >
+              <div className="min-w-0">
+                <p className="fui-body1-strong">{n.title}</p>
+                <p className="fui-caption1 mt-0.5">{n.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* CLIENT INFO */}
       <Surface className="p-5 space-y-5">
@@ -409,7 +400,7 @@ const ClientProfile = () => {
         <ChartCard title="Statistiques commerciales" description="Lecture rapide du comportement d'achat et de paiement">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {insightCards.map((card) => (
-              <KPICard key={card.label} title={card.label} value={card.value} context={card.helper} tone="neutral" />
+              <KPICard key={card.label} title={card.label} value={card.value} context={card.helper} tone={card.tone} />
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">

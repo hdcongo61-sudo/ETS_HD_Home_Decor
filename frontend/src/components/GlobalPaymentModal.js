@@ -37,12 +37,12 @@ const formatShortDate = (value) => {
 const PaymentModalSkeleton = () => (
   <div className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
     <div className="space-y-3">
-      <div className="h-11 animate-pulse rounded-lg bg-[var(--ms-bg-subtle)]" />
+      <div className="h-11 animate-pulse rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)]" />
       {[0, 1, 2].map((item) => (
-        <div key={item} className="h-24 animate-pulse rounded-3xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]" />
+        <div key={item} className="h-24 animate-pulse rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]" />
       ))}
     </div>
-    <div className="h-96 animate-pulse rounded-3xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]" />
+    <div className="h-96 animate-pulse rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]" />
   </div>
 );
 
@@ -54,36 +54,61 @@ const SaleChoiceCard = ({ sale, active, onSelect }) => {
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-3xl border p-4 text-left transition ${
+      aria-pressed={active}
+      className={`fluent-card-filled w-full p-4 text-left transition ${
         active
-          ? 'border-gray-950 bg-gray-950 text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
-          : 'border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text-strong)] hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow-sm)]'
+          ? 'ring-2 ring-[var(--ms-blue)]'
+          : 'hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow-sm)]'
       }`}
+      style={active ? { borderColor: 'var(--ms-blue)', background: 'var(--ms-blue-soft)' } : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
+          <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
             {sale.client?.name || 'Client non spécifié'}
           </p>
-          <p className={`mt-1 text-xs ${active ? 'text-white/62' : 'text-[var(--ms-text-muted)]'}`}>
+          <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
             Vente #{String(sale._id || '').slice(-6)} · {formatShortDate(sale.saleDate || sale.createdAt)}
           </p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${active ? 'bg-white/12 text-white' : 'bg-[var(--ms-bg-subtle)] text-[var(--ms-text)]'}`}>
+        <span
+          className="shrink-0 rounded-full px-2.5 py-1 fui-caption1-strong"
+          style={{ background: active ? 'var(--ms-blue)' : 'var(--colorNeutralBackground3)', color: active ? '#fff' : 'var(--colorNeutralForeground2)' }}
+        >
           Solde
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className={`rounded-lg px-3 py-2 ${active ? 'bg-white/10' : 'bg-[var(--ms-bg-subtle)]'}`}>
-          <span className={active ? 'text-white/60' : 'text-[var(--ms-text-muted)]'}>Restant</span>
-          <p className="mt-1 text-sm font-semibold">{formatAmount(balance)}</p>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Restant</span>
+          <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{formatAmount(balance)}</p>
         </div>
-        <div className={`rounded-lg px-3 py-2 ${active ? 'bg-white/10' : 'bg-[var(--ms-bg-subtle)]'}`}>
-          <span className={active ? 'text-white/60' : 'text-[var(--ms-text-muted)]'}>Payé</span>
-          <p className="mt-1 text-sm font-semibold">{formatAmount(totalPaid)}</p>
+        <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Payé</span>
+          <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorNeutralForeground1)' }}>{formatAmount(totalPaid)}</p>
         </div>
       </div>
     </button>
+  );
+};
+
+const StatTile = ({ icon, label, value, tone = 'neutral' }) => {
+  const tones = {
+    brand:   { bg: 'var(--ms-blue-soft)',                  fg: 'var(--colorBrandForeground1)' },
+    success: { bg: 'var(--colorStatusSuccessBackground1)', fg: 'var(--colorStatusSuccessForeground1)' },
+    neutral: { bg: 'var(--colorNeutralBackground3)',       fg: 'var(--colorNeutralForeground2)' },
+  };
+  const t = tones[tone] || tones.neutral;
+  return (
+    <div className="fluent-card-filled p-3">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radiusMedium)]" style={{ background: t.bg, color: t.fg }}>
+          {icon}
+        </span>
+        <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</span>
+      </div>
+      <p className="fui-subtitle2 mt-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+    </div>
   );
 };
 
@@ -171,16 +196,15 @@ const GlobalPaymentModal = () => {
       subtitle="Choisissez une vente ouverte, puis encaissez le paiement."
       size="xl"
       mobileFullscreen
+      suppressGlobal={false}
       icon={<Wallet size={20} />}
-      contentClassName="bg-[var(--ms-bg-subtle)]/80"
-      footerClassName="bg-white/96"
       footer={
         <>
           <button
             type="button"
             onClick={closeModal}
             disabled={isSubmitting}
-            className="min-h-[44px] w-full rounded-lg border border-[var(--ms-border-strong)] bg-[var(--ms-white)] px-4 py-3 font-semibold text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] disabled:opacity-60 sm:w-auto"
+            className="ms-button ms-button-secondary ms-button-md w-full disabled:opacity-60 sm:w-auto"
           >
             Annuler
           </button>
@@ -188,7 +212,7 @@ const GlobalPaymentModal = () => {
             type="submit"
             form="global-payment-form"
             disabled={isSubmitting || loading || !selectedSaleData}
-            className="min-h-[44px] w-full rounded-lg bg-gray-950 px-4 py-3 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-[var(--ms-text)] flex items-center justify-center gap-2 sm:w-auto"
+            className="ms-button ms-button-primary ms-button-md w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isSubmitting ? (
               <>
@@ -208,16 +232,16 @@ const GlobalPaymentModal = () => {
       {loading ? (
         <PaymentModalSkeleton />
       ) : loadError ? (
-        <div className="rounded-3xl border border-red-200 bg-[var(--ms-white)] p-6 text-center shadow-[var(--ms-shadow-sm)]">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ms-danger)]/10 text-[var(--ms-danger)]">
+        <div className="fluent-card-filled p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
             <AlertCircle size={22} />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-[var(--ms-text-strong)]">Chargement impossible</h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--ms-text)]">{loadError}</p>
+          <h3 className="fui-subtitle2 mt-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Chargement impossible</h3>
+          <p className="fui-body1 mx-auto mt-2 max-w-sm" style={{ color: 'var(--colorNeutralForeground2)' }}>{loadError}</p>
           <button
             type="button"
             onClick={fetchOpenSales}
-            className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+            className="ms-button ms-button-primary ms-button-md mx-auto mt-5"
           >
             <RefreshCw size={16} />
             Réessayer
@@ -227,54 +251,43 @@ const GlobalPaymentModal = () => {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <aside className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
-                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ms-text-muted)]">
-                  <ReceiptText size={14} />
-                  Ventes ouvertes
-                </div>
-                <p className="mt-1 text-xl font-semibold text-[var(--ms-text-strong)]">{paymentStats.count}</p>
-              </div>
-              <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
-                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ms-text-muted)]">
-                  <Banknote size={14} />
-                  Solde total
-                </div>
-                <p className="mt-1 text-lg font-semibold text-[var(--ms-text-strong)]">{formatAmount(paymentStats.outstanding)}</p>
-              </div>
+              <StatTile icon={<ReceiptText size={14} />} label="Ventes ouvertes" value={paymentStats.count} tone="brand" />
+              <StatTile icon={<Banknote size={14} />} label="Solde total" value={formatAmount(paymentStats.outstanding)} tone="success" />
             </div>
 
-            <div className="rounded-3xl border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 shadow-[var(--ms-shadow-sm)]">
+            <div className="fluent-card-filled p-3">
               <label htmlFor="global-payment-sale-search" className="sr-only">
                 Rechercher une vente
               </label>
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ms-text-muted)]" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--colorNeutralForeground3)' }} />
                 <input
                   id="global-payment-sale-search"
                   type="search"
                   value={saleSearch}
                   onChange={(e) => setSaleSearch(e.target.value)}
                   placeholder="Client ou numéro de vente..."
-                  className="min-h-[44px] w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 pl-10 text-sm text-[var(--ms-text-strong)] outline-none transition focus:border-gray-400 focus:bg-[var(--ms-white)] focus:ring-4 focus:ring-gray-900/5"
+                  className="min-h-[44px] w-full rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 pl-10 text-sm outline-none transition focus:border-[var(--ms-blue)] focus:bg-[var(--ms-white)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+                  style={{ color: 'var(--colorNeutralForeground1)' }}
                 />
               </div>
-              <p className="mt-3 px-1 text-xs text-[var(--ms-text-muted)]">
+              <p className="fui-caption1 mt-3 px-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                 {paymentStats.filtered} résultat{paymentStats.filtered > 1 ? 's' : ''} disponible{paymentStats.filtered > 1 ? 's' : ''}
               </p>
             </div>
 
             <div className="max-h-[42dvh] space-y-3 overflow-y-auto pr-1 lg:max-h-[min(62dvh,620px)]">
               {payableSales.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-white)] p-6 text-center">
-                  <CreditCard className="mx-auto h-8 w-8 text-[var(--ms-text-muted)]" />
-                  <p className="mt-3 text-sm font-semibold text-[var(--ms-text-strong)]">Aucune vente à encaisser</p>
-                  <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Toutes les ventes sont soldées.</p>
+                <div className="rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-white)] p-6 text-center">
+                  <CreditCard className="mx-auto h-8 w-8" style={{ color: 'var(--colorNeutralForeground3)' }} />
+                  <p className="fui-body1-strong mt-3" style={{ color: 'var(--colorNeutralForeground1)' }}>Aucune vente à encaisser</p>
+                  <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Toutes les ventes sont soldées.</p>
                 </div>
               ) : filteredSales.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-white)] p-6 text-center">
-                  <Search className="mx-auto h-8 w-8 text-[var(--ms-text-muted)]" />
-                  <p className="mt-3 text-sm font-semibold text-[var(--ms-text-strong)]">Aucun résultat</p>
-                  <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Essayez un autre nom ou numéro de vente.</p>
+                <div className="rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-white)] p-6 text-center">
+                  <Search className="mx-auto h-8 w-8" style={{ color: 'var(--colorNeutralForeground3)' }} />
+                  <p className="fui-body1-strong mt-3" style={{ color: 'var(--colorNeutralForeground1)' }}>Aucun résultat</p>
+                  <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Essayez un autre nom ou numéro de vente.</p>
                 </div>
               ) : (
                 filteredSales.map((sale) => (
@@ -298,11 +311,11 @@ const GlobalPaymentModal = () => {
                 onSubmittingChange={setIsSubmitting}
               />
             ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] px-6 text-center">
-                <Wallet className="h-10 w-10 text-[var(--ms-text-muted)]" />
-                <h3 className="mt-4 text-base font-semibold text-[var(--ms-text-strong)]">Sélectionnez une vente</h3>
-                <p className="mt-2 max-w-sm text-sm text-[var(--ms-text-muted)]">
-                  Le formulaire de paiement s’affiche ici avec le solde, l’historique et les options de livraison.
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] px-6 text-center">
+                <Wallet className="h-10 w-10" style={{ color: 'var(--colorNeutralForeground3)' }} />
+                <h3 className="fui-subtitle2 mt-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Sélectionnez une vente</h3>
+                <p className="fui-body1 mt-2 max-w-sm" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Le formulaire de paiement s'affiche ici avec le solde, l'historique et les options de livraison.
                 </p>
               </div>
             )}

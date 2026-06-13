@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const expenseSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     description: {
       type: String,
       required: true,

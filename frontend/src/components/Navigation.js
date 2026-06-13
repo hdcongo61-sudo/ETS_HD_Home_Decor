@@ -7,12 +7,30 @@ import {
   ArrowUpRight,
   BriefcaseBusiness,
   FileText,
+  LayoutGrid,
   Menu,
   Package,
   Search,
   Sparkles,
   UserRound,
   X,
+  ShoppingCart,
+  Landmark,
+  Users,
+  Receipt,
+  BarChart2,
+  Archive,
+  AlertTriangle,
+  TrendingUp,
+  Building2,
+  ShieldCheck,
+  Settings,
+  UserCheck,
+  FileStack,
+  ClipboardList,
+  PlusCircle,
+  History,
+  CreditCard,
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -22,7 +40,7 @@ const Navigation = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [autresOpen, setAutresOpen] = useState(false);
+  const [quickAccessOpen, setQuickAccessOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -36,7 +54,7 @@ const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => { setIsMenuOpen(false); }, [location.pathname]);
+  useEffect(() => { setIsMenuOpen(false); setQuickAccessOpen(false); }, [location.pathname]);
   useEffect(() => {
     if (!isDesktop && isMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -144,7 +162,7 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="sticky top-0 z-50 nav-safe-top border-b border-[var(--ms-border)] bg-[var(--ms-white)]" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.04)' }}>
+    <nav className="sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic" style={{ boxShadow: 'var(--shadow2)' }}>
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6">
         <div className="flex h-[48px] items-center gap-3">
           {/* === Logo === */}
@@ -156,6 +174,13 @@ const Navigation = () => {
             <img
               src={logoUrl}
               alt={branding.shortName || branding.appName}
+              onError={(e) => {
+                const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
+                if (e.currentTarget.src !== window.location.origin + fallback && !e.currentTarget.dataset.fallback) {
+                  e.currentTarget.dataset.fallback = '1';
+                  e.currentTarget.src = fallback;
+                }
+              }}
               className="h-7 w-7 shrink-0 rounded-sm border border-[var(--ms-border)] bg-white object-contain"
             />
             <div className="hidden min-w-0 lg:block">
@@ -165,13 +190,56 @@ const Navigation = () => {
             </div>
           </Link>
 
-          {/* === Separator === */}
-          <div className="hidden md:block w-px h-6 bg-[var(--ms-border)] mx-0.5" />
+          {/* Super-admin badge — desktop only */}
+          {auth.isSuperAdmin && (
+            <Link
+              to="/super-admin"
+              className="hidden md:flex items-center gap-1.5 rounded-md px-2.5 h-8 text-[12px] font-semibold transition-colors"
+              style={{ background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)', border: '1px solid var(--colorStatusWarningStroke1)' }}
+              title="Panneau Super Admin"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">Super Admin</span>
+            </Link>
+          )}
 
-          {/* === Menu desktop === */}
-          <div className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex">
-            {renderNavigationLinks(auth, handleLogout, closeMenu, false, false, autresOpen, setAutresOpen)}
-          </div>
+          {/* Quick Access button — desktop only (hidden for platform operators) */}
+          {auth.isAuthenticated && !(auth.isSuperAdmin && !sessionStorage.getItem('impersonating')) && (
+            <div className="relative hidden md:block">
+              <button
+                type="button"
+                onClick={() => setQuickAccessOpen((o) => !o)}
+                className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 border text-[13px] font-medium transition-colors ${
+                  quickAccessOpen
+                    ? 'bg-[var(--colorBrandBackground)] border-[var(--colorBrandBackground)] text-white'
+                    : 'border-[var(--colorNeutralStroke2)] bg-transparent text-[var(--colorNeutralForeground2)] hover:bg-[var(--colorNeutralBackground2)]'
+                }`}
+                aria-label="Accès rapide"
+                aria-expanded={quickAccessOpen}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden lg:inline">Accès rapide</span>
+              </button>
+              <AnimatePresence>
+                {quickAccessOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-[55]"
+                      aria-hidden
+                      onClick={() => setQuickAccessOpen(false)}
+                    />
+                    <QuickAccessPanel
+                      auth={auth}
+                      onClose={() => setQuickAccessOpen(false)}
+                    />
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Desktop: spacer pushes search + profile to the right */}
+          <div className="hidden md:block flex-1" />
 
           {showSearchBar && (
             <GlobalSearchBar
@@ -184,7 +252,7 @@ const Navigation = () => {
             />
           )}
 
-          {/* === Separator === */}
+          {/* Separator before profile */}
           <div className="hidden md:block w-px h-6 bg-[var(--ms-border)]" />
 
           {/* === Profil & Actions === */}
@@ -276,7 +344,7 @@ const Navigation = () => {
               </div>
             )}
             <div className="flex flex-col gap-0">
-              {renderNavigationLinks(auth, handleLogout, closeMenu, true, true, false, () => {})}
+              {renderNavigationLinks(auth, handleLogout, closeMenu, true, true, false, () => {}  )}
             </div>
           </div>
             </motion.div>
@@ -563,6 +631,32 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               <NavIcon to="/documents" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Documents entreprise" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             </MobileMenuSection>
           )}
+
+          {/* === Super Admin section (mobile) === */}
+          {auth.isSuperAdmin && (
+            <MobileMenuSection title="Super Admin">
+              <Link
+                to="/super-admin"
+                onClick={closeMenu}
+                className={`${linkClass} text-[var(--colorStatusWarningForeground1)] hover:bg-[var(--colorStatusWarningBackground1)]`}
+              >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--colorStatusWarningBackground1)]`}>
+                  <ShieldCheck className="h-[18px] w-[18px]" style={{ color: 'var(--colorStatusWarningForeground1)' }} />
+                </span>
+                <span className="ml-3 min-w-0 flex-1 truncate font-semibold">Gestion boutiques</span>
+              </Link>
+              <Link
+                to="/register"
+                onClick={closeMenu}
+                className={linkClass}
+              >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gray-100/90 text-[var(--ms-text)]`}>
+                  <Building2 className="h-[18px] w-[18px]" />
+                </span>
+                <span className="ml-3 min-w-0 flex-1 truncate">Nouvelle boutique</span>
+              </Link>
+            </MobileMenuSection>
+          )}
         </div>
       )}
 
@@ -719,6 +813,157 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
         <span className="absolute bottom-1.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-white/85" />
       )}
     </Link>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   QUICK ACCESS PANEL — Fluent 2 Mega-Menu
+   ═══════════════════════════════════════════ */
+const QA_GROUPS = (auth) => [
+  {
+    label: 'Ventes',
+    items: [
+      { to: '/sales#sale-form', icon: PlusCircle,   label: 'Nouvelle vente',        highlight: true },
+      { to: '/sales',           icon: ShoppingCart,  label: 'Liste des ventes' },
+      { to: '/sales/all',       icon: History,       label: 'Archives ventes' },
+      { to: '/sales/partially-paid', icon: CreditCard, label: 'Paiements partiels' },
+      ...(auth.isAdmin ? [{ to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' }] : []),
+    ],
+  },
+  {
+    label: 'Produits',
+    items: [
+      { to: '/products',        icon: Package,       label: 'Catalogue produits' },
+      ...(auth.isAdmin ? [
+        { to: '/product-dashboard', icon: BarChart2, label: 'Dashboard produits' },
+        { to: '/products/top-sellers', icon: TrendingUp, label: 'Meilleures ventes' },
+        { to: '/products/critical',    icon: AlertTriangle, label: 'Stock critique' },
+        { to: '/products/out-of-stock',icon: AlertTriangle, label: 'Rupture de stock' },
+        { to: '/products/by-supplier', icon: Building2, label: 'Par fournisseur' },
+      ] : []),
+    ],
+  },
+  {
+    label: 'Clients',
+    items: [
+      { to: '/clients',           icon: Users,         label: 'Liste des clients' },
+      { to: '/clients/dashboard', icon: BarChart2,     label: 'Tableau de bord clients' },
+    ],
+  },
+  {
+    label: 'Employés',
+    items: [
+      { to: '/employees',     icon: BriefcaseBusiness, label: 'Liste des employés' },
+      { to: '/employees/new', icon: PlusCircle,        label: 'Nouvel employé' },
+    ],
+  },
+  ...(auth.isAdmin ? [
+    {
+      label: 'Finances',
+      items: [
+        { to: '/caisse/session',        icon: Landmark,  label: 'Session de caisse' },
+        { to: '/bank',                  icon: Landmark,  label: 'Caisse' },
+        { to: '/expenses',              icon: Receipt,   label: 'Dépenses' },
+        { to: '/expenses/monthly-plan', icon: ClipboardList, label: 'Objectif mensuel' },
+      ],
+    },
+    {
+      label: 'Administration',
+      items: [
+        { to: '/settings',       icon: Settings,   label: 'Paramètres' },
+        { to: '/admin/users',    icon: UserCheck,  label: 'Gestion utilisateurs' },
+        { to: '/users/stats',    icon: BarChart2,  label: 'Dashboard utilisateurs' },
+        { to: '/documents',      icon: FileStack,  label: 'Documents' },
+        { to: '/admin-requests', icon: FileText,   label: 'Demandes admin' },
+      ],
+    },
+  ] : [
+    {
+      label: 'Autres',
+      items: [
+        { to: '/bank',           icon: Landmark,      label: 'Caisse' },
+        { to: '/admin-requests', icon: ClipboardList, label: 'Mes demandes' },
+      ],
+    },
+  ]),
+];
+
+const QuickAccessPanel = ({ auth, onClose }) => {
+  const groups = QA_GROUPS(auth).filter(g => g.items.length > 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+      transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+      className="absolute left-0 top-[calc(100%+6px)] z-[60] w-[min(96vw,640px)] overflow-hidden rounded-[var(--radiusXLarge)]"
+      style={{
+        background: 'rgba(255,255,255,0.96)',
+        backdropFilter: 'saturate(180%) blur(16px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(16px)',
+        border: '1px solid var(--colorNeutralStroke2)',
+        boxShadow: 'var(--shadow28)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+        <span className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+          Accès rapide
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-7 w-7 items-center justify-center rounded-[var(--radiusMedium)] transition-colors"
+          style={{ color: 'var(--colorNeutralForeground3)' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--colorNeutralBackground3)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          aria-label="Fermer"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Groups grid */}
+      <div
+        className="grid p-4 gap-x-6 gap-y-4"
+        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}
+      >
+        {groups.map((group) => (
+          <div key={group.label} className="space-y-1">
+            <p
+              className="fui-caption1-strong uppercase px-2 pb-1"
+              style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}
+            >
+              {group.label}
+            </p>
+            {group.items.map(({ to, icon: Icon, label, highlight }) => (
+              <Link
+                key={to}
+                to={to}
+                onClick={onClose}
+                className="flex items-center gap-2.5 rounded-[var(--radiusLarge)] px-2 py-2 text-[13px] font-medium transition-colors"
+                style={{
+                  color: highlight ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground2)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = highlight ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground2)';
+                  e.currentTarget.style.color = highlight ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground1)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = highlight ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground2)';
+                }}
+              >
+                <Icon size={14} style={{ flexShrink: 0 }} />
+                <span className="truncate">{label}</span>
+              </Link>
+            ))}
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
 };
 

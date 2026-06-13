@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logo from '../assets/logo.png'; // Assurez-vous que le chemin est correct
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity, getLogoDataUrl } from '../utils/appBranding';
 
 const formatAmount = (value) =>
   `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
@@ -24,13 +25,17 @@ const sanitizeFilename = (value) =>
     .toLowerCase();
 
 const ExportSalesPdf = ({ sale }) => {
-  const generatePDF = () => {
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
+
+  const generatePDF = async () => {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 16;
     const client = sale.client || {};
     const sellerName = sale.user?.name || 'Non spécifié';
+    const logoDataUrl = await getLogoDataUrl(company.logoUrl);
     const saleDate = formatDate(sale.saleDate);
     const totalPaid = (sale.payments || []).reduce(
       (sum, payment) => sum + (Number(payment.amount) || 0),
@@ -41,19 +46,25 @@ const ExportSalesPdf = ({ sale }) => {
     doc.setFillColor(248, 249, 251);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-    // Header
+    // Header — tenant (shop) identity from settings
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(margin, 12, pageWidth - margin * 2, 34, 5, 5, 'F');
-    doc.addImage(logo, 'PNG', margin + 5, 18, 20, 20);
+    const hasLogo = Boolean(logoDataUrl);
+    if (hasLogo) {
+      try { doc.addImage(logoDataUrl, 'PNG', margin + 5, 18, 20, 20); } catch { /* ignore bad image */ }
+    }
+    const headerX = hasLogo ? margin + 31 : margin + 6;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(17, 24, 39);
-    doc.text('ETS HD Home Decor', margin + 31, 24);
+    doc.text(company.name, headerX, 24);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(107, 114, 128);
-    doc.text('61 rue Lenine, Moungali/Brazzaville', margin + 31, 30);
-    doc.text('Tel: +242 069822930', margin + 31, 35);
+    let companyLineY = 30;
+    if (company.address) { doc.text(company.address, headerX, companyLineY); companyLineY += 5; }
+    const contactBits = [company.phone && `Tel: ${company.phone}`, company.email].filter(Boolean).join('   ');
+    if (contactBits) { doc.text(contactBits, headerX, companyLineY); }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(17, 24, 39);
@@ -172,7 +183,7 @@ const ExportSalesPdf = ({ sale }) => {
     doc.line(pageWidth - margin - 58, signatureY + 10, pageWidth - margin, signatureY + 10);
     doc.setFontSize(8);
     doc.setTextColor(107, 114, 128);
-    doc.text(sellerName || 'Responsable ETS HD', pageWidth - margin - 58, signatureY + 16);
+    doc.text(sellerName || `Responsable ${company.name}`, pageWidth - margin - 58, signatureY + 16);
 
     // Pied de page
     const footerY = pageHeight - 18;
@@ -181,7 +192,9 @@ const ExportSalesPdf = ({ sale }) => {
     doc.setFontSize(8);
     doc.setTextColor(107, 114, 128);
     doc.text('Merci pour votre confiance.', pageWidth / 2, footerY, { align: 'center' });
-    doc.text('TVA non applicable, art. 293 B du CGI', pageWidth / 2, footerY + 5, { align: 'center' });
+    if (company.footerText) {
+      doc.text(company.footerText, pageWidth / 2, footerY + 5, { align: 'center' });
+    }
 
     doc.save(`facture-${sanitizeFilename(client.name)}-${new Date().toISOString().split('T')[0]}.pdf`);
   };

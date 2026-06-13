@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const documentSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     type: {
       type: String,
       enum: ['fiscal', 'rent_payment', 'insurance', 'contract', 'other'],

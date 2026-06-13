@@ -19,6 +19,12 @@ connectDB();
 
 const path = require('path');
 
+// ── Global tenant isolation ──
+// Register BEFORE any model is compiled (i.e. before the route requires
+// below) so every tenant-scoped schema gets automatic query scoping.
+const mongoose = require('mongoose');
+mongoose.plugin(require('./utils/tenantGuardPlugin'));
+
 // Route files
 const productRoutes = require('./routes/productRoutes');
 const clientRoutes = require('./routes/clientRoutes');
@@ -35,6 +41,8 @@ const documentRoutes = require('./routes/documentRoutes');
 const lookupRoutes = require('./routes/lookupRoutes');
 const appSettingsRoutes = require('./routes/appSettingsRoutes');
 const adminRequestRoutes = require('./routes/adminRequestRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
+const cashSessionRoutes = require('./routes/cashSessionRoutes');
 
 const app = express();
 
@@ -126,6 +134,8 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/lookups', lookupRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/cash-sessions', cashSessionRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

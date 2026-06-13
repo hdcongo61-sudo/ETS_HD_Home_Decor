@@ -2,29 +2,25 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import {
-  Button,
-  CommandBar,
-  DataTable,
-  EmptyState,
-  KPICard,
-  LoadingSkeleton,
-  PageHeader,
-  Surface,
-  Workspace,
+  KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from '../components/business';
+import {
+  ArrowLeft, Phone, MessageCircle, Building2, Search, ChevronDown,
+  TrendingUp, Wallet, Coins, PackageX, Star, Boxes, AlertTriangle,
+} from 'lucide-react';
 
-const rangeOptions = [
-  { value: 'day', label: '24 dernières heures' },
-  { value: 'week', label: '7 derniers jours' },
-  { value: 'month', label: '30 derniers jours' },
-  { value: 'year', label: '12 derniers mois' },
-  { value: 'all', label: 'Toutes les périodes' },
+const RANGE_OPTIONS = [
+  { value: 'day', label: '24 h' },
+  { value: 'week', label: '7 j' },
+  { value: 'month', label: '30 j' },
+  { value: 'year', label: '12 mois' },
+  { value: 'all', label: 'Tout' },
 ];
 
-const formatCurrency = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
-
-const formatNumber = (value) => Number(value || 0).toLocaleString('fr-FR');
+const cfa = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
+const num = (v) => Number(v || 0).toLocaleString('fr-FR');
+const pct = (v) => `${Number(v || 0).toFixed(1)} %`;
+const initials = (s) => (s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 const SupplierProfile = () => {
   const { name } = useParams();
@@ -34,14 +30,12 @@ const SupplierProfile = () => {
   const [generatedAt, setGeneratedAt] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState('revenue');
 
   const supplierName = useMemo(() => {
     if (!name) return '';
-    try {
-      return decodeURIComponent(name);
-    } catch (err) {
-      return name;
-    }
+    try { return decodeURIComponent(name); } catch { return name; }
   }, [name]);
 
   useEffect(() => {
@@ -50,17 +44,13 @@ const SupplierProfile = () => {
       setError('');
       try {
         const res = await api.get(`/products/by-supplier?range=${range}`);
-        const suppliers = res.data?.suppliers || [];
+        const suppliers = res.data?.suppliers || res.data?.groups || [];
         const match = suppliers.find(
-          (s) =>
-            (s.supplierName || '').trim().toLowerCase() ===
-            supplierName.trim().toLowerCase()
+          (s) => (s.name || s.supplierName || '').trim().toLowerCase() === supplierName.trim().toLowerCase()
         );
         setSupplier(match || null);
         setGeneratedAt(res.data?.generatedAt || '');
-        if (!match) {
-          setError('Aucun fournisseur correspondant pour cette période.');
-        }
+        if (!match) setError('Aucun fournisseur correspondant pour cette période.');
       } catch (err) {
         console.error('Erreur chargement profil fournisseur:', err);
         setError("Impossible de charger le profil fournisseur pour le moment.");
@@ -68,79 +58,26 @@ const SupplierProfile = () => {
         setLoading(false);
       }
     };
-
-    if (supplierName) {
-      fetchSupplier();
-    } else {
-      setLoading(false);
-      setError('Fournisseur introuvable.');
-    }
+    if (supplierName) fetchSupplier();
+    else { setLoading(false); setError('Fournisseur introuvable.'); }
   }, [range, supplierName]);
 
-  const summaryCards = supplier
-    ? [
-        {
-          title: 'Produits',
-          value: formatNumber(supplier.totalProducts),
-          tone: 'info',
-        },
-        {
-          title: 'Stock total',
-          value: formatCurrency(supplier.totalStockValue),
-          tone: 'neutral',
-        },
-        {
-          title: 'Revenu total',
-          value: formatCurrency(supplier.totalRevenue),
-          tone: 'success',
-        },
-        {
-          title: 'Profit total',
-          value: formatCurrency(supplier.totalProfit),
-          tone: 'success',
-        },
-        {
-          title: 'Unités vendues',
-          value: formatNumber(supplier.totalUnitsSold),
-          tone: 'info',
-        },
-        {
-          title: 'Marge moyenne',
-          value: `${Number(supplier.averageMargin || 0).toFixed(1)} %`,
-          tone: 'neutral',
-        },
-        {
-          title: 'Stock critique',
-          value: formatNumber(supplier.lowStockCount),
-          tone: 'warning',
-        },
-        {
-          title: 'Ruptures',
-          value: formatNumber(supplier.outOfStockCount),
-          tone: 'danger',
-        },
-      ]
-    : [];
+  const products = useMemo(() => {
+    const list = supplier?.products || [];
+    const q = search.trim().toLowerCase();
+    const filtered = q ? list.filter((p) => p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)) : list;
+    const acc = {
+      revenue: (p) => p.revenue, profit: (p) => p.profit, stock: (p) => p.stock,
+      sold: (p) => p.sold, margin: (p) => p.margin,
+    }[sortKey] || ((p) => p.revenue);
+    return [...filtered].sort((a, b) => acc(b) - acc(a));
+  }, [supplier, search, sortKey]);
 
-  const renderGeneratedAt = () => {
-    if (!generatedAt) return null;
-    try {
-      const date = new Date(generatedAt);
-      return `Actualisé le ${date.toLocaleDateString('fr-FR')} à ${date
-        .toLocaleTimeString('fr-FR')
-        .slice(0, 5)}`;
-    } catch (err) {
-      return null;
-    }
-  };
+  const metaLabel = generatedAt
+    ? `Actualisé le ${new Date(generatedAt).toLocaleDateString('fr-FR')} à ${new Date(generatedAt).toLocaleTimeString('fr-FR').slice(0, 5)}`
+    : null;
 
-  if (loading) {
-    return (
-      <Workspace>
-        <LoadingSkeleton rows={5} />
-      </Workspace>
-    );
-  }
+  if (loading) return <Workspace><LoadingSkeleton rows={6} /></Workspace>;
 
   if (error && !supplier) {
     return (
@@ -148,132 +85,146 @@ const SupplierProfile = () => {
         <EmptyState
           title="Fournisseur introuvable"
           description={error}
-          action={<Button onClick={() => navigate('/products/by-supplier')}>Retour aux fournisseurs</Button>}
+          action={<button onClick={() => navigate('/products/by-supplier')} className="ms-button ms-button-secondary ms-button-md">Retour aux fournisseurs</button>}
         />
       </Workspace>
     );
   }
 
+  const phoneDigits = (supplier?.supplierPhone || '').replace(/\D/g, '');
+  const topProduct = supplier?.topProduct;
+
   return (
     <Workspace>
       <PageHeader
-        eyebrow="Inventaire fournisseur"
-        title="Profil fournisseur"
-        description={`${supplier?.supplierName || supplierName}${supplier?.supplierPhone ? ` - ${supplier.supplierPhone}` : ''}`}
-        meta={renderGeneratedAt()}
-        actions={<Button type="button" onClick={() => navigate('/products/by-supplier')}>Retour</Button>}
+        eyebrow="Profil fournisseur"
+        title={supplier?.name || supplier?.supplierName || supplierName}
+        description="Performance, rentabilité et état du stock pour ce fournisseur."
+        meta={metaLabel}
+        actions={
+          <button onClick={() => navigate('/products/by-supplier')} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
+            <ArrowLeft size={14} /> Fournisseurs
+          </button>
+        }
       />
 
-      <CommandBar>
-          <label htmlFor="range" className="text-sm font-medium text-gray-600">
-            Période
-          </label>
-          <select
-            id="range"
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="form-control w-auto min-w-[210px] text-sm"
-          >
-            {rangeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-      </CommandBar>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card) => (
-          <KPICard
-            key={card.title}
-            title={card.title}
-            value={card.value}
-            tone={card.tone}
-          />
-        ))}
-      </div>
-
-      <Surface>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="ms-section-title">
-            Produits du fournisseur
-          </h2>
-          <span className="ms-page-meta">
-            {formatNumber(supplier?.products?.length || 0)} produits
-          </span>
+      {/* Identity + period */}
+      <div className="fluent-card-filled p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] fui-subtitle1"
+              style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+              {initials(supplier?.name || supplierName)}
+            </div>
+            <div className="min-w-0">
+              <p className="fui-subtitle1 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                {supplier?.name || supplierName}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="ms-status-badge ms-status-neutral flex items-center gap-1"><Building2 size={11} /> {num(supplier?.totalProducts)} produits</span>
+                {supplier?.categoryCount > 0 && <span className="ms-status-badge ms-status-neutral">{num(supplier.categoryCount)} catégories</span>}
+                {supplier?.deadStockCount > 0 && <span className="ms-status-badge ms-status-warning">{num(supplier.deadStockCount)} stock mort</span>}
+              </div>
+            </div>
+          </div>
+          {supplier?.supplierPhone && (
+            <div className="flex items-center gap-2">
+              <a href={`tel:${supplier.supplierPhone}`} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"><Phone size={14} /> Appeler</a>
+              {phoneDigits && (
+                <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5"><MessageCircle size={14} /> WhatsApp</a>
+              )}
+            </div>
+          )}
         </div>
 
-        <DataTable>
-          <table className="responsive-table min-w-full text-sm">
-            <thead>
-              <tr>
-                <th className="py-2 px-3 text-left">Produit</th>
-                <th className="py-2 px-3 text-left">Catégorie</th>
-                <th className="py-2 px-3 text-right">Stock</th>
-                <th className="py-2 px-3 text-right">Valeur Stock</th>
-                <th className="py-2 px-3 text-right">Ventes</th>
-                <th className="py-2 px-3 text-right">Revenu</th>
-                <th className="py-2 px-3 text-right">Profit</th>
-                <th className="py-2 px-3 text-right">Marge</th>
-              </tr>
-            </thead>
-            <tbody>
-              {supplier?.products && supplier.products.length > 0 ? (
-                supplier.products.map((product) => (
-                  <tr
-                    key={`${supplier.supplierName}-${product._id}`}
-                    className="cursor-pointer transition-colors"
-                  >
-                    <td data-title="Produit" className="py-2 px-3 font-medium text-gray-800 responsive-table__product-cell">
-                      <Link
-                        to={`/products/${product._id}`}
-                        className="font-semibold text-[var(--ms-primary)] hover:underline"
-                      >
-                        {product.name}
-                      </Link>
-                      {product.sku && (
-                        <span className="ml-2 text-xs text-gray-400">
-                          {product.sku}
-                        </span>
-                      )}
-                    </td>
-                    <td data-title="Catégorie" className="py-2 px-3 text-gray-500">
-                      {product.category || 'Non catégorisé'}
-                    </td>
-                    <td data-title="Stock" className="py-2 px-3 text-right">
-                      {formatNumber(product.stock)}
-                    </td>
-                    <td data-title="Valeur Stock" className="py-2 px-3 text-right">
-                      {formatCurrency(product.stockValue)}
-                    </td>
-                    <td data-title="Ventes" className="py-2 px-3 text-right">
-                      {formatNumber(product.sold)}
-                    </td>
-                    <td data-title="Revenu" className="py-2 px-3 text-right font-semibold text-[var(--ms-success)]">
-                      {formatCurrency(product.revenue)}
-                    </td>
-                    <td data-title="Profit" className="py-2 px-3 text-right font-semibold text-[var(--ms-primary)]">
-                      {formatCurrency(product.profit)}
-                    </td>
-                    <td data-title="Marge" className="py-2 px-3 text-right">
-                      {`${Number(product.margin || 0).toFixed(1)} %`}
-                    </td>
-                  </tr>
-                ))
-              ) : (
+        {/* Period chips */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Période</span>
+          {RANGE_OPTIONS.map((o) => (
+            <button key={o.value} onClick={() => setRange(o.value)} className={`ms-button ms-button-sm ${range === o.value ? 'ms-button-primary' : 'ms-button-secondary'}`}>{o.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard title="Revenu (période)" value={cfa(supplier?.totalRevenue)} context={`Bénéfice: ${cfa(supplier?.totalProfit)}`} icon={<TrendingUp className="h-4 w-4" />} tone="success" />
+        <KPICard title="Valeur du stock" value={cfa(supplier?.stockValue)} context={`Coût: ${cfa(supplier?.stockCostValue)}`} icon={<Wallet className="h-4 w-4" />} />
+        <KPICard title="Marge moyenne" value={pct(supplier?.averageMargin)} context={`Écoulement: ${pct(supplier?.sellThroughRate)}`} icon={<Coins className="h-4 w-4" />} tone="success" />
+        <KPICard title="Profit potentiel" value={cfa(supplier?.potentialProfit)} context={`${num(supplier?.totalUnitsSold)} unités vendues`} icon={<Star className="h-4 w-4" />} tone="neutral" />
+      </div>
+
+      {/* Health + top product */}
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div className="fluent-card-filled p-4 flex items-center gap-3">
+          <span className="ms-kpi-icon shrink-0" style={{ background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' }}><AlertTriangle size={16} /></span>
+          <div><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Stock bas</p><p className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>{num(supplier?.lowStockCount)}</p></div>
+        </div>
+        <div className="fluent-card-filled p-4 flex items-center gap-3">
+          <span className="ms-kpi-icon shrink-0" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}><PackageX size={16} /></span>
+          <div><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Ruptures</p><p className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>{num(supplier?.outOfStockCount)}</p></div>
+        </div>
+        <div className="fluent-card-filled p-4 flex items-center gap-3">
+          <span className="ms-kpi-icon shrink-0" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}><Star size={16} /></span>
+          <div className="min-w-0"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Top produit</p><p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{topProduct?.name || '—'}</p></div>
+        </div>
+      </div>
+
+      {/* Products table */}
+      <div className="fluent-card-filled overflow-hidden">
+        <div className="ms-command-bar flex-wrap gap-y-2" style={{ borderRadius: 0, border: 'none', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+          <p className="fui-subtitle2 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            <Boxes size={15} /> Produits ({num(products.length)})
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--colorNeutralForeground3)' }} />
+              <input type="text" placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="ms-search-box" style={{ paddingLeft: 30, minWidth: 160 }} />
+            </div>
+            <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
+              <option value="revenue">Revenu</option>
+              <option value="profit">Bénéfice</option>
+              <option value="sold">Vendus</option>
+              <option value="stock">Stock</option>
+              <option value="margin">Marge</option>
+            </select>
+          </div>
+        </div>
+
+        {products.length === 0 ? (
+          <EmptyState title="Aucun produit" description="Aucun produit pour ce fournisseur sur la période." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="py-4 px-3 text-center text-gray-500"
-                  >
-                    Aucun produit enregistré pour ce fournisseur.
-                  </td>
+                  {['Produit', 'Catégorie', 'Stock', 'Valeur', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (
+                    <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>{h}</th>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </DataTable>
-      </Surface>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p._id} style={{ borderBottom: '1px solid var(--colorNeutralStroke3)', background: p.isDead ? 'var(--colorStatusWarningBackground1)' : 'transparent' }}>
+                    <td className="px-3 py-2">
+                      <Link to={`/products/${p._id}`} className="fui-body1-strong hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>{p.name}</Link>
+                      {p.isDead && <span className="ml-2 ms-status-badge ms-status-warning">mort</span>}
+                      {p.sku && <span className="ml-2 fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.sku}</span>}
+                    </td>
+                    <td className="px-3 py-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.category || 'Non catégorisé'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: p.stock === 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground2)' }}>{num(p.stock)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{cfa(p.stockValue)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{num(p.sold)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{pct(p.margin)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </Workspace>
   );
 };

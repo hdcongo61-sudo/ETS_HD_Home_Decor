@@ -1,6 +1,7 @@
 const Expense = require('../models/expenseModel');
 const Employee = require('../models/employeeModel');
 const asyncHandler = require('express-async-handler');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const normalizeText = (value) =>
   String(value || '')
@@ -171,7 +172,7 @@ const getExpenses = asyncHandler(async (req, res) => {
   
   // Recherche
   if (search) {
-    const matchingEmployees = await Employee.find({ name: { $regex: search, $options: 'i' } })
+    const matchingEmployees = await Employee.find({ ...tenantFilter(req), name: { $regex: search, $options: 'i' } })
       .select('_id')
       .lean();
     query.$or = [
@@ -203,7 +204,7 @@ const createExpense = async (req, res) => {
       return res.status(400).json({ message: salaryValidation.error });
     }
 
-    const expense = new Expense({
+    const expense = new Expense({ tenantId: req.tenantId,
       ...salaryValidation.payload,
       createdBy: req.user ? req.user._id : undefined,
     });

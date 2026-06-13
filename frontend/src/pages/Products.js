@@ -3,6 +3,8 @@ import React, { useState, useEffect, useContext, useCallback, useMemo } from 're
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity } from '../utils/appBranding';
 import LoaderOverlay from '../components/LoaderOverlay';
 import AppLoader from '../components/AppLoader';
 import toast, { Toaster } from 'react-hot-toast';
@@ -23,6 +25,10 @@ import {
   Edit3,
   FileSpreadsheet,
   Package,
+  PackageCheck,
+  Boxes,
+  Wallet,
+  AlertTriangle,
   Plus,
   RotateCcw,
   Search,
@@ -206,8 +212,12 @@ const Products = () => {
   };
 
   const totalStock = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
+  const inStockCount = products.filter((product) => Number(product.stock) > 0).length;
   const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
   const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
+  // Inventory value = sum of price × stock across the catalogue
+  const stockValue = products.reduce((sum, product) => sum + (Number(product.price) || 0) * (Number(product.stock) || 0), 0);
+  const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
   return (
     <Workspace>
@@ -237,10 +247,34 @@ const Products = () => {
         )}
       />
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <KPICard title="Articles" value={loading ? '...' : products.length.toLocaleString('fr-FR')} context="Catalogue actif" icon={<Package className="h-4 w-4" />} />
-        <KPICard title="Stock total" value={loading ? '...' : totalStock.toLocaleString('fr-FR')} context="Unités disponibles" icon={<Package className="h-4 w-4" />} tone="success" />
-        <KPICard title="À surveiller" value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')} context={`${lowStockCount} bas, ${outOfStockCount} rupture`} icon={<Package className="h-4 w-4" />} tone="warning" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KPICard
+          title="Articles en stock"
+          value={loading ? '...' : inStockCount.toLocaleString('fr-FR')}
+          context={`${products.length.toLocaleString('fr-FR')} au catalogue`}
+          icon={<PackageCheck className="h-4 w-4" />}
+          tone="success"
+        />
+        <KPICard
+          title="Stock total"
+          value={loading ? '...' : totalStock.toLocaleString('fr-FR')}
+          context="Unités disponibles"
+          icon={<Boxes className="h-4 w-4" />}
+        />
+        <KPICard
+          title="Valeur du stock"
+          value={loading ? '...' : formatCfa(stockValue)}
+          context="Prix × quantité"
+          icon={<Wallet className="h-4 w-4" />}
+          tone="success"
+        />
+        <KPICard
+          title="À surveiller"
+          value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')}
+          context={`${lowStockCount} bas · ${outOfStockCount} rupture`}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          tone="warning"
+        />
       </div>
 
       {isAdmin && (
@@ -562,6 +596,8 @@ const getProductStockStatus = (stock) => {
 };
 
 const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
   const navigate = useNavigate();
   const [filters, setFilters] = useState(() => readProductFiltersFromSearch(location.search));
@@ -664,9 +700,31 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     updateFiltersInUrl(DEFAULT_PRODUCT_FILTERS);
   };
 
+  // Quick stock-status presets that drive the numeric stock filter.
+  const STOCK_PRESETS = {
+    all:      { stockOperator: '', stock: '', stockMax: '' },
+    inStock:  { stockOperator: 'gte', stock: '1', stockMax: '' },
+    low:      { stockOperator: 'between', stock: '1', stockMax: '4' },
+    out:      { stockOperator: 'eq', stock: '0', stockMax: '' },
+  };
+  const activeStockPreset = (() => {
+    const { stockOperator, stock, stockMax } = filters;
+    if (!stockOperator && !stock && !stockMax) return 'all';
+    if (stockOperator === 'gte' && String(stock) === '1' && !stockMax) return 'inStock';
+    if (stockOperator === 'between' && String(stock) === '1' && String(stockMax) === '4') return 'low';
+    if (stockOperator === 'eq' && String(stock) === '0') return 'out';
+    return null; // custom numeric filter
+  })();
+  const applyStockPreset = (key) => {
+    const preset = STOCK_PRESETS[key];
+    const next = { ...filters, ...preset };
+    setFilters(next);
+    updateFiltersInUrl(next);
+  };
+
   const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
-  const filterInputClass = 'w-full min-h-[36px] rounded-md border border-[var(--ms-border)] bg-white px-2.5 py-1.5 text-base text-[var(--ms-text)] outline-none transition focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[rgba(0,120,212,0.16)] sm:text-sm';
-  const actionButtonClass = 'inline-flex items-center justify-center gap-2 min-h-[36px] rounded-md border border-[var(--ms-border)] bg-white px-3 py-1.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-50';
+  const filterInputClass = 'form-control';
+  const actionButtonClass = 'ms-button ms-button-secondary ms-button-sm';
   const comparisonOptions = [
     { value: '', label: 'Toutes' },
     { value: 'eq', label: '=' },
@@ -830,7 +888,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
 
       doc.setFontSize(18);
       doc.setTextColor(31, 41, 55);
-      doc.text('Export des produits', 40, 40);
+      doc.text(`${company.name} — Export des produits`, 40, 40);
 
       doc.setFontSize(10);
       doc.setTextColor(107, 114, 128);
@@ -925,8 +983,29 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     </div>
   );
 
+  const stockChips = [
+    { key: 'all', label: 'Tous' },
+    { key: 'inStock', label: 'En stock' },
+    { key: 'low', label: 'Stock bas' },
+    { key: 'out', label: 'Rupture' },
+  ];
+
   const renderFilterPanel = () => (
-    <div className="border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 lg:p-5">
+    <div className="border-b p-4 lg:p-5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
+      {/* Quick stock-status chips */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Stock</span>
+        {stockChips.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => applyStockPreset(key)}
+            className={`ms-button ms-button-sm ${activeStockPreset === key ? 'ms-button-primary' : 'ms-button-secondary'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div>
           <label htmlFor="product-filter-name" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
@@ -1026,21 +1105,16 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           </select>
         </div>
         <div className="flex items-end">
-          <button
-            type="button"
-            onClick={resetFilters}
-            disabled={!hasActiveFilters}
-            className="inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-md border border-[var(--ms-border)] bg-white px-3 py-1.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button type="button" onClick={resetFilters} disabled={!hasActiveFilters} className="ms-button ms-button-secondary ms-button-sm w-full justify-center gap-2">
             <RotateCcw className="h-4 w-4" />
-            Réinitialiser les filtres
+            Réinitialiser
           </button>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="text-sm text-[var(--ms-text-muted)]">
-          {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
-        </div>
+        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
+        </p>
         {isAdmin && (
           <div className="flex flex-col gap-2 sm:flex-row">
             <button

@@ -4,6 +4,7 @@ const {
   isPushConfigured,
   notifyAdminsWeeklyReport,
 } = require('../utils/pushNotifications');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const getPublicKey = asyncHandler(async (req, res) => {
   if (!process.env.VAPID_PUBLIC_KEY) {

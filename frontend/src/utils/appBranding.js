@@ -10,6 +10,7 @@ export const DEFAULT_APP_SETTINGS = {
     footerText: 'ETS HD Tech Filiale. Tous droits réservés.',
     supportPhone: '',
     supportEmail: '',
+    address: '',
   },
   updatedAt: null,
 };
@@ -34,6 +35,39 @@ export const normalizeAppSettings = (settings) => {
 
 export const resolveAppLogo = (logoUrl) =>
   logoUrl || `${process.env.PUBLIC_URL || ''}/logo.png`;
+
+/**
+ * Fetch a logo URL and return it as a base64 data URL for embedding in jsPDF.
+ * Returns null on any failure so callers can render a logo-less header.
+ */
+export const getLogoDataUrl = async (logoUrl) => {
+  if (!logoUrl) return null;
+  try {
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Normalised company identity for documents (invoices, payslips, reports).
+ * Pulls from the (tenant-scoped) branding with sensible fallbacks.
+ */
+export const getCompanyIdentity = (branding = {}) => ({
+  name: branding.appName || 'Ma Boutique',
+  address: branding.address || '',
+  phone: branding.supportPhone || '',
+  email: branding.supportEmail || '',
+  logoUrl: resolveAppLogo(branding.logoUrl),
+  footerText: branding.footerText || '',
+});
 
 export const mixHexColors = (baseColor, ratio = 0.16, targetColor = '#FFFFFF') => {
   const normalizedBase = HEX_COLOR_PATTERN.test(baseColor || '')

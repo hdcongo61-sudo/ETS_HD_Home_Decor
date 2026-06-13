@@ -19,6 +19,23 @@ const HEADER_LABELS = {
   warehouse: 'Entrepôt',
   sku: 'SKU',
   minStockLevel: 'Stock min.',
+  image: 'Image (URL)',
+};
+
+// Detect a value across common English/French column aliases.
+const pick = (row, keys) => {
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+  }
+  return '';
+};
+
+// A row is valid if it has a name and a parseable non-negative price.
+const isRowValid = (row) => {
+  const name = String(pick(row, ['name', 'Name', 'Nom', 'nom'])).trim();
+  const priceRaw = pick(row, ['price', 'Price', 'Prix', 'prix']);
+  const price = parseFloat(priceRaw);
+  return Boolean(name) && !Number.isNaN(price) && price >= 0;
 };
 
 const getRowPreview = (row, headers) => {
@@ -58,7 +75,8 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        // ArrayBuffer is more reliable than the deprecated binary-string path.
+        const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
         const sheetName = wb.SheetNames[0];
         const sheet = wb.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -66,7 +84,11 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
           toast.error('Le fichier Excel est vide.');
           return;
         }
-        const cols = Object.keys(data[0]);
+        // Union of all column keys (rows can have ragged columns).
+        const cols = Array.from(data.reduce((set, r) => {
+          Object.keys(r).forEach((k) => set.add(k));
+          return set;
+        }, new Set()));
         setHeaders(cols);
         setRows(data);
       } catch (err) {
@@ -75,7 +97,7 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
         setHeaders([]);
       }
     };
-    reader.readAsBinaryString(f);
+    reader.readAsArrayBuffer(f);
   };
 
   const handleImport = async () => {
@@ -118,6 +140,7 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
       warehouse: 'Entrepôt A',
       sku: 'SKU-001',
       minStockLevel: 5,
+      image: 'https://exemple.com/photo.jpg',
     }]);
     XLSX.utils.book_append_sheet(wb, ws, 'Produits');
     XLSX.writeFile(wb, 'modele_import_produits.xlsx');
@@ -192,10 +215,26 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
               {/* Preview */}
               {rows.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <p className="text-sm font-semibold text-[var(--ms-text-strong)]">
                       Aperçu — {rows.length} ligne{rows.length > 1 ? 's' : ''}
                     </p>
+                    {(() => {
+                      const valid = rows.filter(isRowValid).length;
+                      const invalid = rows.length - valid;
+                      return (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {valid} valide{valid > 1 ? 's' : ''}
+                          </span>
+                          {invalid > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold" style={{ background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' }}>
+                              <AlertTriangle className="h-3.5 w-3.5" /> {invalid} à corriger
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="overflow-x-auto rounded-lg border border-[var(--ms-border)]">
                     <table className="w-full text-[12px]">
@@ -292,13 +331,18 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
               <Button variant="secondary" onClick={onClose}>
                 Annuler
               </Button>
-              <Button
-                variant="primary"
-                onClick={handleImport}
-                disabled={rows.length === 0 || importing}
-              >
-                {importing ? 'Importation...' : `Importer ${rows.length} produit${rows.length > 1 ? 's' : ''}`}
-              </Button>
+              {(() => {
+                const validCount = rows.filter(isRowValid).length;
+                return (
+                  <Button
+                    variant="primary"
+                    onClick={handleImport}
+                    disabled={validCount === 0 || importing}
+                  >
+                    {importing ? 'Importation...' : `Importer ${validCount} produit${validCount > 1 ? 's' : ''}`}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         )}

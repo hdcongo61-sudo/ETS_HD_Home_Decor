@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const AppSettings = require('../models/appSettingsModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const DEFAULT_BRANDING = {
   appName: 'ETS HD Gestion',
@@ -14,6 +15,7 @@ const DEFAULT_BRANDING = {
   footerText: 'ETS HD Tech Filiale. Tous droits réservés.',
   supportPhone: '',
   supportEmail: '',
+  address: '',
 };
 
 const HEX_COLOR_PATTERN = /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i;
@@ -71,29 +73,45 @@ const sanitizeSettings = (doc) => {
       footerText: normalizeText(branding.footerText, DEFAULT_BRANDING.footerText),
       supportPhone: normalizeOptionalText(branding.supportPhone),
       supportEmail: normalizeOptionalText(branding.supportEmail),
+      address: normalizeOptionalText(branding.address),
     },
     updatedAt: settings.updatedAt || null,
   };
 };
 
-const getOrCreateSettings = async () => {
-  let settings = await AppSettings.findOne({ key: 'main' });
+// Each tenant gets a UNIQUE `key` so we never collide with a legacy global
+// unique index on `key` (a single-shop DB may still have `key_1`). Using the
+// tenantId as the key makes every document's key distinct.
+const settingsKeyFor = (tenantId) => (tenantId ? String(tenantId) : 'main');
 
-  if (!settings) {
+// Each tenant has its own AppSettings document, looked up by tenantId.
+const getOrCreateSettings = async (req) => {
+  const tenantId = req?.tenantId || null;
+  const filter = tenantId ? { tenantId } : { tenantId: null };
+
+  let settings = await AppSettings.findOne(filter);
+  if (settings) return settings;
+
+  try {
     settings = await AppSettings.create({
-      key: 'main',
+      tenantId,
+      key: settingsKeyFor(tenantId),
       branding: DEFAULT_BRANDING,
     });
+  } catch (err) {
+    // Race or stale-index collision: fall back to whatever now exists.
+    settings = await AppSettings.findOne(filter)
+      || await AppSettings.findOne({ key: settingsKeyFor(tenantId) });
+    if (!settings) throw err;
   }
-
   return settings;
 };
 
-// @desc    Get public app settings
+// @desc    Get public app settings (tenant-aware)
 // @route   GET /api/app-settings/public
 // @access  Public
-const getPublicAppSettings = asyncHandler(async (_req, res) => {
-  const settings = await getOrCreateSettings();
+const getPublicAppSettings = asyncHandler(async (req, res) => {
+  const settings = await getOrCreateSettings(req);
   res.json(sanitizeSettings(settings));
 });
 
@@ -101,7 +119,7 @@ const getPublicAppSettings = asyncHandler(async (_req, res) => {
 // @route   PUT /api/app-settings
 // @access  Private/Admin
 const updateAppSettings = asyncHandler(async (req, res) => {
-  const settings = await getOrCreateSettings();
+  const settings = await getOrCreateSettings(req);
   const currentBranding = settings.branding || {};
   const removeLogo = String(req.body.removeLogo || '').toLowerCase() === 'true';
 
@@ -130,6 +148,7 @@ const updateAppSettings = asyncHandler(async (req, res) => {
     ),
     supportPhone: normalizeOptionalText(req.body.supportPhone || currentBranding.supportPhone || ''),
     supportEmail: normalizeOptionalText(req.body.supportEmail || currentBranding.supportEmail || ''),
+    address: normalizeOptionalText(req.body.address || currentBranding.address || ''),
   };
 
   if (req.file?.buffer) {
@@ -142,8 +161,47 @@ const updateAppSettings = asyncHandler(async (req, res) => {
   res.json(sanitizeSettings(settings));
 });
 
+/**
+ * Seed a brand-new tenant's settings from the information captured at shop
+ * creation, so the owner opens Settings and immediately sees THEIR shop —
+ * not the generic defaults.
+ *
+ * Called from tenantController at registration / creation time.
+ * Idempotent: if settings already exist for the tenant, it does nothing.
+ */
+const seedTenantSettings = async ({ tenantId, shopName, ownerEmail, ownerPhone, primaryColor } = {}) => {
+  if (!tenantId) return null;
+
+  const existing = await AppSettings.findOne({ tenantId });
+  if (existing) return existing;
+
+  const cleanName = normalizeText(shopName, DEFAULT_BRANDING.appName);
+  // Short name = first word of the shop name, capped at 30 chars.
+  const shortName = (cleanName.split(/\s+/)[0] || cleanName).slice(0, 30);
+
+  const branding = {
+    ...DEFAULT_BRANDING,
+    appName: cleanName,
+    shortName,
+    loginTitle: `Bienvenue chez ${cleanName}`,
+    loginSubtitle: 'Connectez-vous à votre espace de gestion',
+    footerText: `${cleanName}. Tous droits réservés.`,
+    supportEmail: normalizeOptionalText(ownerEmail),
+    supportPhone: normalizeOptionalText(ownerPhone),
+    primaryColor: normalizeColor(primaryColor, DEFAULT_BRANDING.primaryColor),
+  };
+
+  try {
+    return await AppSettings.create({ tenantId, key: settingsKeyFor(tenantId), branding });
+  } catch (err) {
+    // If a settings doc was created concurrently, return it instead of failing signup.
+    return AppSettings.findOne({ tenantId });
+  }
+};
+
 module.exports = {
   getPublicAppSettings,
   updateAppSettings,
+  seedTenantSettings,
   DEFAULT_BRANDING,
 };

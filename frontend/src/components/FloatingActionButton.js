@@ -1,9 +1,8 @@
 // components/FloatingActionButton.js
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, CreditCard, Receipt, Users, Package, ChevronUp } from 'lucide-react';
+import { ShoppingCart, CreditCard, Receipt, Users, Package, Plus } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
-import { Button } from './business';
 
 const FloatingActionButton = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -27,32 +26,20 @@ const FloatingActionButton = () => {
     {
       label: 'Ventes',
       icon: Receipt,
-      onClick: () => {
-        navigate('/sales');
-        setIsExpanded(false);
-      },
-      accent: 'text-blue-600',
-      bg: 'bg-white hover:bg-blue-50 border border-gray-200',
+      onClick: () => { navigate('/sales'); setIsExpanded(false); },
+      chip: { background: 'var(--ms-blue-soft)', color: 'var(--ms-blue)' },
     },
     {
       label: 'Clients',
       icon: Users,
-      onClick: () => {
-        navigate('/clients');
-        setIsExpanded(false);
-      },
-      accent: 'text-emerald-600',
-      bg: 'bg-white hover:bg-emerald-50 border border-gray-200',
+      onClick: () => { navigate('/clients'); setIsExpanded(false); },
+      chip: { background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' },
     },
     {
       label: 'Produits',
       icon: Package,
-      onClick: () => {
-        navigate('/products');
-        setIsExpanded(false);
-      },
-      accent: 'text-amber-600',
-      bg: 'bg-white hover:bg-amber-50 border border-gray-200',
+      onClick: () => { navigate('/products'); setIsExpanded(false); },
+      chip: { background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' },
     },
   ];
 
@@ -72,7 +59,7 @@ const FloatingActionButton = () => {
 
   return (
     <>
-      {/* Backdrop when expanded (mobile-friendly) */}
+      {/* Backdrop when expanded */}
       {isExpanded && (
         <button
           type="button"
@@ -88,34 +75,34 @@ const FloatingActionButton = () => {
       >
         {/* Expandable speed-dial */}
         {isExpanded && (
-          <div className="flex flex-col items-end gap-2 transition-all duration-200">
-            {/* Primary: New Sale (in speed-dial too for consistency) */}
+          <div className="flex flex-col items-end gap-2">
+            {/* Primary actions */}
             <button
               type="button"
               onClick={handleNewSale}
-              className="flex items-center gap-3 rounded-lg bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+              className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] bg-[var(--ms-blue)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:bg-[var(--ms-blue-dark)] hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
             >
-              <span className="text-sm font-medium">Nouvelle vente</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                <ShoppingCart className="w-5 h-5" strokeWidth={2} />
+              <span className="text-sm font-semibold">Nouvelle vente</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusMedium)] bg-white/20">
+                <ShoppingCart className="h-5 w-5" strokeWidth={2} />
               </span>
             </button>
-            {/* Payment */}
             <button
               type="button"
               onClick={handleNewPayment}
-              className="flex items-center gap-3 rounded-lg bg-[var(--ms-success)] hover:bg-[#0B6310] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-3 min-w-[180px] justify-end"
+              className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
+              style={{ background: 'var(--ms-success)' }}
             >
-              <span className="text-sm font-medium">Ajouter paiement</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                <CreditCard className="w-5 h-5" strokeWidth={2} />
+              <span className="text-sm font-semibold">Ajouter paiement</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusMedium)] bg-white/20">
+                <CreditCard className="h-5 w-5" strokeWidth={2} />
               </span>
             </button>
-            {/* Divider / label */}
-            <div className="w-full border-t border-[var(--ms-border)] pt-2 mt-1">
-              <p className="text-[10px] uppercase tracking-wider text-[var(--ms-text-muted)] font-medium mb-2 text-right">Acces rapide</p>
-            </div>
+
             {/* Quick links */}
+            <div className="mt-1 w-full border-t border-[var(--ms-border)] pt-2">
+              <p className="mb-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--ms-text-muted)]">Accès rapide</p>
+            </div>
             {quickLinks.map((item) => {
               const Icon = item.icon;
               return (
@@ -123,11 +110,11 @@ const FloatingActionButton = () => {
                   key={item.label}
                   type="button"
                   onClick={item.onClick}
-                  className={`flex items-center gap-3 rounded-lg bg-[var(--ms-white)] hover:bg-[var(--ms-bg-subtle)] border border-[var(--ms-border)] shadow-[var(--ms-shadow-sm)] hover:shadow-[var(--ms-shadow)] hover:scale-[1.02] active:scale-[0.98] transition-all px-4 py-2.5 min-w-[160px] justify-end`}
+                  className="flex min-w-[170px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 shadow-[var(--ms-shadow-sm)] transition-all hover:bg-[var(--ms-bg-subtle)] hover:shadow-[var(--ms-shadow)] active:scale-[0.98]"
                 >
-                  <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.accent}`}>
-                    <Icon className="w-4 h-4" strokeWidth={2} />
+                  <span className="text-sm font-semibold text-[var(--ms-text-strong)]">{item.label}</span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusMedium)]" style={item.chip}>
+                    <Icon className="h-4 w-4" strokeWidth={2} />
                   </span>
                 </button>
               );
@@ -135,28 +122,31 @@ const FloatingActionButton = () => {
           </div>
         )}
 
-        {/* Main FAB: one tap = New Sale */}
-        <div className="flex flex-col items-center gap-1">
+        {/* Main FAB cluster */}
+        <div className="flex flex-col items-center gap-2">
+          {/* More-actions toggle */}
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex h-[22px] w-[21px] items-center justify-center rounded-md bg-[var(--ms-bg-subtle)] hover:bg-[var(--ms-surface-muted)] text-[var(--ms-text-muted)] shadow-sm border border-[var(--ms-border)] md:border-0"
-            aria-label={isExpanded ? 'Fermer le menu' : 'Plus d\'actions'}
+            onClick={() => setIsExpanded((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text-muted)] shadow-[var(--ms-shadow-sm)] transition-all hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]"
+            aria-label={isExpanded ? 'Fermer le menu' : "Plus d'actions"}
+            aria-expanded={isExpanded}
           >
-            <ChevronUp
-              className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-              strokeWidth={2}
+            <Plus
+              className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-45' : ''}`}
+              strokeWidth={2.4}
             />
           </button>
+          {/* Primary FAB: one tap = New Sale */}
           <button
             type="button"
             onClick={handleNewSale}
-            className="flex h-[34px] w-[38px] items-center justify-center rounded-lg bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow)] hover:shadow-[var(--ms-shadow-lg)] hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-[var(--ms-blue)]/15"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-lg)] ring-4 ring-[var(--ms-blue)]/15 transition-all duration-200 hover:bg-[var(--ms-blue-dark)] hover:scale-105 active:scale-95"
             aria-label="Nouvelle vente"
+            title="Nouvelle vente"
           >
-            <ShoppingCart className="w-6 h-6" strokeWidth={2.5} />
+            <ShoppingCart className="h-6 w-6" strokeWidth={2.4} />
           </button>
-          <span className="text-[10px] font-medium text-gray-500 hidden md:block">Nouvelle vente</span>
         </div>
       </div>
     </>

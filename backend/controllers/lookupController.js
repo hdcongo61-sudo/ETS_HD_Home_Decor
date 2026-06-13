@@ -3,11 +3,12 @@ const ExpenseCategory = require('../models/expenseCategoryModel');
 const Container = require('../models/containerModel');
 const Warehouse = require('../models/warehouseModel');
 const Supplier = require('../models/supplierModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
-// Factory: generic CRUD generators
-const getAll = (Model) => async (_req, res) => {
+// Factory: generic CRUD generators — all tenant-scoped
+const getAll = (Model) => async (req, res) => {
   try {
-    const items = await Model.find({}).sort({ name: 1 }).lean();
+    const items = await Model.find(tenantFilter(req)).sort({ name: 1 }).lean();
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -16,7 +17,7 @@ const getAll = (Model) => async (_req, res) => {
 
 const create = (Model) => async (req, res) => {
   try {
-    const item = await Model.create(req.body);
+    const item = await Model.create({ ...applyTenant(req, req.body) });
     res.status(201).json(item);
   } catch (error) {
     if (error.code === 11000) {
@@ -28,13 +29,15 @@ const create = (Model) => async (req, res) => {
 
 const update = (Model) => async (req, res) => {
   try {
+    // Verify ownership before update
+    const existing = await Model.findOne({ ...tenantFilter(req), _id: req.params.id });
+    if (!existing) {
+      return res.status(404).json({ message: 'Élément non trouvé' });
+    }
     const item = await Model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
-    if (!item) {
-      return res.status(404).json({ message: 'Élément non trouvé' });
-    }
     res.json(item);
   } catch (error) {
     if (error.code === 11000) {
@@ -46,7 +49,7 @@ const update = (Model) => async (req, res) => {
 
 const remove = (Model) => async (req, res) => {
   try {
-    const item = await Model.findByIdAndDelete(req.params.id);
+    const item = await Model.findOneAndDelete({ ...tenantFilter(req), _id: req.params.id });
     if (!item) {
       return res.status(404).json({ message: 'Élément non trouvé' });
     }

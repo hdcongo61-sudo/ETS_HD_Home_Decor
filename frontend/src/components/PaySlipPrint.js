@@ -4,8 +4,12 @@ import api from '../services/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { employeePayrollPath } from '../utils/paths';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity } from '../utils/appBranding';
 
 const PaySlipPrint = () => {
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
     const { id, payslipId } = useParams();
     const navigate = useNavigate();
     const [paySlip, setPaySlip] = useState(null);
@@ -198,7 +202,7 @@ const PaySlipPrint = () => {
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">Bulletin de salaire</p>
-                            <h1 className="mt-2 text-2xl font-bold tracking-tight">ETS HD Home Decor</h1>
+                            <h1 className="mt-2 text-2xl font-bold tracking-tight">{company.name}</h1>
                             <p className="mt-1 text-sm text-gray-300">Document officiel de paie</p>
                         </div>
                         <div className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-left text-sm text-gray-200">
@@ -207,27 +211,35 @@ const PaySlipPrint = () => {
                             <p className="mt-1 text-xs">Réf. {paySlip._id.slice(-8).toUpperCase()}</p>
                         </div>
                     </div>
+                    {(company.phone || company.email || company.address) && (
                     <div className="mt-5 grid gap-2 text-sm text-gray-300 md:grid-cols-3">
+                        {company.phone && (
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                             </svg>
-                            <span>+242 06 982 2930</span>
+                            <span>{company.phone}</span>
                         </div>
+                        )}
+                        {company.email && (
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span>hdcongo61@gmail.com</span>
+                            <span>{company.email}</span>
                         </div>
+                        )}
+                        {company.address && (
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <span>61 rue Lénine, Moungali</span>
+                            <span>{company.address}</span>
                         </div>
+                        )}
                     </div>
+                    )}
                 </div>
 
                 <div className="p-6 sm:p-8">

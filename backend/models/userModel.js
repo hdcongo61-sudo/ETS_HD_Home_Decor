@@ -4,6 +4,16 @@ const slugify = require('../utils/slugify');
 
 const userSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
     name: {
       type: String,
       required: true,
@@ -16,7 +26,7 @@ const userSchema = mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
+      // Uniqueness is enforced per-tenant via compound index below
     },
     phone: {
       type: String,
@@ -219,6 +229,9 @@ userSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Compound index: email unique per tenant (null tenantId = super-admin / legacy)
+userSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 
 const User = mongoose.model('User', userSchema);
 

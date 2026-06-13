@@ -28,6 +28,7 @@ const buildBrandingForm = (branding = {}) => ({
   footerText: branding.footerText || '',
   supportPhone: branding.supportPhone || '',
   supportEmail: branding.supportEmail || '',
+  address: branding.address || '',
   removeLogo: false,
 });
 
@@ -120,6 +121,7 @@ const Settings = () => {
       payload.append('footerText', brandingSettings.footerText.trim());
       payload.append('supportPhone', brandingSettings.supportPhone.trim());
       payload.append('supportEmail', brandingSettings.supportEmail.trim());
+      payload.append('address', brandingSettings.address.trim());
       payload.append('removeLogo', String(Boolean(brandingSettings.removeLogo)));
 
       if (brandingLogoFile) {
@@ -353,6 +355,19 @@ const Settings = () => {
                   />
                 </BrandingField>
               </div>
+
+              <BrandingField
+                label="Adresse de la boutique"
+                description="Affichée sur les factures, bulletins de paie et rapports PDF."
+              >
+                <input
+                  type="text"
+                  value={brandingSettings.address}
+                  onChange={(e) => handleBrandingFieldChange('address', e.target.value)}
+                  className={settingInputClass}
+                  placeholder="Ex : 12 Avenue Bourguiba, Dakar"
+                />
+              </BrandingField>
 
               <BrandingField
                 label="Texte du footer"

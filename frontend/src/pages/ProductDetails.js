@@ -9,28 +9,41 @@ import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
 import AuthContext from '../context/AuthContext';
 import Modal from '../components/Modal';
+import { EmptyState, LoadingSkeleton, Workspace } from '../components/business';
 import {
-  Button,
-  EmptyState,
-  LoadingSkeleton,
-  PageHeader,
-  StatusBadge,
-  Surface,
-  Workspace,
-} from '../components/business';
+  ArrowLeft,
+  QrCode,
+  FileDown,
+  Pencil,
+  Eye,
+  EyeOff,
+  Package,
+  TrendingUp,
+  DollarSign,
+  BarChart2,
+  Archive,
+  ShoppingCart,
+  Clock,
+  User,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
+  Tag,
+  Warehouse,
+  Building2,
+  Phone,
+  ExternalLink,
+} from 'lucide-react';
 
-/* ===================================================== */
-/* 🧩 UTILITAIRES DE FORMATTAGE */
-/* ===================================================== */
-const toNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
-const formatCurrency = (v) =>
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(
-    toNumber(v)
-  );
+/* ─── utilities ─── */
+const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const fmt = (v) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(toNumber(v));
+const fmtDate = (d) =>
+  d
+    ? `${new Date(d).toLocaleDateString('fr-FR')} à ${new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : '—';
 
-/* ===================================================== */
-/* 🧮 STRUCTURE DE BASE DES STATS */
-/* ===================================================== */
 const buildStatsSkeleton = (p = {}) => ({
   salesThisPeriod: 0,
   ordersThisPeriod: 0,
@@ -43,9 +56,20 @@ const buildStatsSkeleton = (p = {}) => ({
   activities: [],
 });
 
-/* ===================================================== */
-/* 🏆 PAGE PRINCIPALE */
-/* ===================================================== */
+/* ─── activity helpers ─── */
+const ACTIVITY_META = {
+  creation:     { icon: CheckCircle2, bg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' },
+  adjustment:   { icon: RefreshCw,    bg: 'var(--colorStatusInfoBackground1)',    color: 'var(--colorStatusInfoForeground1)' },
+  stock_update: { icon: Archive,      bg: '#EDE9FE',                              color: '#6D28D9' },
+  price_update: { icon: Tag,          bg: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' },
+  sale:         { icon: ShoppingCart, bg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' },
+  return:       { icon: AlertCircle,  bg: 'var(--colorStatusDangerBackground1)',  color: 'var(--colorStatusDangerForeground1)' },
+  default:      { icon: Clock,        bg: 'var(--colorNeutralBackground3)',       color: 'var(--colorNeutralForeground3)' },
+};
+
+/* ═══════════════════════════════════════════════════════ */
+/*  PRODUCT DETAILS                                        */
+/* ═══════════════════════════════════════════════════════ */
 const ProductDetails = () => {
   const { id } = useParams();
   const { auth } = useContext(AuthContext);
@@ -53,6 +77,7 @@ const ProductDetails = () => {
   const userPermissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
   const navigate = useNavigate();
   const location = useLocation();
+
   const [product, setProduct] = useState(null);
   const [stats, setStats] = useState(buildStatsSkeleton());
   const [loading, setLoading] = useState(true);
@@ -75,7 +100,7 @@ const ProductDetails = () => {
   const pageRef = useRef();
 
   useEffect(() => {
-    const fetchProductAndStats = async () => {
+    const load = async () => {
       setLoading(true);
       setStatsLoading(true);
       try {
@@ -90,24 +115,21 @@ const ProductDetails = () => {
         setStatsLoading(false);
       }
     };
-
-    const fetchSalesHistoryData = async () => {
+    const loadHistory = async () => {
       setSalesHistoryLoading(true);
       setSalesHistoryError('');
       try {
         const { data } = await api.get(`/products/${id}/sales-history?limit=5`);
         setSalesHistory(data.sales || []);
-      } catch (error) {
-        console.error('Error fetching product sales history:', error);
+      } catch {
         setSalesHistory([]);
         setSalesHistoryError('Impossible de charger les ventes liées');
       } finally {
         setSalesHistoryLoading(false);
       }
     };
-
-    fetchProductAndStats();
-    fetchSalesHistoryData();
+    load();
+    loadHistory();
   }, [id]);
 
   const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
@@ -116,31 +138,25 @@ const ProductDetails = () => {
     product?.costPrice && product?.price
       ? ((product.price - product.costPrice) / product.costPrice) * 100
       : null;
-  const absoluteProfit =
-    product?.costPrice && product?.price ? product.price - product.costPrice : 0;
-
+  const absoluteProfit = product?.costPrice && product?.price ? product.price - product.costPrice : 0;
   const productUrl = `${window.location.origin}${productPath(product || id)}`;
   const returnToProducts = location.state?.returnToProducts || '/products';
 
   const openBuyersModal = async () => {
     setBuyersModalOpen(true);
     if (buyersLoading || buyersSales.length > 0) return;
-
     setBuyersLoading(true);
     setBuyersError('');
     try {
       const { data } = await api.get(`/products/${id}/sales-history?limit=200`);
       setBuyersSales(data.sales || []);
-    } catch (error) {
-      console.error('Error fetching buyers list:', error);
+    } catch {
       setBuyersSales([]);
       setBuyersError('Impossible de charger la liste des acheteurs');
     } finally {
       setBuyersLoading(false);
     }
   };
-
-  const closeBuyersModal = () => setBuyersModalOpen(false);
 
   const openAdminRequest = (type) => {
     setRequestModal(type);
@@ -149,27 +165,19 @@ const ProductDetails = () => {
   };
 
   const submitAdminRequest = async () => {
-    if (!requestModal || requestSubmitting) return;
-    if (!requestReason.trim()) {
-      return;
-    }
-
+    if (!requestModal || requestSubmitting || !requestReason.trim()) return;
     const numericValue = requestValue === '' ? null : Number(requestValue);
-    if (requestModal !== 'other' && (numericValue === null || Number.isNaN(numericValue))) {
-      return;
-    }
-
+    if (requestModal !== 'other' && (numericValue === null || Number.isNaN(numericValue))) return;
     const metadata = { productId: product._id };
     let type = 'other';
     let targetLabel = product.name;
     let note = '';
-
     if (requestModal === 'price') {
       type = 'product.price_change';
       metadata.oldPrice = product.price;
       metadata.newPrice = numericValue;
       targetLabel = `Prix produit: ${product.name}`;
-      note = `Nouveau prix proposé: ${formatCurrency(numericValue)}`;
+      note = `Nouveau prix proposé: ${fmt(numericValue)}`;
     } else if (requestModal === 'stock') {
       type = 'stock.adjustment';
       metadata.currentStock = product.stock;
@@ -177,18 +185,9 @@ const ProductDetails = () => {
       targetLabel = `Stock produit: ${product.name}`;
       note = `Stock cible proposé: ${numericValue}`;
     }
-
     try {
       setRequestSubmitting(true);
-      await api.post('/admin-requests', {
-        type,
-        targetModel: 'Product',
-        targetId: product._id,
-        targetLabel,
-        reason: requestReason.trim(),
-        note,
-        metadata,
-      });
+      await api.post('/admin-requests', { type, targetModel: 'Product', targetId: product._id, targetLabel, reason: requestReason.trim(), note, metadata });
       setRequestModal(null);
       setRequestReason('');
       setRequestValue('');
@@ -197,43 +196,40 @@ const ProductDetails = () => {
     }
   };
 
-  /* ===================================================== */
-  /* 📦 EXPORT PDF */
-  /* ===================================================== */
   const handleExportPDF = async () => {
-    const input = pageRef.current;
-    const canvas = await html2canvas(input, { scale: 2 });
+    const canvas = await html2canvas(pageRef.current, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const width = pdf.internal.pageSize.getWidth();
-    const height = (canvas.height * width) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+    pdf.addImage(imgData, 'PNG', 0, 0, width, (canvas.height * width) / canvas.width);
     pdf.save(`Fiche_${product.name.replace(/\s+/g, '_')}.pdf`);
   };
 
-  /* ===================================================== */
-  /* 📊 MINI GRAPH (FAKE DEMO) */
-  /* ===================================================== */
   const salesTrendData = {
     labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-    datasets: [
-      {
-        label: 'Ventes',
-        data: [5, 8, 3, 10, 6, 9, 7],
-        borderColor: '#6366F1',
-        backgroundColor: 'rgba(99,102,241,0.1)',
-        fill: true,
-        tension: 0.4,
-      },
-    ],
+    datasets: [{
+      label: 'Ventes',
+      data: [5, 8, 3, 10, 6, 9, 7],
+      borderColor: 'var(--colorBrandBackground)',
+      backgroundColor: 'rgba(15,108,189,0.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointBackgroundColor: 'var(--colorBrandBackground)',
+    }],
   };
 
-  if (loading)
-    return (
-      <Workspace>
-        <LoadingSkeleton rows={6} />
-      </Workspace>
-    );
+  const chartOptions = {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: 'var(--colorNeutralForeground3)' } },
+      y: { grid: { color: 'var(--colorNeutralStroke2)' }, ticks: { font: { size: 11 }, color: 'var(--colorNeutralForeground3)' } },
+    },
+    maintainAspectRatio: false,
+  };
+
+  /* ── loading / empty states ── */
+  if (loading) return <Workspace><LoadingSkeleton rows={8} /></Workspace>;
 
   if (!product)
     return (
@@ -241,610 +237,607 @@ const ProductDetails = () => {
         <EmptyState
           title="Produit introuvable"
           description="La fiche produit demandée n'est pas disponible."
-          action={<Button onClick={() => navigate(returnToProducts)}>Retour à la liste</Button>}
+          action={
+            <button className="ms-button ms-button-secondary ms-button-md" onClick={() => navigate(returnToProducts)}>
+              Retour à la liste
+            </button>
+          }
         />
       </Workspace>
     );
 
-    const getActivityColor = (type) => {
-  switch (type) {
-    case 'creation':
-      return 'bg-green-100 text-green-700';
-    case 'adjustment':
-      return 'bg-blue-100 text-blue-700';
-    case 'stock_update':
-      return 'bg-purple-100 text-purple-700';
-    case 'price_update':
-      return 'bg-yellow-100 text-yellow-700';
-    case 'sale':
-      return 'bg-indigo-100 text-indigo-700';
-    case 'return':
-      return 'bg-red-100 text-red-700';
-    default:
-      return 'bg-gray-100 text-gray-600';
-  }
-};
+  const stockTone = product.stock < 5 ? 'danger' : product.stock < 15 ? 'warning' : 'success';
 
-const getActivityIcon = (type) => {
-  switch (type) {
-    case 'creation':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      );
-    case 'adjustment':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h2m-1 0v14m0-14L5 19m7-14l7 14" />
-        </svg>
-      );
-    case 'stock_update':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18" />
-        </svg>
-      );
-    case 'price_update':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m0 0l3-3m-3 3l-3-3" />
-        </svg>
-      );
-    case 'sale':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      );
-    case 'return':
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
-        </svg>
-      );
-    default:
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01" />
-        </svg>
-      );
-  }
-};
-
+  /* ─── TABS config ─── */
+  const TABS = [
+    { id: 'overview',  label: 'Aperçu' },
+    { id: 'financial', label: 'Analyse financière' },
+    { id: 'history',   label: 'Historique' },
+  ];
 
   return (
     <Workspace>
-      <div className="space-y-6" ref={pageRef}>
-        <PageHeader
-          eyebrow="Fiche produit"
-          title={product.name}
-          description={product.description || 'Aucune description enregistrée.'}
-          actions={
-          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end">
-            <Button onClick={() => navigate(returnToProducts)} className="col-span-2 sm:col-span-1">
-              Retour
-            </Button>
-            {canSeeFinancials && (
-            <Button
-              onClick={() => setShowProfitSections((prev) => !prev)}
-              className="col-span-2 sm:col-span-1"
-              type="button"
-            >
-              {showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}
-            </Button>
-            )}
-            {isAdmin && (
-              <Button
-                onClick={handleExportPDF}
-                variant="primary"
-              >
-                Export PDF
-              </Button>
-            )}
+      <div ref={pageRef} className="space-y-4">
 
-            <Button
+        {/* ══ COMMAND BAR ══ */}
+        <div className="ms-command-bar flex-wrap gap-y-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => navigate(returnToProducts)}
+              className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
+            >
+              <ArrowLeft size={14} />
+              Retour
+            </button>
+            <div className="hidden sm:block w-px h-5 bg-[var(--colorNeutralStroke1)]" />
+            <span className="hidden sm:block text-[13px] text-[var(--colorNeutralForeground3)] truncate max-w-[240px]">
+              {product.name}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            {canSeeFinancials && (
+              <button
+                onClick={() => setShowProfitSections(p => !p)}
+                className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
+                title={showProfitSections ? 'Masquer les données financières' : 'Afficher les données financières'}
+              >
+                {showProfitSections ? <EyeOff size={14} /> : <Eye size={14} />}
+                <span className="hidden sm:inline">{showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}</span>
+              </button>
+            )}
+            <button
               onClick={() => setShowQRCode(true)}
-              title="QR Code"
+              className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
             >
-              <span className="sm:hidden">QR Code</span>
-              <span className="hidden sm:inline">QR</span>
-            </Button>
+              <QrCode size={14} />
+              <span className="hidden sm:inline">QR Code</span>
+            </button>
             {isAdmin && (
-            <Button
-              onClick={() =>
-                navigate(productEditPath(product || id), {
-                  state: { returnTo: productPath(product || id) },
-                })
-              }
-            >
-              Modifier
-            </Button>
+              <button
+                onClick={handleExportPDF}
+                className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
+              >
+                <FileDown size={14} />
+                <span className="hidden sm:inline">PDF</span>
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => navigate(productEditPath(product || id), { state: { returnTo: productPath(product || id) } })}
+                className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5"
+              >
+                <Pencil size={14} />
+                Modifier
+              </button>
             )}
             {!isAdmin && (
               <>
-                <Button
-                  type="button"
+                <button
                   onClick={() => openAdminRequest('price')}
+                  className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
                 >
+                  <Tag size={14} />
                   Demander prix
-                </Button>
-                <Button
-                  type="button"
+                </button>
+                <button
                   onClick={() => openAdminRequest('stock')}
+                  className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
                 >
+                  <Archive size={14} />
                   Demander stock
-                </Button>
+                </button>
               </>
             )}
           </div>
-          }
-        />
+        </div>
 
-        {/* 🖼️ PRODUIT HEADER */}
-        <Surface className="flex flex-col gap-6 md:flex-row">
-          <div className="md:w-1/2">
-            <img
-              src={product.image || '/placeholder.png'}
-              alt={product.name}
-              className="aspect-[4/3] max-h-96 w-full rounded-[24px] border border-gray-100 bg-gray-50 object-cover shadow-sm"
-            />
-            {canSeeFinancials && showProfitSections && profitMargin > 0 && (
-              <div className="mt-3 inline-flex px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                +{profitMargin.toFixed(1)}% marge
+        {/* ══ HERO: IMAGE + DETAILS ══ */}
+        <div className="fluent-card-filled p-0 overflow-hidden">
+          <div className="fui-detail-hero p-5 md:p-6">
+
+            {/* ── Image column ── */}
+            <div className="relative">
+              <img
+                src={product.image || '/placeholder.png'}
+                alt={product.name}
+                className="fui-detail-image"
+              />
+              {canSeeFinancials && showProfitSections && profitMargin > 0 && (
+                <div
+                  className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                  style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}
+                >
+                  <TrendingUp size={11} />
+                  +{profitMargin.toFixed(1)}% marge
+                </div>
+              )}
+            </div>
+
+            {/* ── Info column ── */}
+            <div className="flex flex-col justify-between gap-5 min-w-0">
+              <div className="space-y-4">
+                {/* Eyebrow */}
+                <p className="fui-caption1-strong uppercase tracking-widest" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Fiche produit
+                </p>
+
+                {/* Title */}
+                <div>
+                  <h1 className="fui-title1 mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    {product.name}
+                  </h1>
+                  <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground3)', lineHeight: '1.6' }}>
+                    {product.description || 'Aucune description enregistrée.'}
+                  </p>
+                </div>
+
+                {/* Price */}
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="fui-large-title" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    {fmt(product.price)}
+                  </span>
+                  {canSeeFinancials && showProfitSections && product.costPrice && (
+                    <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      Coût : {fmt(product.costPrice)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Status badges */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`ms-status-badge ms-status-${stockTone}`}>
+                    {product.stock} en stock
+                  </span>
+                  {product.container?.trim() && (
+                    <span className="ms-status-badge ms-status-neutral flex items-center gap-1">
+                      <Archive size={11} />
+                      {product.container.trim()}
+                    </span>
+                  )}
+                  {product.warehouse?.trim() && (
+                    <span className="ms-status-badge ms-status-neutral flex items-center gap-1">
+                      <Warehouse size={11} />
+                      {product.warehouse.trim()}
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="flex flex-col justify-between md:w-1/2">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Fiche produit</p>
-              <h1 className="mb-2 text-3xl font-semibold tracking-tight text-gray-950">{product.name}</h1>
-              <p className="mb-4 text-sm leading-6 text-gray-500">{product.description || 'Aucune description enregistrée.'}</p>
-
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl font-bold tracking-tight text-gray-950">
-                  {formatCurrency(product.price)}
-                </span>
-                {canSeeFinancials && showProfitSections && product.costPrice && (
-                  <span className="text-sm text-gray-500">Coût: {formatCurrency(product.costPrice)}</span>
-                )}
-              </div>
-
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <StatusBadge tone={product.stock < 5 ? 'danger' : product.stock < 15 ? 'warning' : 'success'}>
-                  {product.stock} en stock
-                </StatusBadge>
-                <StatusBadge>
-                  Conteneur: {product.container?.trim() || 'Non defini'}
-                </StatusBadge>
-                <StatusBadge>
-                  Entrepot: {product.warehouse?.trim() || 'Non defini'}
-                </StatusBadge>
-                {product.stock > 20 && (
-                  <StatusBadge tone="warning">
-                    Top Seller
-                  </StatusBadge>
-                )}
-              </div>
-
+              {/* Supplier card */}
               {product.supplierName && (
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm">
-                  <p className="text-gray-700 font-medium mb-1">Fournisseur :</p>
-                  <p className="text-gray-600">{product.supplierName}</p>
+                <div
+                  className="rounded-[var(--radiusLarge)] p-4 text-sm space-y-1"
+                  style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}
+                >
+                  <p className="fui-caption1-strong flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    <Building2 size={12} />
+                    Fournisseur
+                  </p>
+                  <Link
+                    to={`/suppliers/${encodeURIComponent(product.supplierName)}`}
+                    className="fui-subtitle2 flex items-center gap-1 hover:underline"
+                    style={{ color: 'var(--colorBrandForeground1)' }}
+                  >
+                    {product.supplierName}
+                    <ExternalLink size={12} />
+                  </Link>
                   {canSeeSupplierContacts && product.supplierPhone && (
-                    <p className="text-gray-500 text-sm">{product.supplierPhone}</p>
+                    <p className="fui-caption1 flex items-center gap-1.5 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      <Phone size={11} />
+                      {product.supplierPhone}
+                    </p>
                   )}
                 </div>
               )}
             </div>
           </div>
-        </Surface>
+        </div>
 
-        {/* 🧭 ONGLETS */}
-        <div className="mt-6">
-          <div className="flex gap-2 overflow-x-auto rounded-[22px] border border-white/80 bg-white/90 p-2 shadow-sm">
-            {['overview', 'financial', 'history'].map((tab) => (
+        {/* ══ KPI STRIP ══ */}
+        <div className="fui-kpi-grid">
+          <KPICard
+            icon={<ShoppingCart size={16} />}
+            label="Unités vendues"
+            value={toNumber(stats.totalUnitsSold).toLocaleString('fr-FR')}
+            tone="brand"
+          />
+          <KPICard
+            icon={<DollarSign size={16} />}
+            label="CA total"
+            value={fmt(stats.totalRevenue)}
+            tone="success"
+          />
+          {canSeeFinancials && showProfitSections && (
+            <KPICard
+              icon={<TrendingUp size={16} />}
+              label="Bénéfice total"
+              value={fmt(stats.totalProfit)}
+              tone="success"
+            />
+          )}
+          <KPICard
+            icon={<BarChart2 size={16} />}
+            label="Valeur du stock"
+            value={fmt(stats.stock.stockValue)}
+            tone="neutral"
+          />
+        </div>
+
+        {/* ══ PIVOT TABS ══ */}
+        <div className="fluent-card-filled overflow-hidden">
+          {/* Tab bar */}
+          <div className="fui-pivot px-4">
+            {TABS.map(({ id, label }) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`min-h-[42px] shrink-0 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                  activeTab === tab
-                    ? 'bg-gray-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)]'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-                }`}
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`fui-pivot__tab ${activeTab === id ? 'fui-pivot__tab--active' : ''}`}
               >
-                {tab === 'overview'
-                  ? 'Aperçu'
-                  : tab === 'financial'
-                  ? 'Analyse financière'
-                  : 'Historique'}
+                {label}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* 🧱 CONTENU ONGLET */}
-        <div className="mt-6">
-          {activeTab === 'overview' && (
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <h3 className="text-lg font-semibold mb-3 text-gray-800">Performance des ventes</h3>
-                <Line data={salesTrendData} height={150} />
-              </div>
+          {/* Tab content */}
+          <div className="p-5">
 
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <h3 className="text-lg font-semibold mb-3 text-gray-800">Indicateurs clés</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <Metric
-                    label="Unités vendues"
-                    value={stats.totalUnitsSold}
-                    footer={
-                      <SalesLinks
-                        sales={salesHistory}
-                        loading={salesHistoryLoading}
-                        error={salesHistoryError}
-                        onViewAll={openBuyersModal}
-                      />
-                    }
-                  />
-                  <Metric label="CA total" value={formatCurrency(stats.totalRevenue)} />
-                  {canSeeFinancials && showProfitSections && (
-                    <Metric label="Bénéfice total" value={formatCurrency(stats.totalProfit)} />
-                  )}
-                  <Metric label="Valeur du stock" value={formatCurrency(stats.stock.stockValue)} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'financial' && (
-            <div className="grid md:grid-cols-3 gap-5">
-              <Card title="Prix de vente">{formatCurrency(product.price)}</Card>
-              {canSeeFinancials && showProfitSections && (
-                <>
-                  <Card title="Prix de revient">{formatCurrency(product.costPrice)}</Card>
-                  <Card title="Bénéfice unitaire">{formatCurrency(absoluteProfit)}</Card>
-
-                  <div className="md:col-span-3 bg-indigo-50 rounded-xl p-5 border border-indigo-200">
-                    <h4 className="font-semibold text-indigo-700 mb-2">Rentabilité du stock</h4>
-                    <p className="text-gray-700 text-sm">
-                      Si tout le stock est vendu à ce prix, le bénéfice total estimé est de{' '}
-                      <strong>{formatCurrency(absoluteProfit * product.stock)}</strong>.
-                    </p>
-                  </div>
-                </>
-              )}
-              {canSeeFinancials && !showProfitSections && (
-                <div className="md:col-span-2 bg-gray-50 rounded-xl p-5 border border-gray-200">
-                  <h4 className="font-semibold text-gray-700 mb-2">Sections bénéfice masquées</h4>
-                  <p className="text-gray-600 text-sm">
-                    Les informations de marge, bénéfice et prix de revient sont actuellement cachées sur cette page.
+            {/* ── APERÇU ── */}
+            {activeTab === 'overview' && (
+              <div className="grid md:grid-cols-2 gap-5">
+                {/* Chart */}
+                <div>
+                  <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Performance des ventes (7 derniers jours)
                   </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-  <div className="space-y-6">
-    {/* Dates importantes */}
-    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-800 mb-3">Informations clés</h3>
-      <div className="space-y-4 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Créé le :</span>
-          <span className="font-medium text-gray-900">
-            {new Date(product.createdAt).toLocaleDateString('fr-FR')} à{' '}
-            {new Date(product.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600">Dernière modification :</span>
-          <span className="font-medium text-gray-900">
-            {new Date(product.updatedAt).toLocaleDateString('fr-FR')} à{' '}
-            {new Date(product.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600">Créé par :</span>
-          <span className="font-medium text-gray-900">
-            {product.createdBy?.name || '—'}
-          </span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-600">Modifié par :</span>
-          <span className="font-medium text-gray-900">
-            {product.updatedBy?.name || '—'}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    {/* Activités récentes */}
-    <div className="bg-white p-5 rounded-xl border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Activité récente
-      </h3>
-
-      {statsLoading ? (
-        <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {stats.activities && stats.activities.length > 0 ? (
-            [...stats.activities]
-              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-              .map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-all border border-gray-200"
-                >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getActivityColor(activity.type)}`}>
-                    {getActivityIcon(activity.type)}
+                  <div style={{ height: 180 }}>
+                    <Line data={salesTrendData} options={chartOptions} />
                   </div>
+                </div>
 
-                  <div className="ml-3 flex-1">
-                    <p className="text-sm font-medium text-gray-900">{activity.description}</p>
+                {/* Recent sales */}
+                <div>
+                  <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Ventes récentes
+                  </p>
+                  {salesHistoryLoading ? (
+                    <LoadingSkeleton rows={3} />
+                  ) : salesHistoryError ? (
+                    <p className="fui-caption1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{salesHistoryError}</p>
+                  ) : salesHistory.length === 0 ? (
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune vente récente</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {salesHistory.slice(0, 5).map((sale) => (
+                        <Link
+                          key={sale.saleId}
+                          to={`/sales/${sale.saleId}`}
+                          className="flex items-center justify-between rounded-[var(--radiusLarge)] px-3 py-2.5 transition-colors"
+                          style={{ border: '1px solid var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground1)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--colorNeutralBackground2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'var(--colorNeutralBackground1)'}
+                        >
+                          <div className="min-w-0">
+                            <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                              {sale.clientName || 'Client inconnu'}
+                            </p>
+                            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                              {sale.saleDate ? new Date(sale.saleDate).toLocaleDateString('fr-FR') : '—'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                              {sale.quantity} u
+                            </span>
+                            <ExternalLink size={13} style={{ color: 'var(--colorBrandForeground1)' }} />
+                          </div>
+                        </Link>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={openBuyersModal}
+                        className="ms-button ms-button-secondary ms-button-sm w-full mt-1"
+                      >
+                        Voir tous les acheteurs
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-                    {activity.oldValue !== undefined && activity.newValue !== undefined && (
-                      <p className="text-sm text-gray-600">
-                        <span className="text-red-500 line-through mr-1">
-                          {String(activity.oldValue)}
-                        </span>
-                        →
-                        <span className="text-green-600 ml-1">{String(activity.newValue)}</span>
+            {/* ── ANALYSE FINANCIÈRE ── */}
+            {activeTab === 'financial' && (
+              <div className="space-y-5">
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <FinCard label="Prix de vente" value={fmt(product.price)} />
+                  {canSeeFinancials && showProfitSections ? (
+                    <>
+                      <FinCard label="Prix de revient" value={fmt(product.costPrice)} />
+                      <FinCard label="Bénéfice unitaire" value={fmt(absoluteProfit)} tone="success" />
+                    </>
+                  ) : (
+                    <div className="sm:col-span-2 rounded-[var(--radiusLarge)] p-5 flex items-center gap-3" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+                      <EyeOff size={18} style={{ color: 'var(--colorNeutralForeground3)' }} />
+                      <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        Les données de marge sont masquées.
                       </p>
-                    )}
+                    </div>
+                  )}
+                </div>
 
-                    {activity.user?.name && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        👤 Par <span className="font-medium">{activity.user.name}</span>
-                      </p>
-                    )}
-
-                    <p className="text-xs text-gray-400 mt-1">
-                      🕓 {new Date(activity.timestamp).toLocaleDateString('fr-FR')} à{' '}
-                      {new Date(activity.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                {canSeeFinancials && showProfitSections && (
+                  <div
+                    className="rounded-[var(--radiusLarge)] p-5"
+                    style={{ background: 'var(--colorStatusInfoBackground1)', border: '1px solid rgba(15,108,189,0.2)' }}
+                  >
+                    <p className="fui-subtitle2 mb-2" style={{ color: 'var(--colorBrandForeground1)' }}>
+                      Rentabilité du stock actuel
+                    </p>
+                    <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                      Si tout le stock ({product.stock} unités) est vendu au prix actuel, le bénéfice total estimé est de{' '}
+                      <strong style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(absoluteProfit * product.stock)}</strong>.
                     </p>
                   </div>
-                </div>
-              ))
-          ) : (
-            <p className="text-sm text-gray-500">Aucune activité enregistrée</p>
-          )}
-        </div>
-      )}
-    </div>
-  </div>
-)}
+                )}
+              </div>
+            )}
 
+            {/* ── HISTORIQUE ── */}
+            {activeTab === 'history' && (
+              <div className="space-y-5">
+                {/* Dates */}
+                <div>
+                  <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Informations clés
+                  </p>
+                  <div
+                    className="rounded-[var(--radiusLarge)] overflow-hidden divide-y"
+                    style={{ border: '1px solid var(--colorNeutralStroke2)', '--tw-divide-opacity': 1, borderColor: 'var(--colorNeutralStroke2)' }}
+                  >
+                    {[
+                      { label: 'Créé le', value: fmtDate(product.createdAt) },
+                      { label: 'Dernière modification', value: fmtDate(product.updatedAt) },
+                      { label: 'Créé par', value: product.createdBy?.name || '—' },
+                      { label: 'Modifié par', value: product.updatedBy?.name || '—' },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex justify-between items-center px-4 py-3" style={{ background: 'var(--colorNeutralBackground1)' }}>
+                        <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</span>
+                        <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Activity timeline */}
+                <div>
+                  <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Activité récente
+                  </p>
+                  {statsLoading ? (
+                    <LoadingSkeleton rows={4} />
+                  ) : !stats.activities?.length ? (
+                    <div className="ms-empty-state">
+                      <p className="ms-empty-title">Aucune activité</p>
+                      <p className="ms-empty-description">Les modifications de ce produit apparaîtront ici.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {[...stats.activities]
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                        .map((activity, i) => {
+                          const meta = ACTIVITY_META[activity.type] || ACTIVITY_META.default;
+                          const Icon = meta.icon;
+                          return (
+                            <div key={i} className="fui-activity-item">
+                              <div
+                                className="fui-activity-icon"
+                                style={{ background: meta.bg, color: meta.color }}
+                              >
+                                <Icon size={15} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                                  {activity.description}
+                                </p>
+                                {activity.oldValue !== undefined && activity.newValue !== undefined && (
+                                  <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                    <span style={{ color: 'var(--colorStatusDangerForeground1)', textDecoration: 'line-through' }}>
+                                      {String(activity.oldValue)}
+                                    </span>
+                                    {' → '}
+                                    <span style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                                      {String(activity.newValue)}
+                                    </span>
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 mt-1.5">
+                                  {activity.user?.name && (
+                                    <span className="fui-caption1 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                      <User size={11} />
+                                      {activity.user.name}
+                                    </span>
+                                  )}
+                                  <span className="fui-caption1 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                    <Clock size={11} />
+                                    {fmtDate(activity.timestamp)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
 
-      {/* 🧾 MODALE QR CODE */}
-      <Modal
-        isOpen={showQRCode}
-        onClose={() => setShowQRCode(false)}
-        title="QR Code du produit"
-        size="sm"
-      >
-            <div className="flex justify-center">
-              <div ref={qrCodeRef} className="p-3 bg-white">
-                <QRCode value={productUrl} size={200} />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-4 text-center">
-              Scannez ce code pour ouvrir la page du produit
-            </p>
-            <div className="flex justify-center mt-4 space-x-3">
-              <button
-                onClick={() => setShowQRCode(false)}
-                className="form-button-secondary"
-              >
-                Fermer
-              </button>
-            </div>
+      {/* ══ MODAL: QR CODE ══ */}
+      <Modal isOpen={showQRCode} onClose={() => setShowQRCode(false)} title="QR Code du produit" size="sm">
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div ref={qrCodeRef} className="p-4 rounded-[var(--radiusXLarge)] bg-white" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
+            <QRCode value={productUrl} size={180} />
+          </div>
+          <p className="fui-caption1 text-center" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Scannez ce code pour ouvrir la page du produit
+          </p>
+          <button onClick={() => setShowQRCode(false)} className="ms-button ms-button-secondary ms-button-md w-full">
+            Fermer
+          </button>
+        </div>
       </Modal>
 
-      {/* 👥 MODALE ACHETEURS */}
+      {/* ══ MODAL: ACHETEURS ══ */}
       <Modal
         isOpen={buyersModalOpen}
-        onClose={closeBuyersModal}
+        onClose={() => setBuyersModalOpen(false)}
         title="Acheteurs du produit"
         size="md"
         footer={
-          <button onClick={closeBuyersModal} className="form-button-secondary">
+          <button onClick={() => setBuyersModalOpen(false)} className="ms-button ms-button-secondary ms-button-md">
             Fermer
           </button>
         }
       >
-
-            <div className="flex-1 overflow-auto border border-gray-100 rounded-xl">
-              {buyersLoading && (
-                <div className="p-6 text-sm text-gray-500">Chargement…</div>
-              )}
-
-              {!buyersLoading && buyersError && (
-                <div className="p-6 text-sm text-red-500">{buyersError}</div>
-              )}
-
-              {!buyersLoading && !buyersError && buyersSales.length === 0 && (
-                <div className="p-6 text-sm text-gray-500">Aucun acheteur trouvé</div>
-              )}
-
-              {!buyersLoading && !buyersError && buyersSales.length > 0 && (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left font-medium px-4 py-3">Client</th>
-                      <th className="text-left font-medium px-4 py-3">Date</th>
-                      <th className="text-left font-medium px-4 py-3">Statut</th>
-                      <th className="text-right font-medium px-4 py-3">Qté</th>
-                      <th className="text-right font-medium px-4 py-3">Total</th>
-                      <th className="text-right font-medium px-4 py-3">Vente</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {buyersSales.map((sale) => (
-                      <tr key={sale.saleId} className="border-t border-gray-100">
-                        <td className="px-4 py-3 text-gray-800">{sale.clientName || 'Client inconnu'}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {sale.saleDate
-                            ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
-                            : 'Date inconnue'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {sale.status || 'pending'}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-700">{sale.quantity}</td>
-                        <td className="px-4 py-3 text-right text-gray-900">
-                          {formatCurrency(sale.totalAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            to={`/sales/${sale.saleId}`}
-                            className="text-indigo-600 hover:text-indigo-700 text-xs font-medium"
-                          >
-                            Ouvrir
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
+        <div className="overflow-auto rounded-[var(--radiusLarge)]" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
+          {buyersLoading && <div className="p-6 fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Chargement…</div>}
+          {!buyersLoading && buyersError && <div className="p-6 fui-body1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{buyersError}</div>}
+          {!buyersLoading && !buyersError && buyersSales.length === 0 && <div className="p-6 fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun acheteur trouvé</div>}
+          {!buyersLoading && !buyersError && buyersSales.length > 0 && (
+            <table className="w-full text-sm">
+              <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
+                <tr>
+                  {['Client', 'Date', 'Statut', 'Qté', 'Total', ''].map((h) => (
+                    <th key={h} className={`px-4 py-3 text-left fui-caption1-strong ${h === 'Qté' || h === 'Total' ? 'text-right' : ''}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {buyersSales.map((sale) => (
+                  <tr key={sale.saleId} style={{ borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+                    <td className="px-4 py-3 fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>{sale.clientName || 'Inconnu'}</td>
+                    <td className="px-4 py-3 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      {sale.saleDate ? new Date(sale.saleDate).toLocaleDateString('fr-FR') : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`ms-status-badge ms-status-${sale.status === 'paid' ? 'success' : sale.status === 'pending' ? 'warning' : 'neutral'}`}>
+                        {sale.status || 'pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 fui-body1 text-right" style={{ color: 'var(--colorNeutralForeground2)' }}>{sale.quantity}</td>
+                    <td className="px-4 py-3 fui-body1-strong text-right" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(sale.totalAmount)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link to={`/sales/${sale.saleId}`} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1 ml-auto w-fit">
+                        <ExternalLink size={12} />
+                        Ouvrir
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </Modal>
 
-        <Modal
-          isOpen={Boolean(requestModal)}
-          onClose={() => setRequestModal(null)}
-          title={requestModal === 'price' ? 'Demander changement de prix' : 'Demander ajustement stock'}
-          subtitle="La demande sera envoyée à un administrateur."
-          size="sm"
-          footer={
-            <>
-              <button
-                type="button"
-                onClick={() => setRequestModal(null)}
-                className="form-button-secondary"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={submitAdminRequest}
-                disabled={requestSubmitting || !requestReason.trim() || requestValue === ''}
-                className="form-button-primary"
-              >
-                {requestSubmitting ? 'Envoi...' : 'Envoyer'}
-              </button>
-            </>
-          }
-        >
-              <div className="space-y-4">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-gray-700">
-                    {requestModal === 'price' ? 'Nouveau prix proposé' : 'Stock cible proposé'}
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={requestValue}
-                    onChange={(event) => setRequestValue(event.target.value)}
-                    className="form-control text-sm"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-gray-700">Raison obligatoire</span>
-                  <textarea
-                    value={requestReason}
-                    onChange={(event) => setRequestReason(event.target.value)}
-                    rows={4}
-                    maxLength={600}
-                    className="form-control text-sm"
-                    placeholder="Expliquez pourquoi cette modification est nécessaire..."
-                  />
-                </label>
-              </div>
-        </Modal>
+      {/* ══ MODAL: ADMIN REQUEST ══ */}
+      <Modal
+        isOpen={Boolean(requestModal)}
+        onClose={() => setRequestModal(null)}
+        title={requestModal === 'price' ? 'Demander changement de prix' : 'Demander ajustement de stock'}
+        subtitle="La demande sera transmise à un administrateur."
+        size="sm"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => setRequestModal(null)} className="ms-button ms-button-secondary ms-button-md">
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={submitAdminRequest}
+              disabled={requestSubmitting || !requestReason.trim() || requestValue === ''}
+              className="ms-button ms-button-primary ms-button-md"
+            >
+              {requestSubmitting ? 'Envoi...' : 'Envoyer la demande'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="form-label mb-2 block">
+              {requestModal === 'price' ? 'Nouveau prix proposé (CFA)' : 'Stock cible proposé'}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={requestValue}
+              onChange={(e) => setRequestValue(e.target.value)}
+              className="form-control"
+              placeholder={requestModal === 'price' ? 'Ex : 45000' : 'Ex : 50'}
+            />
+          </div>
+          <div>
+            <label className="form-label mb-2 block">Raison (obligatoire)</label>
+            <textarea
+              value={requestReason}
+              onChange={(e) => setRequestReason(e.target.value)}
+              rows={4}
+              maxLength={600}
+              className="form-control"
+              placeholder="Expliquez pourquoi cette modification est nécessaire..."
+            />
+          </div>
+        </div>
+      </Modal>
     </Workspace>
   );
 };
 
-/* ===================================================== */
-/* 🧱 COMPOSANTS UTILITAIRES */
-/* ===================================================== */
-const Card = ({ title, children }) => (
-  <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
-    <p className="text-sm text-gray-500 mb-1">{title}</p>
-    <p className="text-lg font-semibold text-gray-800">{children}</p>
-  </div>
-);
+/* ─── local sub-components ─── */
+const TONE_STYLES = {
+  brand:   { bg: 'var(--ms-blue-soft)',                    color: 'var(--colorBrandBackground)' },
+  success: { bg: 'var(--colorStatusSuccessBackground1)',   color: 'var(--colorStatusSuccessForeground1)' },
+  warning: { bg: 'var(--colorStatusWarningBackground1)',   color: 'var(--colorStatusWarningForeground1)' },
+  danger:  { bg: 'var(--colorStatusDangerBackground1)',    color: 'var(--colorStatusDangerForeground1)' },
+  neutral: { bg: 'var(--colorNeutralBackground3)',         color: 'var(--colorNeutralForeground3)' },
+};
 
-const Metric = ({ label, value, footer = null }) => (
-  <div>
-    <p className="text-xs text-gray-500 mb-1">{label}</p>
-    <p className="text-sm font-semibold text-gray-800">{value}</p>
-    {footer && <div className="mt-1">{footer}</div>}
-  </div>
-);
-
-const SalesLinks = ({ sales, loading, error, onViewAll }) => {
-  if (loading) {
-    return <p className="text-xs text-gray-400">Chargement des ventes...</p>;
-  }
-
-  if (error) {
-    return <p className="text-xs text-red-500">{error}</p>;
-  }
-
-  if (!sales || sales.length === 0) {
-    return <p className="text-xs text-gray-400">Aucune vente récente</p>;
-  }
-
+const KPICard = ({ icon, label, value, tone = 'neutral' }) => {
+  const t = TONE_STYLES[tone] || TONE_STYLES.neutral;
   return (
-    <div className="space-y-2">
-      <div className="space-y-1">
-        {sales.slice(0, 3).map((sale) => {
-          const formattedDate = sale.saleDate
-            ? new Date(sale.saleDate).toLocaleDateString('fr-FR')
-            : 'Date inconnue';
-          return (
-            <Link
-              key={sale.saleId}
-              to={`/sales/${sale.saleId}`}
-              className="flex items-center justify-between text-xs text-indigo-600 hover:text-indigo-700"
-            >
-              <span className="truncate pr-2">
-                {sale.clientName || 'Vente'} • {formattedDate}
-              </span>
-              <span className="text-gray-500 whitespace-nowrap">{sale.quantity} u</span>
-            </Link>
-          );
-        })}
+    <div className="ms-kpi-card">
+      <div>
+        <p className="ms-kpi-title">{label}</p>
+        <p className="ms-kpi-value">{value}</p>
       </div>
-      {onViewAll && sales.length > 0 && (
-        <button
-          type="button"
-          onClick={onViewAll}
-          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-        >
-          Voir tous les acheteurs
-        </button>
-      )}
+      <div className="ms-kpi-icon" style={{ background: t.bg, color: t.color }}>
+        {icon}
+      </div>
+    </div>
+  );
+};
+
+const FinCard = ({ label, value, tone }) => {
+  const t = tone ? TONE_STYLES[tone] : null;
+  return (
+    <div
+      className="rounded-[var(--radiusLarge)] p-5"
+      style={{ background: t ? t.bg : 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}
+    >
+      <p className="fui-caption1-strong mb-2" style={{ color: t ? t.color : 'var(--colorNeutralForeground3)' }}>
+        {label}
+      </p>
+      <p className="fui-title3" style={{ color: t ? t.color : 'var(--colorNeutralForeground1)' }}>
+        {value}
+      </p>
     </div>
   );
 };

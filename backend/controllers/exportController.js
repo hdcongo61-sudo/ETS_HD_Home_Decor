@@ -1,6 +1,7 @@
 const excel = require('exceljs');
 const Sale = require('../models/saleModel');
 const asyncHandler = require('express-async-handler');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const generateSalesReport = asyncHandler(async (req, res) => {
   try {

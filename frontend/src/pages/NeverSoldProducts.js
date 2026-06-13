@@ -16,8 +16,12 @@ import {
 } from '../components/ProductAnalyticsUI';
 import { Workspace } from '../components/business';
 import { Download, FileText, PackageCheck, PackageX, Percent, Wallet } from 'lucide-react';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity, getLogoDataUrl } from '../utils/appBranding';
 
 const NeverSoldProducts = () => {
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [stats, setStats] = useState({});
@@ -89,28 +93,16 @@ const exportToPDF = async () => {
     format: 'A4',
   });
 
-  // 🔹 Charger le logo depuis le dossier public
-  const logoUrl = `${window.location.origin}/logo.png`;
-
-  try {
-    const logoImg = await fetch(logoUrl)
-      .then((res) => res.blob())
-      .then((blob) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      }));
-
-    // Ajouter le logo
-    doc.addImage(logoImg, 'PNG', 40, 25, 70, 70);
-  } catch (err) {
-    console.warn('⚠️ Logo non trouvé ou non chargé, export sans logo');
+  // 🔹 Logo de la boutique (depuis ses paramètres)
+  const logoImg = await getLogoDataUrl(company.logoUrl);
+  if (logoImg) {
+    try { doc.addImage(logoImg, 'PNG', 40, 25, 70, 70); } catch { /* ignore */ }
   }
 
-  // Titre principal
+  // Titre principal — nom de la boutique
   doc.setFontSize(18);
   doc.setTextColor(50, 50, 50);
-  doc.text('ETS HD HOME DECOR', 130, 55);
+  doc.text((company.name || '').toUpperCase(), 130, 55);
   doc.setFontSize(14);
   doc.setTextColor(90, 90, 90);
   doc.text('Rapport - Produits Jamais Vendus', 130, 75);
@@ -160,10 +152,15 @@ const exportToPDF = async () => {
     doc.lastAutoTable.finalY + 30
   );
 
-  // Pied de page
+  // Pied de page — identité de la boutique
   doc.setFontSize(9);
   doc.setTextColor(130, 130, 130);
-  doc.text('ETS HD HOME DECOR — 61 rue Lénine, Moungali, Brazzaville — Tél : +242 069822930', 40, 550);
+  const footerParts = [
+    (company.name || '').toUpperCase(),
+    company.address,
+    company.phone && `Tél : ${company.phone}`,
+  ].filter(Boolean);
+  doc.text(footerParts.join(' — '), 40, 550);
 
   // Sauvegarde
   const pdfName = `Produits_Jamais_Vendus_${new Date().toLocaleDateString()}.pdf`;

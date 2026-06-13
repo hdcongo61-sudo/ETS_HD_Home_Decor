@@ -299,7 +299,7 @@ const Expenses = () => {
       </CommandBar>
 
       {error && (
-        <div className="border border-[var(--ms-danger)] bg-[rgba(209,52,56,0.08)] px-4 py-3 text-sm font-medium text-[var(--ms-danger)]">
+        <div className="rounded-[var(--radiusLarge)] px-4 py-3 fui-body1 flex items-center gap-2" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
           {error}
         </div>
       )}

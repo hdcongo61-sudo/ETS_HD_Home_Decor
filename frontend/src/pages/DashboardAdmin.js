@@ -31,6 +31,8 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import AppLoader from '../components/AppLoader';
 import { PageHeader, KPICard } from '../components/business';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity } from '../utils/appBranding';
 
 const UserManagement = lazy(() => import('../components/UserDashboard'));
 const LoginSummary = lazy(() => import('../components/ResumeConnexions'));
@@ -153,6 +155,8 @@ const buildSalesSummary = (salesStats, totalUsers = 0) => {
 
 const DashboardAdmin = () => {
   const { auth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
   const [activeTab, setActiveTab] = useState('overview');
   const [salesRange, setSalesRange] = useState('30days');
   const [stats, setStats] = useState({
@@ -498,7 +502,7 @@ const DashboardAdmin = () => {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
       doc.setFontSize(18);
-      doc.text('Rapport hebdomadaire administrateur', 40, 40);
+      doc.text(`${company.name} — Rapport hebdomadaire`, 40, 40);
       doc.setFontSize(11);
       doc.text(`Généré le ${formatDate(new Date(), true)}`, 40, 60);
 

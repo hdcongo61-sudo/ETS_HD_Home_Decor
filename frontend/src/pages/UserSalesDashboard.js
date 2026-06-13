@@ -18,6 +18,8 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import AppLoader from '../components/AppLoader';
 import { PageHeader, Workspace, KPICard } from '../components/business';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity } from '../utils/appBranding';
 import {
   calculateSaleProfit,
   calculateSaleTotals,
@@ -231,53 +233,42 @@ const buildFilterEntries = ({ rangePreset, startDate, endDate, search, status, s
   ],
 ];
 
-const DashboardStatCard = ({ label, value, helper, tone = 'slate' }) => {
-  const toneClass = {
-    slate: 'from-slate-900 via-slate-800 to-slate-700 text-white',
-    teal: 'from-teal-600 via-emerald-600 to-green-500 text-white',
-    amber: 'from-amber-400 via-orange-400 to-red-400 text-[var(--ms-text-strong)]',
-    sky: 'from-sky-500 via-cyan-500 to-teal-400 text-white',
-  }[tone];
-
-  return (
-    <div className={`rounded-lg bg-gradient-to-br p-4 shadow-[var(--ms-shadow-sm)] ${toneClass}`}>
-      <p className="text-xs uppercase tracking-[0.18em] opacity-80">{label}</p>
-      <p className="mt-3 text-2xl font-semibold">{value}</p>
-      <p className="mt-2 text-sm opacity-85">{helper}</p>
+const DashboardStatCard = ({ label, value, helper }) => (
+  <div className="ms-kpi-card">
+    <div>
+      <p className="ms-kpi-title">{label}</p>
+      <p className="ms-kpi-value">{value}</p>
+      <p className="ms-kpi-context">{helper}</p>
     </div>
-  );
-};
+  </div>
+);
 
 const FilterChip = ({ active, label, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-      active
-        ? 'border-slate-900 bg-[var(--ms-text-strong)] text-white'
-        : 'border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:border-slate-300'
-    }`}
+    className={`ms-button ms-button-sm ${active ? 'ms-button-primary' : 'ms-button-secondary'}`}
   >
     {label}
   </button>
 );
 
-const MiniInsightCard = ({ title, value, helper, accent = 'text-[var(--ms-text)]' }) => (
-  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
-    <p className="text-sm text-[var(--ms-text-muted)]">{title}</p>
-    <p className={`mt-2 text-xl font-semibold ${accent}`}>{value}</p>
-    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{helper}</p>
+const MiniInsightCard = ({ title, value, helper }) => (
+  <div className="fluent-card-filled p-4">
+    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{title}</p>
+    <p className="fui-subtitle1 mt-2" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+    <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>{helper}</p>
   </div>
 );
 
 const SaleBadge = ({ className, label }) => (
-  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${className}`}>{label}</span>
+  <span className="ms-status-badge ms-status-neutral">{label}</span>
 );
 
 const EmptyState = ({ title, helper, action }) => (
-  <div className="rounded-lg border border-dashed border-slate-300 bg-[var(--ms-white)] p-8 text-center shadow-[var(--ms-shadow-sm)]">
-    <h3 className="text-lg font-semibold text-[var(--ms-text)]">{title}</h3>
-    <p className="mt-2 text-sm text-[var(--ms-text-muted)]">{helper}</p>
+  <div className="ms-empty-state rounded-[var(--radiusLarge)]" style={{ border: '1px dashed var(--colorNeutralStroke1)', background: 'var(--colorNeutralBackground2)' }}>
+    <p className="ms-empty-title">{title}</p>
+    {helper && <p className="ms-empty-description">{helper}</p>}
     {action ? <div className="mt-4">{action}</div> : null}
   </div>
 );
@@ -285,6 +276,8 @@ const EmptyState = ({ title, helper, action }) => (
 const UserSalesDashboard = () => {
   const { userId } = useParams();
   const { auth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
+  const company = getCompanyIdentity(appSettings.branding);
   const [user, setUser] = useState(null);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -759,7 +752,7 @@ const UserSalesDashboard = () => {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
       doc.setFontSize(18);
-      doc.text('Statistiques utilisateur', 40, 42);
+      doc.text(`${company.name} — Statistiques utilisateur`, 40, 42);
       doc.setFontSize(11);
       doc.text(`${user?.name || 'Utilisateur'} • ${user?.email || ''}`, 40, 62);
 
@@ -831,56 +824,35 @@ const UserSalesDashboard = () => {
     }
   };
 
-  if (auth?.isLoading) {
+  if (auth?.isLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <AppLoader fullScreen={false} text="Chargement..." />
+      <div className="p-6 space-y-4">
+        <div className="ms-loading-skeleton" aria-hidden="true">
+          {Array.from({ length: 8 }).map((_, i) => <span key={i} />)}
+        </div>
       </div>
     );
   }
 
   if (isUnauthorized) {
     return (
-      <div className="flex min-h-screen items-center px-4 py-10">
+      <div className="p-6">
         <EmptyState
           title="Accès non autorisé"
           helper="Cette page est réservée à l'administrateur ou au propriétaire du compte."
-          action={
-            <Link
-              to="/"
-              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
-            >
-              Retour à l'accueil
-            </Link>
-          }
+          action={<Link to="/" className="ms-button ms-button-primary ms-button-md">Retour à l'accueil</Link>}
         />
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <AppLoader fullScreen={false} text="Chargement..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center px-4 py-10">
+      <div className="p-6">
         <EmptyState
           title="Chargement impossible"
           helper={error}
-          action={
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
-            >
-              Recharger
-            </button>
-          }
+          action={<button type="button" onClick={() => window.location.reload()} className="ms-button ms-button-primary ms-button-md">Recharger</button>}
         />
       </div>
     );
@@ -888,112 +860,89 @@ const UserSalesDashboard = () => {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center px-4 py-10">
+      <div className="p-6">
         <EmptyState
           title="Utilisateur introuvable"
           helper="Le profil demandé n'existe pas ou n'est plus disponible."
-          action={
-            <Link
-              to={isAdmin ? '/users/stats' : '/profile'}
-              className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
-            >
-              Retour
-            </Link>
-          }
+          action={<Link to={isAdmin ? '/users/stats' : '/profile'} className="ms-button ms-button-primary ms-button-md">Retour</Link>}
         />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-5 sm:px-6 lg:px-8">
-      <div className="space-y-5">
-        <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-teal-950 to-emerald-900 text-white shadow-xl">
-          <div className="flex flex-col gap-6 p-5 sm:p-7">
+    <div className="space-y-4">
+        {/* Hero — Fluent 2 brand header */}
+        <section
+          className="overflow-hidden fluent-card-filled"
+          style={{ background: 'var(--colorBrandBackground)', border: 'none' }}
+        >
+          <div className="flex flex-col gap-6 p-5 sm:p-6" style={{ color: '#ffffff' }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
                 to={isAdmin ? '/users/stats' : '/profile'}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur"
+                className="inline-flex items-center gap-2 rounded-[var(--radiusLarge)] border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white"
               >
                 <span aria-hidden="true">←</span>
                 {isAdmin ? 'Retour aux utilisateurs' : 'Retour au profil'}
               </Link>
-              <div className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100">
+              <span className="fui-caption1-strong uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.8)' }}>
                 Dashboard commercial
-              </div>
+              </span>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[1.4fr_0.9fr]">
               <div>
-                <p className="text-sm uppercase tracking-[0.28em] text-emerald-200/80">Vue utilisateur</p>
-                <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{user.name}</h1>
-                <p className="mt-3 text-sm leading-6 text-slate-200 sm:text-base">
-                  Toutes les statistiques, les insights commerciaux, les exportations et l'historique de ventes
-                  suivent les filtres actifs ci-dessous. L'interface est pensée d'abord pour mobile puis s'étend en
-                  cartes sur les grands écrans.
+                <p className="fui-caption1-strong uppercase" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.18em' }}>Vue utilisateur</p>
+                <h1 className="fui-title1 mt-2" style={{ color: '#ffffff' }}>{user.name}</h1>
+                <p className="fui-body1 mt-2" style={{ color: 'rgba(255,255,255,0.85)', lineHeight: '1.6' }}>
+                  Statistiques, insights et historique de ventes selon les filtres actifs.
                 </p>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
-                    <p className="text-sm text-emerald-100/80">Email</p>
-                    <p className="mt-2 text-sm font-medium text-white">{user.email || 'Non renseigné'}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
-                    <p className="text-sm text-emerald-100/80">Dernière connexion</p>
-                    <p className="mt-2 text-sm font-medium text-white">{formatDateTimeLabel(user.lastLogin)}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
-                    <p className="text-sm text-emerald-100/80">Inscrit le</p>
-                    <p className="mt-2 text-sm font-medium text-white">{formatDateLabel(user.createdAt)}</p>
-                  </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {[
+                    { label: 'Email', value: user.email || 'Non renseigné' },
+                    { label: 'Dernière connexion', value: formatDateTimeLabel(user.lastLogin) },
+                    { label: 'Inscrit le', value: formatDateLabel(user.createdAt) },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'rgba(255,255,255,0.12)' }}>
+                      <p className="fui-caption1" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</p>
+                      <p className="fui-body1-strong mt-1" style={{ color: '#ffffff' }}>{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                <DashboardStatCard
-                  label="Encaissement"
-                  value={formatCFA(analytics.totalPaid)}
-                  helper={`${formatPercent(analytics.collectionRate)} du chiffre d'affaires filtré`}
-                  tone="teal"
-                />
-                <DashboardStatCard
-                  label="Reste à encaisser"
-                  value={formatCFA(analytics.outstandingAmount)}
-                  helper={`${analytics.pendingPayments.count} vente(s) encore ouvertes`}
-                  tone="amber"
-                />
+                {[
+                  { label: 'Encaissement', value: formatCFA(analytics.totalPaid), helper: `${formatPercent(analytics.collectionRate)} du CA filtré` },
+                  { label: 'Reste à encaisser', value: formatCFA(analytics.outstandingAmount), helper: `${analytics.pendingPayments.count} vente(s) encore ouvertes` },
+                ].map(({ label, value, helper }) => (
+                  <div key={label} className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'rgba(255,255,255,0.12)' }}>
+                    <p className="fui-caption1-strong uppercase" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>{label}</p>
+                    <p className="fui-title3 mt-2 tabular-nums" style={{ color: '#ffffff' }}>{value}</p>
+                    <p className="fui-caption1 mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>{helper}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+        <section className="fluent-card-filled p-4 sm:p-5">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="ms-command-bar flex-wrap gap-y-2">
               <div>
-                <h2 className="text-xl font-semibold text-[var(--ms-text)]">{isAdmin ? 'Filtres et export' : 'Filtres'}</h2>
-                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
-                  {isAdmin
-                    ? 'Les statistiques, les graphiques et les exports PDF/Excel suivent uniquement les ventes filtrées.'
-                    : 'Les statistiques et les graphiques suivent uniquement les ventes filtrées.'}
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>{isAdmin ? 'Filtres et export' : 'Filtres'}</h2>
+                <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  {isAdmin ? 'Les statistiques et exports suivent uniquement les ventes filtrees.' : 'Les statistiques suivent uniquement les ventes filtrees.'}
                 </p>
               </div>
               {isAdmin && (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleExportPdf}
-                    disabled={!filteredSales.length || exporting.length > 0}
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
+                <div className="flex flex-wrap gap-2 ml-auto">
+                  <button type="button" onClick={handleExportPdf} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-secondary ms-button-sm">
                     {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleExportExcel}
-                    disabled={!filteredSales.length || exporting.length > 0}
-                    className="rounded-full bg-[var(--ms-text-strong)] px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleExportExcel} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-primary ms-button-sm">
                     {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
                   </button>
                 </div>
@@ -1013,99 +962,52 @@ const UserSalesDashboard = () => {
 
             {rangePreset === 'custom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                  <span>Date de début</span>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                  />
+                <label className="space-y-1.5">
+                  <span className="form-label block">Date de debut</span>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-control" />
                 </label>
-                <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                  <span>Date de fin</span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                  />
+                <label className="space-y-1.5">
+                  <span className="form-label block">Date de fin</span>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-control" />
                 </label>
               </div>
             ) : null}
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                <span>Recherche</span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Client, produit, conteneur..."
-                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                />
+              <label className="space-y-1.5">
+                <span className="form-label block">Recherche</span>
+                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Client, produit, conteneur..." className="form-control" />
               </label>
-
-              <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                <span>Statut</span>
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+              <label className="space-y-1.5">
+                <span className="form-label block">Statut</span>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="form-control">
+                  {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
-
-              <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                <span>Type de vente</span>
-                <select
-                  value={saleType}
-                  onChange={(event) => setSaleType(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                >
-                  {SALE_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+              <label className="space-y-1.5">
+                <span className="form-label block">Type de vente</span>
+                <select value={saleType} onChange={(e) => setSaleType(e.target.value)} className="form-control">
+                  {SALE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
-
-              <label className="space-y-2 text-sm text-[var(--ms-text)]">
-                <span>Structure de paiement</span>
-                <select
-                  value={paymentStructure}
-                  onChange={(event) => setPaymentStructure(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
-                >
-                  {PAYMENT_STRUCTURE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+              <label className="space-y-1.5">
+                <span className="form-label block">Structure de paiement</span>
+                <select value={paymentStructure} onChange={(e) => setPaymentStructure(e.target.value)} className="form-control">
+                  {PAYMENT_STRUCTURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-3">
-              <div className="flex flex-wrap gap-2 text-sm text-[var(--ms-text)]">
+            <div className="ms-command-bar flex-wrap gap-y-2">
+              <div className="flex flex-wrap gap-2">
                 {filterEntries.map(([label, value]) => (
-                  <span key={label} className="rounded-full bg-[var(--ms-white)] px-3 py-1 shadow-[var(--ms-shadow-sm)]">
-                    <strong className="font-medium text-[var(--ms-text)]">{label}:</strong> {value}
+                  <span key={label} className="ms-status-badge ms-status-neutral">
+                    <strong className="fui-caption1-strong">{label}:</strong>&nbsp;{value}
                   </span>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-400"
-              >
-                Réinitialiser
+              <button type="button" onClick={resetFilters} className="ms-button ms-button-secondary ms-button-sm ml-auto">
+                Reinitialiser
               </button>
             </div>
           </div>
@@ -1141,10 +1043,10 @@ const UserSalesDashboard = () => {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+          <div className="fluent-card-filled p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Performance commerciale</h2>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Performance commerciale</h2>
                 <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                   Chiffre d'affaires et encaissements par {trendChart.granularity}.
                 </p>
@@ -1177,8 +1079,8 @@ const UserSalesDashboard = () => {
             )}
           </div>
 
-          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-            <h2 className="text-xl font-semibold text-[var(--ms-text)]">Structures de paiement</h2>
+          <div className="fluent-card-filled p-4 sm:p-5">
+            <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Structures de paiement</h2>
             <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
               Paiement unique, paiements multiples et ventes encore ouvertes.
             </p>
@@ -1269,8 +1171,8 @@ const UserSalesDashboard = () => {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-            <h2 className="text-xl font-semibold text-[var(--ms-text)]">Synthèse intelligente</h2>
+          <div className="fluent-card-filled p-4 sm:p-5">
+            <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Synthèse intelligente</h2>
             <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
               Quelques signaux directement utiles pour piloter l'activité de cet utilisateur.
             </p>
@@ -1319,8 +1221,8 @@ const UserSalesDashboard = () => {
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Top clients</h2>
+            <div className="fluent-card-filled p-4 sm:p-5">
+              <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Top clients</h2>
               <div className="mt-4 space-y-3">
                 {analytics.topClients.length ? (
                   analytics.topClients.map((client, index) => (
@@ -1338,8 +1240,8 @@ const UserSalesDashboard = () => {
               </div>
             </div>
 
-            <div className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Top produits</h2>
+            <div className="fluent-card-filled p-4 sm:p-5">
+              <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Top produits</h2>
               <div className="mt-4 space-y-3">
                 {analytics.topProducts.length ? (
                   analytics.topProducts.map((product, index) => (
@@ -1362,10 +1264,10 @@ const UserSalesDashboard = () => {
           </div>
         </section>
 
-        <section className="rounded-[2rem] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
+        <section className="fluent-card-filled p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--ms-text)]">Historique filtré</h2>
+              <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Historique filtré</h2>
               <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
                 {historySales.length} vente(s) affichée(s) sur {filteredSales.length} vente(s) déjà retenues par les
                 filtres globaux. Chaque carte reprend les
@@ -1382,7 +1284,7 @@ const UserSalesDashboard = () => {
                 value={historySearch}
                 onChange={(event) => setHistorySearch(event.target.value)}
                 placeholder="Client, produit, conteneur..."
-                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
+                className="form-control"
               />
             </label>
 
@@ -1391,7 +1293,7 @@ const UserSalesDashboard = () => {
               <select
                 value={historyView}
                 onChange={(event) => setHistoryView(event.target.value)}
-                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
+                className="form-control"
               >
                 {visibleHistoryViewOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1406,7 +1308,7 @@ const UserSalesDashboard = () => {
               <select
                 value={historySort}
                 onChange={(event) => setHistorySort(event.target.value)}
-                className="w-full rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 text-[var(--ms-text)] outline-none transition focus:border-slate-400"
+                className="form-control"
               >
                 {visibleHistorySortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1418,15 +1320,15 @@ const UserSalesDashboard = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-[var(--ms-text)]">
-            <span className="rounded-full bg-slate-100 px-3 py-1">
+            <span className="ms-status-badge ms-status-neutral">
               <strong className="font-medium text-[var(--ms-text)]">Vue:</strong>{' '}
               {visibleHistoryViewOptions.find((option) => option.value === historyView)?.label || 'Toutes les cartes'}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">
+            <span className="ms-status-badge ms-status-neutral">
               <strong className="font-medium text-[var(--ms-text)]">Tri:</strong>{' '}
               {visibleHistorySortOptions.find((option) => option.value === historySort)?.label || 'Plus récentes'}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">
+            <span className="ms-status-badge ms-status-neutral">
               <strong className="font-medium text-[var(--ms-text)]">Recherche:</strong>{' '}
               {historySearch.trim() || 'Aucune'}
             </span>
@@ -1457,13 +1359,13 @@ const UserSalesDashboard = () => {
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Produits</p>
+                          <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.1em' }}>Produits</p>
                           <p className="mt-2 text-sm text-[var(--ms-text)]">
                             {sale.productNames.length ? sale.productNames.join(', ') : 'Aucun produit'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Conteneurs / paiements</p>
+                          <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.1em' }}>Conteneurs / paiements</p>
                           <p className="mt-2 text-sm text-[var(--ms-text)]">
                             {[...sale.containers, ...sale.paymentMethods].filter(Boolean).join(' • ') || 'Aucun détail'}
                           </p>
@@ -1508,7 +1410,7 @@ const UserSalesDashboard = () => {
                       setHistoryView('all');
                       setHistorySort('recent');
                     }}
-                    className="inline-flex rounded-full bg-[var(--ms-text-strong)] px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+                    className="ms-button ms-button-primary ms-button-md"
                   >
                     Réinitialiser l'historique
                   </button>
@@ -1517,7 +1419,6 @@ const UserSalesDashboard = () => {
             </div>
           )}
         </section>
-      </div>
     </div>
   );
 };

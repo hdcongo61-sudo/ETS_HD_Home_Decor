@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const deletedSaleSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     saleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Sale',

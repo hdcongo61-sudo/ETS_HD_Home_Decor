@@ -14,6 +14,7 @@ import BottomTabBar from './components/BottomTabBar';
 import AppLoader from './components/AppLoader';
 import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
+import DesktopNavRail from './components/DesktopNavRail';
 
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
@@ -31,6 +32,7 @@ const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 const Bank = lazy(() => import('./pages/Bank'));
+const CashierSession = lazy(() => import('./pages/CashierSession'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -59,22 +61,30 @@ const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminRequests = lazy(() => import('./pages/AdminRequests'));
+const TenantRegister = lazy(() => import('./pages/TenantRegister'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
+const ImpersonationBanner = lazy(() => import('./components/ImpersonationBanner'));
 
 function App() {
   return (
     <ModalProvider>
       <AppSettingsProvider>
         <AuthProvider>
-          <Router>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ScrollToTop />
             <div className="app-root-shell min-h-screen flex flex-col">
+              <Suspense fallback={null}><ImpersonationBanner /></Suspense>
               <Navigation />
               <OfflineIndicator />
+              <DesktopNavRail />
+              <div className="flex-1 flex flex-col min-h-0 app-main-with-sidebar">
               <Suspense fallback={<AppLoader />}>
                 <main className="flex-1 min-h-0 main-with-tab-bar">
                   <AppLayout>
                     <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<TenantRegister />} />
+                <Route path="/super-admin" element={<SuperAdmin />} />
                 <Route path="/access-restricted" element={<AccessRestricted />} />
                 <Route
                   path="/"
@@ -234,6 +244,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Bank />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/caisse/session"
+                  element={
+                    <ProtectedRoute>
+                      <CashierSession />
                     </ProtectedRoute>
                   }
                 />
@@ -418,6 +436,7 @@ function App() {
                 </main>
               </Suspense>
               <SiteFooter />
+              </div>
               <GlobalModals />
               <PushNotificationManager />
               <PwaInstallPrompt />

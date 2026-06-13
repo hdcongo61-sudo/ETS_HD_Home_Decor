@@ -1,5 +1,6 @@
 const Client = require('../models/clientModel');
 const Sale = require('../models/saleModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const getClients = async (req, res) => {
   try {
@@ -82,7 +83,7 @@ const getClientById = async (req, res) => {
 // @access  Private
 const createClient = async (req, res) => {
   try {
-    const client = new Client({
+    const client = new Client({ tenantId: req.tenantId,
       name: req.body.name,
       email: req.body.email,
       phone: req.body.phone,

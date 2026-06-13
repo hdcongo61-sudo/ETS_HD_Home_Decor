@@ -5,6 +5,7 @@ const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
 const DeletedSale = require('../models/deletedSaleModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const normalizeObjectId = (value) => {
   if (!value) return null;
@@ -216,7 +217,10 @@ const buildRequestQuery = (req) => {
   const canReview = req.user?.isAdmin || (
     Array.isArray(req.user?.permissions) && req.user.permissions.includes('approve_admin_requests')
   );
-  const query = canReview ? {} : { requestedBy: req.user._id };
+  const query = {
+    ...tenantFilter(req),
+    ...(canReview ? {} : { requestedBy: req.user._id }),
+  };
   if (req.query.status) {
     query.status = req.query.status;
   }
@@ -241,6 +245,7 @@ const createAdminRequest = asyncHandler(async (req, res) => {
   }
 
   const request = await AdminRequest.create({
+    tenantId: req.tenantId,
     type: req.body.type || 'other',
     reason,
     note: String(req.body.note || '').trim(),

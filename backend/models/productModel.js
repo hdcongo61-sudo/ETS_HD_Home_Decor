@@ -3,6 +3,12 @@ const slugify = require('../utils/slugify');
 
 const productSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     name: {
       type: String,
       required: [true, 'Le nom du produit est requis'],

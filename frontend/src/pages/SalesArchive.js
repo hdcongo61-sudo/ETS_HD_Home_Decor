@@ -375,16 +375,15 @@ const SalesArchive = () => {
           <button
             type="button"
             onClick={() => setFiltersOpen((o) => !o)}
-            className="flex w-full items-center justify-between bg-white p-4 text-left transition-colors hover:bg-[var(--ms-bg)] sm:hidden"
+            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[var(--colorNeutralBackground2)] sm:hidden"
+            style={{ background: 'var(--colorNeutralBackground1)' }}
             aria-expanded={filtersOpen}
           >
-            <span className="font-semibold text-[var(--ms-text-strong)]">Filtres</span>
-            {hasActiveFilters && (
-              <StatusBadge tone="neutral">Actifs</StatusBadge>
-            )}
-            <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Filtres</span>
+            {hasActiveFilters && <StatusBadge tone="neutral">Actifs</StatusBadge>}
+            <ChevronDown className={`w-5 h-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--colorNeutralForeground3)' }} />
           </button>
-          <div className={`${filtersOpen ? "block" : "hidden"} sm:block border-t border-slate-100 sm:border-t-0`}>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} sm:block border-t sm:border-t-0`} style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
             <div className="p-4 sm:p-6 pt-0 sm:pt-6">
               <SalesFiltersBar
                 statusFilter={statusFilter}
@@ -422,20 +421,18 @@ const SalesArchive = () => {
         ) : (
           <>
             <Surface className="p-4 sm:p-5">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div className="ms-command-bar flex-wrap gap-y-2 mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-950">
-                    Statistiques des filtres sélectionnés
+                  <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Statistiques des filtres
                   </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
                     {canViewSensitiveFinancials
-                      ? "Ces chiffres sont calculés uniquement sur les ventes actuellement affichées."
-                      : "Vue opérationnelle: ventes, paiements, soldes et livraisons sans données sensibles."}
+                      ? 'Calculés sur les ventes actuellement affichées.'
+                      : 'Vue opérationnelle sans données sensibles.'}
                   </p>
                 </div>
-                {hasActiveFilters && (
-                  <StatusBadge tone="neutral">Filtres actifs</StatusBadge>
-                )}
+                {hasActiveFilters && <StatusBadge tone="neutral">Filtres actifs</StatusBadge>}
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -445,16 +442,14 @@ const SalesArchive = () => {
               </div>
             </Surface>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">
-                <span className="font-semibold text-slate-950">{filteredSales.length}</span>
-                {filteredSales.length === 1 ? " vente" : " ventes"}
+            <div className="ms-command-bar flex-wrap gap-y-2">
+              <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filteredSales.length}</span>
+                {filteredSales.length === 1 ? ' vente' : ' ventes'}
               </p>
-              <SalesListExportButtons
-                sales={filteredSales}
-                filenamePrefix="archive-ventes"
-                label="Archive des ventes"
-              />
+              <div className="ml-auto">
+                <SalesListExportButtons sales={filteredSales} filenamePrefix="archive-ventes" label="Archive des ventes" />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

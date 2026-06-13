@@ -60,15 +60,27 @@ const brandingSchema = new mongoose.Schema(
       maxlength: 120,
       default: '',
     },
+    address: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: '',
+    },
   },
   { _id: false }
 );
 
 const appSettingsSchema = new mongoose.Schema(
   {
+    // Top-level tenant scope so the tenant guard plugin can isolate it.
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     key: {
       type: String,
-      unique: true,
       default: 'main',
       trim: true,
     },
@@ -81,5 +93,8 @@ const appSettingsSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// One settings document per tenant (legacy single-shop uses tenantId: null).
+appSettingsSchema.index({ tenantId: 1, key: 1 }, { unique: true });
 
 module.exports = mongoose.model('AppSettings', appSettingsSchema);

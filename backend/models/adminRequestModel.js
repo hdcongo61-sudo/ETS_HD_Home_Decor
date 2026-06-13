@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const adminRequestSchema = mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      default: null,
+      index: true,
+    },
     type: {
       type: String,
       enum: [

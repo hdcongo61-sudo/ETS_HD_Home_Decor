@@ -3,6 +3,7 @@ const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
 const asyncHandler = require('express-async-handler');
 const sharp = require('sharp');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const DOCUMENT_FOLDER = 'business_documents';
 const MAX_DOC_BYTES = 5 * 1024 * 1024; // 5 Mo
@@ -70,7 +71,7 @@ const getDocuments = asyncHandler(async (req, res) => {
       };
     }
   }
-  const docs = await Document.find(filter).sort({ date: -1 });
+  const docs = await Document.find({ ...tenantFilter(req), ...filter }).sort({ date: -1 });
   res.json(docs);
 });
 
@@ -78,7 +79,9 @@ const getDocuments = asyncHandler(async (req, res) => {
 // @route   GET /api/documents/years
 // @access  Private / Admin
 const getDocumentYears = asyncHandler(async (req, res) => {
+  const matchStage = req.tenantId ? { $match: { tenantId: req.tenantId } } : { $match: {} };
   const years = await Document.aggregate([
+    matchStage,
     { $project: { year: { $year: '$date' } } },
     { $group: { _id: '$year' } },
     { $sort: { _id: -1 } },

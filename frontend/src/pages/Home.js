@@ -9,6 +9,13 @@ const Dashboard = React.lazy(() => import('../components/Dashboard'));
 const Home = () => {
   const { auth } = useContext(AuthContext);
 
+  // A super-admin who is NOT impersonating belongs on the platform console,
+  // not inside a shop dashboard.
+  const isImpersonating = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('impersonating');
+  if (auth?.isSuperAdmin && !isImpersonating) {
+    return <Navigate to="/super-admin" replace />;
+  }
+
   if (auth?.isAdmin) {
     return (
       <Workspace>

@@ -2,54 +2,120 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === Microsoft Business Suite design tokens === */
+/* === Microsoft Fluent 2 Design Tokens === */
 :root {
-  --ms-blue: #0078D4;
-  --ms-blue-dark: #005A9E;
-  --ms-blue-soft: #E5F1FB;
-  --ms-white: #FFFFFF;
-  --ms-bg: #F8F9FA;
-  --ms-bg-subtle: #F3F2F1;
-  --ms-surface-muted: #EDEBE9;
-  --ms-border: #D2D0CE;
-  --ms-border-strong: #C8C6C4;
-  --ms-text-muted: #605E5C;
-  --ms-text: #323130;
-  --ms-text-strong: #201F1E;
-  --ms-success: #107C10;
-  --ms-warning: #FFB900;
-  --ms-danger: #D13438;
-  --ms-info: #0078D4;
-  --ms-radius: 6px;
-  --ms-radius-lg: 8px;
-  --ms-shadow-sm: 0 1px 2px rgba(32, 31, 30, 0.08);
-  --ms-shadow: 0 2px 8px rgba(32, 31, 30, 0.10);
-  --ms-shadow-lg: 0 8px 24px rgba(32, 31, 30, 0.14);
-  --ms-transition: cubic-bezier(0.33, 0, 0.2, 1);
-  --ms-touch: 44px;
-  --app-nav-offset: calc(64px + env(safe-area-inset-top, 0px));
+  /* ── Brand ── */
+  --colorBrandBackground:        #0F6CBD;
+  --colorBrandBackgroundHover:   #115EA3;
+  --colorBrandBackgroundPressed: #0F548C;
+  --colorBrandForeground1:       #0F6CBD;
+  --colorBrandStroke1:           #0F6CBD;
+
+  /* ── Neutral backgrounds (light) ── */
+  --colorNeutralBackground1:       #FFFFFF;
+  --colorNeutralBackground1Hover:  #F5F5F5;
+  --colorNeutralBackground1Pressed:#EBEBEB;
+  --colorNeutralBackground2:       #F5F5F5;
+  --colorNeutralBackground3:       #F0F0F0;
+  --colorNeutralBackground4:       #EBEBEB;
+  --colorNeutralBackground5:       #E6E6E6;
+  --colorNeutralBackground6:       #E0E0E0;
+
+  /* ── Neutral foregrounds ── */
+  --colorNeutralForeground1:         #242424;
+  --colorNeutralForeground2:         #424242;
+  --colorNeutralForeground3:         #616161;
+  --colorNeutralForeground4:         #707070;
+  --colorNeutralForegroundDisabled:  #BDBDBD;
+  --colorNeutralForegroundInverted:  #FFFFFF;
+
+  /* ── Neutral strokes ── */
+  --colorNeutralStroke1:           #D1D1D1;
+  --colorNeutralStroke2:           #E0E0E0;
+  --colorNeutralStroke3:           #F0F0F0;
+  --colorNeutralStrokeDisabled:    #E0E0E0;
+  --colorNeutralStrokeAccessible:  #616161;
+
+  /* ── Status ── */
+  --colorStatusSuccessForeground1: #107C10;
+  --colorStatusSuccessBackground1: #F1FAF1;
+  --colorStatusSuccessStroke1:     rgba(16,124,16,0.22);
+  --colorStatusWarningForeground1: #835B00;
+  --colorStatusWarningBackground1: #FFF8DF;
+  --colorStatusWarningStroke1:     rgba(255,185,0,0.38);
+  --colorStatusDangerForeground1:  #C50F1F;
+  --colorStatusDangerBackground1:  #FDF3F4;
+  --colorStatusDangerStroke1:      rgba(209,52,56,0.22);
+  --colorStatusInfoForeground1:    #0F6CBD;
+  --colorStatusInfoBackground1:    #EBF3FC;
+
+  /* ── Fluent 2 Elevation / Shadow ── */
+  --shadow2:  0 1px 2px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow4:  0 2px 4px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow8:  0 4px 8px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow16: 0 8px 16px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow28: 0 14px 28px rgba(0,0,0,0.24), 0 0 8px rgba(0,0,0,0.20);
+  --shadow64: 0 32px 64px rgba(0,0,0,0.24), 0 0 8px rgba(0,0,0,0.20);
+
+  /* ── Border radius ── */
+  --radiusNone:     0;
+  --radiusSmall:    2px;
+  --radiusMedium:   4px;
+  --radiusLarge:    6px;
+  --radiusXLarge:   8px;
+  --radiusCircular: 9999px;
+
+  /* ── Sidebar width (updated via JS) ── */
+  --sidebar-w: 64px;
+
+  /* ── Legacy MS aliases (backward compat) ── */
+  --ms-blue:         #0078D4;
+  --ms-blue-dark:    #005A9E;
+  --ms-blue-soft:    #E5F1FB;
+  --ms-white:        #FFFFFF;
+  --ms-bg:           #F8F9FA;
+  --ms-bg-subtle:    #F3F2F1;
+  --ms-surface-muted:#EDEBE9;
+  --ms-border:       var(--colorNeutralStroke1);
+  --ms-border-strong:var(--colorNeutralStroke2);
+  --ms-text-muted:   var(--colorNeutralForeground3);
+  --ms-text:         var(--colorNeutralForeground2);
+  --ms-text-strong:  var(--colorNeutralForeground1);
+  --ms-success:      var(--colorStatusSuccessForeground1);
+  --ms-warning:      #FFB900;
+  --ms-danger:       var(--colorStatusDangerForeground1);
+  --ms-info:         var(--colorBrandBackground);
+  --ms-radius:       var(--radiusLarge);
+  --ms-radius-lg:    var(--radiusXLarge);
+  --ms-shadow-sm:    var(--shadow2);
+  --ms-shadow:       var(--shadow4);
+  --ms-shadow-lg:    var(--shadow16);
+  --ms-transition:   cubic-bezier(0.33, 0, 0.2, 1);
+  --ms-touch:        44px;
+
+  --app-nav-offset:        calc(64px + env(safe-area-inset-top, 0px));
   --app-bottom-nav-offset: calc(96px + env(safe-area-inset-bottom, 0px));
-  --apple-radius: var(--ms-radius);
-  --apple-radius-lg: var(--ms-radius-lg);
-  --apple-radius-xl: var(--ms-radius-lg);
-  --apple-elevation-sm: var(--ms-shadow-sm);
-  --apple-elevation: var(--ms-shadow);
-  --apple-elevation-md: var(--ms-shadow-lg);
-  --apple-transition: var(--ms-transition);
-  --apple-touch: var(--ms-touch);
-  --app-bg: var(--ms-bg);
-  --app-bg-elevated: var(--ms-white);
-  --app-surface: #ffffff;
-  --app-surface-muted: var(--ms-bg-subtle);
-  --app-border: var(--ms-border);
-  --app-border-strong: var(--ms-border-strong);
-  --app-text: var(--ms-text);
-  --app-text-muted: var(--ms-text-muted);
-  --app-accent: var(--ms-blue);
-  --app-accent-soft: var(--ms-blue-soft);
-  --app-success: var(--ms-success);
-  --app-danger: var(--ms-danger);
-  --app-warning: var(--ms-warning);
+  --apple-radius:          var(--radiusLarge);
+  --apple-radius-lg:       var(--radiusXLarge);
+  --apple-radius-xl:       var(--radiusXLarge);
+  --apple-elevation-sm:    var(--shadow2);
+  --apple-elevation:       var(--shadow4);
+  --apple-elevation-md:    var(--shadow16);
+  --apple-transition:      var(--ms-transition);
+  --apple-touch:           var(--ms-touch);
+  --app-bg:                var(--ms-bg);
+  --app-bg-elevated:       var(--ms-white);
+  --app-surface:           #ffffff;
+  --app-surface-muted:     var(--ms-bg-subtle);
+  --app-border:            var(--colorNeutralStroke1);
+  --app-border-strong:     var(--colorNeutralStroke2);
+  --app-text:              var(--colorNeutralForeground2);
+  --app-text-muted:        var(--colorNeutralForeground3);
+  --app-accent:            var(--colorBrandBackground);
+  --app-accent-soft:       var(--ms-blue-soft);
+  --app-success:           var(--colorStatusSuccessForeground1);
+  --app-danger:            var(--colorStatusDangerForeground1);
+  --app-warning:           var(--ms-warning);
 }
 
 /* === PWA safe area (viewport-fit=cover in index.html) === */
@@ -157,6 +223,12 @@ body {
 
   .footer-mobile-tab-clearance {
     padding-bottom: 1.25rem;
+  }
+
+  /* Offset main content to the right of the fixed sidebar */
+  .app-main-with-sidebar {
+    padding-left: var(--sidebar-w, 64px);
+    transition: padding-left 280ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -1238,4 +1310,463 @@ button:focus {
     align-items: stretch;
     flex-direction: column-reverse;
   }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — NAVIGATION RAIL (Desktop Sidebar)
+   ═══════════════════════════════════════════════════════ */
+.fluent-nav-rail {
+  position: fixed;
+  top: var(--app-nav-offset);
+  left: 0;
+  height: calc(100dvh - var(--app-nav-offset));
+  z-index: 40;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-right: 1px solid var(--colorNeutralStroke2);
+  box-shadow: var(--shadow4);
+}
+
+.fluent-nav-rail__header {
+  display: flex;
+  align-items: center;
+  padding: 10px 8px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__logo-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radiusLarge);
+  padding: 5px 6px;
+  min-width: 0;
+  text-decoration: none;
+  transition: background-color 120ms;
+  width: 100%;
+}
+
+.fluent-nav-rail__logo-btn:hover {
+  background: var(--colorNeutralBackground3);
+}
+
+.fluent-nav-rail__logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radiusMedium);
+  border: 1px solid var(--colorNeutralStroke2);
+  object-fit: contain;
+  background: white;
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__logo-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fluent-nav-rail__nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  gap: 2px;
+  scrollbar-width: none;
+}
+
+.fluent-nav-rail__nav::-webkit-scrollbar {
+  display: none;
+}
+
+.fluent-nav-rail__group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--colorNeutralForeground3);
+  padding: 12px 10px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fluent-nav-rail__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radiusLarge);
+  padding: 8px 10px;
+  min-height: 40px;
+  color: var(--colorNeutralForeground2);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 120ms, color 120ms;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.fluent-nav-rail__item:hover {
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground1);
+}
+
+.fluent-nav-rail__item:active {
+  background: var(--colorNeutralBackground4);
+}
+
+.fluent-nav-rail__item--active {
+  background: var(--colorBrandBackground);
+  color: #ffffff;
+}
+
+.fluent-nav-rail__item--active:hover {
+  background: var(--colorBrandBackgroundHover);
+  color: #ffffff;
+}
+
+.fluent-nav-rail__item--active:active {
+  background: var(--colorBrandBackgroundPressed);
+}
+
+.fluent-nav-rail__item--danger {
+  color: var(--colorStatusDangerForeground1);
+}
+
+.fluent-nav-rail__item--danger:hover {
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+}
+
+.fluent-nav-rail__item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.fluent-nav-rail__divider {
+  height: 1px;
+  background: var(--colorNeutralStroke2);
+  margin: 6px 8px;
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__footer {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 6px 8px;
+  gap: 2px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radiusCircular);
+  border: 1px solid var(--colorNeutralStroke1);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground3);
+  cursor: pointer;
+  align-self: flex-end;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__toggle:hover {
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground1);
+  border-color: var(--colorNeutralStroke1);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — ACRYLIC MATERIAL
+   ═══════════════════════════════════════════════════════ */
+.fluent-acrylic {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.fluent-acrylic-subtle {
+  background: rgba(248, 249, 250, 0.90);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — CARD VARIANTS
+   ═══════════════════════════════════════════════════════ */
+.fluent-card-subtle {
+  background: var(--colorNeutralBackground2);
+  border-radius: var(--radiusLarge);
+  box-shadow: var(--shadow2);
+  transition: box-shadow 120ms, background-color 120ms;
+}
+
+.fluent-card-subtle:hover {
+  background: var(--colorNeutralBackground3);
+  box-shadow: var(--shadow4);
+}
+
+.fluent-card-filled {
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--radiusLarge);
+  box-shadow: var(--shadow4);
+  transition: box-shadow 120ms, border-color 120ms;
+}
+
+.fluent-card-filled:hover {
+  box-shadow: var(--shadow8);
+  border-color: var(--colorNeutralStroke1);
+}
+
+/* Interactive card (clickable) */
+.fluent-card-interactive {
+  cursor: pointer;
+}
+
+.fluent-card-interactive:active {
+  transform: scale(0.995);
+  box-shadow: var(--shadow2);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — TYPOGRAPHY RAMP
+   ═══════════════════════════════════════════════════════ */
+.fui-caption2       { font-size: 10px; line-height: 14px; font-weight: 400; letter-spacing: 0; }
+.fui-caption1       { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
+.fui-caption1-strong{ font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
+.fui-body1          { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
+.fui-body1-strong   { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+.fui-subtitle2      { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+.fui-subtitle1      { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0; }
+.fui-title3         { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: 0; }
+.fui-title2         { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: 0; }
+.fui-title1         { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: 0; }
+.fui-large-title    { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: 0; }
+.fui-display        { font-size: 60px; line-height: 80px; font-weight: 600; letter-spacing: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — PIVOT (Tab navigation)
+   ═══════════════════════════════════════════════════════ */
+.fui-pivot {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  gap: 0;
+}
+
+.fui-pivot::-webkit-scrollbar { display: none; }
+
+.fui-pivot__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--colorNeutralForeground2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background-color 120ms;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: var(--radiusMedium) var(--radiusMedium) 0 0;
+}
+
+.fui-pivot__tab:hover {
+  color: var(--colorNeutralForeground1);
+  background: var(--colorNeutralBackground2);
+}
+
+.fui-pivot__tab--active {
+  color: var(--colorBrandForeground1);
+  border-bottom-color: var(--colorBrandBackground);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLUENT 2 — DETAIL LAYOUT (product/entity detail pages)
+   ═══════════════════════════════════════════════════════ */
+.fui-detail-hero {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .fui-detail-hero {
+    grid-template-columns: 2fr 3fr;
+  }
+}
+
+.fui-detail-image {
+  aspect-ratio: 4/3;
+  width: 100%;
+  border-radius: var(--radiusXLarge);
+  border: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground2);
+  object-fit: cover;
+  box-shadow: var(--shadow4);
+}
+
+.fui-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .fui-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.fui-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+}
+
+.fui-info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.fui-info-row__label {
+  font-size: 13px;
+  color: var(--colorNeutralForeground3);
+  flex-shrink: 0;
+}
+
+.fui-info-row__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  text-align: right;
+}
+
+.fui-activity-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--radiusLarge);
+  border: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+  transition: background-color 120ms;
+}
+
+.fui-activity-item:hover {
+  background: var(--colorNeutralBackground2);
+}
+
+.fui-activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radiusCircular);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* KPI value override using Fluent 2 sizing */
+.ms-kpi-value {
+  margin-top: 4px;
+  color: var(--colorNeutralForeground1);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* Updated ms-kpi-card to use Fluent 2 shadow */
+.ms-kpi-card {
+  box-shadow: var(--shadow4);
+  transition: box-shadow 120ms, border-color 120ms;
+}
+
+.ms-kpi-card:hover {
+  box-shadow: var(--shadow8);
+}
+
+/* Updated ms-page-header with Fluent 2 shadow */
+.ms-page-header {
+  box-shadow: var(--shadow2);
+}
+
+/* Updated ms-surface / ms-table-wrap / ms-chart-card */
+.ms-surface,
+.ms-table-wrap,
+.ms-chart-card {
+  box-shadow: var(--shadow4);
+}
+
+/* Updated ms-command-bar with acrylic */
+.ms-command-bar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  box-shadow: var(--shadow2);
+}
+
+/* Status badge Fluent 2 refinements */
+.ms-status-success {
+  border-color: var(--colorStatusSuccessStroke1);
+  background: var(--colorStatusSuccessBackground1);
+  color: var(--colorStatusSuccessForeground1);
+}
+
+.ms-status-warning {
+  border-color: var(--colorStatusWarningStroke1);
+  background: var(--colorStatusWarningBackground1);
+  color: var(--colorStatusWarningForeground1);
+}
+
+.ms-status-danger {
+  border-color: var(--colorStatusDangerStroke1);
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
 }

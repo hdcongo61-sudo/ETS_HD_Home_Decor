@@ -1,4 +1,5 @@
 const Employee = require('../models/employeeModel');
+const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 // @desc    Create a pay slip for employee
 // @route   POST /api/employees/:id/payroll
