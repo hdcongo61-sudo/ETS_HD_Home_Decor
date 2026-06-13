@@ -40,6 +40,7 @@ const Navigation = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -109,6 +110,33 @@ const Navigation = () => {
     };
   }, []);
 
+  // === Masquer la barre de navigation au défilement (mobile uniquement) ===
+  // Vers le bas → cachée ; vers le haut ou près du sommet → visible.
+  useEffect(() => {
+    if (isDesktop) { setNavHidden(false); return; }
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        if (isMenuOpen || y < 60) {
+          setNavHidden(false);
+        } else if (delta > 6) {
+          setNavHidden(true);
+        } else if (delta < -6) {
+          setNavHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isDesktop, isMenuOpen]);
+
   // === Recherche Globale ===
   useEffect(() => {
     const fetchResults = async () => {
@@ -162,7 +190,10 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
-    <nav className="sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic" style={{ boxShadow: 'var(--shadow2)' }}>
+    <nav
+      className="sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic transition-transform duration-300 ease-out will-change-transform"
+      style={{ boxShadow: 'var(--shadow2)', transform: navHidden ? 'translateY(-100%)' : 'translateY(0)' }}
+    >
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6">
         <div className="flex h-[48px] items-center gap-3">
           {/* === Logo === */}

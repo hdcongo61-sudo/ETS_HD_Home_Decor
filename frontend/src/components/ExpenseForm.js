@@ -209,6 +209,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           <div className="relative">
             <input
               type="number"
+              inputMode="decimal"
               name="amount"
               value={formData.amount}
               onChange={handleChange}

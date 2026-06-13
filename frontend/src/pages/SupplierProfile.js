@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
   KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from '../components/business';
@@ -72,6 +73,9 @@ const SupplierProfile = () => {
     }[sortKey] || ((p) => p.revenue);
     return [...filtered].sort((a, b) => acc(b) - acc(a));
   }, [supplier, search, sortKey]);
+
+  const tableRef = useRef(null);
+  useResponsiveTable(tableRef, [products]);
 
   const metaLabel = generatedAt
     ? `Actualisé le ${new Date(generatedAt).toLocaleDateString('fr-FR')} à ${new Date(generatedAt).toLocaleTimeString('fr-FR').slice(0, 5)}`
@@ -195,7 +199,7 @@ const SupplierProfile = () => {
           <EmptyState title="Aucun produit" description="Aucun produit pour ce fournisseur sur la période." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table ref={tableRef} className="responsive-table w-full text-sm">
               <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <tr>
                   {['Produit', 'Catégorie', 'Stock', 'Valeur', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (

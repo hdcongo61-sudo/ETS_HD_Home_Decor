@@ -273,7 +273,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             </div>
             <div className="space-y-2">
                 <label className="form-label">Téléphone</label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="+242 06 000 0000" />
+                <input type="tel" inputMode="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="+242 06 000 0000" />
             </div>
             <div className="space-y-2">
                 <label className="form-label">{user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>

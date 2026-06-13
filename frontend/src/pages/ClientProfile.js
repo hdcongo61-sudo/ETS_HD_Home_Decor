@@ -440,7 +440,7 @@ const ClientProfile = () => {
 
           {/* HISTORY */}
           <div>
-            <DataTable>
+            <DataTable className="hidden md:block">
               <table className="w-full">
                 <thead>
                   <tr><th>Date</th><th>Montant</th><th>Statut</th><th className="text-right">Action</th></tr>

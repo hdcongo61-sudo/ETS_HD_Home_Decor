@@ -9,6 +9,7 @@ import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
 import AuthContext from '../context/AuthContext';
 import Modal from '../components/Modal';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import { EmptyState, LoadingSkeleton, Workspace } from '../components/business';
 import {
   ArrowLeft,
@@ -92,6 +93,8 @@ const ProductDetails = () => {
   const [buyersLoading, setBuyersLoading] = useState(false);
   const [buyersError, setBuyersError] = useState('');
   const [buyersSales, setBuyersSales] = useState([]);
+  const buyersTableRef = useRef(null);
+  useResponsiveTable(buyersTableRef, [buyersSales, buyersModalOpen]);
   const [requestModal, setRequestModal] = useState(null);
   const [requestReason, setRequestReason] = useState('');
   const [requestValue, setRequestValue] = useState('');
@@ -709,7 +712,7 @@ const ProductDetails = () => {
           {!buyersLoading && buyersError && <div className="p-6 fui-body1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{buyersError}</div>}
           {!buyersLoading && !buyersError && buyersSales.length === 0 && <div className="p-6 fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun acheteur trouvé</div>}
           {!buyersLoading && !buyersError && buyersSales.length > 0 && (
-            <table className="w-full text-sm">
+            <table ref={buyersTableRef} className="responsive-table w-full text-sm">
               <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <tr>
                   {['Client', 'Date', 'Statut', 'Qté', 'Total', ''].map((h) => (

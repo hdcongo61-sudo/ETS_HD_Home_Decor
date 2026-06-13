@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
   AlertCircle,
   ArrowRight,
@@ -192,6 +193,9 @@ const MonthlySpendingPlan = () => {
     [expenses]
   );
 
+  const tableRef = useRef(null);
+  useResponsiveTable(tableRef, [sortedExpenses]);
+
   return (
     <Workspace>
       <PageHeader
@@ -352,7 +356,7 @@ const MonthlySpendingPlan = () => {
         description={`${sortedExpenses.length} dépense(s) enregistrée(s).`}
       >
         <DataTable>
-          <table>
+          <table ref={tableRef} className="responsive-table">
             <thead>
               <tr>
                 <th>Date</th>

@@ -2986,84 +2986,123 @@ const Sales = () => {
             </Suspense>
 
             {/* Modal Détail Paiements */}
-            {showPaymentsDetailModal && (
-              <div
-                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
-                onClick={() => setShowPaymentsDetailModal(false)}
-              >
+            {showPaymentsDetailModal && (() => {
+              const totalEncaisse = paymentsDetailData.reduce((sum, p) => sum + (p.amount || 0), 0);
+              const avgEncaisse = paymentsDetailData.length ? Math.round(totalEncaisse / paymentsDetailData.length) : 0;
+              const dayLabel = dateFilter
+                ? new Date(dateFilter + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'Toutes périodes';
+              return (
                 <div
-                  className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
-                  onClick={(e) => e.stopPropagation()}
+                  className="fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.45)] backdrop-blur-sm p-0 sm:items-center sm:p-4"
+                  onClick={() => setShowPaymentsDetailModal(false)}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Paiements encaissés"
                 >
-                  <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-blue-600" />
-                      Paiements encaissés{dateFilter ? ` — ${new Date(dateFilter + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => setShowPaymentsDetailModal(false)}
-                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100"
-                      aria-label="Fermer"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                    {paymentsDetailLoading ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                      </div>
-                    ) : paymentsDetailData.length === 0 ? (
-                      <div className="text-center py-8 text-[var(--ms-text-muted)]">
-                        Aucun paiement trouvé pour cette période.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="text-sm text-[var(--ms-text-muted)] mb-3">
-                          {paymentsDetailData.length} paiement(s) · {paymentsDetailData.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString('fr-FR')} CFA
+                  <div
+                    className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[88vh] sm:max-w-2xl sm:rounded-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Grabber (mobile) */}
+                    <div className="flex shrink-0 justify-center pb-1 pt-2.5 sm:hidden">
+                      <div className="h-1 w-10 rounded-full bg-[var(--ms-border)]" aria-hidden />
+                    </div>
+
+                    {/* Header */}
+                    <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 pb-4 pt-3 sm:px-6 sm:pt-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                          <CreditCard className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Paiements encaissés</h2>
+                          <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>{dayLabel}</p>
                         </div>
-                        {paymentsDetailData.map((payment) => (
-                          <div
-                            key={payment._id}
-                            className="flex flex-col gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-[var(--ms-text-strong)]">
-                                  {payment.amount?.toLocaleString('fr-FR')} CFA
-                                </p>
-                                <p className="text-xs text-[var(--ms-text-muted)]">
-                                  {payment.client?.name || 'Client inconnu'} · {payment.method || 'N/A'}
-                                </p>
-                                <p className="text-[11px] text-[var(--ms-text-muted)]">
-                                  {payment.paymentDate ? new Date(payment.paymentDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                                </p>
-                              </div>
-                              <Link
-                                to={`/sales/${payment.saleId}`}
-                                onClick={() => setShowPaymentsDetailModal(false)}
-                                className="shrink-0 text-[11px] font-medium text-[var(--ms-blue)] hover:underline"
-                                {...(isDesktop ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                              >
-                                Voir vente →
-                              </Link>
-                            </div>
-                            <div className="flex items-center gap-2 rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-1.5">
-                              <ReceiptText className="h-3.5 w-3.5 text-[var(--ms-text-muted)] shrink-0" />
-                              <p className="text-[12px] text-[var(--ms-text)] truncate">
-                                Vente {payment.saleNumber ? `#${payment.saleNumber}` : `#${payment.saleId?.slice(-8)}`}
-                                {payment.client?.name ? ` — ${payment.client.name}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPaymentsDetailModal(false)}
+                        className="ms-icon-button shrink-0"
+                        aria-label="Fermer"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    {/* Summary band */}
+                    {!paymentsDetailLoading && paymentsDetailData.length > 0 && (
+                      <div className="grid shrink-0 grid-cols-3 divide-x divide-[var(--ms-border)] border-b border-[var(--ms-border)] bg-[var(--ms-white)]">
+                        <div className="px-4 py-3">
+                          <p className="ms-kpi-title">Encaissé</p>
+                          <p className="fui-subtitle2" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{totalEncaisse.toLocaleString('fr-FR')} CFA</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="ms-kpi-title">Paiements</p>
+                          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{paymentsDetailData.length}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="ms-kpi-title">Moyenne</p>
+                          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{avgEncaisse.toLocaleString('fr-FR')} CFA</p>
+                        </div>
                       </div>
                     )}
+
+                    {/* Body */}
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                      {paymentsDetailLoading ? (
+                        <LoadingSkeleton rows={5} />
+                      ) : paymentsDetailData.length === 0 ? (
+                        <EmptyState
+                          title="Aucun paiement"
+                          description={`Aucun encaissement enregistré pour ${dayLabel.toLowerCase()}.`}
+                        />
+                      ) : (
+                        <div className="space-y-2.5">
+                          {paymentsDetailData.map((payment) => {
+                            const m = paymentMethodMeta(payment.method);
+                            return (
+                              <div key={payment._id} className="fluent-card-filled p-3.5">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                                        {payment.amount?.toLocaleString('fr-FR')} CFA
+                                      </p>
+                                      <span className={`ms-status-badge ${m.cls}`}>{m.label}</span>
+                                    </div>
+                                    <p className="fui-caption1 mt-1 truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                                      {payment.client?.name || 'Client inconnu'}
+                                    </p>
+                                    <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                      {payment.paymentDate ? new Date(payment.paymentDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </p>
+                                  </div>
+                                  <Link
+                                    to={`/sales/${payment.saleId}`}
+                                    onClick={() => setShowPaymentsDetailModal(false)}
+                                    className="ms-button ms-button-secondary ms-button-sm shrink-0"
+                                    {...(isDesktop ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                                  >
+                                    Voir vente →
+                                  </Link>
+                                </div>
+                                <div className="mt-2.5 flex items-center gap-2 rounded-[var(--radiusMedium)] px-3 py-1.5" style={{ background: 'var(--colorNeutralBackground3)' }}>
+                                  <ReceiptText className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--colorNeutralForeground3)' }} />
+                                  <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                                    Vente {payment.saleNumber ? `#${payment.saleNumber}` : `#${payment.saleId?.slice(-8)}`}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Modal Historique (sales/all) */}
             {showHistoryModal && (

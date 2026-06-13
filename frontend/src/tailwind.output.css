@@ -1102,6 +1102,10 @@ video {
   margin-top: 0.5rem;
 }
 
+.mt-2\.5 {
+  margin-top: 0.625rem;
+}
+
 .mt-3 {
   margin-top: 0.75rem;
 }
@@ -2052,6 +2056,12 @@ video {
   margin-bottom: calc(2rem * var(--tw-space-y-reverse));
 }
 
+.divide-x > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-x-reverse: 0;
+  border-right-width: calc(1px * var(--tw-divide-x-reverse));
+  border-left-width: calc(1px * calc(1 - var(--tw-divide-x-reverse)));
+}
+
 .divide-y > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
@@ -2206,6 +2216,11 @@ video {
 
 .rounded-xl {
   border-radius: 0.75rem;
+}
+
+.rounded-t-2xl {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
 }
 
 .rounded-t-\[var\(--radiusMedium\)\] {
@@ -2602,6 +2617,10 @@ video {
 
 .bg-\[rgba\(32\2c 31\2c 30\2c 0\.36\)\] {
   background-color: rgba(32,31,30,0.36);
+}
+
+.bg-\[rgba\(32\2c 31\2c 30\2c 0\.45\)\] {
+  background-color: rgba(32,31,30,0.45);
 }
 
 .bg-\[var\(--colorBrandBackground\)\] {
@@ -3080,6 +3099,10 @@ video {
 
 .p-3 {
   padding: 0.75rem;
+}
+
+.p-3\.5 {
+  padding: 0.875rem;
 }
 
 .p-4 {
@@ -4329,6 +4352,14 @@ video {
   transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
+.ease-out {
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
 .\[color-scheme\:light\] {
   color-scheme: light;
 }
@@ -4461,6 +4492,17 @@ html {
   scroll-padding-top: var(--app-nav-offset);
 }
 
+/* Mobile-first: 16px form fields prevent iOS Safari's auto zoom-on-focus.
+   Desktop keeps its denser inputs (this only applies on small screens). */
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -4479,6 +4521,21 @@ body {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Mobile-first: reserve space for the fixed bottom tab bar so page content is
+   never hidden behind it. On desktop (≥768px) the bar is hidden, so collapse
+   to normal padding. The bar consumes the safe-area inset itself; we add it
+   again here as a small, harmless buffer. */
+
+:root {
+  --page-bottom-pad: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-bottom-pad: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .app-root-shell {
@@ -6993,14 +7050,6 @@ button:focus {
     grid-column: span 2 / span 2;
   }
 
-  .sm\:col-span-3 {
-    grid-column: span 3 / span 3;
-  }
-
-  .sm\:col-span-5 {
-    grid-column: span 5 / span 5;
-  }
-
   .sm\:-mx-6 {
     margin-left: -1.5rem;
     margin-right: -1.5rem;
@@ -7080,6 +7129,10 @@ button:focus {
     height: 260px;
   }
 
+  .sm\:max-h-\[88vh\] {
+    max-height: 88vh;
+  }
+
   .sm\:max-h-\[calc\(100dvh-4\.5rem\)\] {
     max-height: calc(100dvh - 4.5rem);
   }
@@ -7156,10 +7209,6 @@ button:focus {
     flex: none;
   }
 
-  .sm\:grid-cols-12 {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-
   .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -7210,10 +7259,6 @@ button:focus {
 
   .sm\:justify-end {
     justify-content: flex-end;
-  }
-
-  .sm\:justify-center {
-    justify-content: center;
   }
 
   .sm\:justify-between {
@@ -7684,6 +7729,10 @@ button:focus {
 
   .md\:gap-6 {
     gap: 1.5rem;
+  }
+
+  .md\:gap-8 {
+    gap: 2rem;
   }
 
   .md\:overflow-x-auto {

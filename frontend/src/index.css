@@ -136,6 +136,16 @@ html {
   scroll-padding-top: var(--app-nav-offset);
 }
 
+/* Mobile-first: 16px form fields prevent iOS Safari's auto zoom-on-focus.
+   Desktop keeps its denser inputs (this only applies on small screens). */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 body {
   @apply antialiased;
   background: var(--app-bg);
@@ -153,6 +163,19 @@ body {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Mobile-first: reserve space for the fixed bottom tab bar so page content is
+   never hidden behind it. On desktop (≥768px) the bar is hidden, so collapse
+   to normal padding. The bar consumes the safe-area inset itself; we add it
+   again here as a small, harmless buffer. */
+:root {
+  --page-bottom-pad: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  :root {
+    --page-bottom-pad: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .app-root-shell {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import AppLoader from './AppLoader';
+import { FormActionsSticky } from './FormLayout';
 
 const EmployeeForm = () => {
   const { id } = useParams();
@@ -291,7 +292,7 @@ const EmployeeForm = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
             {/* Section Informations personnelles */}
             <div className="space-y-6">
               <div>
@@ -464,18 +465,18 @@ const EmployeeForm = () => {
             )}
           </section>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 border-t border-[var(--ms-border)]">
+          <FormActionsSticky>
             <button
               type="button"
               onClick={() => navigate('/employees')}
-              className="form-button-secondary flex items-center gap-2 justify-center"
+              className="form-button-secondary flex flex-1 items-center justify-center gap-2 sm:flex-none"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="form-button-primary flex items-center gap-2 justify-center"
+              className="form-button-primary flex flex-1 items-center justify-center gap-2 sm:flex-none"
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
@@ -486,7 +487,7 @@ const EmployeeForm = () => {
               )}
               {isEditMode ? 'Mettre à jour' : 'Créer'}
             </button>
-          </div>
+          </FormActionsSticky>
         </form>
       </div>
     </div>
@@ -506,9 +507,10 @@ const FormField = ({ label, type = 'text', name, value, error, onChange, icon, r
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      inputMode={type === 'number' ? 'decimal' : type === 'tel' ? 'tel' : undefined}
       className={`form-control ${
-        error 
-          ? 'form-control-error' 
+        error
+          ? 'form-control-error'
           : ''
       }`}
       aria-invalid={Boolean(error)}

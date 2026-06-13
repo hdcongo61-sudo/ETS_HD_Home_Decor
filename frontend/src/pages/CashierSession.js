@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
   KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from '../components/business';
@@ -154,6 +155,8 @@ const ZReport = ({ session, onClose }) => {
 const CashierSession = () => {
   const [current, setCurrent] = useState(null);
   const [history, setHistory] = useState([]);
+  const historyTableRef = useRef(null);
+  useResponsiveTable(historyTableRef, [history]);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -286,7 +289,7 @@ const CashierSession = () => {
             <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Historique des sessions</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table ref={historyTableRef} className="responsive-table w-full text-sm">
               <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <tr>
                   {['Clôturée le', 'Caissier', 'Encaissé', 'Attendu', 'Compté', 'Écart', ''].map((h, i) => (

@@ -10,6 +10,7 @@ import {
   Surface,
   Workspace,
 } from './business';
+import { FormActionsSticky } from './FormLayout';
 
 const EditProductForm = () => {
   const { id } = useParams();
@@ -225,14 +226,14 @@ const EditProductForm = () => {
         }
       />
 
-      <Surface className="max-w-5xl">
+      <Surface className="max-w-5xl p-4 sm:p-6">
           {error && (
             <div className="mb-6 border border-[var(--ms-danger)] bg-[rgba(209,52,56,0.08)] px-4 py-3 text-sm font-medium text-[var(--ms-danger)]">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form id="product-edit-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Section: Informations générales */}
             <section className="space-y-4">
               <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
@@ -288,17 +289,17 @@ const EditProductForm = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix de revient (CFA)</label>
-                  <input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} min="0" step="0.01" className={inputClass('costPrice')} />
+                  <input type="number" inputMode="decimal" name="costPrice" value={formData.costPrice} onChange={handleChange} min="0" step="0.01" className={inputClass('costPrice')} />
                   {validationErrors.costPrice && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.costPrice}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix de vente (CFA)</label>
-                  <input type="number" name="price" value={formData.price} onChange={handleChange} min="0" step="0.01" className={inputClass('price')} />
+                  <input type="number" inputMode="decimal" name="price" value={formData.price} onChange={handleChange} min="0" step="0.01" className={inputClass('price')} />
                   {validationErrors.price && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.price}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Stock disponible</label>
-                  <input type="number" name="stock" value={formData.stock} onChange={handleChange} min="0" className={inputClass('stock')} />
+                  <input type="number" inputMode="numeric" name="stock" value={formData.stock} onChange={handleChange} min="0" className={inputClass('stock')} />
                   {validationErrors.stock && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.stock}</p>}
                 </div>
                 <div className="flex flex-col justify-center border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3">
@@ -345,33 +346,38 @@ const EditProductForm = () => {
               </div>
             </section>
 
-            {/* Footer actions */}
-            <div className="flex flex-col-reverse gap-3 border-t border-[var(--ms-border)] pt-6 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                onClick={() => navigate(returnTo)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                variant="primary"
-              >
-                {isSubmitting ? (
-                  <>
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Enregistrer les modifications
-                  </>
-                )}
-              </Button>
-            </div>
           </form>
       </Surface>
+
+      {/* Sticky action bar — pinned above the mobile bottom tab bar, inline on desktop.
+          Lives outside Surface because .ms-surface uses overflow:hidden, which breaks position:sticky. */}
+      <FormActionsSticky className="max-w-5xl">
+        <Button
+          type="button"
+          onClick={() => navigate(returnTo)}
+          className="flex-1 justify-center sm:flex-none"
+        >
+          Annuler
+        </Button>
+        <Button
+          type="submit"
+          form="product-edit-form"
+          disabled={isSubmitting}
+          variant="primary"
+          className="flex-1 justify-center sm:flex-none"
+        >
+          {isSubmitting ? (
+            <>
+              Enregistrement...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Enregistrer les modifications
+            </>
+          )}
+        </Button>
+      </FormActionsSticky>
     </Workspace>
   );
 };

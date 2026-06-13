@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingCart, Landmark, Users, Package, Circle } from "lucide-react";
@@ -14,16 +14,45 @@ const tabs = [
 const BottomTabBar = () => {
   const { auth } = useContext(AuthContext);
   const location = useLocation();
+  const [hidden, setHidden] = useState(false);
+
+  // Hide on scroll-down (mobile only); reveal on scroll-up or near the top.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        const desktop = window.matchMedia("(min-width: 768px)").matches;
+        if (desktop || y < 60) {
+          setHidden(false);
+        } else if (delta > 6) {
+          setHidden(true);
+        } else if (delta < -6) {
+          setHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   if (!auth.isAuthenticated) return null;
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none touch-manipulation"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none touch-manipulation transition-all duration-300 ease-out will-change-transform"
       style={{
         paddingBottom: "max(0.9rem, env(safe-area-inset-bottom, 0px))",
         paddingLeft: "max(0.85rem, env(safe-area-inset-left, 0px))",
         paddingRight: "max(0.85rem, env(safe-area-inset-right, 0px))",
+        transform: hidden ? "translateY(160%)" : "translateY(0)",
+        opacity: hidden ? 0 : 1,
       }}
       aria-label="Navigation principale"
     >

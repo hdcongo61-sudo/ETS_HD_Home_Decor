@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
   KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from './business';
@@ -40,6 +41,44 @@ const sortGroups = (groups, key) => {
     products: (g) => g.totalProducts,
   }[key] || ((g) => g.totalRevenue);
   return [...groups].sort((a, b) => accessor(b) - accessor(a));
+};
+
+// Per-group product table. Its own ref/hook so each expanded group gets the
+// mobile card layout (responsive-table) with proper field labels.
+const GroupProductTable = ({ products }) => {
+  const tableRef = useRef(null);
+  useResponsiveTable(tableRef, [products]);
+  return (
+    <div className="border-t overflow-x-auto" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+      <table ref={tableRef} className="responsive-table w-full text-sm">
+        <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
+          <tr>
+            {['Produit', 'Catégorie', 'Stock', 'Valeur', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (
+              <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((p) => (
+            <tr key={p._id} style={{ borderBottom: '1px solid var(--colorNeutralStroke3)', background: p.isDead ? 'var(--colorStatusWarningBackground1)' : 'transparent' }}>
+              <td className="px-3 py-2">
+                <Link to={`/products/${p._id}`} className="fui-body1-strong hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>{p.name}</Link>
+                {p.isDead && <span className="ml-2 ms-status-badge ms-status-warning">mort</span>}
+                {p.sku && <span className="ml-2 fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.sku}</span>}
+              </td>
+              <td className="px-3 py-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.category}</td>
+              <td className="px-3 py-2 text-right tabular-nums" style={{ color: p.stock === 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground2)' }}>{num(p.stock)}</td>
+              <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{cfa(p.stockValue)}</td>
+              <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{num(p.sold)}</td>
+              <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</td>
+              <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</td>
+              <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{pct(p.margin)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
 /**
@@ -259,37 +298,7 @@ const GroupedInventoryView = ({
                     </button>
 
                     {/* Product table */}
-                    {isOpen && (
-                      <div className="border-t overflow-x-auto" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-                        <table className="w-full text-sm">
-                          <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
-                            <tr>
-                              {['Produit', 'Catégorie', 'Stock', 'Valeur', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (
-                                <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {g.products.map((p) => (
-                              <tr key={p._id} style={{ borderBottom: '1px solid var(--colorNeutralStroke3)', background: p.isDead ? 'var(--colorStatusWarningBackground1)' : 'transparent' }}>
-                                <td className="px-3 py-2">
-                                  <Link to={`/products/${p._id}`} className="fui-body1-strong hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>{p.name}</Link>
-                                  {p.isDead && <span className="ml-2 ms-status-badge ms-status-warning">mort</span>}
-                                  {p.sku && <span className="ml-2 fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.sku}</span>}
-                                </td>
-                                <td className="px-3 py-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.category}</td>
-                                <td className="px-3 py-2 text-right tabular-nums" style={{ color: p.stock === 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground2)' }}>{num(p.stock)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{cfa(p.stockValue)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{num(p.sold)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{pct(p.margin)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    {isOpen && <GroupProductTable products={g.products} />}
                   </div>
                 );
               })}

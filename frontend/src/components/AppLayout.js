@@ -29,7 +29,8 @@ const AppLayout = ({ children, className = '', fullWidth = false }) => {
       style={{
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
         paddingRight: 'max(1rem, env(safe-area-inset-right))',
-        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+        // Mobile: clears the fixed bottom tab bar; desktop: normal spacing.
+        paddingBottom: 'var(--page-bottom-pad)',
       }}
     >
       {children}

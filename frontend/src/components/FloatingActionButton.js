@@ -1,16 +1,21 @@
 // components/FloatingActionButton.js
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, CreditCard, Receipt, Users, Package, Plus } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
 const FloatingActionButton = () => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const containerRef = useRef(null);
   const { openModal, activeModal } = useModal();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isModalOrFormOpen = Boolean(activeModal);
+  // Hide on full-screen editor routes (create/edit forms) so it never overlaps
+  // their sticky submit bar.
+  const isEditorRoute = /\/(edit|new)(\/|$)/.test(location.pathname);
 
   const handleNewSale = () => {
     openModal('sale');
@@ -55,7 +60,34 @@ const FloatingActionButton = () => {
     }
   }, [isExpanded]);
 
-  if (isModalOrFormOpen) return null;
+  // Hide the floating button on scroll-down (mobile only); reveal on scroll-up,
+  // near the top, or while the speed-dial is open.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        const desktop = window.matchMedia('(min-width: 768px)').matches;
+        if (desktop || isExpanded || y < 60) {
+          setHidden(false);
+        } else if (delta > 6) {
+          setHidden(true);
+        } else if (delta < -6) {
+          setHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isExpanded]);
+
+  if (isModalOrFormOpen || isEditorRoute) return null;
 
   return (
     <>
@@ -71,7 +103,12 @@ const FloatingActionButton = () => {
 
       <div
         ref={containerRef}
-        className="fixed z-50 right-[calc(1rem+env(safe-area-inset-right,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] flex flex-col items-end gap-3"
+        className="fixed z-50 right-[calc(1rem+env(safe-area-inset-right,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] flex flex-col items-end gap-3 transition-all duration-300 ease-out will-change-transform"
+        style={{
+          transform: hidden ? 'translateY(160%)' : 'translateY(0)',
+          opacity: hidden ? 0 : 1,
+          pointerEvents: hidden ? 'none' : 'auto',
+        }}
       >
         {/* Expandable speed-dial */}
         {isExpanded && (

@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { format, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Link } from "react-router-dom";
@@ -30,6 +30,8 @@ const DayDetailsModal = ({
 }) => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  // Mobile: show one section at a time via tabs (avoids one very long scroll).
+  const [activeTab, setActiveTab] = useState("sales");
 
   /* ------------------- Utilities ------------------- */
   const formatCurrency = (v) => {
@@ -123,14 +125,17 @@ const DayDetailsModal = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Mobile header */}
-          <div className="sm:hidden flex items-center gap-3 px-4 py-3 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] shrink-0">
-            <h2 className="flex-1 text-base font-semibold text-[var(--ms-text)] truncate text-center">
-              {safeFormatDate(date, "EEEE d MMMM yyyy")}
-            </h2>
-            <button
-              type="button" onClick={onClose}
-              className="ms-icon-button" aria-label="Fermer"
-            ><X size={22} /></button>
+          <div className="sm:hidden border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 shrink-0">
+            <div className="flex items-center gap-3">
+              <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--ms-text)]">
+                {safeFormatDate(date, "EEEE d MMMM")}
+              </h2>
+              <button type="button" onClick={onClose} className="ms-icon-button shrink-0" aria-label="Fermer"><X size={22} /></button>
+            </div>
+            <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 py-1 text-xs font-medium text-[var(--ms-text-muted)]">
+              {React.cloneElement(summary.trend.icon, { size: 14 })}
+              {summary.trend.text}
+            </span>
           </div>
 
           {/* Desktop header */}
@@ -163,8 +168,32 @@ const DayDetailsModal = ({
             <KPICard title="Vente en gros" value={`${wholesaleStats.totalAmount.toLocaleString("fr-FR")} CFA`} context={`${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}`} tone="warning" />
           </div>
 
+          {/* Mobile section tabs */}
+          <div className="sm:hidden flex gap-1 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 shrink-0">
+            {[
+              { id: "sales", label: "Ventes", count: sales.length },
+              { id: "expenses", label: "Dépenses", count: expenses.length },
+              { id: "payments", label: "Encaiss.", count: payments.length },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className={`min-h-[40px] flex-1 rounded-md px-1.5 text-xs font-semibold transition-colors ${
+                  activeTab === t.id
+                    ? "bg-[var(--ms-blue)] text-white"
+                    : "text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]"
+                }`}
+                aria-pressed={activeTab === t.id}
+              >
+                {t.label} <span className="opacity-80">({t.count})</span>
+              </button>
+            ))}
+          </div>
+
           {/* Body */}
           <div className="grid flex-grow gap-4 overflow-auto overscroll-contain bg-[var(--ms-white)] px-4 py-4 sm:grid-cols-3 sm:p-5">
+            <div className={activeTab === "sales" ? "" : "hidden sm:block"}>
             <Section
               icon={<ShoppingBag size={18} />}
               title={`Ventes (${sales.length})`}
@@ -184,7 +213,9 @@ const DayDetailsModal = ({
                 </div>
               ))}
             </Section>
+            </div>
 
+            <div className={activeTab === "expenses" ? "" : "hidden sm:block"}>
             <Section
               icon={<Receipt size={18} />}
               title={`Depenses (${expenses.length})`}
@@ -207,7 +238,9 @@ const DayDetailsModal = ({
                 </div>
               ))}
             </Section>
+            </div>
 
+            <div className={activeTab === "payments" ? "" : "hidden sm:block"}>
             <Section
               icon={<CreditCard size={18} />}
               title={`Encaissements (${payments.length})`}
@@ -233,6 +266,7 @@ const DayDetailsModal = ({
                 </div>
               ))}
             </Section>
+            </div>
           </div>
 
           {/* Footer */}
