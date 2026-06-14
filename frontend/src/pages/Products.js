@@ -601,6 +601,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [filters, setFilters] = useState(() => readProductFiltersFromSearch(location.search));
+  const [sortBy, setSortBy] = useState('name');
   const [exporting, setExporting] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -750,7 +751,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     const warehouseFilter = normalizeText(filters.warehouse);
     const supplierFilter = normalizeText(filters.supplier);
 
-    return products.filter((product) => {
+    const matched = products.filter((product) => {
       const normalizedProductName = normalizeText(product.name);
       const normalizedCategory = normalizeText(product.category);
       const normalizedContainer = normalizeText(product.container);
@@ -767,7 +768,19 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         (!supplierFilter || normalizedSupplier === supplierFilter)
       );
     });
-  }, [filters, products]);
+
+    const byName = (a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' });
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const sorters = {
+      name: byName,
+      name_desc: (a, b) => byName(b, a),
+      stock_desc: (a, b) => num(b.stock) - num(a.stock) || byName(a, b),
+      stock_asc: (a, b) => num(a.stock) - num(b.stock) || byName(a, b),
+      price_desc: (a, b) => num(b.price) - num(a.price) || byName(a, b),
+      price_asc: (a, b) => num(a.price) - num(b.price) || byName(a, b),
+    };
+    return [...matched].sort(sorters[sortBy] || byName);
+  }, [filters, products, sortBy]);
 
   useEffect(() => {
     setVisibleCount(PRODUCT_PAGE_SIZE);
@@ -778,6 +791,22 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
     [filtered, visibleCount]
   );
   const hasMoreProducts = visibleCount < filtered.length;
+
+  // Click a column header to sort by it (toggles desc/asc).
+  const toggleSort = (field) => {
+    setSortBy((cur) => {
+      if (field === 'name') return cur === 'name' ? 'name_desc' : 'name';
+      if (field === 'stock') return cur === 'stock_desc' ? 'stock_asc' : 'stock_desc';
+      if (field === 'price') return cur === 'price_desc' ? 'price_asc' : 'price_desc';
+      return cur;
+    });
+  };
+  const sortArrow = (field) => {
+    if (field === 'name') return sortBy === 'name' ? '↑' : sortBy === 'name_desc' ? '↓' : '';
+    if (field === 'stock') return sortBy === 'stock_asc' ? '↑' : sortBy === 'stock_desc' ? '↓' : '';
+    if (field === 'price') return sortBy === 'price_asc' ? '↑' : sortBy === 'price_desc' ? '↓' : '';
+    return '';
+  };
 
   const exportRows = useMemo(() => filtered.map((product, index) => ({
     '#': index + 1,
@@ -1112,9 +1141,27 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-          <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
+          </p>
+          <label className="inline-flex items-center gap-2">
+            <span className="fui-caption1 whitespace-nowrap" style={{ color: 'var(--colorNeutralForeground3)' }}>Trier&nbsp;:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="min-h-[36px] rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 text-sm outline-none focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+              style={{ color: 'var(--colorNeutralForeground1)' }}
+              aria-label="Trier les produits"
+            >
+              <option value="name">Nom (A→Z)</option>
+              <option value="stock_desc">Quantité (haut → bas)</option>
+              <option value="stock_asc">Quantité (bas → haut)</option>
+              <option value="price_desc">Prix (haut → bas)</option>
+              <option value="price_asc">Prix (bas → haut)</option>
+            </select>
+          </label>
+        </div>
         {isAdmin && (
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
@@ -1257,7 +1304,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
           <thead className="bg-slate-50 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                Produit
+                <button type="button" onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase hover:text-[var(--ms-blue)]">
+                  Produit <span className="text-[var(--ms-blue)]">{sortArrow('name')}</span>
+                </button>
               </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-slate-500 uppercase">
                 Catégorie
@@ -1269,10 +1318,14 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                 Entrepôt
               </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-slate-500 uppercase">
-                Prix
+                <button type="button" onClick={() => toggleSort('price')} className="inline-flex items-center gap-1 uppercase hover:text-[var(--ms-blue)]">
+                  Prix <span className="text-[var(--ms-blue)]">{sortArrow('price')}</span>
+                </button>
               </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-right text-xs font-semibold text-slate-500 uppercase">
-                Stock
+                <button type="button" onClick={() => toggleSort('stock')} className="inline-flex items-center gap-1 uppercase hover:text-[var(--ms-blue)]">
+                  Stock <span className="text-[var(--ms-blue)]">{sortArrow('stock')}</span>
+                </button>
               </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-slate-500 uppercase">
                 Fournisseur
