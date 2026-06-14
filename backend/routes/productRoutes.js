@@ -7,6 +7,8 @@ const {
   updateProduct,
   deleteProduct,
   getProductStats,
+  getProductImages,
+  getImageLibrary,
   getNeverSoldProducts,
   getProductDashboard, // Assurez-vous d'importer cette fonction
   getProductsBySupplier,
@@ -40,8 +42,14 @@ router.route('/')
 router.route('/import')
   .post(protect, admin, importProducts);
 
+router.route('/image-library')
+  .get(protect, getImageLibrary);
+
 router.route('/:id/stats')
-  .get(protect,getProductStats);  
+  .get(protect,getProductStats);
+
+router.route('/:id/images')
+  .get(protect, getProductImages);
 
 router.route('/:id/sales-history')
   .get(protect, getProductSalesHistory);

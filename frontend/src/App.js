@@ -15,6 +15,7 @@ import AppLoader from './components/AppLoader';
 import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
 import DesktopNavRail from './components/DesktopNavRail';
+import ServerWakeup from './components/ServerWakeup';
 
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
@@ -73,6 +74,7 @@ function App() {
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ScrollToTop />
             <div className="app-root-shell min-h-screen flex flex-col">
+              <ServerWakeup />
               <Suspense fallback={null}><ImpersonationBanner /></Suspense>
               <Navigation />
               <OfflineIndicator />

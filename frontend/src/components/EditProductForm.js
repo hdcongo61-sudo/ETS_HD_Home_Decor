@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Images, Search } from 'lucide-react';
 import api from '../services/api';
 import {
   Button,
@@ -10,6 +10,7 @@ import {
   Surface,
   Workspace,
 } from './business';
+import Modal from './Modal';
 import { FormActionsSticky } from './FormLayout';
 
 const EditProductForm = () => {
@@ -35,6 +36,11 @@ const EditProductForm = () => {
   });
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
+  // Photo library — choose any existing product photo (any name / container).
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [libraryImages, setLibraryImages] = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
   const returnTo = location.state?.returnTo || '/products';
 
@@ -82,6 +88,30 @@ const EditProductForm = () => {
 
     fetchData();
   }, [id]);
+
+  // Fetch the photo library (debounced on search) whenever the picker is open.
+  const fetchLibrary = useCallback(async (search) => {
+    setLibraryLoading(true);
+    try {
+      const { data } = await api.get('/products/image-library', { params: { search, limit: 300 } });
+      setLibraryImages(data?.images || []);
+    } catch {
+      setLibraryImages([]);
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!libraryOpen) return undefined;
+    const t = setTimeout(() => fetchLibrary(librarySearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [libraryOpen, librarySearch, fetchLibrary]);
+
+  const selectLibraryImage = (url) => {
+    setFormData((prev) => ({ ...prev, image: url }));
+    setLibraryOpen(false);
+  };
 
   /* ===================================================== */
   /* 📊 CALCUL AUTOMATIQUE DE LA MARGE */
@@ -340,9 +370,35 @@ const EditProductForm = () => {
               <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
                 Image
               </h2>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">URL de l'image</label>
-                <input type="text" name="image" value={formData.image} onChange={handleChange} className={inputClass('image')} placeholder="https://..." />
+
+              <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-start">
+                {/* Current image preview */}
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="h-[120px] w-[120px] overflow-hidden rounded-[var(--radiusLarge)]" style={{ border: '1px solid var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
+                    <img src={formData.image || '/placeholder.png'} alt="Aperçu" className="h-full w-full object-cover" />
+                  </div>
+                  {formData.image && (
+                    <button type="button" onClick={() => setFormData((prev) => ({ ...prev, image: '' }))} className="text-xs font-medium" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
+                      Retirer
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">URL de l'image</label>
+                  <input type="text" name="image" value={formData.image} onChange={handleChange} className={inputClass('image')} placeholder="https://..." />
+                  <button
+                    type="button"
+                    onClick={() => { setLibrarySearch(''); setLibraryOpen(true); }}
+                    className="ms-button ms-button-secondary ms-button-md w-full justify-center sm:w-auto"
+                  >
+                    <Images className="h-4 w-4" />
+                    Choisir une photo existante
+                  </button>
+                  <p className="text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Réutilisez la même photo pour des produits ayant des conteneurs (ou des noms) différents.
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -378,6 +434,53 @@ const EditProductForm = () => {
           )}
         </Button>
       </FormActionsSticky>
+
+      {/* Photo library picker — pick any existing product photo to reuse */}
+      <Modal isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} title="Choisir une photo existante" subtitle="Réutilisez une photo de n'importe quel produit." size="lg">
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--colorNeutralForeground3)' }} />
+            <input
+              type="search"
+              value={librarySearch}
+              onChange={(e) => setLibrarySearch(e.target.value)}
+              placeholder="Rechercher par nom, conteneur ou SKU…"
+              autoFocus
+              className="min-h-[44px] w-full rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3 pl-10 text-sm outline-none transition focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+              style={{ color: 'var(--colorNeutralForeground1)' }}
+            />
+          </div>
+
+          {libraryLoading ? (
+            <LoadingSkeleton rows={4} />
+          ) : libraryImages.length === 0 ? (
+            <EmptyState title="Aucune photo" description="Aucune photo ne correspond à cette recherche." />
+          ) : (
+            <div className="grid max-h-[55vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+              {libraryImages.map((img) => {
+                const isSelected = img.url === formData.image;
+                return (
+                  <button
+                    key={img.url}
+                    type="button"
+                    onClick={() => selectLibraryImage(img.url)}
+                    className="group overflow-hidden rounded-[var(--radiusLarge)] text-left transition"
+                    style={{ border: isSelected ? '2px solid var(--ms-blue)' : '1px solid var(--colorNeutralStroke2)' }}
+                  >
+                    <div className="aspect-square w-full overflow-hidden" style={{ background: 'var(--colorNeutralBackground2)' }}>
+                      <img src={img.url} alt={img.name} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-[1.03]" />
+                    </div>
+                    <div className="p-2">
+                      <p className="truncate text-xs font-medium" style={{ color: 'var(--colorNeutralForeground1)' }}>{img.name || 'Produit'}</p>
+                      {img.container && <p className="truncate text-[11px]" style={{ color: 'var(--colorNeutralForeground3)' }}>Conteneur {img.container}</p>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
     </Workspace>
   );
 };

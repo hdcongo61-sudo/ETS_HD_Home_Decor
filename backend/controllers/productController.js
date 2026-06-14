@@ -84,6 +84,101 @@ const getProductById = async (req, res) => {
 };
 
 
+// @desc    Get every distinct picture for products sharing this product's name.
+//          Duplicates exist on purpose (one record per container/restock for
+//          per-container stats). They represent the SAME real product, so they
+//          should share a picture: a record with no image borrows a sibling's,
+//          and identical images are collapsed to one.
+// @route   GET /api/products/:id/images
+// @access  Private
+const getProductImages = async (req, res) => {
+  try {
+    const current = await Product.findById(req.params.id).select('name image container warehouse').lean();
+    if (!current) return res.status(404).json({ message: 'Product not found' });
+
+    const escaped = String(current.name || '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const siblings = escaped
+      ? await Product.find({
+          name: { $regex: `^${escaped}$`, $options: 'i' },
+          image: { $nin: [null, ''] },
+        }).select('image container warehouse stock _id name').lean()
+      : [];
+
+    // Distinct by image URL, current product's own image first.
+    const seen = new Set();
+    const images = [];
+    const pushImg = (p) => {
+      const url = String(p.image || '').trim();
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      images.push({
+        url,
+        container: p.container || '',
+        warehouse: p.warehouse || '',
+        productId: String(p._id),
+        isCurrent: String(p._id) === String(current._id),
+      });
+    };
+    const ownInList = siblings.find((s) => String(s._id) === String(current._id));
+    if (ownInList) pushImg(ownInList);
+    siblings.forEach(pushImg);
+
+    res.json({
+      name: current.name,
+      ownImage: String(current.image || '').trim() || null,
+      images,
+      primary: images[0]?.url || null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Photo library — every distinct product image in the shop, so the user
+//          can reuse a picture for ANY product regardless of name or container.
+// @route   GET /api/products/image-library?search=&limit=
+// @access  Private
+const getImageLibrary = async (req, res) => {
+  try {
+    const { search = '' } = req.query;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 300, 1000);
+
+    const match = { image: { $nin: [null, ''] } };
+    const q = String(search || '').trim();
+    if (q) {
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = { $regex: esc, $options: 'i' };
+      match.$or = [{ name: rx }, { container: rx }, { sku: rx }];
+    }
+
+    const docs = await Product.find(match)
+      .select('image name container warehouse _id')
+      .sort({ updatedAt: -1 })
+      .limit(limit * 3) // over-fetch a bit since we dedupe by URL below
+      .lean();
+
+    const seen = new Set();
+    const images = [];
+    for (const d of docs) {
+      const url = String(d.image || '').trim();
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      images.push({
+        url,
+        name: d.name || '',
+        container: d.container || '',
+        warehouse: d.warehouse || '',
+        productId: String(d._id),
+      });
+      if (images.length >= limit) break;
+    }
+
+    res.json({ images, count: images.length });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get product statistics
 // @route   GET /api/products/:id/stats
 // @access  Private
@@ -1434,6 +1529,8 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getProductStats,
+  getProductImages,
+  getImageLibrary,
   getProductDashboard,
   getNeverSoldProducts,
   getProductsBySupplier,

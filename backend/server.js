@@ -62,6 +62,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   process.env.FRONTEND_URL,
   'https://www.hdgestion.co',
+  'https://hdgestion.co',
 ]
   .flatMap((origin) => String(origin || '').split(','))
   .map((origin) => origin.trim())
@@ -78,6 +79,17 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 204,
 }));
+
+// Lightweight health check — no auth, no DB, not rate-limited. Used by uptime
+// pingers (cron-job.org / UptimeRobot) to keep the host warm, and by the
+// frontend to detect a cold start and show a "waking up" indicator.
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 
 // 3. Rate limiting to prevent brute-force attacks
@@ -101,6 +113,10 @@ app.use('/api/users/login', authLimiter);
 app.use('/api/users/password-update-request', authLimiter);
 
 // 4. Body parser with size limit
+// Bulk product import carries many rows in one JSON body, so it needs a larger
+// limit than the default endpoints. This route-specific parser runs first and
+// sets req.body; the global 10kb parser below then skips the already-read body.
+app.use('/api/products/import', express.json({ limit: '5mb' }));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 

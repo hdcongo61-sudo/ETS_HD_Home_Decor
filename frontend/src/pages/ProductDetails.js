@@ -34,6 +34,8 @@ import {
   Building2,
   Phone,
   ExternalLink,
+  Maximize2,
+  Images,
 } from 'lucide-react';
 
 /* ─── utilities ─── */
@@ -82,6 +84,9 @@ const ProductDetails = () => {
   const [product, setProduct] = useState(null);
   const [stats, setStats] = useState(buildStatsSkeleton());
   const [loading, setLoading] = useState(true);
+  const [gallery, setGallery] = useState([]); // distinct images across same-name duplicates
+  const [activeImage, setActiveImage] = useState('');
+  const [imageZoom, setImageZoom] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRCode, setShowQRCode] = useState(false);
   const [showProfitSections, setShowProfitSections] = useState(true);
@@ -109,6 +114,16 @@ const ProductDetails = () => {
       try {
         const res = await api.get(`/products/${id}`);
         setProduct(res.data);
+        // Shared pictures across same-name duplicates (one per container).
+        try {
+          const imgRes = await api.get(`/products/${id}/images`);
+          const imgs = imgRes.data?.images || [];
+          setGallery(imgs);
+          setActiveImage(res.data.image || imgRes.data?.primary || '');
+        } catch {
+          setGallery([]);
+          setActiveImage(res.data.image || '');
+        }
         const statsRes = await api.get(`/products/${id}/stats?range=month`);
         setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
       } catch (err) {
@@ -200,7 +215,13 @@ const ProductDetails = () => {
   };
 
   const handleExportPDF = async () => {
-    const canvas = await html2canvas(pageRef.current, { scale: 2 });
+    // useCORS lets html2canvas render cross-origin product images (Cloudinary,
+    // Dropbox raw, …) so the picture is actually included in the downloaded PDF.
+    const canvas = await html2canvas(pageRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const width = pdf.internal.pageSize.getWidth();
@@ -340,22 +361,74 @@ const ProductDetails = () => {
           <div className="fui-detail-hero p-5 md:p-6">
 
             {/* ── Image column ── */}
-            <div className="relative">
-              <img
-                src={product.image || '/placeholder.png'}
-                alt={product.name}
-                className="fui-detail-image"
-              />
-              {canSeeFinancials && showProfitSections && profitMargin > 0 && (
-                <div
-                  className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}
-                >
-                  <TrendingUp size={11} />
-                  +{profitMargin.toFixed(1)}% marge
+            {(() => {
+              const effectiveImage = activeImage || product.image || '/placeholder.png';
+              const hasImage = Boolean(activeImage || product.image);
+              const isShared = !product.image && Boolean(activeImage);
+              return (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => hasImage && setImageZoom(true)}
+                      className="group relative block w-full overflow-hidden rounded-[var(--radiusLarge)]"
+                      style={{ border: '1px solid var(--colorNeutralStroke2)', cursor: hasImage ? 'zoom-in' : 'default' }}
+                      aria-label="Agrandir l'image"
+                    >
+                      <img src={effectiveImage} alt={product.name} className="fui-detail-image" />
+                      {hasImage && (
+                        <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100" style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                          <Maximize2 size={15} />
+                        </span>
+                      )}
+                    </button>
+
+                    {isShared && (
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                        <Images size={11} /> Image partagée
+                      </span>
+                    )}
+
+                    {canSeeFinancials && showProfitSections && profitMargin > 0 && (
+                      <div
+                        className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                        style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}
+                      >
+                        <TrendingUp size={11} />
+                        +{profitMargin.toFixed(1)}% marge
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thumbnail strip — distinct pictures across same-name duplicates */}
+                  {gallery.length > 1 && (
+                    <div className="flex flex-wrap gap-2">
+                      {gallery.map((img) => {
+                        const isActive = img.url === effectiveImage;
+                        return (
+                          <button
+                            key={img.url}
+                            type="button"
+                            onClick={() => setActiveImage(img.url)}
+                            className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--radiusMedium)] transition"
+                            style={{ border: isActive ? '2px solid var(--ms-blue)' : '1px solid var(--colorNeutralStroke2)' }}
+                            title={img.container ? `Conteneur ${img.container}` : (img.isCurrent ? 'Cette fiche' : 'Doublon')}
+                            aria-pressed={isActive}
+                          >
+                            <img src={img.url} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {gallery.length > 1 && (
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      {gallery.length} photos trouvées sur les fiches « {product.name} ».
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* ── Info column ── */}
             <div className="flex flex-col justify-between gap-5 min-w-0">
@@ -679,6 +752,36 @@ const ProductDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* ══ MODAL: IMAGE ZOOM ══ */}
+      <Modal isOpen={imageZoom} onClose={() => setImageZoom(false)} title={product?.name || 'Image'} size="lg">
+        <div className="flex flex-col items-center gap-4">
+          <img
+            src={activeImage || product?.image || '/placeholder.png'}
+            alt={product?.name}
+            className="max-h-[70vh] w-auto max-w-full rounded-[var(--radiusLarge)] object-contain"
+            style={{ border: '1px solid var(--colorNeutralStroke2)' }}
+          />
+          {gallery.length > 1 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {gallery.map((img) => {
+                const isActive = img.url === (activeImage || product?.image);
+                return (
+                  <button
+                    key={img.url}
+                    type="button"
+                    onClick={() => setActiveImage(img.url)}
+                    className="h-16 w-16 overflow-hidden rounded-[var(--radiusMedium)]"
+                    style={{ border: isActive ? '2px solid var(--ms-blue)' : '1px solid var(--colorNeutralStroke2)' }}
+                  >
+                    <img src={img.url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* ══ MODAL: QR CODE ══ */}
       <Modal isOpen={showQRCode} onClose={() => setShowQRCode(false)} title="QR Code du produit" size="sm">
