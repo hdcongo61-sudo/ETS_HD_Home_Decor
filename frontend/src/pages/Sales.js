@@ -31,13 +31,14 @@ import {
   Percent,
   Coins,
   Package,
+  PackageMinus,
   UserPlus,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import api from "../services/api";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
 import AuthContext from "../context/AuthContext";
 import ChartSetup from "../components/ChartSetup";
@@ -500,13 +501,15 @@ const ProfitAnalysis = () => {
     ],
   };
 
+  const lossCost = gs.lossCost || 0;
+  const netProfit = gs.netProfit != null ? gs.netProfit : (gs.totalProfit || 0);
   const kpis = [
     { title: "Chiffre d'affaires", value: cfa(gs.totalRevenue), icon: <Wallet className="h-4 w-4" />, tone: "neutral", ctx: `${(gs.saleCount || 0).toLocaleString("fr-FR")} vente(s)` },
     { title: "Coût des marchandises", value: cfa(gs.totalCost), icon: <Package className="h-4 w-4" />, tone: "neutral", ctx: "COGS sur la période" },
-    { title: "Bénéfice net", value: cfa(gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: `Moy. ${cfa(gs.averageProfit)} / vente` },
-    { title: "Marge nette", value: pctOf(gs.averageMargin), icon: <Percent className="h-4 w-4" />, tone: gs.averageMargin >= 0 ? "success" : "danger", ctx: "Bénéfice ÷ CA" },
-    { title: "Ventes rentables", value: `${gs.profitableSales || 0}/${gs.saleCount || 0}`, icon: <CheckCircle2 className="h-4 w-4" />, tone: "success", ctx: "Bénéfice positif" },
-    { title: "Ventes à perte", value: (gs.lossSales || 0).toLocaleString("fr-FR"), icon: <TrendingDown className="h-4 w-4" />, tone: (gs.lossSales || 0) > 0 ? "danger" : "neutral", ctx: "Vendues sous le coût" },
+    { title: "Bénéfice brut", value: cfa(gs.grossProfit != null ? gs.grossProfit : gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: "Ventes (CA − coût)" },
+    { title: "Pertes casse/cadeau", value: lossCost ? `- ${cfa(lossCost)}` : cfa(0), icon: <PackageMinus className="h-4 w-4" />, tone: lossCost > 0 ? "danger" : "neutral", ctx: `Casse ${cfa(gs.lossCasse || 0)} · Cadeau ${cfa(gs.lossCadeau || 0)}` },
+    { title: "Bénéfice net", value: cfa(netProfit), icon: <Coins className="h-4 w-4" />, tone: netProfit >= 0 ? "success" : "danger", ctx: "Brut − pertes" },
+    { title: "Marge nette", value: pctOf(gs.netMargin != null ? gs.netMargin : gs.averageMargin), icon: <Percent className="h-4 w-4" />, tone: (gs.netMargin ?? 0) >= 0 ? "success" : "danger", ctx: "Net ÷ CA" },
   ];
 
   return (
@@ -2134,7 +2137,6 @@ const Sales = () => {
   return (
     <Workspace>
         <ChartSetup />
-        <Toaster position="top-right" />
         {/* En-tête */}
         <PageHeader
           eyebrow="Ventes"

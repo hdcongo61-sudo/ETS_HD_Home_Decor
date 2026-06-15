@@ -352,9 +352,10 @@ const Dashboard = () => {
         api.get(
           `/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
-        api.get(
-          `/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
-        ),
+        // Sellers never see expenses/profit — skip the fetch entirely for them.
+        isAdmin
+          ? api.get(`/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`)
+          : Promise.resolve({ data: [] }),
         api.get(
           `/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
@@ -401,9 +402,9 @@ const Dashboard = () => {
         api.get(
           `/sales/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
-        api.get(
-          `/expenses/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
-        ),
+        isAdmin
+          ? api.get(`/expenses/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`)
+          : Promise.resolve({ data: [] }),
         api.get(
           `/sales/payments/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
@@ -1307,10 +1308,12 @@ const Dashboard = () => {
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white sm:text-3xl">
-                    Vue rapide
+                    {isAdmin ? "Vue rapide" : "Mon espace vente"}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                    Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe.
+                    {isAdmin
+                      ? "Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe."
+                      : "Enregistrez vos ventes et encaissez vos clients en quelques secondes."}
                   </p>
                 </div>
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
@@ -1319,7 +1322,25 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {!isAdmin && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link
+                    to="/sales#sale-form"
+                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+                    style={{ background: 'var(--colorBrandBackground)' }}
+                  >
+                    <ShoppingCart size={16} /> Nouvelle vente
+                  </Link>
+                  <Link
+                    to="/sales"
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    Mes ventes
+                  </Link>
+                </div>
+              )}
+
+              <div className={`mt-5 grid grid-cols-1 gap-3 ${isAdmin ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Ventes</p>
                   <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
@@ -1332,12 +1353,14 @@ const Dashboard = () => {
                     {totalPaid.toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
-                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Profit net</p>
-                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
-                    {profit.toLocaleString("fr-FR")} CFA
-                  </p>
-                </div>
+                {isAdmin && (
+                  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Profit net</p>
+                    <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
+                      {profit.toLocaleString("fr-FR")} CFA
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1562,7 +1585,7 @@ const Dashboard = () => {
           )}
 
           <motion.section
-            className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 transition-opacity ${
+            className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'xl:grid-cols-4' : ''} gap-3 sm:gap-4 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
             }`}
             initial={{ opacity: 0, y: 12 }}
@@ -1603,7 +1626,7 @@ const Dashboard = () => {
                 trend: profitTrend,
                 style: CARD_STYLES[3],
               },
-            ].map((stat, i) => (
+            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => (
               <article key={i} className="fluent-card-filled p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div
@@ -1634,7 +1657,8 @@ const Dashboard = () => {
             ))}
           </motion.section>
 
-          {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
+          {/* ===== GRAPHIQUE FINANCIER — carte professionnelle (admin only) ===== */}
+          {isAdmin && (
           <section
             className={`relative overflow-hidden fluent-card-filled p-4 sm:p-5 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
@@ -1753,6 +1777,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           </section>
+          )}
 
           {encaissementHighlights && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extremes des encaissements">
@@ -2342,6 +2367,8 @@ const Dashboard = () => {
                 upcoming={upcomingReminders}
                 neverPaid={neverPaidReminders}
                 salaryReminders={salaryReminders}
+                shopName={auth?.tenant?.name || ""}
+                dialCode={auth?.tenant?.dialCode || ""}
               />
             </Suspense>
           </>

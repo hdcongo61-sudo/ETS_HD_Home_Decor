@@ -1,3 +1,4 @@
+import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -75,7 +76,7 @@ const EmployeeList = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if (window.confirm('Confirmer la suppression de cet employé ?')) {
+    if (await confirmDialog('Confirmer la suppression de cet employé ?')) {
       try {
         await api.delete(`/employees/${id}`);
         setEmployees(employees.filter(emp => emp._id !== id));

@@ -1,7 +1,8 @@
+import { confirmDialog } from '../components/ConfirmProvider';
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   Button,
   CommandBar,
@@ -130,7 +131,7 @@ const Documents = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce document ?')) return;
+    if (!await confirmDialog('Supprimer ce document ?')) return;
     try {
       await api.delete(`/documents/${id}`);
       toast.success('Document supprimé.');
@@ -146,7 +147,6 @@ const Documents = () => {
 
   return (
     <Workspace className="space-y-5">
-      <Toaster position="top-right" />
       <PageHeader
         title="Documents de l'entreprise"
         description="Fiscaux, loyers, contrats et autres pièces"

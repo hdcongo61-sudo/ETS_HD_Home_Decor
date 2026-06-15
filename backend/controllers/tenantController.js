@@ -228,6 +228,11 @@ const updateTenant = asyncHandler(async (req, res) => {
   if (req.body.nextPaymentDue) tenant.nextPaymentDue = new Date(req.body.nextPaymentDue);
   if (req.body.trialEndsAt) tenant.trialEndsAt = new Date(req.body.trialEndsAt);
   if (billingNotes !== undefined) tenant.billingNotes = billingNotes;
+  if (req.body.dialCode !== undefined) {
+    // Keep only digits and a single leading "+", normalised to "+<digits>".
+    const raw = String(req.body.dialCode).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+    tenant.dialCode = raw ? (raw.startsWith('+') ? raw : `+${raw.replace(/^0+/, '')}`) : '';
+  }
   if (branding) tenant.branding = { ...tenant.branding, ...branding };
 
   await tenant.save();
@@ -288,7 +293,7 @@ const getMyTenant = asyncHandler(async (req, res) => {
     return res.json(null);
   }
   const tenant = await Tenant.findById(req.tenantId)
-    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts')
+    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts planRequest dialCode')
     .lean();
   if (!tenant) {
     res.status(404);
@@ -733,10 +738,75 @@ const updatePlans = asyncHandler(async (req, res) => {
   res.json(cfg.plans);
 });
 
+// ── Shop: list of available plans (labels, prices, limits) for the chooser ──
+// GET /api/tenants/plan-catalog
+const getPlanCatalog = asyncHandler(async (req, res) => {
+  const keys = ['trial', 'basic', 'pro', 'enterprise'];
+  const plans = {};
+  for (const k of keys) plans[k] = { key: k, ...(await resolvePlan(k)) };
+  res.json({ plans });
+});
+
+// ── Shop admin: request a plan change (sent to the super-admin) ──
+// POST /api/tenants/plan-request   { requestedPlan, note }
+const requestPlanChange = asyncHandler(async (req, res) => {
+  if (!req.tenantId) { res.status(400); throw new Error('Aucune boutique active.'); }
+  const { requestedPlan, note } = req.body;
+  if (!['basic', 'pro', 'enterprise'].includes(requestedPlan)) {
+    res.status(400); throw new Error('Plan demandé invalide.');
+  }
+  const tenant = await Tenant.findById(req.tenantId);
+  if (!tenant) { res.status(404); throw new Error('Boutique introuvable.'); }
+
+  tenant.planRequest = {
+    requestedPlan,
+    note: String(note || '').trim().slice(0, 400),
+    status: 'pending',
+    requestedAt: new Date(),
+    requestedBy: req.user?._id || null,
+  };
+  await tenant.save();
+  res.status(201).json({ success: true, planRequest: tenant.planRequest });
+});
+
+// ── Super-admin: approve / reject a tenant's plan-change request ──
+// PUT /api/tenants/:id/plan-request   { action: 'approve' | 'reject' }
+const resolvePlanRequest = asyncHandler(async (req, res) => {
+  const { action } = req.body;
+  const tenant = await Tenant.findById(req.params.id);
+  if (!tenant) { res.status(404); throw new Error('Boutique introuvable.'); }
+  if (!tenant.planRequest || tenant.planRequest.status !== 'pending') {
+    res.status(400); throw new Error('Aucune demande de plan en attente.');
+  }
+
+  if (action === 'approve') {
+    const target = tenant.planRequest.requestedPlan;
+    const preset = await resolvePlan(target);
+    tenant.plan = target;
+    if (preset) {
+      tenant.maxUsers = preset.maxUsers;
+      tenant.maxProducts = preset.maxProducts;
+      tenant.monthlyPrice = preset.price;
+    }
+    tenant.status = 'active';
+    tenant.subscriptionEndsAt = new Date(Date.now() + 30 * 86400000);
+    tenant.planRequest.status = 'approved';
+  } else if (action === 'reject') {
+    tenant.planRequest.status = 'rejected';
+  } else {
+    res.status(400); throw new Error('Action invalide.');
+  }
+  await tenant.save();
+  res.json({ success: true, tenant });
+});
+
 module.exports = {
   registerTenant,
   createTenant,
   getTenants,
+  getPlanCatalog,
+  requestPlanChange,
+  resolvePlanRequest,
   getTenantById,
   updateTenant,
   deleteTenant,

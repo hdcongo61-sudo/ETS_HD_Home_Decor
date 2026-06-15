@@ -62,6 +62,17 @@ const tenantSchema = new mongoose.Schema(
     // Plan limits
     maxUsers: { type: Number, default: 3 },
     maxProducts: { type: Number, default: 500 },
+    // International dialing code for the shop's country (e.g. "+242"), set by
+    // the super-admin. Used to build WhatsApp/phone links for client reminders.
+    dialCode: { type: String, default: '' },
+    // Plan change requested by the shop owner, awaiting super-admin decision.
+    planRequest: {
+      requestedPlan: { type: String, enum: ['basic', 'pro', 'enterprise', null], default: null },
+      note: { type: String, default: '', maxLength: 400 },
+      status: { type: String, enum: ['pending', 'approved', 'rejected', null], default: null },
+      requestedAt: { type: Date, default: null },
+      requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    },
     // Per-tenant branding (supplements global AppSettings)
     branding: {
       appName: { type: String, default: '' },

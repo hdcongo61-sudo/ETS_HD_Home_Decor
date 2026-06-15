@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import {
@@ -8,6 +9,7 @@ import {
   Package, ShoppingCart, StickyNote, TrendingUp, Wallet, Receipt,
   CreditCard, History, BadgeDollarSign, Activity, ArrowRight, Zap,
   Layers, Save, Pencil, BarChart3, TrendingDown, Boxes, AlertCircle,
+  RotateCcw, BookOpen, LifeBuoy,
 } from 'lucide-react';
 import { EmptyState, LoadingSkeleton, PageHeader, Workspace } from '../components/business';
 
@@ -60,6 +62,422 @@ const Kpi = ({ label, value, sub, accent }) => (
     </div>
   </div>
 );
+
+/* ─── Documents éditeur (PDF) ─────────────────────────── */
+const DOC_LABELS = {
+  flyer: 'Flyer (prospection)',
+  guide: 'Guide de gestion',
+  formation: 'Guide de formation',
+};
+
+// Generates the branded PDF for a doc type and triggers a download.
+const downloadDocPdf = async (type) => {
+  const res = await api.get(`/export/doc/${type}`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `HD_Gestion_${type}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
+const EditorDocs = () => {
+  const [busy, setBusy] = useState('');
+  const download = async (type) => {
+    try { setBusy(type); await downloadDocPdf(type); }
+    catch { toast.error('Erreur lors de la génération du PDF.'); }
+    finally { setBusy(''); }
+  };
+  return (
+    <div className="fluent-card-filled p-5">
+      <p className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Télécharger les documents (PDF)</p>
+      <p className="fui-caption1 mb-4" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        Supports prêts à partager pour la prospection et la formation des commerçants.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(DOC_LABELS).map(([type, label]) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => download(type)}
+            disabled={busy === type}
+            className="ms-button ms-button-secondary ms-button-md disabled:opacity-60"
+          >
+            <Download size={15} /> {busy === type ? 'Génération…' : label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Éditeur de contenu des documents ────────────────── */
+const DocEditor = () => {
+  const [type, setType] = useState('formation');
+  const [spec, setSpec] = useState(null);
+  const [edited, setEdited] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const load = useCallback(async (t) => {
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/export/doc/${t}/content`);
+      setSpec(data.spec || { title: '', subtitle: '', sections: [] });
+      setEdited(!!data.edited);
+      setDirty(false);
+    } catch {
+      setSpec(null);
+      toast.error('Impossible de charger le document.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { load(type); }, [type, load]);
+
+  const touch = (updater) => { setSpec(updater); setDirty(true); };
+  const setSections = (fn) => touch((s) => ({ ...s, sections: fn(s.sections || []) }));
+  const setBullets = (si, fn) => setSections((secs) => secs.map((sec, i) => (i === si ? { ...sec, bullets: fn(sec.bullets || []) } : sec)));
+
+  const save = async () => {
+    if (!spec?.title?.trim()) { toast.error('Le titre est requis.'); return; }
+    setSaving(true);
+    try {
+      const { data } = await api.put(`/export/doc/${type}/content`, { spec });
+      setSpec(data.spec); setEdited(true); setDirty(false);
+      toast.success('Document enregistré.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement.");
+    } finally { setSaving(false); }
+  };
+
+  const reset = async () => {
+    if (!window.confirm('Restaurer le contenu par défaut ? Vos modifications seront perdues.')) return;
+    setSaving(true);
+    try {
+      const { data } = await api.put(`/export/doc/${type}/content`, { reset: true });
+      setSpec(data.spec); setEdited(false); setDirty(false);
+      toast.success('Contenu par défaut restauré.');
+    } catch {
+      toast.error('Erreur lors de la réinitialisation.');
+    } finally { setSaving(false); }
+  };
+
+  const fieldStyle = { color: 'var(--colorNeutralForeground1)' };
+
+  return (
+    <div className="fluent-card-filled p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="fui-subtitle2 flex items-center gap-2" style={fieldStyle}>
+            <Pencil size={15} /> Modifier le contenu
+            {edited && <span className="ms-status-badge ms-status-success">Personnalisé</span>}
+          </p>
+          <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Le texte est enregistré et utilisé lors de la génération du PDF.
+          </p>
+        </div>
+        <select value={type} onChange={(e) => setType(e.target.value)} className="form-control" style={{ maxWidth: 240 }}>
+          {Object.entries(DOC_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        </select>
+      </div>
+
+      {loading || !spec ? (
+        <LoadingSkeleton rows={4} />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="form-label mb-1 block">Titre</label>
+              <input className="form-control" value={spec.title || ''} onChange={(e) => touch((s) => ({ ...s, title: e.target.value }))} />
+            </div>
+            <div>
+              <label className="form-label mb-1 block">Sous-titre</label>
+              <input className="form-control" value={spec.subtitle || ''} onChange={(e) => touch((s) => ({ ...s, subtitle: e.target.value }))} />
+            </div>
+          </div>
+
+          {(spec.sections || []).map((sec, si) => (
+            <div key={si} className="rounded-[var(--radiusLarge)] p-3.5" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="fui-caption1 font-semibold" style={{ color: 'var(--colorNeutralForeground3)' }}>Section {si + 1}</span>
+                <button type="button" onClick={() => setSections((secs) => secs.filter((_, i) => i !== si))} className="ms-icon-button ms-icon-button-sm ml-auto" title="Supprimer la section">
+                  <Trash2 size={14} style={{ color: 'var(--colorStatusDangerForeground1)' }} />
+                </button>
+              </div>
+              <input className="form-control mb-2" placeholder="Titre de la section" value={sec.heading || ''} onChange={(e) => setSections((secs) => secs.map((x, i) => (i === si ? { ...x, heading: e.target.value } : x)))} />
+              <textarea className="form-control mb-2" rows={2} placeholder="Paragraphe (optionnel)" value={sec.body || ''} onChange={(e) => setSections((secs) => secs.map((x, i) => (i === si ? { ...x, body: e.target.value } : x)))} />
+              <div className="space-y-1.5">
+                {(sec.bullets || []).map((b, bi) => (
+                  <div key={bi} className="flex items-center gap-2">
+                    <span style={{ color: 'var(--colorBrandForeground1)' }}>•</span>
+                    <input className="form-control" value={b} onChange={(e) => setBullets(si, (bs) => bs.map((x, i) => (i === bi ? e.target.value : x)))} />
+                    <button type="button" onClick={() => setBullets(si, (bs) => bs.filter((_, i) => i !== bi))} className="ms-icon-button ms-icon-button-sm" title="Supprimer la puce">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setBullets(si, (bs) => [...bs, ''])} className="ms-button ms-button-secondary ms-button-sm">
+                  <Plus size={13} /> Ajouter une puce
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button type="button" onClick={() => setSections((secs) => [...secs, { heading: '', body: '', bullets: [] }])} className="ms-button ms-button-secondary ms-button-md w-full justify-center">
+            <Plus size={15} /> Ajouter une section
+          </button>
+
+          <div className="flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+            <button type="button" onClick={save} disabled={saving || !dirty} className="ms-button ms-button-primary ms-button-md disabled:opacity-60">
+              <Save size={15} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            <button type="button" onClick={() => downloadDocPdf(type).catch(() => toast.error('Erreur PDF.'))} className="ms-button ms-button-secondary ms-button-md">
+              <Download size={15} /> Aperçu PDF
+            </button>
+            {edited && (
+              <button type="button" onClick={reset} disabled={saving} className="ms-button ms-button-secondary ms-button-md ml-auto disabled:opacity-60">
+                <RotateCcw size={15} /> Restaurer par défaut
+              </button>
+            )}
+          </div>
+          {dirty && <p className="fui-caption1" style={{ color: 'var(--colorStatusWarningForeground1)' }}>Modifications non enregistrées.</p>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── TAB: Ressources ─────────────────────────────────── */
+const ResourcesTab = () => (
+  <div className="space-y-4">
+    <EditorDocs />
+    <DocEditor />
+  </div>
+);
+
+/* ─── TAB: Messages (assistance boutiques) ────────────── */
+const SUPPORT_CATS = { suggestion: 'Suggestion', reclamation: 'Réclamation', question: 'Question', autre: 'Autre' };
+
+const AdminTicketThread = ({ id, onBack, onChanged }) => {
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const { data } = await api.get(`/support/admin/${id}`); setTicket(data); onChanged?.(); }
+    catch { toast.error('Message introuvable.'); onBack(); }
+    finally { setLoading(false); }
+  }, [id, onBack, onChanged]);
+  useEffect(() => { load(); }, [load]);
+
+  const send = async (resolve) => {
+    if (!reply.trim()) { toast.error('Le message est requis.'); return; }
+    setSending(true);
+    try {
+      const { data } = await api.post(`/support/admin/${id}/reply`, { message: reply.trim(), resolve });
+      setTicket(data); setReply(''); onChanged?.();
+      toast.success(resolve ? 'Réponse envoyée et marqué résolu.' : 'Réponse envoyée.');
+    } catch (err) { toast.error(err.response?.data?.message || 'Erreur.'); }
+    finally { setSending(false); }
+  };
+
+  const setStatus = async (status) => {
+    try { const { data } = await api.put(`/support/admin/${id}`, { status }); setTicket(data); onChanged?.(); }
+    catch { toast.error('Erreur.'); }
+  };
+
+  if (loading || !ticket) return <LoadingSkeleton rows={5} />;
+
+  return (
+    <div className="space-y-4">
+      <button type="button" onClick={onBack} className="ms-button ms-button-secondary ms-button-sm">
+        <ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} /> Tous les messages
+      </button>
+
+      <div className="fluent-card-filled p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="fui-subtitle1 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{ticket.subject}</h2>
+            <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              {ticket.tenantName || 'Boutique'} · {SUPPORT_CATS[ticket.category] || ticket.category}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`ms-status-badge ${ticket.status === 'resolved' ? 'ms-status-success' : 'ms-status-warning'}`}>
+              {ticket.status === 'resolved' ? 'Résolu' : 'Ouvert'}
+            </span>
+            <button type="button" onClick={() => setStatus(ticket.status === 'resolved' ? 'open' : 'resolved')} className="ms-button ms-button-secondary ms-button-sm">
+              {ticket.status === 'resolved' ? 'Rouvrir' : 'Marquer résolu'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {ticket.messages.map((m, i) => {
+          const fromSupport = m.sender === 'support';
+          return (
+            <div key={m._id || i} className={`flex ${fromSupport ? 'justify-end' : 'justify-start'}`}>
+              <div className="max-w-[85%] rounded-[var(--radiusLarge)] px-3.5 py-2.5" style={{ background: fromSupport ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground3)', border: '1px solid var(--colorNeutralStroke2)' }}>
+                <p className="fui-caption2 mb-0.5 font-semibold" style={{ color: fromSupport ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground2)' }}>
+                  {fromSupport ? (m.authorName || 'Support') : `${ticket.tenantName || 'Boutique'}${m.authorName ? ' · ' + m.authorName : ''}`}
+                </p>
+                <p className="fui-body1 whitespace-pre-wrap" style={{ color: 'var(--colorNeutralForeground1)' }}>{m.body}</p>
+                <p className="fui-caption2 mt-1 text-right" style={{ color: 'var(--colorNeutralForeground3)' }}>{fmtDateTime(m.createdAt)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="fluent-card-filled space-y-2 p-3">
+        <textarea className="form-control" rows={3} value={reply} onChange={(e) => setReply(e.target.value)} maxLength={5000} placeholder="Répondre à la boutique…" />
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => send(false)} disabled={sending || !reply.trim()} className="ms-button ms-button-primary ms-button-md disabled:opacity-60">
+            {sending ? 'Envoi…' : 'Répondre'}
+          </button>
+          <button type="button" onClick={() => send(true)} disabled={sending || !reply.trim()} className="ms-button ms-button-secondary ms-button-md disabled:opacity-60">
+            Répondre & résoudre
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SupportTab = ({ onCountChange }) => {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState(null);
+  const [status, setStatusFilter] = useState('');
+  const [category, setCategoryFilter] = useState('');
+  const [q, setQ] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (status) params.status = status;
+      if (category) params.category = category;
+      if (q.trim()) params.q = q.trim();
+      const { data } = await api.get('/support/admin/all', { params });
+      setTickets(data || []);
+      onCountChange?.();
+    } catch { setTickets([]); }
+    finally { setLoading(false); }
+  }, [status, category, q, onCountChange]);
+  useEffect(() => { load(); }, [load]);
+
+  if (openId) return <AdminTicketThread id={openId} onBack={() => { setOpenId(null); load(); }} onChanged={onCountChange} />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <input className="form-control" style={{ maxWidth: 220 }} placeholder="Rechercher (boutique, sujet)…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select className="form-control" style={{ maxWidth: 160 }} value={status} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tous statuts</option>
+          <option value="open">Ouverts</option>
+          <option value="resolved">Résolus</option>
+        </select>
+        <select className="form-control" style={{ maxWidth: 160 }} value={category} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="">Toutes catégories</option>
+          {Object.entries(SUPPORT_CATS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <LoadingSkeleton rows={5} />
+      ) : tickets.length === 0 ? (
+        <EmptyState title="Aucun message" description="Aucune boutique n'a contacté le support pour ces filtres." />
+      ) : (
+        <div className="space-y-2">
+          {tickets.map((t) => (
+            <button key={t._id} type="button" onClick={() => setOpenId(t._id)} className="fluent-card-filled flex w-full items-center gap-3 p-4 text-left transition hover:brightness-[0.98]">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.subject}</p>
+                  {t.unreadForSupport > 0 && (
+                    <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: 'var(--colorStatusDangerForeground1)' }}>{t.unreadForSupport}</span>
+                  )}
+                </div>
+                <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  {t.tenantName || 'Boutique'} · {SUPPORT_CATS[t.category] || t.category} · {t.lastMessage ? `${t.lastMessage.sender === 'support' ? 'Vous : ' : ''}${t.lastMessage.body}` : ''}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`ms-status-badge ${t.status === 'resolved' ? 'ms-status-success' : 'ms-status-warning'}`}>{t.status === 'resolved' ? 'Résolu' : 'Ouvert'}</span>
+                <span className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{fmtDateTime(t.lastMessageAt)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── Demandes de changement de plan ──────────────────── */
+const PlanRequests = () => {
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState('');
+  const load = useCallback(async () => {
+    try {
+      const { data } = await api.get('/tenants');
+      setRows((data || []).filter((t) => t.planRequest && t.planRequest.status === 'pending'));
+    } catch {
+      setRows([]);
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const resolve = async (id, action) => {
+    setBusy(id + action);
+    try {
+      await api.put(`/tenants/${id}/plan-request`, { action });
+      await load();
+    } catch {
+      /* ignore */
+    } finally {
+      setBusy('');
+    }
+  };
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="fluent-card-filled p-5">
+      <p className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+        Demandes de changement de plan ({rows.length})
+      </p>
+      <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        Validez (applique le plan) ou refusez les demandes des boutiques.
+      </p>
+      <div className="space-y-2">
+        {rows.map((t) => (
+          <div key={t._id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radiusMedium)] p-3" style={{ background: 'var(--colorNeutralBackground2)' }}>
+            <div className="min-w-0">
+              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</p>
+              <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                {t.plan} → <strong style={{ color: 'var(--colorBrandForeground1)' }}>{t.planRequest.requestedPlan}</strong>
+                {t.planRequest.note ? ` · ${t.planRequest.note}` : ''}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" onClick={() => resolve(t._id, 'approve')} disabled={!!busy} className="ms-button ms-button-primary ms-button-sm disabled:opacity-60">Approuver</button>
+              <button type="button" onClick={() => resolve(t._id, 'reject')} disabled={!!busy} className="ms-button ms-button-secondary ms-button-sm disabled:opacity-60">Refuser</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 /* ─── Confirm Dialog ──────────────────────────────────── */
 const ConfirmDialog = ({ open, title, description, confirmLabel = 'Confirmer', danger = false, onConfirm, onCancel }) => {
@@ -181,6 +599,8 @@ const TABS = [
   { id: 'tenants',  label: 'Boutiques',      icon: Building2 },
   { id: 'plans',    label: 'Forfaits',       icon: Layers },
   { id: 'billing',  label: 'Facturation',    icon: Wallet },
+  { id: 'support',  label: 'Messages',       icon: LifeBuoy },
+  { id: 'resources', label: 'Ressources',    icon: BookOpen },
   { id: 'audit',    label: 'Journal',        icon: History },
 ];
 
@@ -193,6 +613,12 @@ const SuperAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState(null);
+  const [supportUnread, setSupportUnread] = useState(0);
+
+  const fetchSupportUnread = useCallback(() => {
+    api.get('/support/admin/unread').then(({ data }) => setSupportUnread(data?.unread || 0)).catch(() => {});
+  }, []);
+  useEffect(() => { fetchSupportUnread(); }, [fetchSupportUnread]);
 
   useEffect(() => { if (!auth.isLoading && !auth.isSuperAdmin) navigate('/', { replace: true }); }, [auth, navigate]);
 
@@ -249,6 +675,11 @@ const SuperAdmin = () => {
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)} className={`fui-pivot__tab ${tab === id ? 'fui-pivot__tab--active' : ''}`}>
             <Icon size={15} /> {label}
+            {id === 'support' && supportUnread > 0 && (
+              <span className="ml-1.5 inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white" style={{ height: 16, background: 'var(--colorStatusDangerForeground1)' }}>
+                {supportUnread > 9 ? '9+' : supportUnread}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -261,6 +692,8 @@ const SuperAdmin = () => {
       {tab === 'tenants'  && <TenantsTab tenants={tenants} loading={loading} updating={updating} onReload={fetchTenants} onStatus={handleStatusChange} onPlan={handlePlanChange} onImpersonate={handleImpersonate} setTenants={setTenants} />}
       {tab === 'plans'    && <PlansTab />}
       {tab === 'billing'  && <BillingTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
+      {tab === 'support'  && <SupportTab onCountChange={fetchSupportUnread} />}
+      {tab === 'resources' && <ResourcesTab />}
       {tab === 'audit'    && <AuditTab />}
     </Workspace>
   );
@@ -293,6 +726,8 @@ const OverviewTab = ({ onJump }) => {
         <Kpi label="Encaissé ce mois" value={money(revenue.revenueThisMonth)} sub="Paiements enregistrés" accent="var(--colorBrandForeground1)" />
         <Kpi label="Boutiques payantes" value={fmt(funnel.paying)} sub={`sur ${fmt(funnel.total)} au total`} />
       </div>
+
+      <PlanRequests />
 
       {/* Funnel */}
       <div className="fluent-card-filled p-5">
@@ -430,14 +865,14 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
       .catch(() => alert('Erreur export.'));
   };
 
-  const startEdit = (t) => setEdits((p) => ({ ...p, [t._id]: { maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice } }));
+  const startEdit = (t) => setEdits((p) => ({ ...p, [t._id]: { maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice, dialCode: t.dialCode || '' } }));
   const cancelEdit = (id) => setEdits((p) => { const n = { ...p }; delete n[id]; return n; });
   const saveLimits = async (id) => {
     const patch = edits[id]; if (!patch) return;
     try {
       setSavingId(id);
       const { data } = await api.put(`/tenants/${id}`, patch);
-      setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice } : t)));
+      setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice, dialCode: data.dialCode } : t)));
       cancelEdit(id);
     } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
     finally { setSavingId(null); }
@@ -594,6 +1029,23 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
                           <LimitField label="Max utilisateurs" used={t.stats?.userCount} editing={isEditing} value={isEditing ? e.maxUsers : t.maxUsers} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], maxUsers: v } }))} />
                           <LimitField label="Max produits" used={t.stats?.productCount} editing={isEditing} value={isEditing ? e.maxProducts : t.maxProducts} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], maxProducts: v } }))} />
                           <LimitField label="Prix mensuel (CFA)" editing={isEditing} value={isEditing ? e.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], monthlyPrice: v } }))} />
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          <div>
+                            <p className="fui-caption1 mb-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Indicatif pays (WhatsApp)</p>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={e.dialCode || ''}
+                                onChange={(ev) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], dialCode: ev.target.value } }))}
+                                placeholder="+242"
+                                className="form-control text-sm"
+                              />
+                            ) : (
+                              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.dialCode || '—'}</p>
+                            )}
+                            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Utilisé pour les rappels WhatsApp aux clients de cette boutique.</p>
+                          </div>
                         </div>
                       </div>
 

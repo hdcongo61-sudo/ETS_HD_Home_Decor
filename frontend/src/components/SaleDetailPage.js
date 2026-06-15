@@ -1,15 +1,16 @@
+import { confirmDialog } from './ConfirmProvider';
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
+import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, formatReminderAgo, REMINDER_CHANNEL_LABEL } from '../utils/clientReminder';
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
-import {
-    Chart as ChartJS,
+import {    Chart as ChartJS,
     CategoryScale,
     LinearScale,
     BarElement,
@@ -265,7 +266,7 @@ const SaleDetailPage = () => {
     };
 
     const handleDeletePayment = async (paymentId) => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
+        if (await confirmDialog("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
             try {
                 setIsDeleting(true);
                 const { data } = await api.delete(`/sales/${id}/payments/${paymentId}`);
@@ -298,7 +299,7 @@ const SaleDetailPage = () => {
     };
 
     const handleSendReminder = async () => {
-        if (window.confirm("Envoyer le rappel de paiement au client maintenant ?")) {
+        if (await confirmDialog("Envoyer le rappel de paiement au client maintenant ?")) {
             try {
                 const response = await api.post(`/sales/${id}/send-reminder`);
                 setSale(mergeSaleState(response.data));
@@ -311,7 +312,7 @@ const SaleDetailPage = () => {
     };
 
     const handleDeleteReminder = async () => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce rappel ?")) {
+        if (await confirmDialog("Êtes-vous sûr de vouloir supprimer ce rappel ?")) {
             try {
                 const { data } = await api.delete(`/sales/${id}/reminder`);
 
@@ -544,6 +545,35 @@ const SaleDetailPage = () => {
     const totalProfit = calculateTotalProfit();
     const profitMargin = calculateProfitMargin();
     const payments = Array.isArray(sale.payments) ? sale.payments : [];
+
+    // WhatsApp reminder for an unpaid balance.
+    const saleBalance = Math.max(Number(sale.balance) || 0, 0);
+    const lastPaymentRaw = (sale.payments || []).slice(-1)[0]?.paymentDate;
+    const daysSinceLastPayment = lastPaymentRaw
+        ? Math.max(0, Math.floor((Date.now() - new Date(lastPaymentRaw).getTime()) / 86400000))
+        : null;
+    const whatsappReminderHref = (saleBalance > 0 && canWhatsApp(sale.client?.phone))
+        ? whatsAppLink(
+            sale.client?.phone,
+            auth?.tenant?.dialCode || '',
+            buildReminderMessage({
+                clientName: sale.client?.name,
+                shopName: auth?.tenant?.name || '',
+                balance: saleBalance,
+                lastPaymentLabel: lastPaymentRaw ? new Date(lastPaymentRaw).toLocaleDateString('fr-FR') : '',
+                daysSince: daysSinceLastPayment,
+            })
+        )
+        : '';
+    const reminderLog = Array.isArray(sale.reminderLog) ? sale.reminderLog : [];
+    const logReminder = (channel) => {
+        recordReminder(id, channel);
+        setSale((prev) => prev ? {
+            ...prev,
+            lastRemindedAt: new Date().toISOString(),
+            reminderLog: [...(prev.reminderLog || []), { channel, userName: auth?.user?.name || '', createdAt: new Date().toISOString() }],
+        } : prev);
+    };
     const filteredPayments = payments.filter((payment) => {
         const rawDate = payment?.paymentDate || payment?.createdAt;
         if (!rawDate) return !paymentStartDate && !paymentEndDate;
@@ -807,6 +837,23 @@ const SaleDetailPage = () => {
                                         <span className="hidden sm:inline">{sale.paymentReminder?.isSet ? 'Modifier rappel' : 'Définir rappel'}</span>
                                     </button>
                                 )}
+                                {(sale.status === 'pending' || sale.status === 'partially_paid') && whatsappReminderHref && (
+                                    <a
+                                        href={whatsappReminderHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => logReminder('whatsapp')}
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 sm:min-h-[44px] sm:px-4 sm:py-2.5"
+                                        style={{ background: '#25D366' }}
+                                        title="Envoyer un rappel WhatsApp au client"
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.737-.985z" />
+                                        </svg>
+                                        <span className="sm:hidden">WhatsApp</span>
+                                        <span className="hidden sm:inline">Rappel WhatsApp</span>
+                                    </a>
+                                )}
                                 {sale.status === 'completed' && (
                                     <button
                                         type="button"
@@ -923,6 +970,33 @@ const SaleDetailPage = () => {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Reminder history (collection follow-ups) */}
+                    {reminderLog.length > 0 && (
+                        <div className="mx-4 sm:mx-6 mb-6 p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Relances</h4>
+                                {sale.lastRemindedAt && (
+                                    <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                                        Dernière : {formatReminderAgo(sale.lastRemindedAt)}
+                                    </span>
+                                )}
+                            </div>
+                            <ul className="space-y-1.5">
+                                {[...reminderLog].reverse().slice(0, 8).map((r, i) => (
+                                    <li key={r._id || i} className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                                        <span className="font-medium">
+                                            {REMINDER_CHANNEL_LABEL[r.channel] || r.channel}
+                                            {r.userName ? ` · ${r.userName}` : ''}
+                                        </span>
+                                        <span className="text-gray-400">
+                                            {r.createdAt ? new Date(r.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 

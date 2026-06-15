@@ -4,6 +4,7 @@ const { protect, admin } = require('../middlewares/authMiddleware');
 const {
   createSale,
   addPayment,
+  recordReminder,
   getSales,
   getSalesStats,
   getSalesByDateRange,
@@ -68,6 +69,8 @@ router.route('/best-days')
 // Payment routes
 router.route('/:id/payments')
   .post(protect, addPayment);      // POST /api/sales/:id/payments
+
+router.post('/:id/remind', protect, recordReminder); // Log a collection follow-up
 // Date range route
 router.route('/date-range')
   .get(protect, getSalesByDateRange);   // GET /api/sales/date-range

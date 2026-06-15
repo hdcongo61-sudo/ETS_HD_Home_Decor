@@ -38,11 +38,12 @@ const isAdminUser = (user) => Boolean(user?.isAdmin);
 
 const buildSaleAccessFilter = (_user, baseFilter = {}) => baseFilter;
 
-const assertSaleAccess = (sale, user) => {
+const assertSaleAccess = (sale, user, action = 'view') => {
   if (!sale) {
     return { allowed: false, status: 404, message: 'Vente non trouvée' };
   }
 
+  // Admin can do anything
   if (isAdminUser(user)) {
     return { allowed: true };
   }
@@ -50,11 +51,17 @@ const assertSaleAccess = (sale, user) => {
   const saleOwnerId = normalizeObjectId(sale.user);
   const requesterId = normalizeObjectId(user?._id);
 
+  // Owner can do anything
   if (saleOwnerId && requesterId && saleOwnerId === requesterId) {
     return { allowed: true };
   }
 
-  return { allowed: false, status: 403, message: 'Non autorisé à accéder à cette vente' };
+  // Non-owners can VIEW but cannot modify
+  if (action === 'view') {
+    return { allowed: true };
+  }
+
+  return { allowed: false, status: 403, message: 'Non autorisé à modifier cette vente' };
 };
 
 const sanitizeSaleForUser = (sale, user) => {
@@ -222,8 +229,8 @@ const getSales = asyncHandler(async (req, res) => {
 
     if (isCompactSummary) {
       query = query
-        .select('_id client totalAmount payments saleDate status updatedAt createdAt')
-        .populate('client', 'name email');
+        .select('_id client totalAmount payments saleDate status updatedAt createdAt lastRemindedAt reminderLog')
+        .populate('client', 'name email phone');
     } else if (isListSummary) {
       query = query
         .select('_id client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
@@ -2357,7 +2364,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         status: { $in: ['pending', 'partially_paid'] }
       })
         .populate('client', 'name email phone')
-        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status lastRemindedAt reminderLog')
         .lean()
         .sort({ 'paymentReminder.reminderDate': 1 }),
 
@@ -2371,7 +2378,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         status: { $in: ['pending', 'partially_paid'] }
       })
         .populate('client', 'name email phone')
-        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status lastRemindedAt reminderLog')
         .lean()
         .sort({ 'paymentReminder.reminderDate': 1 }),
 
@@ -2382,7 +2389,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         }
       })
         .populate('client', 'name email phone')
-        .select('_id client totalAmount payments paymentReminder saleDate saleType status')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status lastRemindedAt reminderLog')
         .lean()
         .sort({ saleDate: 1 }),
 
@@ -2450,7 +2457,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
 const sendReminder = asyncHandler(async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
-    const access = assertSaleAccess(sale, req.user);
+    const access = assertSaleAccess(sale, req.user, 'edit');
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
@@ -2483,7 +2490,7 @@ const updateReminder = asyncHandler(async (req, res) => {
   try {
     const { reminderDate, reminderNote, isSet } = req.body;
     const sale = await Sale.findById(req.params.id);
-    const access = assertSaleAccess(sale, req.user);
+    const access = assertSaleAccess(sale, req.user, 'edit');
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
@@ -2518,7 +2525,7 @@ const updateReminder = asyncHandler(async (req, res) => {
 const deleteReminder = asyncHandler(async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
-    const access = assertSaleAccess(sale, req.user);
+    const access = assertSaleAccess(sale, req.user, 'edit');
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
@@ -2718,9 +2725,34 @@ const getBestDays = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Record a collection follow-up (WhatsApp / call / SMS / manual)
+// @route   POST /api/sales/:id/remind
+const recordReminder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const VALID = ['whatsapp', 'call', 'sms', 'manual'];
+  const channel = VALID.includes(req.body?.channel) ? req.body.channel : 'manual';
+  const note = String(req.body?.note || '').trim().slice(0, 300);
+
+  const sale = await Sale.findById(id);
+  if (!sale) return res.status(404).json({ message: 'Vente non trouvée' });
+
+  const now = new Date();
+  sale.reminderLog = sale.reminderLog || [];
+  sale.reminderLog.push({ channel, user: req.user._id, userName: req.user.name || '', note, createdAt: now });
+  sale.lastRemindedAt = now;
+  await sale.save();
+
+  res.json({
+    lastRemindedAt: sale.lastRemindedAt,
+    reminderCount: sale.reminderLog.length,
+    reminderLog: sale.reminderLog,
+  });
+});
+
 module.exports = {
   createSale,
   addPayment,
+  recordReminder,
   getSales,
   getSalesStats,
   getSalesByDateRange,

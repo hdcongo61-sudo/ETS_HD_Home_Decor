@@ -1,6 +1,9 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import ConfirmProvider from './components/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import { ModalProvider } from './context/ModalContext';
@@ -16,6 +19,7 @@ import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
 import DesktopNavRail from './components/DesktopNavRail';
 import ServerWakeup from './components/ServerWakeup';
+import TrialBanner from './components/TrialBanner';
 
 const Login = lazy(() => import('./pages/Login'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
@@ -27,6 +31,8 @@ const PaySlipForm = lazy(() => import('./components/PaySlipForm'));
 const PaySlipPrint = lazy(() => import('./components/PaySlipPrint'));
 const PaySlipFormEdit = lazy(() => import('./components/PaySlipFormEdit'));
 const NeverSoldProducts = lazy(() => import('./pages/NeverSoldProducts'));
+const SlowProductSuggestions = lazy(() => import('./pages/SlowProductSuggestions'));
+const StockLossReport = lazy(() => import('./pages/StockLossReport'));
 const TopSellingProducts = lazy(() => import('./pages/TopSellingProducts'));
 const CriticalStockProducts = lazy(() => import('./pages/CriticalStockProducts'));
 const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
@@ -61,6 +67,7 @@ const EditSalePage = lazy(() => import('./pages/EditSalePage'));
 const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Support = lazy(() => import('./pages/Support'));
 const AdminRequests = lazy(() => import('./pages/AdminRequests'));
 const TenantRegister = lazy(() => import('./pages/TenantRegister'));
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
@@ -68,13 +75,17 @@ const ImpersonationBanner = lazy(() => import('./components/ImpersonationBanner'
 
 function App() {
   return (
+    <ErrorBoundary>
     <ModalProvider>
       <AppSettingsProvider>
         <AuthProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ScrollToTop />
+            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+            <ConfirmProvider />
             <div className="app-root-shell min-h-screen flex flex-col">
               <ServerWakeup />
+              <TrialBanner />
               <Suspense fallback={null}><ImpersonationBanner /></Suspense>
               <Navigation />
               <OfflineIndicator />
@@ -158,6 +169,22 @@ function App() {
                   element={
                     <ProtectedRoute adminOnly>
                       <NeverSoldProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/slow-movers"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <SlowProductSuggestions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/losses"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <StockLossReport />
                     </ProtectedRoute>
                   }
                 />
@@ -354,6 +381,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/support"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Support />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/admin-requests"
                   element={
                     <ProtectedRoute>
@@ -448,6 +483,7 @@ function App() {
         </AuthProvider>
       </AppSettingsProvider>
     </ModalProvider>
+    </ErrorBoundary>
   );
 }
 

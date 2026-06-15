@@ -43,6 +43,7 @@ const appSettingsRoutes = require('./routes/appSettingsRoutes');
 const adminRequestRoutes = require('./routes/adminRequestRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const cashSessionRoutes = require('./routes/cashSessionRoutes');
+const supportRoutes = require('./routes/supportRoutes');
 
 const app = express();
 
@@ -117,6 +118,8 @@ app.use('/api/users/password-update-request', authLimiter);
 // limit than the default endpoints. This route-specific parser runs first and
 // sets req.body; the global 10kb parser below then skips the already-read body.
 app.use('/api/products/import', express.json({ limit: '5mb' }));
+// Editable super-admin documents can exceed the tiny default body limit.
+app.use('/api/export/doc', express.json({ limit: '256kb' }));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
@@ -152,6 +155,7 @@ app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/cash-sessions', cashSessionRoutes);
+app.use('/api/support', supportRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

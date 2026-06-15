@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
@@ -217,7 +217,6 @@ const CashierSession = () => {
 
   return (
     <Workspace>
-      <Toaster position="top-right" />
       <PageHeader
         eyebrow="Caisse"
         title="Session de caisse"

@@ -1,3 +1,4 @@
+import { confirmDialog } from '../components/ConfirmProvider';
 // src/pages/Products.jsx
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -7,7 +8,7 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import LoaderOverlay from '../components/LoaderOverlay';
 import AppLoader from '../components/AppLoader';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { productPath } from '../utils/paths';
 import {
   Button,
@@ -25,6 +26,7 @@ import {
   Edit3,
   FileSpreadsheet,
   Package,
+  PackageMinus,
   PackageCheck,
   Boxes,
   Wallet,
@@ -90,6 +92,7 @@ const Products = () => {
   const navigate = useNavigate();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const [products, setProducts] = useState([]);
+  const [lossMap, setLossMap] = useState({});
   const [editingProduct, setEditingProduct] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -117,6 +120,11 @@ const Products = () => {
       console.error('Error fetching lookups:', err);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.get('/products/loss-map').then(({ data }) => setLossMap(data.map || {})).catch(() => setLossMap({}));
+  }, [isAdmin]);
 
   const fetchProducts = useCallback(async (options = {}) => {
     const { showLoading = true } = options;
@@ -199,7 +207,7 @@ const Products = () => {
   };
 
   const handleDelete = async (productId) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+    if (await confirmDialog('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
       try {
         await api.delete(`/products/${productId}`);
         setProducts((prev) => prev.filter((product) => product._id !== productId));
@@ -215,13 +223,10 @@ const Products = () => {
   const inStockCount = products.filter((product) => Number(product.stock) > 0).length;
   const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
   const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
-  // Inventory value = sum of price × stock across the catalogue
-  const stockValue = products.reduce((sum, product) => sum + (Number(product.price) || 0) * (Number(product.stock) || 0), 0);
   const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
   return (
     <Workspace>
-      <Toaster position="top-right" />
 
       <LoaderOverlay
         show={formSubmitting}
@@ -260,13 +265,6 @@ const Products = () => {
           value={loading ? '...' : totalStock.toLocaleString('fr-FR')}
           context="Unités disponibles"
           icon={<Boxes className="h-4 w-4" />}
-        />
-        <KPICard
-          title="Valeur du stock"
-          value={loading ? '...' : formatCfa(stockValue)}
-          context="Prix × quantité"
-          icon={<Wallet className="h-4 w-4" />}
-          tone="success"
         />
         <KPICard
           title="À surveiller"
@@ -317,6 +315,7 @@ const Products = () => {
           onDelete={handleDelete}
           onEdit={handleEdit}
           isAdmin={isAdmin}
+          lossMap={lossMap}
         />
       </DataTable>
 
@@ -463,9 +462,9 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required />
-          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} />
-          <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} />
-          <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} />
+          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} emptyHint="Catégories produits" />
+          <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} emptyHint="Conteneurs" />
+          <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} emptyHint="Entrepôts" />
         </div>
         <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} />
       </section>
@@ -494,7 +493,7 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
           Fournisseur
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} />
+          <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} emptyHint="Fournisseurs" />
           <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
         </div>
       </section>
@@ -595,7 +594,21 @@ const getProductStockStatus = (stock) => {
   return { tone: 'success', label: 'Disponible' };
 };
 
-const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
+const renderLossChip = (lossMap, p) => {
+  const l = lossMap?.[p._id];
+  if (!l || !l.units) return null;
+  const parts = [];
+  if (l.casse) parts.push(`${l.casse} cassé${l.casse > 1 ? 's' : ''}`);
+  if (l.cadeau) parts.push(`${l.cadeau} offert${l.cadeau > 1 ? 's' : ''}`);
+  if (l.autres) parts.push(`${l.autres} sortie${l.autres > 1 ? 's' : ''}`);
+  return (
+    <span className="ms-status-badge ms-status-warning mt-1 inline-flex items-center gap-1" title="Sorties hors vente (casse / cadeau)">
+      <PackageMinus className="h-3 w-3" /> {parts.join(' · ')}
+    </span>
+  );
+};
+
+const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {} }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
@@ -1500,6 +1513,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                     >
                       {p.name}
                     </Link>
+                    {renderLossChip(lossMap, p)}
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl object-cover border border-slate-100 mx-auto" />
                     ) : (
@@ -1586,6 +1600,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin }) => {
                   <StatusBadge tone="success">
                     {p.warehouse?.trim() || 'Non défini'}
                   </StatusBadge>
+                  {renderLossChip(lossMap, p)}
                 </div>
                 <p className="text-sm font-semibold text-slate-950 mt-1">
                   {p.price?.toLocaleString('fr-FR')} CFA
@@ -1657,7 +1672,7 @@ const Textarea = ({ label, rows = 3, className = '', ...props }) => (
   </div>
 );
 
-const Select = ({ label, options, className = '', ...props }) => (
+const Select = ({ label, options, className = '', emptyHint, ...props }) => (
   <div className={className}>
     <label className="form-label mb-1.5 block">{label}</label>
     <select {...props} className={`${inputBaseClass} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%236b7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10`}>
@@ -1666,6 +1681,11 @@ const Select = ({ label, options, className = '', ...props }) => (
         <option key={opt}>{opt}</option>
       ))}
     </select>
+    {emptyHint && options.length === 0 && (
+      <p className="mt-1.5 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        Aucun élément. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → {emptyHint}</Link>
+      </p>
+    )}
   </div>
 );
 

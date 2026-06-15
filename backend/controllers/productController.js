@@ -1,8 +1,11 @@
 const Product = require('../models/productModel');
 const Sale = require('../models/saleModel');
+const StockMovement = require('../models/stockMovementModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
+
+const STOCK_MOVEMENT_REASONS = ['casse', 'cadeau', 'vol', 'peremption', 'usage_personnel', 'correction', 'autre'];
 
 const normaliseId = (value) => {
   if (!value) return null;
@@ -35,6 +38,12 @@ const stripSensitiveProductStats = (stats, user) => {
   delete plain.avgProfitPerUnit;
   delete plain.avgCostPerUnit;
   delete plain.lifetimeAvgProfitPerUnit;
+  delete plain.lossThisPeriod;
+  delete plain.lossCasseThisPeriod;
+  delete plain.lossCadeauThisPeriod;
+  delete plain.netProfitThisPeriod;
+  delete plain.lifetimeLoss;
+  delete plain.netTotalProfit;
   return plain;
 };
 // @desc    Get all products
@@ -333,6 +342,22 @@ const getProductStats = async (req, res) => {
     const periodMetrics = computeMetrics(salesInRange);
     const lifetimeMetrics = computeMetrics(lifetimeSales);
 
+    // Stock losses (casse/cadeau …) reduce this product's NET profit.
+    const lossPeriodAgg = await StockMovement.aggregate([
+      { $match: { ...tenantFilter(req), product: product._id, createdAt: { $gte: startDate, $lte: endDate } } },
+      { $group: { _id: '$reason', cost: { $sum: '$costImpact' }, quantity: { $sum: '$quantity' } } },
+    ]);
+    const lossLifetimeAgg = await StockMovement.aggregate([
+      { $match: { ...tenantFilter(req), product: product._id } },
+      { $group: { _id: null, cost: { $sum: '$costImpact' }, quantity: { $sum: '$quantity' } } },
+    ]);
+    const lossOf = (arr, r) => arr.find((x) => x._id === r)?.cost || 0;
+    const periodLossCasse = lossOf(lossPeriodAgg, 'casse') + lossOf(lossPeriodAgg, 'vol') + lossOf(lossPeriodAgg, 'peremption');
+    const periodLossCadeau = lossOf(lossPeriodAgg, 'cadeau');
+    const periodLossTotal = lossPeriodAgg.reduce((s, x) => s + (x.cost || 0), 0);
+    const lifetimeLossTotal = lossLifetimeAgg[0]?.cost || 0;
+    const lifetimeLossUnits = lossLifetimeAgg[0]?.quantity || 0;
+
     const periodLengthMs = Math.max(endDate.getTime() - startDate.getTime(), 1);
     const periodLengthDays = Math.max(periodLengthMs / (1000 * 60 * 60 * 24), 1);
     const averageDailyUnits = periodMetrics.units > 0 ? periodMetrics.units / periodLengthDays : 0;
@@ -364,6 +389,13 @@ const getProductStats = async (req, res) => {
       ordersThisPeriod: periodMetrics.orders,
       revenueThisPeriod: toFixedNumber(periodMetrics.revenue),
       profitThisPeriod: toFixedNumber(periodMetrics.profit),
+      lossThisPeriod: toFixedNumber(periodLossTotal),
+      lossCasseThisPeriod: toFixedNumber(periodLossCasse),
+      lossCadeauThisPeriod: toFixedNumber(periodLossCadeau),
+      netProfitThisPeriod: toFixedNumber(periodMetrics.profit - periodLossTotal),
+      lifetimeLoss: toFixedNumber(lifetimeLossTotal),
+      lifetimeLossUnits,
+      netTotalProfit: toFixedNumber(lifetimeMetrics.profit - lifetimeLossTotal),
       avgSellingPrice: toFixedNumber(periodMetrics.avgSalePrice),
       avgProfitPerUnit: toFixedNumber(periodMetrics.avgProfitPerUnit),
       avgCostPerUnit: toFixedNumber(periodMetrics.avgCostPerUnit),
@@ -1111,6 +1143,275 @@ res.json({
 
 
 // @desc Get never sold products
+// @desc    Record a non-sale stock removal (breakage, giveaway, …).
+// @route   POST /api/products/stock-movement
+// @access  Private/Admin
+const createStockMovement = async (req, res) => {
+  try {
+    const { productId, quantity, reason, note } = req.body;
+    const qty = Math.floor(Number(quantity));
+
+    if (!productId) return res.status(400).json({ message: 'Produit manquant.' });
+    if (!Number.isFinite(qty) || qty < 1) return res.status(400).json({ message: 'Quantité invalide.' });
+    if (!STOCK_MOVEMENT_REASONS.includes(reason)) return res.status(400).json({ message: 'Motif invalide.' });
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: 'Produit introuvable.' });
+    if (qty > (product.stock || 0)) {
+      return res.status(400).json({ message: `Stock insuffisant : ${product.stock} en stock, ${qty} demandé(s).` });
+    }
+
+    const unitCost = Number(product.costPrice) || 0;
+    const costImpact = unitCost * qty;
+
+    product.stock = (product.stock || 0) - qty;
+    product.activities = product.activities || [];
+    product.activities.push({
+      type: 'adjustment',
+      description: `Sortie de stock (${reason}) : -${qty}${note ? ` — ${note}` : ''}`,
+      oldValue: product.stock + qty,
+      newValue: product.stock,
+      user: req.user?._id,
+    });
+    await product.save();
+
+    const movement = await StockMovement.create({
+      product: product._id,
+      productName: product.name,
+      category: product.category,
+      container: product.container,
+      warehouse: product.warehouse,
+      quantity: qty,
+      reason,
+      unitCost,
+      costImpact,
+      note: (note || '').trim(),
+      user: req.user?._id,
+      source: 'direct',
+    });
+
+    res.status(201).json({ movement, product: { _id: product._id, stock: product.stock } });
+  } catch (error) {
+    console.error('❌ [createStockMovement]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    "Pertes & cadeaux" report — list + summary of stock movements.
+// @route   GET /api/products/stock-movements?reason=&startDate=&endDate=&container=
+// @access  Private/Admin
+const getStockMovements = async (req, res) => {
+  try {
+    const { reason, startDate, endDate, container, product } = req.query;
+    const filter = { ...tenantFilter(req) };
+    if (reason && STOCK_MOVEMENT_REASONS.includes(reason)) filter.reason = reason;
+    if (container) filter.container = container;
+    if (product) filter.product = product;
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
+
+    const movements = await StockMovement.find(filter)
+      .populate('user', 'name')
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+
+    const byReason = {};
+    let totalCost = 0;
+    let totalQty = 0;
+    for (const m of movements) {
+      totalCost += m.costImpact || 0;
+      totalQty += m.quantity || 0;
+      if (!byReason[m.reason]) byReason[m.reason] = { reason: m.reason, count: 0, quantity: 0, cost: 0 };
+      byReason[m.reason].count += 1;
+      byReason[m.reason].quantity += m.quantity || 0;
+      byReason[m.reason].cost += m.costImpact || 0;
+    }
+
+    res.json({
+      movements,
+      summary: {
+        count: movements.length,
+        totalQuantity: totalQty,
+        totalCost,
+        byReason: Object.values(byReason).sort((a, b) => b.cost - a.cost),
+      },
+    });
+  } catch (error) {
+    console.error('❌ [getStockMovements]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Per-product loss map (for catalog badges): { productId: {casse,cadeau,units,count} }.
+// @route   GET /api/products/loss-map
+// @access  Private/Admin
+const getProductLossMap = async (req, res) => {
+  try {
+    const agg = await StockMovement.aggregate([
+      { $match: { ...tenantFilter(req) } },
+      { $group: { _id: { product: '$product', reason: '$reason' }, units: { $sum: '$quantity' }, count: { $sum: 1 } } },
+    ]);
+    const map = {};
+    for (const r of agg) {
+      const pid = String(r._id.product);
+      if (!map[pid]) map[pid] = { casse: 0, cadeau: 0, autres: 0, units: 0, count: 0 };
+      if (r._id.reason === 'cadeau') map[pid].cadeau += r.units;
+      else if (r._id.reason === 'casse') map[pid].casse += r.units;
+      else map[pid].autres += r.units;
+      map[pid].units += r.units;
+      map[pid].count += r.count;
+    }
+    res.json({ map });
+  } catch (error) {
+    console.error('❌ [getProductLossMap]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Undo a stock movement — restores the units to stock and removes it.
+// @route   DELETE /api/products/stock-movement/:id
+// @access  Private/Admin
+const deleteStockMovement = async (req, res) => {
+  try {
+    const movement = await StockMovement.findById(req.params.id);
+    if (!movement) return res.status(404).json({ message: 'Mouvement introuvable.' });
+
+    const product = await Product.findById(movement.product);
+    if (product) {
+      const before = product.stock || 0;
+      product.stock = before + movement.quantity;
+      product.activities = product.activities || [];
+      product.activities.push({
+        type: 'adjustment',
+        description: `Annulation sortie (${movement.reason}) : +${movement.quantity}`,
+        oldValue: before,
+        newValue: product.stock,
+        user: req.user?._id,
+      });
+      await product.save();
+    }
+    await StockMovement.deleteOne({ _id: movement._id });
+
+    res.json({ success: true, restoredStock: product ? product.stock : null });
+  } catch (error) {
+    console.error('❌ [deleteStockMovement]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Slow-moving products + actionable selling suggestions.
+// @route   GET /api/products/slow-movers?days=90
+// @access  Private/Admin
+const getSlowMovingProducts = async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 90, 7), 365);
+    const since = new Date(Date.now() - days * 86400000);
+
+    const products = await Product.find({ ...tenantFilter(req), stock: { $gt: 0 } }).lean();
+    const sales = await Sale.find({ ...tenantFilter(req), status: { $ne: 'cancelled' } })
+      .select('products saleDate')
+      .lean();
+
+    // Per-product sales aggregation.
+    const agg = {};
+    for (const s of sales) {
+      const d = s.saleDate ? new Date(s.saleDate) : null;
+      for (const item of s.products || []) {
+        if (!item) continue;
+        const pid = (item.product && item.product._id ? item.product._id : item.product)?.toString?.();
+        if (!pid) continue;
+        const qty = Number(item.quantity) || 0;
+        if (!agg[pid]) agg[pid] = { windowUnits: 0, totalUnits: 0, last: null };
+        agg[pid].totalUnits += qty;
+        if (d && d >= since) agg[pid].windowUnits += qty;
+        if (d && (!agg[pid].last || d > agg[pid].last)) agg[pid].last = d;
+      }
+    }
+
+    const monthsInWindow = days / 30;
+    const rows = [];
+    for (const p of products) {
+      const m = agg[p._id.toString()] || { windowUnits: 0, totalUnits: 0, last: null };
+      const stock = Number(p.stock) || 0;
+      const stockValue = (Number(p.price) || 0) * stock;
+      const velocityPerMonth = m.windowUnits / monthsInWindow; // units/month over window
+      const monthsToClear = velocityPerMonth > 0 ? stock / velocityPerMonth : Infinity;
+      const daysSinceLastSale = m.last ? Math.floor((Date.now() - new Date(m.last)) / 86400000) : null;
+
+      // "Slow" = nothing sold in the window, or 4+ months of stock at current pace.
+      const isSlow = m.windowUnits === 0 || monthsToClear >= 4;
+      if (!isSlow) continue;
+
+      let severity; let reason;
+      if (m.totalUnits === 0) {
+        severity = 'critical';
+        reason = 'Jamais vendu';
+      } else if (m.windowUnits === 0) {
+        severity = 'high';
+        reason = daysSinceLastSale != null ? `Aucune vente depuis ${daysSinceLastSale} j` : 'Dormant';
+      } else {
+        severity = 'medium';
+        reason = `Écoulement lent (~${Math.round(monthsToClear)} mois de stock)`;
+      }
+
+      // Actionable suggestions, ordered by relevance.
+      const actions = [];
+      if (severity === 'critical') {
+        actions.push('Remise -20 % pour déclencher la 1ʳᵉ vente');
+        actions.push('Mettre en avant en vitrine / page d’accueil');
+        if (stockValue > 100000) actions.push('Négocier un retour ou échange fournisseur');
+      } else if (severity === 'high') {
+        actions.push('Promotion -15 % sur une durée limitée');
+        actions.push('Proposer en lot avec un best-seller');
+      } else {
+        actions.push('Remise -10 % ou offre « 2 achetés = 1 réduit »');
+        actions.push('Déplacer vers l’emplacement/dépôt le plus visité');
+      }
+
+      rows.push({
+        _id: p._id,
+        name: p.name,
+        slug: p.slug,
+        category: p.category || 'Non catégorisé',
+        container: p.container || '',
+        warehouse: p.warehouse || '',
+        supplierName: p.supplierName || '',
+        image: p.image || '',
+        price: p.price || 0,
+        stock,
+        stockValue,
+        soldInWindow: m.windowUnits,
+        totalSold: m.totalUnits,
+        daysSinceLastSale,
+        monthsToClear: monthsToClear === Infinity ? null : Math.round(monthsToClear * 10) / 10,
+        severity,
+        reason,
+        actions,
+      });
+    }
+
+    rows.sort((a, b) => b.stockValue - a.stockValue);
+
+    const summary = {
+      count: rows.length,
+      immobilizedValue: rows.reduce((s, r) => s + r.stockValue, 0),
+      neverSold: rows.filter((r) => r.severity === 'critical').length,
+      dormant: rows.filter((r) => r.severity === 'high').length,
+      slow: rows.filter((r) => r.severity === 'medium').length,
+      totalInStock: products.length,
+    };
+
+    res.json({ days, summary, products: rows });
+  } catch (error) {
+    console.error('❌ [getSlowMovingProducts]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @route GET /api/products/never-sold
 // @access Private/Admin
 const getNeverSoldProducts = async (req, res) => {
@@ -1533,6 +1834,11 @@ module.exports = {
   getImageLibrary,
   getProductDashboard,
   getNeverSoldProducts,
+  getSlowMovingProducts,
+  createStockMovement,
+  getStockMovements,
+  getProductLossMap,
+  deleteStockMovement,
   getProductsBySupplier,
   getProductsByContainer,
   getProductsByWarehouse,

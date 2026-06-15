@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { protect, superAdmin } = require('../middlewares/authMiddleware');
+const { protect, admin, superAdmin } = require('../middlewares/authMiddleware');
 const {
   registerTenant,
   createTenant,
   getTenants,
+  getPlanCatalog,
+  requestPlanChange,
+  resolvePlanRequest,
   getTenantById,
   updateTenant,
   deleteTenant,
@@ -24,9 +27,12 @@ router.post('/register', registerTenant);
 
 // ── Authenticated (any tenant user) ─────────────────────
 router.get('/me', protect, getMyTenant);
+router.get('/plan-catalog', protect, getPlanCatalog);
+router.post('/plan-request', protect, admin, requestPlanChange);
 
 // ── Super-admin only ─────────────────────────────────────
 // Static paths BEFORE '/:id' so they are not captured as an id.
+router.put('/:id/plan-request', protect, superAdmin, resolvePlanRequest);
 router.get('/export/csv',     protect, superAdmin, exportTenantsCsv);
 router.get('/stats/overview', protect, superAdmin, getOverviewStats);
 router.get('/audit',          protect, superAdmin, getAuditLog);

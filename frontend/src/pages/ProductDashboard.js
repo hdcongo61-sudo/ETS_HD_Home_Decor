@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { motion } from 'framer-motion';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import {
@@ -144,7 +144,7 @@ const ProductDashboard = () => {
   if (loading)
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950"></div>
       </div>
     );
 
@@ -176,7 +176,6 @@ const ProductDashboard = () => {
   return (
   <Workspace>
     <ProductPageShell>
-      <Toaster />
       <ProductHero
         eyebrow="Inventaire"
         title="Tableau de bord produits"
@@ -198,7 +197,7 @@ const ProductDashboard = () => {
         </div>
 
         {/* Graphique tendance ventes */}
-        <div className="mt-5 h-48 rounded-[22px] border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/70">
+        <div className="mt-5 h-48 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-3">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={stats.salesTrend}>
               <defs>
@@ -250,7 +249,7 @@ const ProductDashboard = () => {
       <ProductSection title="Top produits vendus" description="Les cinq produits les plus performants.">
         <div className="overflow-x-auto">
           <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <thead className="bg-[var(--colorNeutralBackground2)] text-xs uppercase text-[var(--colorNeutralForeground3)]">
               <tr>
                 <th className="py-2 px-3">Produit</th>
                 <th className="py-2 px-3">Catégorie</th>
@@ -261,7 +260,7 @@ const ProductDashboard = () => {
             </thead>
             <tbody>
               {stats.topSellingProducts.slice(0, 5).map((p) => (
-                <tr key={p._id} className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70">
+                <tr key={p._id} className="border-b border-gray-100 transition hover:bg-[var(--colorNeutralBackground2)]">
                   <td className="py-2 px-3">{p.name}</td>
                   <td className="py-2 px-3">{p.category}</td>
                   <td className="py-2 px-3">{p.sold}</td>
@@ -313,14 +312,14 @@ const ProductDashboard = () => {
         </div>
 
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-purple-50 rounded-2xl p-4">
-            <p className="text-gray-500">Stock critique</p>
+          <div className="bg-purple-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
             <p className="text-lg font-semibold text-yellow-600">
               {stats.supplierStats.reduce((sum, s) => sum + (s.lowStockCount || 0), 0)}
             </p>
           </div>
-          <div className="bg-purple-50 rounded-2xl p-4">
-            <p className="text-gray-500">Ruptures</p>
+          <div className="bg-purple-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
             <p className="text-lg font-semibold text-red-600">
               {stats.supplierStats.reduce((sum, s) => sum + (s.outOfStockCount || 0), 0)}
             </p>
@@ -329,7 +328,7 @@ const ProductDashboard = () => {
 
         <div className="overflow-x-auto">
           <table ref={supplierTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Fournisseur</th>
                 <th className="py-2 px-3">Téléphone</th>
@@ -343,7 +342,7 @@ const ProductDashboard = () => {
             </thead>
             <tbody>
               {stats.supplierStats.slice(0, 10).map((s, index) => (
-                <tr key={index} className="border-b hover:bg-slate-50">
+                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
                   <td className="py-2 px-3 font-medium">
                     <Link
                       to={`/suppliers/${encodeURIComponent(
@@ -354,7 +353,7 @@ const ProductDashboard = () => {
                       {s.supplierName}
                     </Link>
                   </td>
-                  <td className="py-2 px-3 text-gray-600">{s.supplierPhone || '—'}</td>
+                  <td className="py-2 px-3 text-[var(--colorNeutralForeground3)]">{s.supplierPhone || '—'}</td>
                   <td className="py-2 px-3">{s.totalProducts}</td>
                   <td className="py-2 px-3">{s.totalStockValue.toLocaleString()} CFA</td>
                   <td className="py-2 px-3 text-green-600 font-semibold">
@@ -400,14 +399,14 @@ const ProductDashboard = () => {
         </div>
 
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-emerald-50 rounded-2xl p-4">
-            <p className="text-gray-500">Stock critique</p>
+          <div className="bg-emerald-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
             <p className="text-lg font-semibold text-yellow-600">
               {stats.containerStats.reduce((sum, c) => sum + (c.lowStockCount || 0), 0)}
             </p>
           </div>
-          <div className="bg-emerald-50 rounded-2xl p-4">
-            <p className="text-gray-500">Ruptures</p>
+          <div className="bg-emerald-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
             <p className="text-lg font-semibold text-red-600">
               {stats.containerStats.reduce((sum, c) => sum + (c.outOfStockCount || 0), 0)}
             </p>
@@ -416,7 +415,7 @@ const ProductDashboard = () => {
 
         <div className="overflow-x-auto">
           <table ref={containerTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Conteneur</th>
                 <th className="py-2 px-3">Produits</th>
@@ -429,8 +428,8 @@ const ProductDashboard = () => {
             </thead>
             <tbody>
               {stats.containerStats.slice(0, 10).map((c, index) => (
-                <tr key={index} className="border-b hover:bg-slate-50">
-                  <td className="py-2 px-3 font-medium text-gray-900">
+                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
+                  <td className="py-2 px-3 font-medium text-[var(--colorNeutralForeground1)]">
                     {c.containerName}
                   </td>
                   <td className="py-2 px-3">{c.totalProducts}</td>
@@ -486,14 +485,14 @@ const ProductDashboard = () => {
         </div>
 
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-sky-50 rounded-2xl p-4">
-            <p className="text-gray-500">Stock critique</p>
+          <div className="bg-sky-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
             <p className="text-lg font-semibold text-yellow-600">
               {stats.warehouseStats.reduce((sum, w) => sum + (w.lowStockCount || 0), 0)}
             </p>
           </div>
-          <div className="bg-sky-50 rounded-2xl p-4">
-            <p className="text-gray-500">Ruptures</p>
+          <div className="bg-sky-50 rounded-[var(--radiusLarge)] p-4">
+            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
             <p className="text-lg font-semibold text-red-600">
               {stats.warehouseStats.reduce((sum, w) => sum + (w.outOfStockCount || 0), 0)}
             </p>
@@ -502,7 +501,7 @@ const ProductDashboard = () => {
 
         <div className="overflow-x-auto">
           <table ref={warehouseTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
               <tr>
                 <th className="py-2 px-3">Entrepot</th>
                 <th className="py-2 px-3">Produits</th>
@@ -515,8 +514,8 @@ const ProductDashboard = () => {
             </thead>
             <tbody>
               {stats.warehouseStats.slice(0, 10).map((w, index) => (
-                <tr key={index} className="border-b hover:bg-slate-50">
-                  <td className="py-2 px-3 font-medium text-gray-900">
+                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
+                  <td className="py-2 px-3 font-medium text-[var(--colorNeutralForeground1)]">
                     {w.warehouseName}
                   </td>
                   <td className="py-2 px-3">{w.totalProducts}</td>
@@ -546,10 +545,10 @@ const ProductDashboard = () => {
 
 // Sous-composants
 const toneClasses = {
-  slate: 'border-slate-200 bg-slate-50 text-slate-700',
+  slate: 'border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground2)]',
   emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   amber: 'border-amber-200 bg-amber-50 text-amber-700',
-  rose: 'border-rose-200 bg-rose-50 text-rose-700',
+  rose: 'border-rose-200 bg-[var(--colorStatusDangerBackground1)] text-[var(--colorStatusDangerForeground1)]',
   sky: 'border-sky-200 bg-sky-50 text-sky-700',
   violet: 'border-violet-200 bg-violet-50 text-violet-700',
 };
@@ -560,21 +559,21 @@ const QuickLinkCard = ({ title, subtitle, icon: Icon, tone = 'slate', path, coun
     <motion.div
       whileHover={{ y: -2 }}
       onClick={() => navigate(path)}
-      className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300"
+      className="cursor-pointer rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-white p-5 shadow-sm transition hover:border-slate-300"
     >
       <div className="flex items-center justify-between">
-        <div className={`rounded-2xl border p-3 ${toneClasses[tone] || toneClasses.slate}`}>
+        <div className={`rounded-[var(--radiusLarge)] border p-3 ${toneClasses[tone] || toneClasses.slate}`}>
           <Icon className="h-5 w-5" />
         </div>
         {count > 0 && (
-          <div className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+          <div className="rounded-full bg-[var(--colorNeutralBackground3)] px-2 py-0.5 text-xs font-semibold text-[var(--colorNeutralForeground2)]">
             {count}
           </div>
         )}
       </div>
       <div className="mt-3">
-        <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
-        <p className="text-sm text-slate-500">{subtitle}</p>
+        <h3 className="text-lg font-semibold text-[var(--colorNeutralForeground1)]">{title}</h3>
+        <p className="text-sm text-[var(--colorNeutralForeground3)]">{subtitle}</p>
       </div>
     </motion.div>
   );

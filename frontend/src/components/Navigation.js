@@ -31,6 +31,7 @@ import {
   PlusCircle,
   History,
   CreditCard,
+  LifeBuoy,
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -540,11 +541,15 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                               <Link to="/users/stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
                             </>
                           )}
-                          <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Employés</div>
-                          <div className="space-y-0.5">
-                            <Link to="/employees" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Employés</Link>
-                            <Link to="/employees/new" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Nouvel employé</Link>
-                          </div>
+                          {auth.isAdmin && (
+                            <>
+                              <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Employés</div>
+                              <div className="space-y-0.5">
+                                <Link to="/employees" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Employés</Link>
+                                <Link to="/employees/new" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Nouvel employé</Link>
+                              </div>
+                            </>
+                          )}
                           <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Ventes</div>
                           <div className="space-y-0.5">
                             <Link to="/sales#sale-form" className="block py-1.5 text-sm text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Enregistrer une vente</Link>
@@ -558,7 +563,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                           <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Clients</div>
                           <div className="space-y-0.5">
                             <Link to="/clients" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des clients</Link>
-                            <Link to="/clients/dashboard" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Tableau de bord clients</Link>
+
                           </div>
                         </div>
                         {/* Colonne droite */}
@@ -591,6 +596,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
                               <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Administration</div>
                               <div className="space-y-0.5">
                                 <Link to="/settings" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paramètres</Link>
+                                <Link to="/support" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Assistance</Link>
                                 <Link to="/users/stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dashboard Utilisateurs</Link>
                                 <Link to="/admin/users" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Gestion utilisateurs</Link>
                                 <Link to="/users/login-stats" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Historique connexions</Link>
@@ -632,7 +638,6 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
           </MobileMenuSection>
           <MobileMenuSection title="Clients">
             <NavIcon to="/clients" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} label="Liste des clients" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
-            <NavIcon to="/clients/dashboard" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} label="Tableau de bord clients" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
           </MobileMenuSection>
           <MobileMenuSection title="Produits">
             <NavIcon to="/products" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} label="Catalogue" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -649,10 +654,12 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
               </>
             )}
           </MobileMenuSection>
-          <MobileMenuSection title="Employés">
-            <NavIcon to="/employees" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} label="Liste des employés" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
-            <NavIcon to="/employees/new" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>} label="Nouvel employé" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
-          </MobileMenuSection>
+          {auth.isAdmin && (
+            <MobileMenuSection title="Employés">
+              <NavIcon to="/employees" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} label="Liste des employés" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
+              <NavIcon to="/employees/new" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>} label="Nouvel employé" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
+            </MobileMenuSection>
+          )}
           {auth.isAdmin && (
             <MobileMenuSection title="Administration">
               <NavIcon to="/settings" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.757.426 1.757 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.757-2.924 1.757-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.757-.426-1.757-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} label="Paramètres" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -729,6 +736,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
         isMobile={isMobile}
       />
 
+      {auth.isAdmin && (
           <NavIcon
             to="/employees"
             icon={
@@ -746,6 +754,7 @@ const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, 
             onClick={closeMenu}
             isMobile={isMobile}
           />
+      )}
 
         </>
       )}
@@ -878,16 +887,15 @@ const QA_GROUPS = (auth) => [
     label: 'Clients',
     items: [
       { to: '/clients',           icon: Users,         label: 'Liste des clients' },
-      { to: '/clients/dashboard', icon: BarChart2,     label: 'Tableau de bord clients' },
     ],
   },
-  {
+  ...(auth.isAdmin ? [{
     label: 'Employés',
     items: [
       { to: '/employees',     icon: BriefcaseBusiness, label: 'Liste des employés' },
       { to: '/employees/new', icon: PlusCircle,        label: 'Nouvel employé' },
     ],
-  },
+  }] : []),
   ...(auth.isAdmin ? [
     {
       label: 'Finances',
@@ -902,6 +910,7 @@ const QA_GROUPS = (auth) => [
       label: 'Administration',
       items: [
         { to: '/settings',       icon: Settings,   label: 'Paramètres' },
+        { to: '/support',        icon: LifeBuoy,   label: 'Assistance' },
         { to: '/admin/users',    icon: UserCheck,  label: 'Gestion utilisateurs' },
         { to: '/users/stats',    icon: BarChart2,  label: 'Dashboard utilisateurs' },
         { to: '/documents',      icon: FileStack,  label: 'Documents' },

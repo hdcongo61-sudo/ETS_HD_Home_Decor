@@ -1,6 +1,7 @@
 // controllers/profitController.js
 const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
+const StockMovement = require('../models/stockMovementModel');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 // @desc    Obtenir les analyses de bénéfices
@@ -58,9 +59,51 @@ const getProfitAnalytics = async (req, res) => {
     const g = generalAgg[0] || {};
     const totalRevenue = g.totalRevenue || 0;
     const totalProfit = g.totalProfit || 0;
+
+    // ── Stock losses (casse/cadeau …) over the SAME period → reduce net profit.
+    // Movements are tracked separately (StockMovement) and never mutate sale
+    // snapshots, so net = gross sales profit − losses, fully auditable.
+    const lossMatch = {
+      ...tenantFilter(req),
+      ...((startDate || endDate) ? {
+        createdAt: {
+          ...(startDate ? { $gte: new Date(startDate) } : {}),
+          ...(endDate ? { $lte: new Date(endDate) } : {}),
+        },
+      } : {}),
+      ...(container ? { container } : {}),
+    };
+    const lossAgg = await StockMovement.aggregate([
+      { $match: lossMatch },
+      { $group: { _id: '$reason', cost: { $sum: '$costImpact' }, quantity: { $sum: '$quantity' } } },
+    ]);
+    const lossByReason = lossAgg.map((r) => ({ reason: r._id, cost: r.cost || 0, quantity: r.quantity || 0 }));
+    const lossOf = (reason) => lossByReason.find((r) => r.reason === reason)?.cost || 0;
+    const lossCasse = lossOf('casse') + lossOf('vol') + lossOf('peremption');
+    const lossCadeau = lossOf('cadeau');
+    const lossOther = lossByReason.reduce((s, r) => s + r.cost, 0) - lossCasse - lossCadeau;
+    const lossCost = lossCasse + lossCadeau + lossOther;
+    const netProfit = totalProfit - lossCost;
+
+    // Per-product losses to net out the product breakdown.
+    const lossProductAgg = await StockMovement.aggregate([
+      { $match: lossMatch },
+      { $group: { _id: '$product', cost: { $sum: '$costImpact' } } },
+    ]);
+    const lossByProduct = {};
+    lossProductAgg.forEach((r) => { if (r._id) lossByProduct[String(r._id)] = r.cost || 0; });
+
     const generalStats = {
       totalRevenue,
-      totalProfit,
+      totalProfit,            // gross profit from sales (kept for back-compat)
+      grossProfit: totalProfit,
+      lossCost,
+      lossCasse,
+      lossCadeau,
+      lossOther,
+      lossByReason,
+      netProfit,
+      netMargin: totalRevenue ? Number(((netProfit / totalRevenue) * 100).toFixed(2)) : 0,
       totalCost: g.totalCost || 0,
       saleCount: g.saleCount || 0,
       profitableSales: g.profitableSales || 0,
@@ -142,6 +185,12 @@ const getProfitAnalytics = async (req, res) => {
       { $sort: { totalProfit: -1 } },
       { $limit: 12 },
     ]);
+
+    // Net out per-product losses (casse/cadeau) over the period.
+    topProducts.forEach((p) => {
+      p.lossCost = lossByProduct[String(p._id)] || 0;
+      p.netProfit = (p.totalProfit || 0) - p.lossCost;
+    });
 
     // By category
     const profitByCategory = await Sale.aggregate([

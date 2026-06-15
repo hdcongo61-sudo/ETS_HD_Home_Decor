@@ -10,6 +10,11 @@ const {
   getProductImages,
   getImageLibrary,
   getNeverSoldProducts,
+  getSlowMovingProducts,
+  createStockMovement,
+  getStockMovements,
+  getProductLossMap,
+  deleteStockMovement,
   getProductDashboard, // Assurez-vous d'importer cette fonction
   getProductsBySupplier,
   getProductsByContainer,
@@ -21,6 +26,11 @@ const { protect, admin } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 router.route('/never-sold').get(protect, getNeverSoldProducts);
+router.route('/slow-movers').get(protect, admin, getSlowMovingProducts);
+router.route('/stock-movements').get(protect, admin, getStockMovements);
+router.route('/loss-map').get(protect, admin, getProductLossMap);
+router.route('/stock-movement').post(protect, admin, createStockMovement);
+router.route('/stock-movement/:id').delete(protect, admin, deleteStockMovement);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
 router.route('/dashboard')
   .get(protect, admin, getProductDashboard);

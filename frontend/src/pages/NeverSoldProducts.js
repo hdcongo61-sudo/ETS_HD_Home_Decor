@@ -281,12 +281,12 @@ const exportToPDF = async () => {
       </div>
 
       {/* Tableau principal */}
-      <div className="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-[var(--radiusLarge)] shadow border border-gray-100 overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h3 className="text-xl font-semibold text-gray-800">
+          <h3 className="text-xl font-semibold text-[var(--colorNeutralForeground2)]">
             Liste des Produits Jamais Vendus
           </h3>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-[var(--colorNeutralForeground3)]">
             {filteredData.length} produit(s)
           </span>
         </div>
@@ -294,17 +294,17 @@ const exportToPDF = async () => {
         {filteredData.length > 0 ? (
           <>
             <div className="hidden md:block overflow-x-auto">
-              <table ref={tableRef} className="min-w-full divide-y divide-gray-100 text-sm">
-                <thead className="bg-gray-50">
+              <table ref={tableRef} className="min-w-full divide-y divide-[var(--colorNeutralStroke2)] text-sm">
+                <thead className="bg-[var(--colorNeutralBackground2)]">
                   <tr>
                     {['Produit', 'Catégorie', 'Fournisseur', 'Prix', 'Stock', 'Actions'].map(h => (
-                      <th key={h} className="px-6 py-3 text-left font-medium text-gray-600 uppercase tracking-wider">
+                      <th key={h} className="px-6 py-3 text-left font-medium text-[var(--colorNeutralForeground3)] uppercase tracking-wider">
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
+                <tbody className="bg-white divide-y divide-[var(--colorNeutralStroke2)]">
                   {filteredData.map((product, i) => (
                     <motion.tr
                       key={product._id}
@@ -313,19 +313,19 @@ const exportToPDF = async () => {
                       transition={{ delay: i * 0.03 }}
                       className="hover:bg-indigo-50 transition-colors"
                     >
-                      <td className="px-6 py-3 font-medium text-gray-800">
+                      <td className="px-6 py-3 font-medium text-[var(--colorNeutralForeground2)]">
                         {product.name}
                       </td>
-                      <td className="px-6 py-3 text-gray-600">
+                      <td className="px-6 py-3 text-[var(--colorNeutralForeground3)]">
                         {product.category || 'Non catégorisé'}
                       </td>
-                      <td className="px-6 py-3 text-gray-600">
+                      <td className="px-6 py-3 text-[var(--colorNeutralForeground3)]">
                         {product.supplierName || '—'}
                       </td>
-                      <td className="px-6 py-3 text-gray-700 font-medium">
+                      <td className="px-6 py-3 text-[var(--colorNeutralForeground2)] font-medium">
                         {product.price?.toLocaleString()} CFA
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{product.stock}</td>
+                      <td className="px-6 py-3 text-[var(--colorNeutralForeground2)]">{product.stock}</td>
                       <td className="px-6 py-3 flex gap-3">
                         <button
                           onClick={() => navigate(productPath(product))}
@@ -353,22 +353,22 @@ const exportToPDF = async () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="bg-white rounded-2xl shadow border border-gray-100 p-4"
+                className="bg-white rounded-[var(--radiusLarge)] shadow border border-gray-100 p-4"
               >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-base font-semibold text-gray-900">{product.name}</p>
-                      <p className="text-xs text-gray-500">{product.category || 'Non catégorisé'}</p>
+                      <p className="text-base font-semibold text-[var(--colorNeutralForeground1)]">{product.name}</p>
+                      <p className="text-xs text-[var(--colorNeutralForeground3)]">{product.category || 'Non catégorisé'}</p>
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[var(--colorNeutralForeground3)]">
                       {product.price?.toLocaleString()} CFA
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Fournisseur : <span className="text-gray-800">{product.supplierName || '—'}</span>
+                  <p className="text-sm text-[var(--colorNeutralForeground3)] mt-1">
+                    Fournisseur : <span className="text-[var(--colorNeutralForeground2)]">{product.supplierName || '—'}</span>
                   </p>
                   <div className="flex items-center justify-between mt-3 text-sm">
-                    <span className="text-gray-600">Stock : {product.stock}</span>
+                    <span className="text-[var(--colorNeutralForeground3)]">Stock : {product.stock}</span>
                     <div className="flex gap-2">
                       <button
                         onClick={() => navigate(productPath(product))}
@@ -390,7 +390,7 @@ const exportToPDF = async () => {
           </>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">
+            <p className="text-[var(--colorNeutralForeground3)] text-lg">
               🎉 Tous les produits ont été vendus au moins une fois !
             </p>
           </div>
@@ -414,12 +414,12 @@ const exportToPDF = async () => {
 /* --- Composants réutilisables --- */
 const ChartCard = ({ title, children }) => (
   <motion.div
-    className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
+    className="bg-white rounded-[var(--radiusLarge)] shadow-md p-6 border border-gray-100"
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4 }}
   >
-    <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+    <h3 className="text-lg font-semibold text-[var(--colorNeutralForeground2)] mb-4">{title}</h3>
     {children}
   </motion.div>
 );

@@ -1,3 +1,4 @@
+import { confirmDialog } from './ConfirmProvider';
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
@@ -7,8 +8,7 @@ import Modal from './Modal';
 import toast from 'react-hot-toast';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from './AppLoader';
-import { PageHeader, Workspace, KPICard, StatusBadge, Button, DataTable } from './business';
-
+import { PageHeader, Workspace, KPICard, StatusBadge, Button, DataTable } from './business';
 // Icônes SVG réutilisables
 const PencilIcon = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@ const UserDashboard = () => {
     }, [location.search, users]);
 
     const handleDelete = async (userId) => {
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+        if (await confirmDialog('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
             try {
                 await api.delete(`/users/${userId}`);
                 setUsers(users.filter((user) => user._id !== userId));
@@ -169,7 +169,7 @@ const UserDashboard = () => {
 
     const handleToggleActive = async (user) => {
         const action = user.isActive !== false ? 'désactiver' : 'activer';
-        if (!window.confirm(`Êtes-vous sûr de vouloir ${action} le compte de ${user.name || user.email} ?`)) return;
+        if (!await confirmDialog(`Êtes-vous sûr de vouloir ${action} le compte de ${user.name || user.email} ?`)) return;
         try {
             const { data } = await api.put(`/users/${user._id}/toggle-active`);
             setUsers(users.map((u) => (u._id === user._id ? { ...u, isActive: data.user.isActive } : u)));

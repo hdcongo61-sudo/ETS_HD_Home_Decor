@@ -1,7 +1,8 @@
+import { confirmDialog } from '../components/ConfirmProvider';
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
@@ -267,7 +268,7 @@ const Clients = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce client ?')) return;
+    if (!await confirmDialog('Supprimer ce client ?')) return;
     try {
       await api.delete(`/clients/${id}`);
       setClients((prev) => prev.filter((client) => client._id !== id));
@@ -484,7 +485,6 @@ const Clients = () => {
 
   return (
     <Workspace>
-      <Toaster position="top-center" />
 
       <PageHeader
         eyebrow="Relation client"

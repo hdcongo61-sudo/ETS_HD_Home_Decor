@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import { MessageCircle, Phone, Copy } from "lucide-react";
 import { Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -19,6 +21,13 @@ import {
   Surface,
   Workspace,
 } from "../components/business";
+import {
+  buildReminderMessage,
+  whatsAppLink,
+  telLink,
+  canWhatsApp,
+  recordReminder,
+} from "../utils/clientReminder";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -27,9 +36,28 @@ const PaymentModal = lazy(() => import("../components/PaymentModal"));
 const PartiallyPaidPurchases = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
+  const shopName = auth?.tenant?.name || "";
+  const dialCode = auth?.tenant?.dialCode || "";
+
+  const copyMessage = (msg) => {
+    navigator.clipboard?.writeText(msg)
+      .then(() => toast.success("Message copié"))
+      .catch(() => toast.error("Copie impossible"));
+  };
+
+  const handleWhatsAppReminder = async (sale, waLink) => {
+    try {
+      await recordReminder(sale._id, 'whatsapp');
+      setRemindedSales((prev) => ({ ...prev, [sale._id]: new Date().toISOString() }));
+    } catch {
+      // Silently fail — WhatsApp still opens
+    }
+    window.open(waLink, '_blank', 'noopener,noreferrer');
+  };
   const [sales, setSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [remindedSales, setRemindedSales] = useState({});
   const [search, setSearch] = useState("");
 
   const fetchSales = useCallback(async () => {
@@ -193,6 +221,19 @@ const PartiallyPaidPurchases = () => {
                 {partiallyPaid.map((s) => {
                   const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
                   const balance = (s.totalAmount || 0) - paid;
+                  const lastPay = (s.payments || []).slice(-1)[0]?.paymentDate || s.updatedAt;
+                  const daysSince = lastPay
+                    ? Math.max(0, Math.floor((Date.now() - new Date(lastPay).getTime()) / 86400000))
+                    : null;
+                  const reminderMsg = buildReminderMessage({
+                    clientName: s.client?.name,
+                    shopName,
+                    balance,
+                    lastPaymentLabel: lastPay ? new Date(lastPay).toLocaleDateString("fr-FR") : "",
+                    daysSince,
+                  });
+                  const wa = canWhatsApp(s.client?.phone) ? whatsAppLink(s.client?.phone, dialCode, reminderMsg) : "";
+                  const tel = telLink(s.client?.phone);
                   return (
                     <div
                       key={s._id}
@@ -230,6 +271,34 @@ const PartiallyPaidPurchases = () => {
                               {balance.toLocaleString("fr-FR")} CFA
                             </div>
                           </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {wa ? (
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppReminder(s, wa)}
+                              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+                              style={{ background: remindedSales[s._id] ? "#128C7E" : "#25D366" }}
+                            >
+                              <MessageCircle size={15} /> {remindedSales[s._id] ? 'Relancé ✓' : 'WhatsApp'}
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400" title="Numéro de téléphone manquant">
+                              <MessageCircle size={15} /> WhatsApp
+                            </span>
+                          )}
+                          {tel && (
+                            <a href={tel} className="inline-flex items-center gap-1.5 rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                              <Phone size={15} /> Appeler
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => copyMessage(reminderMsg)}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                          >
+                            <Copy size={15} /> Copier
+                          </button>
                         </div>
                         <Button
                           onClick={() => {

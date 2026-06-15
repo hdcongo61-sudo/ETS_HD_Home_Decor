@@ -1,3 +1,4 @@
+import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Edit3, FileText, Mail, Phone, Plus, UserRound, UserX } from 'lucide-react';
@@ -69,7 +70,7 @@ const EmployeeDetail = () => {
   }, [id, reloadToken]);
 
   const handleDeletePaySlip = async (payslipId) => {
-    if (window.confirm('Confirmer la suppression de cette fiche de paie ?')) {
+    if (await confirmDialog('Confirmer la suppression de cette fiche de paie ?')) {
       try {
         await api.delete(`/employees/${id}/payroll/${payslipId}`);
         setPaySlips(paySlips.filter(slip => slip._id !== payslipId));

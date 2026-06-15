@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   DollarSign,
   Coins,
@@ -14,6 +15,8 @@ import {
   PackageCheck,
   Receipt,
   Sparkles,
+  Snail,
+  Lightbulb,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -327,23 +330,23 @@ const BusinessAnalyticsDashboard = ({
         </div>
 
         {/* ====== Synthèse Intelligente ====== */}
-        <div className="rounded-[24px] border border-gray-200 bg-gray-50/80 p-4  /70 sm:p-5">
+        <div className="fluent-card-filled p-4 sm:p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-gray-800 shadow-sm  ">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
                 <Sparkles size={18} />
               </span>
               <div>
-                <h3 className="text-base font-semibold text-gray-950 ">
+                <h3 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>
                   Synthèse intelligente
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 ">
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   Points à retenir avant de passer aux détails.
                 </p>
               </div>
             </div>
-            <span className="w-fit rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-600   ">
-              {weeklySales.length} vente(s)
+            <span className="ms-status-badge ms-status-neutral w-fit">
+              {weeklySales.length} vente(s) cette semaine
             </span>
           </div>
 
@@ -368,7 +371,7 @@ const BusinessAnalyticsDashboard = ({
             />
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
             <InsightNote
               title="Produit moteur"
               value={topProduct?.name || "Aucun"}
@@ -389,6 +392,35 @@ const BusinessAnalyticsDashboard = ({
               }
             />
           </div>
+
+          {/* Slow-movers action banner */}
+          <Link
+            to="/products/slow-movers"
+            className="mt-3 flex items-center gap-3 rounded-[var(--radiusLarge)] p-3.5 transition hover:brightness-[0.98]"
+            style={{ background: 'var(--ms-blue-soft)', border: '1px solid var(--colorBrandStroke2, var(--ms-border))' }}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusMedium)] bg-white" style={{ color: 'var(--colorBrandForeground1)' }}>
+              <Snail size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="fui-body1-strong inline-flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                <Lightbulb size={14} style={{ color: 'var(--colorBrandForeground1)' }} /> Faites tourner votre stock dormant
+              </p>
+              <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                Suggestions concrètes pour vendre les produits lents et libérer du capital.
+              </p>
+            </div>
+            <ArrowRight size={18} className="shrink-0" style={{ color: 'var(--colorBrandForeground1)' }} />
+          </Link>
+
+          <Link
+            to="/products/losses"
+            className="mt-2 inline-flex items-center gap-1.5 fui-caption1-strong hover:underline"
+            style={{ color: 'var(--colorNeutralForeground2)' }}
+          >
+            <TrendingDown size={14} /> Voir les pertes &amp; cadeaux (casse, dons)
+            <ArrowRight size={13} />
+          </Link>
         </div>
       </div>
     </motion.div>
@@ -447,34 +479,34 @@ const RankedRow = ({ index, title, subtitle, value }) => (
 );
 
 const CommerceMetric = ({ icon: Icon, label, count, amount }) => (
-  <div className="rounded-[20px] border border-gray-200 bg-white p-4  ">
+  <div className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--ms-white)] p-4">
     <div className="flex items-center justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+      <p className="fui-caption1-strong uppercase tracking-[0.12em]" style={{ color: 'var(--colorNeutralForeground3)' }}>
         {label}
       </p>
-      <Icon size={17} className="text-gray-500 " />
+      <Icon size={17} style={{ color: 'var(--colorNeutralForeground3)' }} />
     </div>
-    <p className="mt-3 text-2xl font-black text-gray-950 ">
+    <p className="mt-3 text-2xl font-bold" style={{ color: 'var(--colorNeutralForeground1)' }}>
       {count || 0}
     </p>
-    <p className="mt-1 text-sm font-medium text-gray-500 ">
+    <p className="fui-caption1 mt-1 font-medium" style={{ color: 'var(--colorNeutralForeground3)' }}>
       {formatCFA(amount)}
     </p>
   </div>
 );
 
 const InsightNote = ({ title, value, helper }) => (
-  <div className="rounded-[20px] border border-gray-200 bg-white p-4  ">
+  <div className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--ms-white)] p-4">
     <div className="flex items-center justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+      <p className="fui-caption1-strong uppercase tracking-[0.12em]" style={{ color: 'var(--colorNeutralForeground3)' }}>
         {title}
       </p>
-      <ArrowRight size={16} className="text-gray-400" />
+      <ArrowRight size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
     </div>
-    <p className="mt-3 truncate text-base font-bold text-gray-950 ">
+    <p className="fui-body1-strong mt-3 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
       {value}
     </p>
-    <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500 ">
+    <p className="fui-caption1 mt-1 line-clamp-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
       {helper}
     </p>
   </div>

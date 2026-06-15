@@ -521,7 +521,31 @@ const getCurrentUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(sanitizeUser(user));
+    const payload = sanitizeUser(user);
+
+    // Expose the shop's subscription state so the UI can show a trial countdown.
+    if (req.tenant) {
+      const t = req.tenant;
+      let daysLeft = null;
+      if (t.status === 'trial' && t.trialEndsAt) {
+        daysLeft = Math.ceil((new Date(t.trialEndsAt) - new Date()) / 86400000);
+      }
+      payload.tenant = {
+        name: t.name || '',
+        plan: t.plan || 'trial',
+        status: t.status || 'trial',
+        dialCode: t.dialCode || '',
+        trialEndsAt: t.trialEndsAt || null,
+        trialDaysLeft: daysLeft,
+        planRequest: t.planRequest && t.planRequest.status ? {
+          requestedPlan: t.planRequest.requestedPlan,
+          status: t.planRequest.status,
+          requestedAt: t.planRequest.requestedAt,
+        } : null,
+      };
+    }
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

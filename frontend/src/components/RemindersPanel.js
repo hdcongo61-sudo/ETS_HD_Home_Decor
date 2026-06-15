@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   AlertTriangle,
+  CheckCircle2,
   Clock,
   BellRing,
   Search,
@@ -10,9 +12,90 @@ import {
   CalendarClock,
   Users,
   Wallet,
+  MessageCircle,
+  Phone,
+  Copy,
 } from "lucide-react";
 import { employeePayrollNewPath } from "../utils/paths";
-import { KPICard, StatusBadge, Button } from "./business";
+import {
+  buildReminderMessage,
+  whatsAppLink,
+  telLink,
+  canWhatsApp,
+  recordReminder,
+  formatReminderAgo,
+} from "../utils/clientReminder";
+
+// Action row: WhatsApp reminder, call, copy message. Stops propagation so it
+// can live inside a clickable card without triggering navigation. Logs each
+// follow-up and shows when the client was last reminded.
+const ReminderActions = ({ sale, balance, daysSince, lastPaymentLabel, shopName, dialCode }) => {
+  const [remindedAt, setRemindedAt] = React.useState(sale.lastRemindedAt || null);
+  const phone = sale.client?.phone || "";
+  const message = buildReminderMessage({
+    clientName: sale.client?.name,
+    shopName,
+    balance,
+    lastPaymentLabel,
+    daysSince,
+  });
+  const wa = canWhatsApp(phone) ? whatsAppLink(phone, dialCode, message) : "";
+  const tel = telLink(phone);
+
+  const log = (channel) => { recordReminder(sale._id, channel); setRemindedAt(new Date().toISOString()); };
+  const stop = (e) => e.stopPropagation();
+  const copy = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard?.writeText(message)
+      .then(() => { toast.success("Message copié"); log("manual"); })
+      .catch(() => toast.error("Copie impossible"));
+  };
+
+  return (
+    <>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {wa ? (
+          <a
+            href={wa}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => { stop(e); log("whatsapp"); }}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95"
+            style={{ background: "#25D366" }}
+          >
+            <MessageCircle size={14} /> WhatsApp
+          </a>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:bg-gray-800" title="Numéro de téléphone manquant">
+            <MessageCircle size={14} /> WhatsApp
+          </span>
+        )}
+        {tel && (
+          <a
+            href={tel}
+            onClick={(e) => { stop(e); log("call"); }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            <Phone size={14} /> Appeler
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={copy}
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Copy size={14} /> Copier
+        </button>
+      </div>
+      {remindedAt && (
+        <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 dark:text-green-400">
+          <CheckCircle2 size={12} /> Relancé {formatReminderAgo(remindedAt)}
+        </p>
+      )}
+    </>
+  );
+};
 
 const ReminderCard = ({ sale, color, label }) => (
   <motion.div
@@ -95,50 +178,59 @@ const SalaryReminderCard = ({ employee }) => (
   </motion.div>
 );
 
-const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amount, tone }) => {
+const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amount, tone, daysSince, shopName, dialCode }) => {
   const toneClass =
     tone === "rose"
       ? "border-[var(--ms-danger)]/20 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
       : "border-[var(--ms-warning)]/20 bg-[var(--ms-warning)]/10 text-amber-700 dark:border-amber-500/20 dark:bg-[var(--ms-warning)]/100/10 dark:text-amber-300";
 
   return (
-    <Link to={`/sales/${sale._id}`} className="group">
-      <motion.article
-        whileHover={{ y: -2 }}
-        className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h4 className="truncate font-semibold text-gray-950 dark:text-white">
-              {sale.client?.name || "Client inconnu"}
-            </h4>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {helperLabel} : {helperValue}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {amountLabel} :{" "}
-              <span className="font-semibold text-gray-950 dark:text-white">
-                {Number(amount || 0).toLocaleString("fr-FR")} CFA
-              </span>
-            </p>
-          </div>
-          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>
-            {badge}
-          </span>
+    <motion.article
+      whileHover={{ y: -2 }}
+      className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="truncate font-semibold text-gray-950 dark:text-white">
+            {sale.client?.name || "Client inconnu"}
+          </h4>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {helperLabel} : {helperValue}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {amountLabel} :{" "}
+            <span className="font-semibold text-gray-950 dark:text-white">
+              {Number(amount || 0).toLocaleString("fr-FR")} CFA
+            </span>
+          </p>
         </div>
-        <div className="mt-3 text-xs font-semibold text-gray-600 group-hover:underline dark:text-gray-300">
-          Voir la vente
-        </div>
-      </motion.article>
-    </Link>
+        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>
+          {badge}
+        </span>
+      </div>
+
+      <ReminderActions
+        sale={sale}
+        balance={amount}
+        daysSince={daysSince}
+        lastPaymentLabel={helperValue}
+        shopName={shopName}
+        dialCode={dialCode}
+      />
+
+      <Link to={`/sales/${sale._id}`} className="mt-3 block text-xs font-semibold text-gray-600 hover:underline dark:text-gray-300">
+        Voir la vente
+      </Link>
+    </motion.article>
   );
 };
 
-const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryReminders = [] }) => {
+const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryReminders = [], shopName = "", dialCode = "" }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [partialAgeFilter, setPartialAgeFilter] = useState("10");
   const [neverPaidAgeFilter, setNeverPaidAgeFilter] = useState("7");
+  const [partialSort, setPartialSort] = useState("age"); // age | amount
 
   const all = useMemo(() => [...overdue, ...upcoming], [overdue, upcoming]);
 
@@ -214,8 +306,19 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
         (s.client?.name || "").toLowerCase().includes(query)
       );
     }
-    return data.sort((a, b) => b.daysSincePayment - a.daysSincePayment);
-  }, [partialAgeMin, partialOrders, search]);
+    const sorter =
+      partialSort === "amount"
+        ? (a, b) => (b.balance || 0) - (a.balance || 0)
+        : (a, b) => b.daysSincePayment - a.daysSincePayment;
+    return [...data].sort(sorter);
+  }, [partialAgeMin, partialOrders, search, partialSort]);
+
+  // Recovery summary for the partial section.
+  const partialSummary = useMemo(() => {
+    const total = partialFiltered.reduce((s, sale) => s + (sale.balance || 0), 0);
+    const oldest = partialFiltered.reduce((m, sale) => Math.max(m, sale.daysSincePayment || 0), 0);
+    return { total, count: partialFiltered.length, oldest };
+  }, [partialFiltered]);
 
   const neverPaidOrders = useMemo(() => {
     const now = Date.now();
@@ -419,6 +522,15 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
           </div>
           <div className="flex items-center gap-2">
             <select
+              value={partialSort}
+              onChange={(e) => setPartialSort(e.target.value)}
+              className="form-control text-sm"
+              aria-label="Trier"
+            >
+              <option value="age">Trier : plus ancien</option>
+              <option value="amount">Trier : plus gros solde</option>
+            </select>
+            <select
               value={partialAgeFilter}
               onChange={(e) => setPartialAgeFilter(e.target.value)}
               className="form-control text-sm"
@@ -432,6 +544,24 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
             </select>
           </div>
         </div>
+
+        {/* Recovery KPIs */}
+        {partialSummary.count > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">À recouvrer</p>
+              <p className="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">{partialSummary.total.toLocaleString("fr-FR")} CFA</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Clients</p>
+              <p className="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">{partialSummary.count}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Plus ancien</p>
+              <p className="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">{partialSummary.oldest} j</p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {partialFiltered.length > 0 ? (
@@ -452,6 +582,9 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
                 }
                 amountLabel="Solde restant"
                 amount={sale.balance}
+                daysSince={sale.daysSincePayment}
+                shopName={shopName}
+                dialCode={dialCode}
                 tone="amber"
               />
             ))
@@ -509,6 +642,9 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
                 }
                 amountLabel="Montant"
                 amount={sale.totalAmount}
+                daysSince={sale.daysWithoutPayment}
+                shopName={shopName}
+                dialCode={dialCode}
                 tone="rose"
               />
             ))

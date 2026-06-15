@@ -1,3 +1,4 @@
+import { confirmDialog } from '../components/ConfirmProvider';
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -70,7 +71,7 @@ const EditSalePage = () => {
             return;
         }
 
-        const confirmed = window.confirm(
+        const confirmed = await confirmDialog(
             'Voulez-vous vraiment supprimer cette vente ? Cette action est irréversible.'
         );
         if (!confirmed) return;

@@ -19,8 +19,10 @@ import {
   ClipboardList,
   ShieldCheck,
   Building2,
+  LifeBuoy,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
+import api from '../services/api';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { resolveAppLogo } from '../utils/appBranding';
 
@@ -43,18 +45,32 @@ const ADMIN_NAV = [
   { to: '/product-dashboard',icon: BarChart2,        label: 'Analytics' },
   { to: '/users/stats',      icon: Activity,         label: 'Utilisateurs' },
   { to: '/documents',        icon: FileText,         label: 'Documents' },
+  { to: '/support',          icon: LifeBuoy,         label: 'Assistance' },
 ];
 
-const NavItem = ({ to, icon: Icon, label, expanded, active }) => (
+const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0 }) => (
   <Link
     to={to}
     className={`fluent-nav-rail__item ${active ? 'fluent-nav-rail__item--active' : ''}`}
     title={!expanded ? label : undefined}
-    aria-label={label}
+    aria-label={badge > 0 ? `${label} (${badge} non lu${badge > 1 ? 's' : ''})` : label}
     aria-current={active ? 'page' : undefined}
   >
-    <span className="fluent-nav-rail__item-icon">
+    <span className="fluent-nav-rail__item-icon" style={{ position: 'relative' }}>
       <Icon size={18} />
+      {badge > 0 && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute', top: -5, right: -7, minWidth: 16, height: 16, padding: '0 4px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1,
+            background: 'var(--colorStatusDangerForeground1)', color: '#fff',
+          }}
+        >
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </span>
     <AnimatePresence>
       {expanded && (
@@ -81,6 +97,20 @@ const DesktopNavRail = () => {
   const branding = appSettings.branding;
   const logoUrl = resolveAppLogo(branding.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const [supportUnread, setSupportUnread] = useState(0);
+
+  // Unread support replies → nav badge. Refreshed on navigation so it clears
+  // after the admin opens the Assistance page.
+  const isImpersonatingForBadge = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('impersonating');
+  const showShopNav = auth.isAuthenticated && auth.isAdmin && !(auth.isSuperAdmin && !isImpersonatingForBadge);
+  useEffect(() => {
+    if (!showShopNav) { setSupportUnread(0); return; }
+    let alive = true;
+    api.get('/support/unread')
+      .then(({ data }) => { if (alive) setSupportUnread(data?.unread || 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [showShopNav, location.pathname]);
 
   // Sync sidebar width CSS variable so main content can offset
   useEffect(() => {
@@ -196,6 +226,7 @@ const DesktopNavRail = () => {
                 label={label}
                 expanded={expanded}
                 active={isActive(to)}
+                badge={to === '/support' ? supportUnread : 0}
               />
             ))}
           </>

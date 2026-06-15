@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     isAdmin: false,
     isSuperAdmin: false,
     tenantId: localStorage.getItem('tenantId') || null,
+    tenant: null,
     isLoading: true,
   });
 
@@ -32,6 +33,7 @@ export const AuthProvider = ({ children }) => {
           isAdmin: Boolean(data.isAdmin),
           isSuperAdmin: Boolean(data.isSuperAdmin),
           tenantId,
+          tenant: data.tenant || null,
           isLoading: false,
         });
       } catch (error) {

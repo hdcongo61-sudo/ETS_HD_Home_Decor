@@ -98,6 +98,20 @@ const saleSchema = mongoose.Schema(
         ref: 'User'
       }
     },
+    // Log of manual collection follow-ups (WhatsApp / call / SMS / other),
+    // distinct from the scheduled paymentReminder above.
+    reminderLog: [{
+      channel: {
+        type: String,
+        enum: ['whatsapp', 'call', 'sms', 'manual'],
+        default: 'manual'
+      },
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      userName: { type: String, default: '' },
+      note: { type: String, default: '', maxLength: 300, trim: true },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    lastRemindedAt: { type: Date, default: null, index: true },
     status: {
       type: String,
       enum: {

@@ -152,6 +152,14 @@ const ProductDetails = () => {
 
   const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
   const canSeeSupplierContacts = isAdmin || userPermissions.includes('view_supplier_contacts');
+
+  // Ensure activeTab is valid for current user
+  useEffect(() => {
+    if (!canSeeFinancials && activeTab === 'financial') {
+      setActiveTab('overview');
+    }
+  }, [canSeeFinancials, activeTab]);
+
   const profitMargin =
     product?.costPrice && product?.price
       ? ((product.price - product.costPrice) / product.costPrice) * 100
@@ -275,8 +283,7 @@ const ProductDetails = () => {
   /* ─── TABS config ─── */
   const TABS = [
     { id: 'overview',  label: 'Aperçu' },
-    { id: 'financial', label: 'Analyse financière' },
-    { id: 'history',   label: 'Historique' },
+    ...(canSeeFinancials ? [{ id: 'financial', label: 'Analyse financière' }] : []),
   ];
 
   return (
@@ -659,97 +666,7 @@ const ProductDetails = () => {
               </div>
             )}
 
-            {/* ── HISTORIQUE ── */}
-            {activeTab === 'history' && (
-              <div className="space-y-5">
-                {/* Dates */}
-                <div>
-                  <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                    Informations clés
-                  </p>
-                  <div
-                    className="rounded-[var(--radiusLarge)] overflow-hidden divide-y"
-                    style={{ border: '1px solid var(--colorNeutralStroke2)', '--tw-divide-opacity': 1, borderColor: 'var(--colorNeutralStroke2)' }}
-                  >
-                    {[
-                      { label: 'Créé le', value: fmtDate(product.createdAt) },
-                      { label: 'Dernière modification', value: fmtDate(product.updatedAt) },
-                      { label: 'Créé par', value: product.createdBy?.name || '—' },
-                      { label: 'Modifié par', value: product.updatedBy?.name || '—' },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="flex justify-between items-center px-4 py-3" style={{ background: 'var(--colorNeutralBackground1)' }}>
-                        <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</span>
-                        <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Activity timeline */}
-                <div>
-                  <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                    Activité récente
-                  </p>
-                  {statsLoading ? (
-                    <LoadingSkeleton rows={4} />
-                  ) : !stats.activities?.length ? (
-                    <div className="ms-empty-state">
-                      <p className="ms-empty-title">Aucune activité</p>
-                      <p className="ms-empty-description">Les modifications de ce produit apparaîtront ici.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {[...stats.activities]
-                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                        .map((activity, i) => {
-                          const meta = ACTIVITY_META[activity.type] || ACTIVITY_META.default;
-                          const Icon = meta.icon;
-                          return (
-                            <div key={i} className="fui-activity-item">
-                              <div
-                                className="fui-activity-icon"
-                                style={{ background: meta.bg, color: meta.color }}
-                              >
-                                <Icon size={15} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                                  {activity.description}
-                                </p>
-                                {activity.oldValue !== undefined && activity.newValue !== undefined && (
-                                  <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                                    <span style={{ color: 'var(--colorStatusDangerForeground1)', textDecoration: 'line-through' }}>
-                                      {String(activity.oldValue)}
-                                    </span>
-                                    {' → '}
-                                    <span style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
-                                      {String(activity.newValue)}
-                                    </span>
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-3 mt-1.5">
-                                  {activity.user?.name && (
-                                    <span className="fui-caption1 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                                      <User size={11} />
-                                      {activity.user.name}
-                                    </span>
-                                  )}
-                                  <span className="fui-caption1 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                                    <Clock size={11} />
-                                    {fmtDate(activity.timestamp)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-          </div>
+</div>
         </div>
       </div>
 

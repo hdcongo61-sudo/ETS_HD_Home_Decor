@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
 import { Save } from 'lucide-react';
@@ -265,8 +266,8 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             ))}
           </select>
           {categoryOptions.length === 0 && (
-            <p className="text-xs text-amber-600">
-              Ajoutez les catégories dans Paramètres &gt; Catégories dépenses.
+            <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              Aucune catégorie. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → Catégories dépenses</Link>
             </p>
           )}
           {errors.category && <p className="form-error">{errors.category}</p>}

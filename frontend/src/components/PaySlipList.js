@@ -1,8 +1,8 @@
+import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import {
-  employeeBasePath,
+import {  employeeBasePath,
   employeePayrollNewPath,
   employeePayrollPayslipEditPath,
   employeePayrollPayslipPrintPath,
@@ -47,7 +47,7 @@ const PaySlipList = () => {
     };
 
     const handleDelete = async (payslipId) => {
-        if (window.confirm('Confirmer la suppression de cette fiche de paie ?')) {
+        if (await confirmDialog('Confirmer la suppression de cette fiche de paie ?')) {
             try {
                 await api.delete(`/employees/${id}/payroll/${payslipId}`);
                 setPaySlips(paySlips.filter(slip => slip._id !== payslipId));

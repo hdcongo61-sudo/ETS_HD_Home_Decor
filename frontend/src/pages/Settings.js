@@ -1,9 +1,10 @@
+import { confirmDialog } from '../components/ConfirmProvider';
 import { useState, useEffect, useCallback, useContext } from 'react';
 import api from '../services/api';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Check, X, RotateCcw, Save,
-  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock,
+  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -38,6 +39,30 @@ const buildBrandingForm = (branding = {}) => ({
 
 const settingInputClass = 'form-control';
 
+// Plan mis en avant comme « Recommandé ».
+const RECOMMENDED_PLAN = 'pro';
+
+// Avantages mis en avant par plan (les fonctions ne sont pas bridées : la
+// différence porte surtout sur la capacité et le niveau de support).
+const PLAN_BENEFITS = {
+  trial: {
+    tagline: 'Pour tester l’application',
+    bullets: ['Accès complet pendant la période d’essai', 'Aucune carte requise', 'Vos données sont conservées si vous passez à un plan payant'],
+  },
+  basic: {
+    tagline: 'Pour démarrer sereinement',
+    bullets: ['Toutes les fonctions de gestion incluses', 'Ventes, stock, clients, caisse et dépenses', 'Factures et bulletins PDF', 'Support standard'],
+  },
+  pro: {
+    tagline: 'Pour une boutique qui grandit',
+    bullets: ['Tout le plan Basique', 'Plus d’utilisateurs et de produits', 'Analyses de bénéfices et suggestions stock lent', 'Support prioritaire'],
+  },
+  enterprise: {
+    tagline: 'Pour les grandes boutiques',
+    bullets: ['Tout le plan Pro', 'Capacité étendue (utilisateurs & produits)', 'Plusieurs points de vente', 'Support dédié'],
+  },
+};
+
 const Settings = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { appSettings, setAppSettings } = useAppSettings();
@@ -53,6 +78,45 @@ const Settings = () => {
     manualPaymentDateEnabled: false,
   });
   const [savingDateSettings, setSavingDateSettings] = useState(false);
+
+  // ── Abonnement / plan ──
+  const [myTenant, setMyTenant] = useState(null);
+  const [planCatalog, setPlanCatalog] = useState({});
+  const [reqPlan, setReqPlan] = useState('');
+  const [reqNote, setReqNote] = useState('');
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.get('/tenants/me').then(({ data }) => setMyTenant(data)).catch(() => setMyTenant(null));
+    api.get('/tenants/plan-catalog').then(({ data }) => setPlanCatalog(data.plans || {})).catch(() => setPlanCatalog({}));
+  }, [isAdmin]);
+
+  // Si on arrive via le bandeau d'essai (#abonnement), défiler jusqu'à la section.
+  useEffect(() => {
+    if (window.location.hash !== '#abonnement') return;
+    const id = setTimeout(() => {
+      document.getElementById('abonnement')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [myTenant]);
+
+  const submitPlanRequest = async () => {
+    if (!reqPlan) { toast.error('Choisissez un plan.'); return; }
+    try {
+      setReqSubmitting(true);
+      await api.post('/tenants/plan-request', { requestedPlan: reqPlan, note: reqNote.trim() });
+      const { data } = await api.get('/tenants/me');
+      setMyTenant(data);
+      setReqNote('');
+      setReqPlan('');
+      toast.success('Demande envoyée. Le support va la traiter.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'envoi de la demande");
+    } finally {
+      setReqSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     setDateSettings({
@@ -141,6 +205,22 @@ const Settings = () => {
     }
   };
 
+  const handleDownloadBrochure = async () => {
+    try {
+      const res = await api.get('/export/brochure', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Brochure_${(brandingSettings.shortName || brandingSettings.appName || 'boutique').replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Impossible de générer la brochure. Enregistrez d\'abord la personnalisation.');
+    }
+  };
+
   const previewLogo = brandingLogoPreview || resolveAppLogo(brandingSettings.removeLogo ? '' : brandingSettings.logoUrl);
   const previewColor = brandingSettings.primaryColor || '#2563EB';
   const previewSurface = mixHexColors(previewColor, 0.9);
@@ -187,12 +267,121 @@ const Settings = () => {
 
   return (
     <Workspace className="space-y-5">
-      <Toaster position="top-right" />
       <PageHeader
         eyebrow="Configuration"
         title="Paramètres"
         description="Personnalisez l'identité de la boutique et gérez vos listes de référence."
       />
+
+      {isAdmin && myTenant && (() => {
+        const cur = planCatalog[myTenant.plan] || {};
+        const pending = myTenant.planRequest && myTenant.planRequest.status === 'pending' ? myTenant.planRequest : null;
+        const cfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
+        const statusLabel = { active: 'Actif', trial: 'Essai', suspended: 'Suspendu', expired: 'Expiré' }[myTenant.status] || myTenant.status;
+        const statusTone = myTenant.status === 'active' ? 'ms-status-success' : myTenant.status === 'trial' ? 'ms-status-warning' : 'ms-status-danger';
+        return (
+          <section id="abonnement" className="fluent-card-filled scroll-mt-24 p-4 sm:p-6">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                <CreditCard className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Mon abonnement</h2>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Votre plan actuel et demande de changement (validée par le support).
+                </p>
+              </div>
+            </div>
+
+            {/* Plan actuel */}
+            <div className="flex flex-wrap items-center gap-3 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+              <div className="min-w-0 flex-1">
+                <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Plan actuel</p>
+                <p className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                  {cur.label || myTenant.plan} {cur.price ? `· ${cfa(cur.price)}/mois` : ''}
+                </p>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Jusqu'à {myTenant.maxUsers} utilisateur(s) · {myTenant.maxProducts} produit(s)
+                </p>
+              </div>
+              <span className={`ms-status-badge ${statusTone}`}>{statusLabel}</span>
+            </div>
+
+            {pending ? (
+              <div className="mt-3 rounded-[var(--radiusLarge)] p-3.5" style={{ background: 'var(--colorStatusWarningBackground1)', border: '1px solid var(--colorStatusWarningStroke1)' }}>
+                <p className="fui-body1-strong" style={{ color: 'var(--colorStatusWarningForeground1)' }}>
+                  Demande en cours : passage au plan {(planCatalog[pending.requestedPlan]?.label) || pending.requestedPlan}
+                </p>
+                <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                  En attente de validation par le support. Vous serez notifié une fois traitée.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="form-label mb-1 block">Demander un changement de plan</label>
+                    <select value={reqPlan} onChange={(e) => setReqPlan(e.target.value)} className="form-control">
+                      <option value="">Choisir un plan…</option>
+                      {['basic', 'pro', 'enterprise']
+                        .filter((k) => k !== myTenant.plan)
+                        .map((k) => {
+                          const p = planCatalog[k] || {};
+                          return <option key={k} value={k}>{(p.label || k)}{p.price ? ` — ${cfa(p.price)}/mois` : ''}{k === RECOMMENDED_PLAN ? ' (Recommandé)' : ''}</option>;
+                        })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label mb-1 block">Note (optionnel)</label>
+                    <input type="text" value={reqNote} onChange={(e) => setReqNote(e.target.value)} className="form-control" placeholder="Précisez votre besoin…" />
+                  </div>
+                </div>
+                <button type="button" onClick={submitPlanRequest} disabled={reqSubmitting || !reqPlan} className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-60 sm:w-auto">
+                  <ArrowUpRight className="h-4 w-4" />
+                  {reqSubmitting ? 'Envoi…' : 'Envoyer la demande'}
+                </button>
+              </div>
+            )}
+
+            {/* Détails et avantages du plan sélectionné */}
+            {!pending && reqPlan && (() => {
+              const p = planCatalog[reqPlan] || {};
+              const b = PLAN_BENEFITS[reqPlan] || { tagline: '', bullets: [] };
+              return (
+                <div className="mt-4 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--ms-blue-soft)', border: reqPlan === RECOMMENDED_PLAN ? '1.5px solid var(--colorBrandForeground1)' : '1px solid var(--colorNeutralStroke2)' }}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="fui-subtitle2 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      Plan {p.label || reqPlan}
+                      {reqPlan === RECOMMENDED_PLAN && (
+                        <span className="ms-status-badge ms-status-success inline-flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Recommandé
+                        </span>
+                      )}
+                    </h3>
+                    {p.price ? (
+                      <span className="fui-subtitle1" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.price)}<span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>/mois</span></span>
+                    ) : null}
+                  </div>
+                  {b.tagline && (
+                    <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground2)' }}>{b.tagline}</p>
+                  )}
+                  <p className="fui-body1-strong mt-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Jusqu'à {p.maxUsers ?? '—'} utilisateur(s) · {p.maxProducts ?? '—'} produit(s)
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {b.bullets.map((t, i) => (
+                      <li key={i} className="fui-caption1 flex items-start gap-2" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+          </section>
+        );
+      })()}
 
       {isAdmin && (
         <section className="fluent-card-filled p-4 sm:p-6">
@@ -288,6 +477,10 @@ const Settings = () => {
                 <button type="submit" disabled={savingBrandingSettings} className="ms-button ms-button-md w-full justify-center text-white disabled:opacity-60 sm:w-auto" style={{ background: previewColor, borderColor: previewColor }}>
                   <Save className="h-4 w-4" />
                   {savingBrandingSettings ? 'Enregistrement...' : 'Enregistrer la personnalisation'}
+                </button>
+                <button type="button" onClick={handleDownloadBrochure} className="ms-button ms-button-secondary ms-button-md w-full justify-center sm:w-auto" title="Brochure de présentation PDF à votre image">
+                  <FileDown className="h-4 w-4" />
+                  Brochure (PDF)
                 </button>
               </div>
             </div>
@@ -484,7 +677,7 @@ const LookupTab = ({ endpoint, label }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer cet élément ?')) return;
+    if (!await confirmDialog('Supprimer cet élément ?')) return;
     try {
       await api.delete(`${endpoint}/${id}`);
       setItems((prev) => prev.filter((item) => item._id !== id));
@@ -634,7 +827,7 @@ const SupplierTab = ({ endpoint }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce fournisseur ?')) return;
+    if (!await confirmDialog('Supprimer ce fournisseur ?')) return;
     try {
       await api.delete(`${endpoint}/${id}`);
       setItems((prev) => prev.filter((item) => item._id !== id));

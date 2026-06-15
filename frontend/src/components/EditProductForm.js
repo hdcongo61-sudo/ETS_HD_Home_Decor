@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Images, Search } from 'lucide-react';
 import api from '../services/api';
 import {
@@ -12,6 +12,13 @@ import {
 } from './business';
 import Modal from './Modal';
 import { FormActionsSticky } from './FormLayout';
+
+// Hint shown under a select when its reference list is empty.
+const LookupHint = ({ label }) => (
+  <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+    Aucun élément. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → {label}</Link>
+  </p>
+);
 
 const EditProductForm = () => {
   const { id } = useParams();
@@ -284,6 +291,7 @@ const EditProductForm = () => {
                     ))}
                   </select>
                   {validationErrors.category && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.category}</p>}
+                  {lookups.categories.length === 0 && <LookupHint label="Catégories produits" />}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Conteneur</label>
@@ -293,6 +301,7 @@ const EditProductForm = () => {
                       <option key={c._id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
+                  {lookups.containers.length === 0 && <LookupHint label="Conteneurs" />}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Entrepôt</label>
@@ -302,6 +311,7 @@ const EditProductForm = () => {
                       <option key={w._id} value={w.name}>{w.name}</option>
                     ))}
                   </select>
+                  {lookups.warehouses.length === 0 && <LookupHint label="Entrepôts" />}
                 </div>
               </div>
               <div>
@@ -356,6 +366,7 @@ const EditProductForm = () => {
                     ))}
                   </select>
                   {validationErrors.supplierName && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.supplierName}</p>}
+                  {lookups.suppliers.length === 0 && <LookupHint label="Fournisseurs" />}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Téléphone</label>

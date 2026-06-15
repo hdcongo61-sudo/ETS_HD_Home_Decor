@@ -36,7 +36,7 @@ const TopSellingProducts = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950"></div>
       </div>
     );
   }
@@ -58,8 +58,8 @@ const TopSellingProducts = () => {
       {/* Tableau principal */}
       <ProductSection title="Classement détaillé" description="Produits ordonnés par volume et performance financière.">
       <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+        <table className="min-w-full divide-y divide-[var(--colorNeutralStroke2)] text-sm">
+          <thead className="bg-[var(--colorNeutralBackground2)]">
             <tr>
               {[
                 'Produit',
@@ -73,32 +73,32 @@ const TopSellingProducts = () => {
               ].map((header) => (
                 <th
                   key={header}
-                  className="px-6 py-3 text-left font-medium uppercase text-gray-500 dark:text-gray-400"
+                  className="px-6 py-3 text-left font-medium uppercase text-[var(--colorNeutralForeground3)]"
                 >
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-[var(--colorNeutralStroke2)]">
             {data.map((p, index) => (
               <tr
                 key={p._id || index}
-                className="cursor-pointer transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                className="cursor-pointer transition hover:bg-[var(--colorNeutralBackground2)]"
                 onClick={() => navigate(productPath(p))}
               >
-                <td className="px-6 py-4 font-semibold text-gray-950 dark:text-white">{p.name}</td>
-                <td className="px-6 py-4 text-slate-600">{p.category || '—'}</td>
-                <td className="px-6 py-4 text-slate-600">{p.supplierName || '—'}</td>
-                <td className="px-6 py-4 text-slate-700">{p.price?.toLocaleString() || '—'}</td>
-                <td className="px-6 py-4 text-slate-700">{p.sold?.toLocaleString() || 0}</td>
-                <td className="px-6 py-4 text-slate-950 font-semibold">
+                <td className="px-6 py-4 font-semibold text-[var(--colorNeutralForeground1)]">{p.name}</td>
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground3)]">{p.category || '—'}</td>
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground3)]">{p.supplierName || '—'}</td>
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground2)]">{p.price?.toLocaleString() || '—'}</td>
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground2)]">{p.sold?.toLocaleString() || 0}</td>
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground1)] font-semibold">
                   {p.revenue?.toLocaleString() || '—'} CFA
                 </td>
                 <td className="px-6 py-4 text-emerald-700 font-semibold">
                   {p.profit?.toLocaleString() || '—'} CFA
                 </td>
-                <td className="px-6 py-4 text-slate-700 font-semibold">
+                <td className="px-6 py-4 text-[var(--colorNeutralForeground2)] font-semibold">
                   {p.margin ? p.margin.toFixed(1) + '%' : '—'}
                 </td>
               </tr>
@@ -112,34 +112,34 @@ const TopSellingProducts = () => {
         {data.map((p, index) => (
           <div
             key={p._id || index}
-            className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70"
+            className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-4 shadow-sm"
             onClick={() => navigate(productPath(p))}
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-base font-semibold text-slate-950">{p.name}</p>
-                <p className="text-xs text-slate-500">{p.category || '—'}</p>
+                <p className="text-base font-semibold text-[var(--colorNeutralForeground1)]">{p.name}</p>
+                <p className="text-xs text-[var(--colorNeutralForeground3)]">{p.category || '—'}</p>
               </div>
-              <span className="text-xs text-slate-500">#{index + 1}</span>
+              <span className="text-xs text-[var(--colorNeutralForeground3)]">#{index + 1}</span>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
-              Fournisseur : <span className="text-slate-800">{p.supplierName || '—'}</span>
+            <p className="text-sm text-[var(--colorNeutralForeground3)] mt-1">
+              Fournisseur : <span className="text-[var(--colorNeutralForeground2)]">{p.supplierName || '—'}</span>
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm mt-3">
               <div>
-                <p className="text-xs text-slate-500 uppercase">Unités vendues</p>
-                <p className="font-semibold text-slate-950">{p.sold?.toLocaleString() || 0}</p>
+                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Unités vendues</p>
+                <p className="font-semibold text-[var(--colorNeutralForeground1)]">{p.sold?.toLocaleString() || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 uppercase">Revenu</p>
+                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Revenu</p>
                 <p className="font-semibold text-emerald-700">{p.revenue?.toLocaleString() || '—'} CFA</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase">Profit</p>
+                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Profit</p>
                 <p className="font-semibold text-emerald-600">{p.profit?.toLocaleString() || '—'} CFA</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase">Marge</p>
+                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Marge</p>
                 <p className="font-semibold text-indigo-600">
                   {p.margin ? p.margin.toFixed(1) + '%' : '—'}
                 </p>

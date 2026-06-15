@@ -51,14 +51,14 @@ const OutOfStockProducts = () => {
       />
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+        <div className="rounded-[var(--radiusLarge)] border border-red-200 bg-red-50 px-4 py-3 text-red-600">
           {error}
         </div>
       )}
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950 dark:border-gray-700 dark:border-t-white"></div>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-gray-950"></div>
         </div>
       ) : (
         <>
@@ -74,8 +74,8 @@ const OutOfStockProducts = () => {
             {products.length > 0 ? (
               <>
                 <div className="hidden overflow-x-auto md:block">
-                  <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
-                    <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <table className="min-w-full divide-y divide-[var(--colorNeutralStroke2)] text-sm">
+                    <thead className="bg-[var(--colorNeutralBackground2)] text-xs uppercase text-[var(--colorNeutralForeground3)]">
                       <tr>
                         {['Produit', 'Catégorie', 'Fournisseur', 'Prix', 'Action'].map((header) => (
                           <th key={header} className="px-5 py-3 text-left font-semibold">
@@ -84,17 +84,17 @@ const OutOfStockProducts = () => {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody className="divide-y divide-[var(--colorNeutralStroke2)]">
                       {products.map((product) => (
                         <tr
                           key={product._id}
-                          className="cursor-pointer transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                          className="cursor-pointer transition hover:bg-[var(--colorNeutralBackground2)]"
                           onClick={() => navigate(productPath(product))}
                         >
-                          <td className="px-5 py-4 font-semibold text-gray-950 dark:text-white">{product.name}</td>
-                          <td className="px-5 py-4 text-gray-600 dark:text-gray-400">{product.category || '—'}</td>
-                          <td className="px-5 py-4 text-gray-600 dark:text-gray-400">{product.supplierName || '—'}</td>
-                          <td className="px-5 py-4 font-semibold text-gray-950 dark:text-white">{formatProductCurrency(product.price)}</td>
+                          <td className="px-5 py-4 font-semibold text-[var(--colorNeutralForeground1)]">{product.name}</td>
+                          <td className="px-5 py-4 text-[var(--colorNeutralForeground3)]">{product.category || '—'}</td>
+                          <td className="px-5 py-4 text-[var(--colorNeutralForeground3)]">{product.supplierName || '—'}</td>
+                          <td className="px-5 py-4 font-semibold text-[var(--colorNeutralForeground1)]">{formatProductCurrency(product.price)}</td>
                           <td className="px-5 py-4">
                             <ProductActionButton
                               icon={Edit3}
@@ -117,23 +117,23 @@ const OutOfStockProducts = () => {
                     <motion.article
                       key={product._id}
                       whileTap={{ scale: 0.99 }}
-                      className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70"
+                      className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-4"
                       onClick={() => navigate(productPath(product))}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-gray-950 dark:text-white">{product.name}</p>
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{product.category || '—'}</p>
+                          <p className="font-semibold text-[var(--colorNeutralForeground1)]">{product.name}</p>
+                          <p className="mt-1 text-xs text-[var(--colorNeutralForeground3)]">{product.category || '—'}</p>
                         </div>
-                        <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                        <span className="rounded-full bg-[var(--colorStatusDangerBackground1)] px-2.5 py-1 text-xs font-semibold text-[var(--colorStatusDangerForeground1)]">
                           Rupture
                         </span>
                       </div>
-                      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                        Fournisseur : <span className="font-medium text-gray-800 dark:text-gray-200">{product.supplierName || '—'}</span>
+                      <p className="mt-3 text-sm text-[var(--colorNeutralForeground3)]">
+                        Fournisseur : <span className="font-medium text-[var(--colorNeutralForeground2)]">{product.supplierName || '—'}</span>
                       </p>
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold text-gray-950 dark:text-white">{formatProductCurrency(product.price)}</span>
+                        <span className="text-sm font-bold text-[var(--colorNeutralForeground1)]">{formatProductCurrency(product.price)}</span>
                         <ProductActionButton
                           icon={Edit3}
                           onClick={(event) => {
