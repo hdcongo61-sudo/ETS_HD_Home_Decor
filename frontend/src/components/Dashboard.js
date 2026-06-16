@@ -62,6 +62,7 @@ import {
   XCircle,
   ShoppingCart,
   TrendingUp,
+  BarChart2,
   Package,
   BadgePercent,
   Lightbulb,
@@ -814,11 +815,6 @@ const Dashboard = () => {
   const topProducts = salesStatsData?.topProducts || [];
   const saleTypeSummary = salesStatsData?.saleTypeSummary || {};
   const paymentStructureSummary = salesStatsData?.paymentStructureSummary || {};
-  const neverPaidSales = salesStatsData?.neverPaidSales || {
-    count: 0,
-    totalAmount: 0,
-    sales: [],
-  };
   const highlightedSalesCards = [
     {
       key: "wholesale",
@@ -859,19 +855,6 @@ const Dashboard = () => {
       linkTo: "/sales/all?history=1&paymentStructure=multiple_payments",
     },
   ];
-
-  const bestDays = salesStatsData?.bestDays;
-  const formatBestDay = (day) => {
-    if (!day?.date) return "—";
-    const parsed = new Date(day.date);
-    if (Number.isNaN(parsed.getTime())) return day.date;
-    return new Intl.DateTimeFormat("fr-FR", {
-      weekday: "long",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(parsed);
-  };
 
   const highPriorityProductSuggestions = productActionSuggestions.filter(
     (item) => item.priority === "high"
@@ -1270,7 +1253,9 @@ const Dashboard = () => {
                 </span>
               </div>
               <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe.
+                {isAdmin
+                  ? "Pilotez les ventes, la caisse, les produits, les clients et l'équipe."
+                  : "Enregistrez vos ventes et encaissez vos clients en quelques secondes."}
               </p>
             </div>
 
@@ -1300,68 +1285,43 @@ const Dashboard = () => {
             >
           <div className="grid gap-5 border-t border-[var(--ms-border)] p-4 pt-5 dark:border-gray-800 sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
             <div className="min-w-0">
-              {userName && (
-                <p className="text-sm font-medium text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                  Bienvenue, <span className="text-[var(--ms-text-strong)] dark:text-gray-100">{userName}</span>
-                </p>
-              )}
-              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white sm:text-3xl">
-                    {isAdmin ? "Vue rapide" : "Mon espace vente"}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                    {isAdmin
-                      ? "Une vue rapide pour piloter les ventes, la caisse, les produits, les clients et l'équipe."
-                      : "Enregistrez vos ventes et encaissez vos clients en quelques secondes."}
-                  </p>
-                </div>
-                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  <CalendarDays size={15} />
-                  {periodLabel}
-                </div>
-              </div>
-
-              {!isAdmin && (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Link
-                    to="/sales#sale-form"
-                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-                    style={{ background: 'var(--colorBrandBackground)' }}
-                  >
-                    <ShoppingCart size={16} /> Nouvelle vente
-                  </Link>
-                  <Link
-                    to="/sales"
-                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    Mes ventes
-                  </Link>
-                </div>
-              )}
-
-              <div className={`mt-5 grid grid-cols-1 gap-3 ${isAdmin ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Ventes</p>
-                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
-                    {totalSales.toLocaleString("fr-FR")} CFA
-                  </p>
-                </div>
-                <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Encaissements</p>
-                  <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
-                    {totalPaid.toLocaleString("fr-FR")} CFA
-                  </p>
-                </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">
+                Actions rapides
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  to="/sales#sale-form"
+                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+                  style={{ background: 'var(--colorBrandBackground)' }}
+                >
+                  <ShoppingCart size={16} /> Nouvelle vente
+                </Link>
+                <Link
+                  to="/sales"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                >
+                  {isAdmin ? "Voir les ventes" : "Mes ventes"}
+                </Link>
                 {isAdmin && (
-                  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 dark:border-gray-700 dark:bg-gray-800/80">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Profit net</p>
-                    <p className="mt-2 text-xl font-bold text-[var(--ms-text-strong)] dark:text-white">
-                      {profit.toLocaleString("fr-FR")} CFA
-                    </p>
-                  </div>
+                  <>
+                    <Link
+                      to="/expenses"
+                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <Receipt size={16} /> Dépense
+                    </Link>
+                    <Link
+                      to="/bank"
+                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <Landmark size={16} /> Caisse
+                    </Link>
+                  </>
                 )}
               </div>
+              <p className="mt-4 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                Astuce : le bouton flottant permet de vendre depuis n'importe quel écran.
+              </p>
             </div>
 
             <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
@@ -2025,23 +1985,21 @@ const Dashboard = () => {
             </div>
           )}
 
-          {bestDays && (
-            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <SalesInsightCard title="Meilleur jour de ventes" value={formatBestDay(bestDays.sales)} amount={bestDays.sales?.totalAmount} tone="emerald" icon={ShoppingCart} />
-              <SalesInsightCard title="Meilleur jour d'encaissements" value={formatBestDay(bestDays.payments)} amount={bestDays.payments?.totalAmount} tone="blue" icon={Coins} />
-              <SalesInsightCard title="Jour de dépense maximal" value={formatBestDay(bestDays.expenses)} amount={bestDays.expenses?.totalAmount} tone="rose" icon={TrendingDown} />
-            </div>
-          )}
-
           {/* Résumé compact + Encart livraisons à droite */}
           {salesStatsData && (
             <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
-              {/* Résumé (4 cartes) */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 lg:col-span-4">
-                <SalesMetricCard title="Total ventes" value={`${Math.round(salesStatsData.totalSales || 0).toLocaleString("fr-FR")} CFA`} icon={DollarSign} tone="emerald" />
+              {/* Résumé (cartes KPI unifiées) */}
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 lg:col-span-4">
+                <SalesMetricCard title="Nombre de ventes" value={salesStatsData.salesCount || 0} icon={ShoppingCart} tone="violet" />
                 <SalesMetricCard title="Vente moyenne" value={`${Math.round(salesStatsData.averageSale || 0).toLocaleString("fr-FR")} CFA`} icon={TrendingUp} tone="blue" />
                 <SalesMetricCard title="Produits vendus" value={salesStatsData.totalProducts || 0} icon={Package} tone="amber" />
-                <SalesMetricCard title="Nombre de ventes" value={salesStatsData.salesCount || 0} icon={ShoppingCart} tone="violet" />
+                <SalesMetricCard
+                  title="Montant encaissé"
+                  value={`${Math.round(salesStatsData.paymentsSummary?.paymentsTotal || 0).toLocaleString("fr-FR")} CFA`}
+                  icon={Coins}
+                  tone="emerald"
+                  sub={`${salesStatsData.paymentsSummary?.paymentsCount || 0} paiement${(salesStatsData.paymentsSummary?.paymentsCount || 0) > 1 ? "s" : ""}`}
+                />
               </div>
 
               {/* 🔹 Encart livraisons à droite */}
@@ -2124,150 +2082,54 @@ const Dashboard = () => {
             </div>
           )}
 
-          {salesStatsData && (
-            <section className="mb-5 rounded-lg border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-500/20 dark:bg-rose-500/10 sm:p-5">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ms-danger)] dark:text-rose-300">
-                    À encaisser
-                  </p>
-                  <h3 className="mt-1 text-base font-bold text-rose-950 dark:text-rose-100">
-                    Ventes sans aucun paiement
-                  </h3>
-                  <p className="mt-1 text-sm text-rose-700/80 dark:text-rose-300/80">
-                    Ventes créées sur la période sélectionnée sans paiement enregistré.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-[var(--ms-white)] px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
-                    {neverPaidSales.count} vente{neverPaidSales.count > 1 ? "s" : ""}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-[var(--ms-white)] px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm dark:bg-gray-900 dark:text-rose-300">
-                    {Math.round(neverPaidSales.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                  </span>
-                </div>
-              </div>
-
-              {neverPaidSales.sales?.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {neverPaidSales.sales.map((sale) => (
-                    <Link
-                      key={sale._id}
-                      to={`/sales/${sale._id}`}
-                      className="rounded-lg border border-rose-200/80 bg-[var(--ms-white)] px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md dark:border-rose-500/20 dark:bg-gray-900 dark:hover:border-rose-700"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
-                            {sale.client?.name || "Client non spécifié"}
-                          </p>
-                          <p className="text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] mt-1">
-                            Vente #{sale._id?.slice(-6)} • {sale.saleDate
-                              ? new Date(sale.saleDate).toLocaleDateString("fr-FR")
-                              : "Date indisponible"}
-                          </p>
-                        </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          sale.saleType === "wholesale"
-                            ? "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300"
-                            : "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300"
-                        }`}>
-                          {sale.saleType === "wholesale" ? "Vente en gros" : "Vente normale"}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold text-rose-700 dark:text-rose-300">
-                          {Math.round(sale.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                        </span>
-                        <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
-                          Ouvrir la vente
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-rose-200 bg-white/75 px-4 py-6 text-center text-sm text-[var(--ms-text)] dark:border-rose-500/20 dark:bg-gray-900/40 dark:text-gray-300">
-                  Aucune vente sans paiement sur cette période.
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* 🔹 Sous-bloc "Encaissements" (paymentsTotal / paymentsCount) */}
-          {salesStatsData?.paymentsSummary && (
-            <div className="mt-2">
-              <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200 mb-2 flex items-center gap-2">
-                <Coins className="text-emerald-500" size={16} />
-                Encaissements
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
-                  <DollarSign className="text-emerald-600" />
-                  <div>
-                    <p className="text-xs text-[var(--ms-text-muted)]">Montant total encaissé</p>
-                    <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                      {Math.round(salesStatsData.paymentsSummary.paymentsTotal || 0).toLocaleString("fr-FR")}{" "}
-                      CFA
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800 flex items-center gap-3">
-                  <Coins className="text-cyan-600" />
-                  <div>
-                    <p className="text-xs text-[var(--ms-text-muted)]">Nombre de paiements</p>
-                    <h3 className="text-lg font-bold text-cyan-700 dark:text-cyan-300">
-                      {salesStatsData.paymentsSummary.paymentsCount || 0}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Grilles condensées : Tendance | Statuts | Top produits */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* 🔹 Tendance des ventes (+ lissage) */}
-            <div className="bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
-                Tendance des ventes
-              </h3>
+            <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                  <TrendingUp size={15} />
+                </span>
+                <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">Tendance des ventes</h3>
+              </div>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendDataDisplay}>
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+                  <LineChart data={trendDataDisplay} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--colorNeutralStroke2)" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => Number(v).toLocaleString("fr-FR")} />
                     <Tooltip
-                      formatter={(v) => `${Number(v).toLocaleString("fr-FR")} CFA`}
+                      contentStyle={{ borderRadius: 12, border: '1px solid var(--colorNeutralStroke2)', fontSize: 12 }}
+                      formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} CFA`, 'Ventes']}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="total"
-                      stroke="#3B82F6"
-                      strokeWidth={3}
-                      dot={false}
-                    />
+                    <Line type="monotone" dataKey="total" stroke="#0F6CBD" strokeWidth={3} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Statuts des ventes */}
-            <div className="bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
-              <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
-                Statuts des ventes
-              </h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={statusData}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v) => `${Number(v).toLocaleString("fr-FR")} CFA`}
-                  />
-                  <Bar dataKey="total" fill="#10B981" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                  <BarChart2 size={15} />
+                </span>
+                <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">Statuts des ventes</h3>
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statusData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--colorNeutralStroke2)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => Number(v).toLocaleString("fr-FR")} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 12, border: '1px solid var(--colorNeutralStroke2)', fontSize: 12 }}
+                      formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} CFA`, 'Total']}
+                    />
+                    <Bar dataKey="total" fill="#107C10" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
@@ -2276,26 +2138,43 @@ const Dashboard = () => {
             <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
               Top produits vendus
             </h3>
-            <ul className="space-y-2">
-              {(topProducts || []).map((p, i) => (
-                <li
-                  key={i}
-                  className="flex justify-between text-sm bg-[var(--ms-white)] dark:bg-gray-800 p-2.5 rounded-xl border border-[var(--ms-border)] dark:border-gray-700"
-                >
-                  <span className="font-medium text-[var(--ms-text)] dark:text-gray-300">
-                    {p.product?.name || "Produit"}
-                  </span>
-                  <span className="text-[var(--ms-text)] dark:text-[var(--ms-text-muted)]">
-                    {p.quantity} vendus
-                  </span>
-                </li>
-              ))}
-              {(!topProducts || topProducts.length === 0) && (
-                <div className="text-center text-[var(--ms-text-muted)] text-sm py-6">
-                  Aucune donnée disponible
-                </div>
-              )}
-            </ul>
+            {(topProducts && topProducts.length > 0) ? (
+              <ul className="space-y-2">
+                {(() => {
+                  const maxQty = Math.max(1, ...topProducts.map((p) => Number(p.quantity) || 0));
+                  const rankBg = ["#F59E0B", "#9CA3AF", "#B45309"]; // gold / silver / bronze
+                  return topProducts.map((p, i) => {
+                    const qty = Number(p.quantity) || 0;
+                    const pct = Math.round((qty / maxQty) * 100);
+                    return (
+                      <li key={i} className="rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] p-2.5 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                            style={{ background: rankBg[i] || "var(--colorNeutralForeground3)" }}
+                          >
+                            {i + 1}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--ms-text)] dark:text-gray-300">
+                            {p.product?.name || "Produit"}
+                          </span>
+                          <span className="shrink-0 text-sm font-bold tabular-nums text-[var(--ms-text-strong)] dark:text-white">
+                            {qty} <span className="text-xs font-normal text-[var(--ms-text-muted)]">vendus</span>
+                          </span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--ms-bg-subtle)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--colorBrandBackground)" }} />
+                        </div>
+                      </li>
+                    );
+                  });
+                })()}
+              </ul>
+            ) : (
+              <div className="text-center text-[var(--ms-text-muted)] text-sm py-6">
+                Aucune donnée disponible
+              </div>
+            )}
           </div>
           </div>
         </motion.div>
@@ -2318,48 +2197,7 @@ const Dashboard = () => {
         {isAdmin && nonCriticalReady && (
         <>
             {Object.values(bestDaysRanges).length > 0 && (
-              <section className="overflow-hidden fluent-card-filled">
-                <div className="border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
-                    Performance par période
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">
-                    Meilleurs jours par plage
-                  </h3>
-                  <p className="mt-1 text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                    Les pics de ventes, d'encaissements et de dépenses pour chaque fenêtre suivie.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
-                  {Object.values(bestDaysRanges).map((entry) => (
-                    <article key={entry.label} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 dark:border-gray-700 dark:bg-gray-800/70 sm:p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{entry.label}</p>
-                        <span className="rounded-full bg-[var(--ms-white)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text-muted)] dark:bg-gray-900 dark:text-[var(--ms-text-muted)]">
-                          Plage
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <StatCard
-                          title="Ventes"
-                          entry={entry.days?.sales}
-                          accent="text-[var(--ms-success)] dark:text-green-300"
-                        />
-                        <StatCard
-                          title="Encaissements"
-                          entry={entry.days?.payments}
-                          accent="text-blue-600 dark:text-blue-300"
-                        />
-                        <StatCard
-                          title="Dépenses"
-                          entry={entry.days?.expenses}
-                          accent="text-red-600 dark:text-red-300"
-                        />
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
+              <PerformanceByPeriod ranges={bestDaysRanges} />
             )}
             <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
               <RemindersPanel
@@ -2426,7 +2264,7 @@ const salesToneClasses = {
   violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300",
 };
 
-const SalesMetricCard = ({ title, value, icon: Icon, tone = "emerald" }) => (
+const SalesMetricCard = ({ title, value, icon: Icon, tone = "emerald", sub }) => (
   <motion.article
     whileHover={{ y: -2 }}
     className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
@@ -2438,34 +2276,139 @@ const SalesMetricCard = ({ title, value, icon: Icon, tone = "emerald" }) => (
     </div>
     <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</p>
     <p className="mt-2 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">{value}</p>
+    {sub && <p className="mt-0.5 text-[11px] text-[var(--ms-text-muted)]">{sub}</p>}
   </motion.article>
 );
 
-const SalesInsightCard = ({ title, value, amount, icon: Icon, tone = "emerald" }) => (
-  <article className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-    <div className="flex items-start justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</p>
-      <span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${salesToneClasses[tone] || salesToneClasses.emerald}`}>
-        <Icon size={17} />
-      </span>
-    </div>
-    <p className="mt-3 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{value}</p>
-    <p className={`mt-2 text-lg font-black tabular-nums ${tone === "rose" ? "text-rose-700 dark:text-rose-300" : tone === "blue" ? "text-blue-700 dark:text-blue-300" : "text-emerald-700 dark:text-emerald-300"}`}>
-      {Math.round(amount || 0).toLocaleString("fr-FR")} CFA
-    </p>
-  </article>
-);
+/* ===== Performance par période — meilleurs jours par plage (redesign) ===== */
+const PERF_RANGES = [
+  { key: "7days", label: "7 jours" },
+  { key: "30days", label: "30 jours" },
+  { key: "year", label: "Année" },
+];
 
-const StatCard = ({ title, entry, accent }) => (
-  <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 text-[11px] shadow-sm dark:border-gray-700 dark:bg-gray-900">
-    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">{title}</div>
-    <div className="mt-2 text-xs font-semibold text-[var(--ms-text-strong)] dark:text-gray-100">
-      {entry?.date ? new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(new Date(entry.date)) : "—"}
+const PERF_METRICS = [
+  { key: "sales", label: "Ventes", noun: "vente", icon: ShoppingCart, goodWhenUp: true,
+    bg: "var(--colorStatusSuccessBackground1)", fg: "var(--colorStatusSuccessForeground1)" },
+  { key: "payments", label: "Encaissements", noun: "paiement", icon: Coins, goodWhenUp: true,
+    bg: "var(--ms-blue-soft)", fg: "var(--colorBrandForeground1)" },
+  { key: "expenses", label: "Dépenses", noun: "dépense", icon: TrendingDown, goodWhenUp: false,
+    bg: "var(--colorStatusDangerBackground1)", fg: "var(--colorStatusDangerForeground1)" },
+];
+
+const PerfTile = ({ meta, entry, total = 0, prevTotal }) => {
+  const Icon = meta.icon;
+  const hasTotal = total > 0;
+  const hasRecord = entry && entry.totalAmount > 0;
+  const recordDate = hasRecord
+    ? new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(new Date(entry.date))
+    : null;
+
+  // Trend vs previous window
+  const hasPrev = prevTotal != null && prevTotal > 0;
+  const deltaPct = hasPrev ? Math.round(((total - prevTotal) / prevTotal) * 100) : null;
+  const up = deltaPct != null && deltaPct >= 0;
+  const good = deltaPct == null ? null : (meta.goodWhenUp ? up : !up);
+  const trendColor = good == null ? "var(--ms-text-muted)"
+    : good ? "var(--colorStatusSuccessForeground1)" : "var(--colorStatusDangerForeground1)";
+
+  return (
+    <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: meta.bg, color: meta.fg }}>
+            <Icon size={18} />
+          </span>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">{meta.label}</p>
+        </div>
+        {deltaPct != null && (
+          <span
+            className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums"
+            style={{ color: trendColor, background: "var(--ms-bg-subtle)" }}
+            title="vs période précédente"
+          >
+            {up ? "▲" : "▼"} {Math.abs(deltaPct)}%
+          </span>
+        )}
+      </div>
+
+      <p className="mt-3 text-xl font-bold tabular-nums" style={{ color: hasTotal ? meta.fg : "var(--ms-text-muted)" }}>
+        {hasTotal ? `${Math.round(total).toLocaleString("fr-FR")} CFA` : "—"}
+      </p>
+      <p className="text-[11px] text-[var(--ms-text-muted)]">Total de la période</p>
+
+      <div className="mt-3 border-t border-[var(--ms-border)] pt-2 dark:border-gray-700">
+        {hasRecord ? (
+          <p className="text-[11px] text-[var(--ms-text-muted)]">
+            <span className="font-semibold capitalize text-[var(--ms-text)] dark:text-gray-300">Record : {recordDate}</span>
+            {" · "}{Math.round(entry.totalAmount).toLocaleString("fr-FR")} CFA
+            {entry.count > 0 ? ` (${entry.count} ${meta.noun}${entry.count > 1 ? "s" : ""})` : ""}
+          </p>
+        ) : (
+          <p className="text-[11px] text-[var(--ms-text-muted)]">Aucun jour sur la période</p>
+        )}
+      </div>
     </div>
-    <div className={`mt-1 text-sm font-bold ${accent}`}>
-      {entry?.totalAmount ? `${Math.round(entry.totalAmount).toLocaleString("fr-FR")} CFA` : "—"}
-    </div>
-  </div>
-);
+  );
+};
+
+const PerformanceByPeriod = ({ ranges }) => {
+  const available = PERF_RANGES.filter((r) => ranges[r.key]);
+  const [active, setActive] = useState("30days");
+  const activeKey = ranges[active] ? active : available[0]?.key;
+  const days = ranges[activeKey]?.days || {};
+  const activeLabel = (PERF_RANGES.find((r) => r.key === activeKey) || {}).label || "";
+
+  return (
+    <section className="overflow-hidden fluent-card-filled">
+      <div className="flex flex-col gap-3 border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
+            Performance par période
+          </p>
+          <h3 className="mt-1 text-lg font-bold text-[var(--ms-text-strong)] dark:text-white">
+            Totaux, évolution & jours record
+          </h3>
+          <p className="mt-1 text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+            Sur les {activeLabel.toLowerCase()} : total par indicateur, évolution vs période précédente, et votre jour record.
+          </p>
+        </div>
+
+        {/* Segmented range selector */}
+        <div className="inline-flex shrink-0 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-1 dark:border-gray-700 dark:bg-gray-800">
+          {available.map((r) => {
+            const isActive = r.key === activeKey;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setActive(r.key)}
+                className={`min-h-[34px] rounded-[var(--radiusMedium)] px-3 text-xs font-semibold transition-colors ${
+                  isActive ? "text-white shadow-sm" : "text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"
+                }`}
+                style={isActive ? { background: "var(--colorBrandBackground)" } : {}}
+                aria-pressed={isActive}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:p-5">
+        {PERF_METRICS.map((meta) => (
+          <PerfTile
+            key={meta.key}
+            meta={meta}
+            entry={days[meta.key]}
+            total={days.totals?.[meta.key] || 0}
+            prevTotal={days.previousTotals?.[meta.key]}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default Dashboard;

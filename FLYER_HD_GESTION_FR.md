@@ -7,7 +7,7 @@
 ## Ce que ça change pour vous
 
 ✅ **Vous savez exactement combien vous gagnez** — bénéfice net en temps réel (ventes − coûts − casse − cadeaux).
-✅ **Votre caisse tombe juste** — ouverture/clôture, montant attendu vs compté, rapport Z.
+✅ **Votre caisse est sous contrôle** — encaissements du jour et mouvements financiers suivis.
 ✅ **Vous arrêtez de perdre de l'argent** — stock dormant détecté, casse & cadeaux suivis, impayés **relancés par WhatsApp en 1 clic**.
 ✅ **Vous fidélisez vos meilleurs clients** — clients VIP, fidèles et à relancer identifiés automatiquement.
 ✅ **Vous avez l'air pro** — factures et bulletins de paie PDF à votre nom et à vos couleurs.
@@ -20,7 +20,7 @@
 | 🛒 **Ventes** | Vente en 2 clics · crédit & paiements partiels · livraison · factures PDF |
 | :-- | :-- |
 | 📦 **Produits** | Catalogue · import Excel · QR code · alertes de rupture · **suggestions pour vendre le stock lent** |
-| 💰 **Caisse** | Session de caisse · rapport Z · écarts détectés |
+| 💰 **Caisse / Banque** | Encaissements du jour · mouvements financiers · trésorerie |
 | 👥 **Clients** | Fiches · historique · **segmentation VIP / fidèles / à relancer** |
 | 💬 **Recouvrement** | **Rappel WhatsApp** & appel en 1 clic · message pré-rempli · **suivi des relances** |
 | 📈 **Bénéfices** | Marge nette · par produit / catégorie / conteneur · **pertes déduites** |

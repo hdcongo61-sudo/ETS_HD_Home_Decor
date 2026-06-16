@@ -900,7 +900,6 @@ const QA_GROUPS = (auth) => [
     {
       label: 'Finances',
       items: [
-        { to: '/caisse/session',        icon: Landmark,  label: 'Session de caisse' },
         { to: '/bank',                  icon: Landmark,  label: 'Caisse' },
         { to: '/expenses',              icon: Receipt,   label: 'Dépenses' },
         { to: '/expenses/monthly-plan', icon: ClipboardList, label: 'Objectif mensuel' },

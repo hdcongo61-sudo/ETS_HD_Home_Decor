@@ -2717,11 +2717,48 @@ const getBestDays = asyncHandler(async (req, res) => {
     };
   };
 
+  // ── Period totals (for "total de la plage" + trend vs previous period) ──
+  const sumSales = async (s, e) =>
+    (await Sale.aggregate([
+      { $match: { saleDate: { $gte: s, $lte: e }, status: { $ne: 'cancelled' } } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]))[0]?.total || 0;
+  const sumPayments = async (s, e) =>
+    (await Sale.aggregate([
+      { $match: { saleDate: { $gte: s, $lte: e }, status: { $ne: 'cancelled' } } },
+      { $unwind: '$payments' },
+      { $match: { 'payments.paymentDate': { $gte: s, $lte: e } } },
+      { $group: { _id: null, total: { $sum: '$payments.amount' } } },
+    ]))[0]?.total || 0;
+  const sumExpenses = async (s, e) =>
+    (await Expense.aggregate([
+      { $match: { date: { $gte: s, $lte: e } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]))[0]?.total || 0;
+
+  const [salesTotal, paymentsTotal, expensesTotal] = await Promise.all([
+    sumSales(start, end), sumPayments(start, end), sumExpenses(start, end),
+  ]);
+
+  // Previous window of the same length, immediately before `start`.
+  let previousTotals = null;
+  const rangeMs = end.getTime() - start.getTime();
+  if (['7days', '30days', 'year'].includes(range) && rangeMs > 0) {
+    const prevEnd = new Date(start.getTime() - 1);
+    const prevStart = new Date(start.getTime() - rangeMs);
+    const [ps, pp, pe] = await Promise.all([
+      sumSales(prevStart, prevEnd), sumPayments(prevStart, prevEnd), sumExpenses(prevStart, prevEnd),
+    ]);
+    previousTotals = { sales: ps, payments: pp, expenses: pe };
+  }
+
   res.json({
     range,
     sales: formatEntry(bestSales[0]),
     payments: formatEntry(bestPayments[0]),
-    expenses: formatEntry(bestExpenses[0])
+    expenses: formatEntry(bestExpenses[0]),
+    totals: { sales: salesTotal, payments: paymentsTotal, expenses: expensesTotal },
+    previousTotals,
   });
 });
 

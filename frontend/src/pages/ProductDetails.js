@@ -165,6 +165,7 @@ const ProductDetails = () => {
       ? ((product.price - product.costPrice) / product.costPrice) * 100
       : null;
   const absoluteProfit = product?.costPrice && product?.price ? product.price - product.costPrice : 0;
+  const showRealizedProfit = canSeeFinancials && showProfitSections;
   const productUrl = `${window.location.origin}${productPath(product || id)}`;
   const returnToProducts = location.state?.returnToProducts || '/products';
 
@@ -609,9 +610,16 @@ const ProductDetails = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>
-                              {sale.quantity} u
-                            </span>
+                            <div className="text-right">
+                              <span className="fui-caption1-strong block" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                                {sale.quantity} u
+                              </span>
+                              {canSeeFinancials && showProfitSections && sale.profit != null && (
+                                <span className="fui-caption2 block" style={{ color: sale.profit >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>
+                                  {sale.profit >= 0 ? '+' : ''}{fmt(sale.profit)}
+                                </span>
+                              )}
+                            </div>
                             <ExternalLink size={13} style={{ color: 'var(--colorBrandForeground1)' }} />
                           </div>
                         </Link>
@@ -648,6 +656,22 @@ const ProductDetails = () => {
                     </div>
                   )}
                 </div>
+
+                {showRealizedProfit && (
+                  <div>
+                    <p className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      Bénéfice réel réalisé (ventes effectuées)
+                    </p>
+                    <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      Calculé à partir du bénéfice enregistré au moment de chaque vente (prix réel − coût).
+                    </p>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <FinCard label="Bénéfice réel total" value={fmt(stats.totalProfit)} tone="success" />
+                      <FinCard label="Unités vendues" value={toNumber(stats.totalUnitsSold).toLocaleString('fr-FR')} />
+                      <FinCard label="Bénéfice moyen / unité" value={fmt(stats.lifetimeAvgProfitPerUnit)} tone="success" />
+                    </div>
+                  </div>
+                )}
 
                 {canSeeFinancials && showProfitSections && (
                   <div
@@ -735,8 +759,8 @@ const ProductDetails = () => {
             <table ref={buyersTableRef} className="responsive-table w-full text-sm">
               <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <tr>
-                  {['Client', 'Date', 'Statut', 'Qté', 'Total', ''].map((h) => (
-                    <th key={h} className={`px-4 py-3 text-left fui-caption1-strong ${h === 'Qté' || h === 'Total' ? 'text-right' : ''}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+                  {['Client', 'Date', 'Statut', 'Qté', 'Total', ...(showRealizedProfit ? ['Bénéfice'] : []), ''].map((h) => (
+                    <th key={h} className={`px-4 py-3 text-left fui-caption1-strong ${h === 'Qté' || h === 'Total' || h === 'Bénéfice' ? 'text-right' : ''}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
                       {h}
                     </th>
                   ))}
@@ -756,6 +780,11 @@ const ProductDetails = () => {
                     </td>
                     <td className="px-4 py-3 fui-body1 text-right" style={{ color: 'var(--colorNeutralForeground2)' }}>{sale.quantity}</td>
                     <td className="px-4 py-3 fui-body1-strong text-right" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(sale.totalAmount)}</td>
+                    {showRealizedProfit && (
+                      <td className="px-4 py-3 fui-body1-strong text-right" style={{ color: sale.profit >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>
+                        {sale.profit != null ? `${sale.profit >= 0 ? '+' : ''}${fmt(sale.profit)}` : '—'}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       <Link to={`/sales/${sale.saleId}`} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1 ml-auto w-fit">
                         <ExternalLink size={12} />

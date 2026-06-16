@@ -39,7 +39,6 @@ const PRIMARY_NAV = [
 ];
 
 const ADMIN_NAV = [
-  { to: '/caisse/session',   icon: Landmark,        label: 'Caisse (session)' },
   { to: '/expenses',         icon: Receipt,         label: 'Dépenses' },
   { to: '/employees',        icon: BriefcaseBusiness,label: 'Employés' },
   { to: '/product-dashboard',icon: BarChart2,        label: 'Analytics' },

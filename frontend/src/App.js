@@ -39,7 +39,6 @@ const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 const Bank = lazy(() => import('./pages/Bank'));
-const CashierSession = lazy(() => import('./pages/CashierSession'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -273,14 +272,6 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Bank />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/caisse/session"
-                  element={
-                    <ProtectedRoute>
-                      <CashierSession />
                     </ProtectedRoute>
                   }
                 />

@@ -21,8 +21,8 @@
 | On ne sait pas vraiment si on gagne | **Bénéfice net en temps réel** (ventes − coûts − pertes) |
 | Le stock dort sans qu'on le voie | **Suggestions pour vendre les produits lents** + alertes de rupture |
 | La casse et les cadeaux « disparaissent » | **Suivi des pertes & cadeaux** chiffré, déduit du bénéfice |
-| La caisse ne tombe jamais juste | **Session de caisse / rapport Z** : attendu vs compté |
-| On oublie qui doit de l'argent | **Paiements partiels** et **relances clients** |
+| On ne suit pas l'argent qui entre | **Caisse / Banque** : encaissements du jour et mouvements financiers |
+| On oublie qui doit de l'argent | **Paiements partiels** et **relances WhatsApp** |
 | Les clients fidèles sont ignorés | **Segmentation clients (VIP, fidèles, à relancer)** |
 | Factures faites à la main | **Factures PDF** automatiques à l'image de la boutique |
 | Saisie longue | **Vente / encaissement en 2 clics** depuis n'importe quel écran |
@@ -63,20 +63,12 @@ Le cœur de l'activité.
 - **Suivi des relances** : chaque rappel est **enregistré** (canal, date) avec l'**historique** et l'indication « relancé il y a X jours » pour éviter de relancer deux fois. L'indicatif pays de la boutique est configuré par le support.
 - **Bénéfice :** vendre vite, suivre les crédits, ne plus perdre une facture ni un impayé.
 
-### 3.3 💰 Caisse (session) / Rapport Z
-La confiance de la caisse au quotidien.
-- **Ouverture de caisse** : fond de caisse de départ.
-- **Clôture de caisse** : **montant attendu vs montant compté**, calcul automatique de l'**écart** (manquant / excédent / juste).
-- **Rapport Z** imprimable (totaux de la journée, espèces, écart).
-- **Historique des sessions** de caisse.
-- **Bénéfice :** détecter immédiatement un manquant, responsabiliser les caissiers.
-
-### 3.4 🏦 Caisse / Banque (transactions)
+### 3.3 💰 Caisse / Banque
 - **Mouvements financiers** et encaissements regroupés.
 - **Paiements encaissés du jour** consultables en détail.
 - **Bénéfice :** une vision claire de l'argent qui entre.
 
-### 3.5 📦 Produits (Catalogue)
+### 3.4 📦 Produits (Catalogue)
 Le stock sous contrôle total.
 - **Catalogue complet** : nom, catégorie, conteneur, entrepôt, prix de vente, **prix de revient**, stock, fournisseur, SKU, image.
 - **Import Excel en masse** avec **aperçu avant import** : on voit clairement ce qui **sera importé** et ce qui **sera ignoré** (et pourquoi), barre de progression, et **modèle Excel** téléchargeable.
@@ -87,7 +79,7 @@ Le stock sous contrôle total.
 - **Indicateur « Article »** : compte uniquement les produits réellement en stock.
 - **Bénéfice :** savoir exactement ce qu'on a, à quel coût, et ce que ça rapporte.
 
-### 3.6 🐌 Suggestions pour vendre les produits lents
+### 3.5 🐌 Suggestions pour vendre les produits lents
 Faire tourner le stock dormant.
 - Détecte les produits **jamais vendus**, **dormants** (aucune vente récente) et à **écoulement lent**.
 - Calcule le **capital immobilisé** dans ce stock.
@@ -95,11 +87,11 @@ Faire tourner le stock dormant.
 - Filtres par période et par gravité ; lien direct vers la fiche produit.
 - **Bénéfice :** transformer du stock mort en argent.
 
-### 3.7 ⚠️ Stocks à surveiller
+### 3.6 ⚠️ Stocks à surveiller
 - **Stock critique**, **rupture de stock**, **jamais vendus**, **meilleures ventes**.
 - **Bénéfice :** réapprovisionner au bon moment, ne jamais être en rupture sur un best-seller.
 
-### 3.8 🔻 Pertes & cadeaux (sorties de stock)
+### 3.7 🔻 Pertes & cadeaux (sorties de stock)
 Maîtriser la « fuite » du stock.
 - Enregistrer une **casse / produit abîmé** ou un **cadeau / échantillon / promo** depuis la fiche produit.
 - Le coût (**prix de revient × quantité**) est **figé** et suivi.
@@ -109,7 +101,7 @@ Maîtriser la « fuite » du stock.
 - **Marque visuelle** sur les produits concernés dans le catalogue (« 3 cassés · 2 offerts »).
 - **Bénéfice :** plus de pertes invisibles, un bénéfice réaliste.
 
-### 3.9 👥 Clients
+### 3.8 👥 Clients
 Fidéliser et relancer.
 - **Liste et fiches clients** (coordonnées, historique d'achats, soldes).
 - **Segmentation RFM automatique** : **VIP, Fidèle, Régulier, Nouveau, Inactif**.
@@ -117,7 +109,7 @@ Fidéliser et relancer.
 - **Accès aux paiements partiels** par client.
 - **Bénéfice :** savoir qui sont les bons clients et qui relancer.
 
-### 3.10 🧾 Dépenses
+### 3.9 🧾 Dépenses
 Connaître ses charges.
 - **Enregistrement des dépenses** avec **catégories** personnalisables.
 - **Paiements de salaire** rattachés aux employés.
@@ -125,20 +117,20 @@ Connaître ses charges.
 - **Saisie de date réelle** (rattraper une dépense notée sur papier) si activée.
 - **Bénéfice :** voir où part l'argent et tenir un budget.
 
-### 3.11 👷 Employés & Paie
+### 3.10 👷 Employés & Paie
 Gérer l'équipe.
 - **Liste et fiches employés** (salaire, informations).
 - **Bulletins de paie** : création, édition, **impression PDF**.
 - **Avances sur salaire** suivies.
 - **Bénéfice :** une paie carrée, sans calculs manuels.
 
-### 3.12 🚚 Fournisseurs, Conteneurs & Entrepôts
+### 3.11 🚚 Fournisseurs, Conteneurs & Entrepôts
 Suivre l'approvisionnement.
 - **Fiches fournisseurs** avec statistiques (produits, valeur, ventes, bénéfice, marge).
 - **Statistiques par conteneur** et **par entrepôt** (vue regroupée de l'inventaire avec revenus, marge, écoulement).
 - **Bénéfice :** savoir quel conteneur / fournisseur rapporte vraiment.
 
-### 3.13 📈 Analyse des bénéfices
+### 3.12 📈 Analyse des bénéfices
 La rentabilité, en clair.
 - **Chiffre d'affaires, coût des marchandises, bénéfice brut, pertes (casse/cadeau), bénéfice net, marge nette**.
 - **Évolution** dans le temps (tendance + marge).
@@ -146,7 +138,7 @@ La rentabilité, en clair.
 - Filtres par **période** et **conteneur**.
 - **Bénéfice :** comprendre d'où vient (et où part) l'argent.
 
-### 3.14 ⚙️ Paramètres
+### 3.13 ⚙️ Paramètres
 Personnaliser la boutique.
 - **Identité de l'application** : nom, nom court, **logo**, **couleur principale**, signature, **titre/sous-titre de connexion**, **texte du footer**, **téléphone & email de support**, **adresse** (utilisée sur les factures et bulletins).
 - **Aperçu en direct** du rendu.
@@ -155,22 +147,22 @@ Personnaliser la boutique.
 - **Mon abonnement** : voir le **plan actuel** et ses **avantages** (plan Pro mis en avant comme recommandé), le statut (essai / actif), et **demander un changement de plan** envoyé au support.
 - **Bénéfice :** une application aux couleurs de chaque boutique, des documents professionnels.
 
-### 3.15 📁 Documents
+### 3.14 📁 Documents
 - Espace de **gestion de documents** de la boutique.
 
-### 3.16 🙋 Demandes (workflow d'approbation)
+### 3.15 🙋 Demandes (workflow d'approbation)
 - Les **employés** peuvent **demander** une modification (changement de prix, ajustement de stock, suppression de vente…).
 - L'**administrateur approuve ou refuse** ; l'action s'exécute après validation.
 - **Bénéfice :** déléguer sans perdre le contrôle.
 
-### 3.17 🆘 Assistance & support (messagerie boutique ↔ éditeur)
+### 3.16 🆘 Assistance & support (messagerie boutique ↔ éditeur)
 - **Messagerie intégrée** avec l'équipe HD Gestion depuis la page **« Assistance »**.
 - **Ouvrir un message** par **catégorie** : suggestion, réclamation, question, autre.
 - **Fil de discussion** : le support répond, vous répondez ; **statut** ouvert / résolu.
 - **Badge de messages non lus** dans le menu, mis à jour automatiquement.
 - **Bénéfice :** un canal direct pour être aidé, signaler un souci ou proposer une amélioration — sans quitter l'application.
 
-### 3.18 👤 Utilisateurs, rôles & sécurité d'accès
+### 3.17 👤 Utilisateurs, rôles & sécurité d'accès
 - **Gestion des utilisateurs** (création, rôles).
 - **Administrateur** vs **vendeur**, plus des **permissions fines** (ex. voir les données financières sensibles, voir les contacts fournisseurs).
 - **Restriction d'accès** (plages horaires d'accès possibles).
@@ -178,7 +170,7 @@ Personnaliser la boutique.
 - **Tableau de bord par vendeur** (suivi des performances).
 - **Bénéfice :** chacun voit ce qu'il doit voir, le patron garde la maîtrise.
 
-### 3.19 👑 Administrateur & 🧑‍💼 Vendeur — les bénéfices de deux profils
+### 3.18 👑 Administrateur & 🧑‍💼 Vendeur — les bénéfices de deux profils
 
 L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de ses plus grandes forces pour un commerce.
 
@@ -210,7 +202,7 @@ L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de
 
 **En résumé :** *l'admin pilote et protège les chiffres, le vendeur exécute les ventes.* Chacun à sa place — efficacité d'un côté, contrôle de l'autre.
 
-### 3.20 🛡️ Super-Admin / Multi-boutiques (côté éditeur)
+### 3.19 🛡️ Super-Admin / Multi-boutiques (côté éditeur)
 - **Console plateforme** pour gérer **plusieurs boutiques** (locataires).
 - **Création d'une nouvelle boutique**, **plans et limites** (nombre d'utilisateurs, de produits…).
 - **Statistiques par boutique**, facturation, **journal d'audit**.
@@ -256,8 +248,8 @@ L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de
 **Recouvrement (impayés)**
 - Rappel **WhatsApp** en 1 clic (message pré-rempli avec le solde) · **Appeler** · **Copier le message** · message au ton gradué selon le retard · **suivi des relances** (canal, date, historique, « relancé il y a X jours ») · indicatif pays par boutique.
 
-**Caisse**
-- Ouvrir/clôturer une session · attendu vs compté · écart · rapport Z imprimable · historique · transactions banque · encaissements du jour.
+**Caisse / Banque**
+- Mouvements financiers · encaissements du jour · suivi de la trésorerie.
 
 **Produits**
 - Catalogue · import Excel (aperçu + modèle) · tri/filtre · fiche produit (stats, bénéfice, QR, PDF) · galerie d'images partagée · suggestions produits lents · stock critique/rupture/jamais vendus/meilleures ventes · par fournisseur/conteneur/entrepôt · pertes & cadeaux (casse/cadeau, annulation, rapport, impact bénéfice, marque catalogue).

@@ -805,6 +805,23 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
   );
   const hasMoreProducts = visibleCount < filtered.length;
 
+  // Summary stats for the current filtered/searched results.
+  const resultStats = useMemo(() => {
+    let units = 0, sellValue = 0, costValue = 0, inStock = 0, low = 0, out = 0;
+    filtered.forEach((p) => {
+      const s = Number(p.stock) || 0;
+      const price = Number(p.price) || 0;
+      const cost = Number(p.costPrice) || 0;
+      units += s;
+      sellValue += s * price;
+      costValue += s * cost;
+      if (s <= 0) out += 1;
+      else if (s < 5) low += 1;
+      else inStock += 1;
+    });
+    return { count: filtered.length, units, sellValue, costValue, potentialMargin: sellValue - costValue, inStock, low, out };
+  }, [filtered]);
+
   // Click a column header to sort by it (toggles desc/asc).
   const toggleSort = (field) => {
     setSortBy((cur) => {
@@ -1034,6 +1051,46 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
 
   const renderFilterPanel = () => (
     <div className="border-b p-4 lg:p-5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
+      {/* Statistiques des résultats — toujours affichées en haut, reflètent les résultats courants (filtrés ou non) */}
+      {!loading && (
+        <div className="mb-4 rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--ms-blue-soft)', border: '1px solid var(--colorNeutralStroke2)' }}>
+          <p className="fui-caption1-strong mb-2 uppercase" style={{ color: 'var(--colorBrandForeground1)', letterSpacing: '0.06em' }}>
+            {hasActiveFilters ? 'Résultats du filtre' : 'Statistiques du catalogue'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Produits trouvés', value: resultStats.count.toLocaleString('fr-FR'), tone: 'brand' },
+              { label: 'Unités en stock', value: resultStats.units.toLocaleString('fr-FR'), tone: 'neutral' },
+              { label: 'En stock', value: resultStats.inStock.toLocaleString('fr-FR'), tone: 'success' },
+              { label: 'Stock faible', value: resultStats.low.toLocaleString('fr-FR'), tone: 'warning' },
+              { label: 'Rupture', value: resultStats.out.toLocaleString('fr-FR'), tone: 'danger' },
+              ...(isAdmin ? [
+                { label: 'Valeur (prix de vente)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
+                { label: 'Marge potentielle', value: `${resultStats.potentialMargin.toLocaleString('fr-FR')} CFA`, tone: 'success' },
+              ] : []),
+            ].map((s) => {
+              const toneColor = {
+                brand: 'var(--colorBrandForeground1)',
+                success: 'var(--colorStatusSuccessForeground1)',
+                warning: 'var(--colorStatusWarningForeground1)',
+                danger: 'var(--colorStatusDangerForeground1)',
+                neutral: 'var(--colorNeutralForeground1)',
+              }[s.tone];
+              return (
+                <div
+                  key={s.label}
+                  className="rounded-[var(--radiusMedium)] px-3 py-1.5"
+                  style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}
+                >
+                  <span className="fui-caption2 block" style={{ color: 'var(--colorNeutralForeground3)' }}>{s.label}</span>
+                  <span className="fui-caption1-strong tabular-nums" style={{ color: toneColor }}>{s.value}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Quick stock-status chips */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Stock</span>
@@ -1198,6 +1255,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
           </div>
         )}
       </div>
+
     </div>
   );
 

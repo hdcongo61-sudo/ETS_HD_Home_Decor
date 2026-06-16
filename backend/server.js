@@ -42,7 +42,6 @@ const lookupRoutes = require('./routes/lookupRoutes');
 const appSettingsRoutes = require('./routes/appSettingsRoutes');
 const adminRequestRoutes = require('./routes/adminRequestRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
-const cashSessionRoutes = require('./routes/cashSessionRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 
 const app = express();
@@ -154,7 +153,6 @@ app.use('/api/lookups', lookupRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
 app.use('/api/tenants', tenantRoutes);
-app.use('/api/cash-sessions', cashSessionRoutes);
 app.use('/api/support', supportRoutes);
 
 // 10. Serve frontend build (production)

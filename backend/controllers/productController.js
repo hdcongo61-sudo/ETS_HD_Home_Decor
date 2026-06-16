@@ -435,15 +435,16 @@ const getProductSalesHistory = async (req, res) => {
     const limitParam = parseInt(req.query.limit, 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 25) : 5;
 
-    const product = await Product.findById(id).select('_id name price');
+    const product = await Product.findById(id).select('_id name price costPrice');
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
     const productId = product._id.toString();
+    const canSeeProfit = hasUserPermission(req.user, 'view_sensitive_financials');
 
     const sales = await Sale.find({ ...tenantFilter(req), 'products.product': product._id })
-      .select('saleDate totalAmount client products status')
+      .select('saleDate totalAmount client products status profitData')
       .populate('client', 'name')
       .sort({ saleDate: -1 })
       .limit(limit)
@@ -459,17 +460,35 @@ const getProductSalesHistory = async (req, res) => {
           return null;
         }
 
-        return {
+        const quantity = Number(matchingItem.quantity) || 0;
+        const priceAtSale = Number(
+          matchingItem.priceAtSale ?? matchingItem.unitPrice ?? product.price ?? 0
+        );
+        const lineTotal = priceAtSale * quantity;
+
+        const entry = {
           saleId: sale._id,
           saleDate: sale.saleDate,
           clientName: sale.client?.name || 'Client inconnu',
           status: sale.status || 'pending',
-          quantity: Number(matchingItem.quantity) || 0,
-          priceAtSale: Number(
-            matchingItem.priceAtSale ?? matchingItem.unitPrice ?? product.price ?? 0
-          ),
+          quantity,
+          priceAtSale,
+          lineTotal,
           totalAmount: Number(sale.totalAmount) || 0
         };
+
+        // Real profit realised on this product line at the time of sale.
+        if (canSeeProfit) {
+          const profitEntry = sale.profitData?.productProfits?.find(
+            (p) => normaliseId(p.product) === productId
+          );
+          const costPerUnit = Number(profitEntry?.costPrice ?? product.costPrice ?? 0);
+          entry.profit = Number(
+            profitEntry?.profit ?? (priceAtSale - costPerUnit) * quantity
+          );
+        }
+
+        return entry;
       })
       .filter(Boolean);
 

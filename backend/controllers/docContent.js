@@ -13,7 +13,7 @@ const flyer = {
       heading: 'Ce que ça change pour le commerçant',
       bullets: [
         'Il sait exactement combien il gagne : bénéfice net en temps réel (ventes - coûts - casse - cadeaux).',
-        'Sa caisse tombe juste : ouverture/clôture, attendu vs compté, rapport Z.',
+        'Sa caisse est sous contrôle : encaissements du jour et mouvements financiers suivis.',
         'Il perd moins : stock dormant détecté, casse & cadeaux suivis, impayés relancés par WhatsApp en 1 clic.',
         'Il fidélise ses meilleurs clients : VIP, fidèles et clients à relancer identifiés automatiquement.',
         "Il a l'air pro : factures et bulletins de paie PDF à son nom et à ses couleurs.",
@@ -25,7 +25,7 @@ const flyer = {
       bullets: [
         'Ventes : vente en 2 clics, crédit & paiements partiels, livraison, factures PDF.',
         'Produits : catalogue, import Excel, QR code, alertes de rupture, suggestions pour vendre le stock lent.',
-        'Caisse : session de caisse, rapport Z, écarts détectés.',
+        'Caisse / Banque : encaissements du jour, mouvements financiers, suivi de la trésorerie.',
         'Clients : fiches, historique, segmentation VIP / fidèles / à relancer.',
         'Recouvrement : rappels WhatsApp aux clients (message pré-rempli), appel direct, suivi des relances.',
         'Bénéfices : marge nette, par produit / catégorie / conteneur, pertes déduites.',
@@ -76,11 +76,10 @@ const guide = {
       ],
     },
     {
-      heading: '3. Caisse (session) / Rapport Z',
+      heading: '3. Caisse / Banque',
       bullets: [
-        'Ouverture (fond de caisse) et clôture : montant attendu vs compté, calcul de l\'écart.',
-        'Rapport Z imprimable et historique des sessions.',
-        'Banque : mouvements financiers et encaissements du jour.',
+        'Suivi des mouvements financiers et des encaissements du jour.',
+        'Vue claire de la trésorerie de la boutique.',
       ],
     },
     {
@@ -187,10 +186,9 @@ const formation = {
     {
       heading: '3. Le quotidien du vendeur (à enseigner)',
       bullets: [
-        'Ouvrir la caisse le matin (fond de caisse).',
         'Enregistrer chaque vente : client, produits, quantité ; encaisser (total ou partiel).',
         'Pour une livraison : indiquer le statut (livré / en attente).',
-        'Le soir : clôturer la caisse en comptant les espèces ; imprimer le rapport Z.',
+        'Suivre les encaissements du jour dans la Caisse / Banque.',
       ],
     },
     {
@@ -215,7 +213,6 @@ const formation = {
       heading: '6. Bonnes pratiques',
       bullets: [
         'Saisir les ventes en temps réel (ne pas attendre le soir).',
-        'Toujours clôturer la caisse pour détecter les écarts.',
         'Renseigner le prix de revient pour avoir un vrai bénéfice.',
         'Donner à chaque vendeur son propre compte (traçabilité).',
         'Sauvegarde automatique dans le cloud : aucune donnée perdue.',
