@@ -1316,17 +1316,59 @@ button:focus {
     flex-direction: column;
   }
 
+  /* Don't pin command bars on mobile — they scroll with the page (ergonomics) */
+  .ms-command-bar {
+    position: static;
+    top: auto;
+    z-index: auto;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Compact, denser page headers on mobile */
+  .ms-page-header {
+    padding: 14px 16px;
+    gap: 12px;
+    border-radius: var(--ms-radius-md, 10px);
+  }
+  .ms-page-title {
+    font-size: 21px;
+    line-height: 1.2;
+  }
+  .ms-page-description,
+  .ms-page-meta {
+    font-size: 13px;
+  }
+
   .ms-page-actions,
   .ms-command-bar > * {
     width: 100%;
   }
 
+  /* Larger, comfortable touch targets on mobile */
+  .ms-button-sm,
+  .ms-button-md {
+    min-height: 44px;
+  }
+  .ms-page-actions .ms-button {
+    justify-content: center;
+  }
+  .ms-icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Panel covers the full screen on mobile, over the top bar and bottom menu */
+  .ms-panel-layer {
+    top: 0;
+  }
+
   .ms-right-panel {
-    bottom: var(--app-bottom-nav-offset);
-    height: calc(100dvh - var(--app-nav-offset) - var(--app-bottom-nav-offset));
+    inset: 0;
+    height: 100dvh;
     width: 100vw;
     border-left: 0;
-    border-radius: 12px 12px 0 0;
+    border-radius: 0;
   }
 
   .ms-panel-footer {

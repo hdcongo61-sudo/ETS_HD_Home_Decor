@@ -1372,7 +1372,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm lg:text-base">
-          <thead className="bg-slate-50 sticky top-0 z-10">
+          <thead className="bg-slate-50 md:sticky md:top-0 z-10">
             <tr>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-slate-500 uppercase">
                 <button type="button" onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase hover:text-[var(--ms-blue)]">

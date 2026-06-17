@@ -110,7 +110,10 @@ const Dashboard = () => {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
-  const [isHomeHubOpen, setIsHomeHubOpen] = useState(true);
+  // Heavy hub is open by default on desktop, collapsed on mobile (action-first home).
+  const [isHomeHubOpen, setIsHomeHubOpen] = useState(
+    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true)
+  );
   const activeYear = useMemo(() => {
     const parsed = parseInt(selectedYear, 10);
     return Number.isNaN(parsed) ? currentYear : parsed;
@@ -1234,6 +1237,30 @@ const Dashboard = () => {
   return (
     <div className="min-h-full bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
       <div className="space-y-6 sm:space-y-8">
+        {/* ===== ACTIONS RAPIDES (mobile uniquement) ===== */}
+        <div className="grid grid-cols-2 gap-3 md:hidden">
+          {[
+            { to: "/sales#sale-form", label: "Vendre", icon: ShoppingCart, primary: true },
+            { to: "/bank", label: "Caisse", icon: Landmark },
+            { to: "/products", label: "Produits", icon: Package },
+            { to: "/clients", label: "Clients", icon: UsersRound },
+          ].map(({ to, label, icon: Icon, primary }) => (
+            <Link
+              key={to}
+              to={to}
+              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border shadow-sm transition active:scale-[0.98]"
+              style={
+                primary
+                  ? { background: "var(--colorBrandBackground)", borderColor: "transparent", color: "#fff" }
+                  : { background: "var(--ms-white)", borderColor: "var(--ms-border)", color: "var(--ms-text)" }
+              }
+            >
+              <Icon size={26} strokeWidth={2} />
+              <span className="text-sm font-semibold">{label}</span>
+            </Link>
+          ))}
+        </div>
+
         {/* ===== HOME HUB ===== */}
         <header className="overflow-hidden fluent-card-filled">
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 lg:p-6">
@@ -2182,15 +2209,19 @@ const Dashboard = () => {
         )}
 
         {isAdmin && nonCriticalReady && (
-          <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
-            <BusinessAnalyticsDashboard
-              sales={salesData}
-              expenses={expensesData}
-              payments={paymentsData}
-              defaultPeriod="month"
-              onOpenDayDetails={handleOpenDayDetails}
-            />
-          </Suspense>
+          <AccordionSection title="Analyse avancée" defaultOpenDesktop={true}>
+            <div className="p-4 sm:p-0">
+              <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
+                <BusinessAnalyticsDashboard
+                  sales={salesData}
+                  expenses={expensesData}
+                  payments={paymentsData}
+                  defaultPeriod="month"
+                  onOpenDayDetails={handleOpenDayDetails}
+                />
+              </Suspense>
+            </div>
+          </AccordionSection>
         )}
 
         {/* ===== Admin only ===== */}

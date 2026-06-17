@@ -75,8 +75,7 @@ const Modal = ({
 
   const modal = (
     <div
-      className="fixed inset-x-0 bottom-0 z-[260] overflow-hidden"
-      style={{ top: 'var(--app-nav-offset, 0px)' }}
+      className="fixed inset-x-0 bottom-0 top-0 md:top-[var(--app-nav-offset,0px)] z-[260] overflow-hidden"
       aria-modal="true"
       role="dialog"
       aria-label={ariaLabel || (title ? undefined : 'Fenêtre de dialogue')}
@@ -84,8 +83,7 @@ const Modal = ({
       aria-describedby={subtitle ? subtitleId : undefined}
     >
       <motion.div
-        className="fixed inset-x-0 bottom-0 bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
-        style={{ top: 'var(--app-nav-offset, 0px)' }}
+        className="fixed inset-x-0 bottom-0 top-0 md:top-[var(--app-nav-offset,0px)] bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

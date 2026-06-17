@@ -698,7 +698,7 @@ const DashboardAdmin = () => {
           </div>
         </section>
 
-        <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-2.5 shadow-[var(--ms-shadow-sm)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-3">
+        <div className="md:sticky md:top-2 z-20 flex flex-col gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-2.5 shadow-[var(--ms-shadow-sm)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-3">
           <nav className="flex gap-2 overflow-x-auto pb-1 sm:pb-0" aria-label="Sections du dashboard utilisateurs">
             {TAB_OPTIONS.map(({ id, label, icon: Icon }) => (
               <button

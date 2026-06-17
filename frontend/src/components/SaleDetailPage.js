@@ -1,5 +1,5 @@
 import { confirmDialog } from './ConfirmProvider';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath, productPath } from '../utils/paths';
@@ -25,6 +25,8 @@ import {
     PageHeader,
     Workspace,
 } from './business';
+
+const ExportSalesPdf = lazy(() => import('./ExportSalesPdf'));
 
 // Enregistrer les composants de Chart.js
 ChartJS.register(
@@ -824,6 +826,12 @@ const SaleDetailPage = () => {
                                     <span className="sm:hidden">Paiement</span>
                                     <span className="hidden sm:inline">Ajouter paiement</span>
                                 </button>
+                                {/* Télécharger la facture PDF — uniquement pour les ventes payées */}
+                                {sale.status === 'completed' && (
+                                    <Suspense fallback={null}>
+                                        <ExportSalesPdf sale={sale} />
+                                    </Suspense>
+                                )}
                                 {(sale.status === 'pending' || sale.status === 'partially_paid') && (
                                     <button
                                         type="button"

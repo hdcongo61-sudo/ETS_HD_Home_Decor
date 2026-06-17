@@ -103,7 +103,7 @@ const FloatingActionButton = () => {
 
       <div
         ref={containerRef}
-        className="fixed z-50 right-[calc(1rem+env(safe-area-inset-right,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] flex flex-col items-end gap-3 transition-all duration-300 ease-out will-change-transform"
+        className="fixed z-50 right-[calc(1rem+env(safe-area-inset-right,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] hidden md:flex flex-col items-end gap-3 transition-all duration-300 ease-out will-change-transform"
         style={{
           transform: hidden ? 'translateY(160%)' : 'translateY(0)',
           opacity: hidden ? 0 : 1,

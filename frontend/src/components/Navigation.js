@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useModal } from "../context/ModalContext";
 import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
 
 const Navigation = () => {
@@ -55,6 +56,12 @@ const Navigation = () => {
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
   const location = useLocation();
+  const { activeModal, areGlobalModalsSuppressed } = useModal();
+
+  // On mobile, any open form — global modal (sale/payment), side panel
+  // (produit/client/dépense) or a form page (/new, /edit) — should own the
+  // whole screen, so hide the top bar there (desktop keeps it).
+  const isFormContext = Boolean(activeModal) || areGlobalModalsSuppressed || /\/(edit|new)(\/|$)/.test(location.pathname);
 
   useEffect(() => { setIsMenuOpen(false); setQuickAccessOpen(false); }, [location.pathname]);
   useEffect(() => {
@@ -192,7 +199,7 @@ const Navigation = () => {
 
   return (
     <nav
-      className="sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic transition-transform duration-300 ease-out will-change-transform"
+      className={`sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic transition-transform duration-300 ease-out will-change-transform ${isFormContext ? 'hidden md:block' : ''}`}
       style={{ boxShadow: 'var(--shadow2)', transform: navHidden ? 'translateY(-100%)' : 'translateY(0)' }}
     >
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6">
