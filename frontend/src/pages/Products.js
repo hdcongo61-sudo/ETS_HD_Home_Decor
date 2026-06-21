@@ -34,9 +34,12 @@ import {
   Plus,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   Trash2,
+  X,
 } from 'lucide-react';
 import ProductImportModal from '../components/ProductImportModal';
+import Modal from '../components/Modal';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
@@ -100,6 +103,8 @@ const Products = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const fetchLookups = useCallback(async () => {
     try {
@@ -144,9 +149,9 @@ const Products = () => {
   }, [fetchProducts]);
 
   useEffect(() => {
-    if (!isAdmin || !isFormOpen || lookupsLoaded) return;
+    if (!isAdmin || !(isFormOpen || bulkOpen) || lookupsLoaded) return;
     fetchLookups();
-  }, [fetchLookups, isAdmin, isFormOpen, lookupsLoaded]);
+  }, [fetchLookups, isAdmin, isFormOpen, bulkOpen, lookupsLoaded]);
 
   useEffect(() => {
     if (location.state?.fromProductEdit) {
@@ -223,6 +228,7 @@ const Products = () => {
   const inStockCount = products.filter((product) => Number(product.stock) > 0).length;
   const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
   const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
+  const stockValue = products.reduce((sum, product) => sum + ((Number(product.stock) || 0) * (Number(product.price) || 0)), 0);
   const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
   return (
@@ -273,11 +279,22 @@ const Products = () => {
           icon={<AlertTriangle className="h-4 w-4" />}
           tone="warning"
         />
+        <KPICard
+          title="Valeur du stock"
+          value={loading ? '...' : formatCfa(stockValue)}
+          context="Prix de vente potentiel"
+          icon={<Wallet className="h-4 w-4" />}
+          tone="brand"
+        />
       </div>
 
       {isAdmin && (
         <CommandBar>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+              Actions catalogue
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="primary"
               size="sm"
@@ -289,9 +306,9 @@ const Products = () => {
               <Plus className="h-4 w-4" />
               Ajouter
             </Button>
-            <Button variant="secondary" size="sm" form="product-list-export-excel" disabled>
+            <Button variant="secondary" size="sm" disabled={selectedIds.length === 0} onClick={() => setBulkOpen(true)}>
               <Edit3 className="h-4 w-4" />
-              Modifier
+              Modifier{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
             </Button>
             <Button
               variant="secondary"
@@ -301,9 +318,12 @@ const Products = () => {
               <FileSpreadsheet className="h-4 w-4" />
               Importer Excel
             </Button>
+            </div>
           </div>
-          <div className="text-sm text-[var(--ms-text-muted)]">
-            Sélectionnez une ligne pour ouvrir les détails produit.
+          <div className="rounded-[var(--radiusMedium)] px-3 py-2 text-sm" style={{ background: selectedIds.length ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground2)', color: selectedIds.length ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground3)' }}>
+            {selectedIds.length > 0
+              ? `${selectedIds.length} produit(s) sélectionné(s) — cliquez « Modifier » pour les éditer en lot.`
+              : 'Cochez des produits pour les modifier en lot.'}
           </div>
         </CommandBar>
       )}
@@ -316,8 +336,32 @@ const Products = () => {
           onEdit={handleEdit}
           isAdmin={isAdmin}
           lossMap={lossMap}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
         />
       </DataTable>
+
+      {isAdmin && (
+        <BulkEditModal
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          count={selectedIds.length}
+          lookups={lookups}
+          onApply={async (updates) => {
+            const { data } = await api.put('/products/bulk', { ids: selectedIds, updates });
+            const updatedProducts = Array.isArray(data.products) ? data.products : [];
+            const updatedById = new Map(updatedProducts.map((product) => [product._id, product]));
+            setProducts((currentProducts) =>
+              sortProductsByName(
+                currentProducts.map((product) => updatedById.get(product._id) || product)
+              )
+            );
+            toast.success(`${data.modified} produit(s) modifié(s).`);
+            setBulkOpen(false);
+            setSelectedIds([]);
+          }}
+        />
+      )}
 
       {isAdmin && (
         <RightDetailPanel
@@ -608,7 +652,7 @@ const renderLossChip = (lossMap, p) => {
   );
 };
 
-const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {} }) => {
+const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
@@ -617,6 +661,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
   const [sortBy, setSortBy] = useState('name');
   const [exporting, setExporting] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(min-width: 768px)').matches;
@@ -714,6 +759,15 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
     updateFiltersInUrl(DEFAULT_PRODUCT_FILTERS);
   };
 
+  // Apply several filter keys at once (used by removable chips) with a single URL sync.
+  const setManyFilters = (patch) => {
+    setFilters((prev) => {
+      const next = { ...prev, ...patch };
+      updateFiltersInUrl(next);
+      return next;
+    });
+  };
+
   // Quick stock-status presets that drive the numeric stock filter.
   const STOCK_PRESETS = {
     all:      { stockOperator: '', stock: '', stockMax: '' },
@@ -804,6 +858,13 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
     [filtered, visibleCount]
   );
   const hasMoreProducts = visibleCount < filtered.length;
+
+  // Bulk selection (admin) — select-all targets the whole filtered set.
+  const toggleSelect = (id) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.includes(p._id));
+  const toggleSelectAllFiltered = () =>
+    setSelectedIds(allFilteredSelected ? [] : filtered.map((p) => p._id));
 
   // Summary stats for the current filtered/searched results.
   const resultStats = useMemo(() => {
@@ -1049,50 +1110,86 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
     { key: 'out', label: 'Rupture' },
   ];
 
-  const renderFilterPanel = () => (
-    <div className="border-b p-4 lg:p-5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
-      {/* Statistiques des résultats — toujours affichées en haut, reflètent les résultats courants (filtrés ou non) */}
-      {!loading && (
-        <div className="mb-4 rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--ms-blue-soft)', border: '1px solid var(--colorNeutralStroke2)' }}>
-          <p className="fui-caption1-strong mb-2 uppercase" style={{ color: 'var(--colorBrandForeground1)', letterSpacing: '0.06em' }}>
-            {hasActiveFilters ? 'Résultats du filtre' : 'Statistiques du catalogue'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Produits trouvés', value: resultStats.count.toLocaleString('fr-FR'), tone: 'brand' },
-              { label: 'Unités en stock', value: resultStats.units.toLocaleString('fr-FR'), tone: 'neutral' },
-              { label: 'En stock', value: resultStats.inStock.toLocaleString('fr-FR'), tone: 'success' },
-              { label: 'Stock faible', value: resultStats.low.toLocaleString('fr-FR'), tone: 'warning' },
-              { label: 'Rupture', value: resultStats.out.toLocaleString('fr-FR'), tone: 'danger' },
-              ...(isAdmin ? [
-                { label: 'Valeur (prix de vente)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
-                { label: 'Marge potentielle', value: `${resultStats.potentialMargin.toLocaleString('fr-FR')} CFA`, tone: 'success' },
-              ] : []),
-            ].map((s) => {
-              const toneColor = {
-                brand: 'var(--colorBrandForeground1)',
-                success: 'var(--colorStatusSuccessForeground1)',
-                warning: 'var(--colorStatusWarningForeground1)',
-                danger: 'var(--colorStatusDangerForeground1)',
-                neutral: 'var(--colorNeutralForeground1)',
-              }[s.tone];
-              return (
-                <div
-                  key={s.label}
-                  className="rounded-[var(--radiusMedium)] px-3 py-1.5"
-                  style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}
-                >
-                  <span className="fui-caption2 block" style={{ color: 'var(--colorNeutralForeground3)' }}>{s.label}</span>
-                  <span className="fui-caption1-strong tabular-nums" style={{ color: toneColor }}>{s.value}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+  // Removable chips summarising each active filter (text + numeric groups).
+  const priceChipOp = getEffectiveNumericOperator(filters.priceOperator, filters.price, filters.priceMax);
+  const stockChipOp = getEffectiveNumericOperator(filters.stockOperator, filters.stock, filters.stockMax);
+  const activeFilterChips = [
+    filters.product && { key: 'product', label: `Produit : ${filters.product}`, onRemove: () => setManyFilters({ product: '' }) },
+    filters.category && { key: 'category', label: `Catégorie : ${filters.category}`, onRemove: () => setManyFilters({ category: '' }) },
+    filters.container && { key: 'container', label: `Conteneur : ${filters.container}`, onRemove: () => setManyFilters({ container: '' }) },
+    filters.warehouse && { key: 'warehouse', label: `Entrepôt : ${filters.warehouse}`, onRemove: () => setManyFilters({ warehouse: '' }) },
+    filters.supplier && { key: 'supplier', label: `Fournisseur : ${filters.supplier}`, onRemove: () => setManyFilters({ supplier: '' }) },
+    priceChipOp && { key: 'price', label: `Prix ${comparisonLabels[priceChipOp] || ''} ${filters.price}${priceChipOp === 'between' && filters.priceMax ? ` et ${filters.priceMax}` : ''}`.trim(), onRemove: () => setManyFilters({ priceOperator: '', price: '', priceMax: '' }) },
+    stockChipOp && { key: 'stock', label: `Stock ${comparisonLabels[stockChipOp] || ''} ${filters.stock}${stockChipOp === 'between' && filters.stockMax ? ` et ${filters.stockMax}` : ''}`.trim(), onRemove: () => setManyFilters({ stockOperator: '', stock: '', stockMax: '' }) },
+  ].filter(Boolean);
 
-      {/* Quick stock-status chips */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+  // Compact toolbar: inline search, stock presets, filter-drawer trigger, sort + export, active chips.
+  const renderToolbar = () => (
+    <div className="border-b p-3 sm:p-4 flex flex-col gap-3" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-1 items-center gap-2 min-w-0">
+          <div className="relative min-w-0 flex-1 lg:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="product-filter-name"
+              type="text"
+              placeholder="Rechercher un produit…"
+              value={filters.product}
+              onChange={(e) => handleFilterChange('product', e.target.value)}
+              className={`${filterInputClass} pl-9`}
+              autoComplete="off"
+              aria-label="Rechercher un produit"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="ms-button ms-button-secondary ms-button-md shrink-0"
+            aria-label="Ouvrir les filtres"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filtres</span>
+            {activeFilterChips.length > 0 && (
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-semibold" style={{ background: 'var(--ms-blue)', color: '#fff' }}>
+                {activeFilterChips.length}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2">
+            <span className="fui-caption1 whitespace-nowrap" style={{ color: 'var(--colorNeutralForeground3)' }}>Trier&nbsp;:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="min-h-[36px] rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 text-sm outline-none focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+              style={{ color: 'var(--colorNeutralForeground1)' }}
+              aria-label="Trier les produits"
+            >
+              <option value="name">Nom (A→Z)</option>
+              <option value="stock_desc">Quantité (haut → bas)</option>
+              <option value="stock_asc">Quantité (bas → haut)</option>
+              <option value="price_desc">Prix (haut → bas)</option>
+              <option value="price_asc">Prix (bas → haut)</option>
+            </select>
+          </label>
+          {isAdmin && (
+            <>
+              <button type="button" onClick={handleExportExcel} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">{exporting === 'excel' ? 'Export Excel…' : 'Excel'}</span>
+              </button>
+              <button type="button" onClick={handleExportPdf} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">{exporting === 'pdf' ? 'Export PDF…' : 'PDF'}</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Quick stock-status chips + result count */}
+      <div className="flex flex-wrap items-center gap-2">
         <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Stock</span>
         {stockChips.map(({ key, label }) => (
           <button
@@ -1104,71 +1201,128 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
             {label}
           </button>
         ))}
+        <span className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''}
+        </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <div>
-          <label htmlFor="product-filter-name" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
-            Produit
-          </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              id="product-filter-name"
-              type="text"
-              placeholder="Nom du produit"
-              value={filters.product}
-              onChange={(e) => handleFilterChange('product', e.target.value)}
-              className={`${filterInputClass} pl-9`}
-              autoComplete="off"
-            />
-          </div>
+
+      {/* Active filter chips (removable) */}
+      {activeFilterChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-t pt-3" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          {activeFilterChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.onRemove}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition"
+              style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}
+              title="Retirer ce filtre"
+            >
+              {chip.label}
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ))}
+          <button type="button" onClick={resetFilters} className="ms-button ms-button-secondary ms-button-sm">
+            <RotateCcw className="h-4 w-4" />
+            Tout effacer
+          </button>
         </div>
+      )}
+    </div>
+  );
+
+  // Filtered-results summary — shown only while filters are active (the KPI row covers the full catalog).
+  const renderResultStats = () => {
+    if (loading || !hasActiveFilters) return null;
+    const stats = [
+      { label: 'Produits trouvés', value: resultStats.count.toLocaleString('fr-FR'), tone: 'brand' },
+      { label: 'Unités en stock', value: resultStats.units.toLocaleString('fr-FR'), tone: 'neutral' },
+      { label: 'En stock', value: resultStats.inStock.toLocaleString('fr-FR'), tone: 'success' },
+      { label: 'Stock faible', value: resultStats.low.toLocaleString('fr-FR'), tone: 'warning' },
+      { label: 'Rupture', value: resultStats.out.toLocaleString('fr-FR'), tone: 'danger' },
+      ...(isAdmin ? [
+        { label: 'Valeur (prix de vente)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
+        { label: 'Marge potentielle', value: `${resultStats.potentialMargin.toLocaleString('fr-FR')} CFA`, tone: 'success' },
+      ] : []),
+    ];
+    const toneColors = {
+      brand: 'var(--colorBrandForeground1)',
+      success: 'var(--colorStatusSuccessForeground1)',
+      warning: 'var(--colorStatusWarningForeground1)',
+      danger: 'var(--colorStatusDangerForeground1)',
+      neutral: 'var(--colorNeutralForeground1)',
+    };
+    return (
+      <div className="border-b p-3 flex flex-wrap gap-2" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground1)' }}>
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-[var(--radiusMedium)] px-3 py-1.5"
+            style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}
+          >
+            <span className="fui-caption2 block" style={{ color: 'var(--colorNeutralForeground3)' }}>{s.label}</span>
+            <span className="fui-caption1-strong tabular-nums" style={{ color: toneColors[s.tone] }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Slide-in drawer holding the detailed filters (category / container / warehouse / supplier / price / stock).
+  const renderFiltersDrawer = () => (
+    <RightDetailPanel
+      isOpen={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      title="Filtres"
+      subtitle="Affinez le catalogue par catégorie, stock, prix et fournisseur."
+      labelledBy="products-filter-panel-title"
+      footer={
+        <>
+          <Button type="button" onClick={resetFilters} disabled={!hasActiveFilters}>
+            <RotateCcw className="h-4 w-4" />
+            Réinitialiser
+          </Button>
+          <Button type="button" variant="primary" onClick={() => setFiltersOpen(false)}>
+            Voir {filtered.length} résultat{filtered.length > 1 ? 's' : ''}
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label htmlFor="product-filter-category" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Catégorie
           </label>
-          <select
-            id="product-filter-category"
-            value={filters.category}
-            onChange={(e) => handleFilterChange('category', e.target.value)}
-            className={filterInputClass}
-          >
+          <select id="product-filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className={filterInputClass}>
             <option value="">Toutes les catégories</option>
-            {categoryOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {categoryOptions.map((option) => (<option key={option} value={option}>{option}</option>))}
           </select>
         </div>
         <div>
           <label htmlFor="product-filter-container" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Conteneur
           </label>
-          <select
-            id="product-filter-container"
-            value={filters.container}
-            onChange={(e) => handleFilterChange('container', e.target.value)}
-            className={filterInputClass}
-          >
+          <select id="product-filter-container" value={filters.container} onChange={(e) => handleFilterChange('container', e.target.value)} className={filterInputClass}>
             <option value="">Tous les conteneurs</option>
-            {containerOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {containerOptions.map((option) => (<option key={option} value={option}>{option}</option>))}
           </select>
         </div>
         <div>
           <label htmlFor="product-filter-warehouse" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
             Entrepôt
           </label>
-          <select
-            id="product-filter-warehouse"
-            value={filters.warehouse}
-            onChange={(e) => handleFilterChange('warehouse', e.target.value)}
-            className={filterInputClass}
-          >
+          <select id="product-filter-warehouse" value={filters.warehouse} onChange={(e) => handleFilterChange('warehouse', e.target.value)} className={filterInputClass}>
             <option value="">Tous les entrepôts</option>
-            {warehouseOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {warehouseOptions.map((option) => (<option key={option} value={option}>{option}</option>))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="product-filter-supplier" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
+            Fournisseur
+          </label>
+          <select id="product-filter-supplier" value={filters.supplier} onChange={(e) => handleFilterChange('supplier', e.target.value)} className={filterInputClass}>
+            <option value="">Tous les fournisseurs</option>
+            {supplierOptions.map((option) => (<option key={option} value={option}>{option}</option>))}
           </select>
         </div>
         {renderNumericFilter({
@@ -1187,76 +1341,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
           valuePlaceholder: 'Stock min',
           maxPlaceholder: 'Stock max',
         })}
-        <div>
-          <label htmlFor="product-filter-supplier" className="mb-1.5 block text-xs font-semibold uppercase text-[var(--ms-text-muted)]">
-            Fournisseur
-          </label>
-          <select
-            id="product-filter-supplier"
-            value={filters.supplier}
-            onChange={(e) => handleFilterChange('supplier', e.target.value)}
-            className={filterInputClass}
-          >
-            <option value="">Tous les fournisseurs</option>
-            {supplierOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button type="button" onClick={resetFilters} disabled={!hasActiveFilters} className="ms-button ms-button-secondary ms-button-sm w-full justify-center gap-2">
-            <RotateCcw className="h-4 w-4" />
-            Réinitialiser
-          </button>
-        </div>
       </div>
-      <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
-          </p>
-          <label className="inline-flex items-center gap-2">
-            <span className="fui-caption1 whitespace-nowrap" style={{ color: 'var(--colorNeutralForeground3)' }}>Trier&nbsp;:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="min-h-[36px] rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 text-sm outline-none focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
-              style={{ color: 'var(--colorNeutralForeground1)' }}
-              aria-label="Trier les produits"
-            >
-              <option value="name">Nom (A→Z)</option>
-              <option value="stock_desc">Quantité (haut → bas)</option>
-              <option value="stock_asc">Quantité (bas → haut)</option>
-              <option value="price_desc">Prix (haut → bas)</option>
-              <option value="price_asc">Prix (bas → haut)</option>
-            </select>
-          </label>
-        </div>
-        {isAdmin && (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={exporting !== null || filtered.length === 0}
-              className={actionButtonClass}
-            >
-              <Download className="h-4 w-4" />
-              {exporting === 'excel' ? 'Export Excel…' : 'Exporter Excel'}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exporting !== null || filtered.length === 0}
-              className={actionButtonClass}
-            >
-              <Download className="h-4 w-4" />
-              {exporting === 'pdf' ? 'Export PDF…' : 'Exporter PDF'}
-            </button>
-          </div>
-        )}
-      </div>
-
-    </div>
+    </RightDetailPanel>
   );
 
   const renderLoadMore = () =>
@@ -1278,7 +1364,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
   if (!isAdmin) {
     return (
       <div>
-        {renderFilterPanel()}
+        {renderToolbar()}
+        {renderResultStats()}
+        {renderFiltersDrawer()}
 
         <div className="divide-y divide-slate-100 bg-white lg:divide-y-0 lg:p-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6">
           {visibleProducts.map((p) => (
@@ -1340,40 +1428,25 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
 
   return (
     <div>
-      <div className="hidden md:flex items-center justify-between gap-4 px-4 py-4 lg:px-6 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]">
-        <div className="text-sm text-[var(--ms-text-muted)]">
-          {filtered.length} produit{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            disabled={exporting !== null || filtered.length === 0}
-            className={actionButtonClass}
-          >
-            <Download className="h-4 w-4" />
-            {exporting === 'excel' ? 'Export Excel…' : 'Exporter Excel'}
-          </button>
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={exporting !== null || filtered.length === 0}
-            className={actionButtonClass}
-          >
-            <Download className="h-4 w-4" />
-            {exporting === 'pdf' ? 'Export PDF…' : 'Exporter PDF'}
-          </button>
-        </div>
-      </div>
-      <div className="md:hidden">
-        {renderFilterPanel()}
-      </div>
+      {renderToolbar()}
+      {renderResultStats()}
+      {renderFiltersDrawer()}
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm lg:text-base">
-          <thead className="bg-slate-50 md:sticky md:top-0 z-10">
+          <thead className="bg-[var(--colorNeutralBackground2)] md:sticky md:top-0 z-10">
             <tr>
+              <th className="px-3 py-3 lg:px-4 lg:py-4 w-10">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAllFiltered}
+                  className="h-4 w-4 cursor-pointer accent-[var(--ms-blue)]"
+                  title="Tout sélectionner (résultats filtrés)"
+                  aria-label="Tout sélectionner"
+                />
+              </th>
               <th className="px-4 py-3 lg:px-6 lg:py-4 text-left text-xs font-semibold text-slate-500 uppercase">
                 <button type="button" onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase hover:text-[var(--ms-blue)]">
                   Produit <span className="text-[var(--ms-blue)]">{sortArrow('name')}</span>
@@ -1405,178 +1478,40 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
                 Actions
               </th>
             </tr>
-            <tr className="bg-white align-top">
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <input
-                  type="text"
-                  placeholder="Filtrer"
-                  value={filters.product}
-                  onChange={(e) => handleFilterChange('product', e.target.value)}
-                  className={filterInputClass}
-                  aria-label="Filtrer par produit"
-                  autoComplete="off"
-                />
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <select
-                  value={filters.category}
-                  onChange={(e) => handleFilterChange('category', e.target.value)}
-                  className={filterInputClass}
-                  aria-label="Filtrer par catégorie"
-                >
-                  <option value="">Toutes</option>
-                  {categoryOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <select
-                  value={filters.container}
-                  onChange={(e) => handleFilterChange('container', e.target.value)}
-                  className={filterInputClass}
-                  aria-label="Filtrer par conteneur"
-                >
-                  <option value="">Tous</option>
-                  {containerOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <select
-                  value={filters.warehouse}
-                  onChange={(e) => handleFilterChange('warehouse', e.target.value)}
-                  className={filterInputClass}
-                  aria-label="Filtrer par entrepôt"
-                >
-                  <option value="">Tous</option>
-                  {warehouseOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <div className="space-y-2">
-                  <select
-                    value={filters.priceOperator}
-                    onChange={(e) => handleFilterChange('priceOperator', e.target.value)}
-                    className={filterInputClass}
-                    aria-label="Comparer le prix"
-                  >
-                    {comparisonOptions.map((option) => (
-                      <option key={`price-${option.value || 'all'}`} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    placeholder={filters.priceOperator === 'between' ? 'Prix min' : 'Valeur'}
-                    value={filters.price}
-                    onChange={(e) => handleFilterChange('price', e.target.value)}
-                    className={filterInputClass}
-                    aria-label="Valeur du filtre prix"
-                  />
-                  {filters.priceOperator === 'between' && (
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      placeholder="Prix max"
-                      value={filters.priceMax}
-                      onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-                      className={filterInputClass}
-                      aria-label="Valeur maximale du filtre prix"
-                    />
-                  )}
-                </div>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <div className="space-y-2">
-                  <select
-                    value={filters.stockOperator}
-                    onChange={(e) => handleFilterChange('stockOperator', e.target.value)}
-                    className={filterInputClass}
-                    aria-label="Comparer le stock"
-                  >
-                    {comparisonOptions.map((option) => (
-                      <option key={`stock-${option.value || 'all'}`} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    placeholder={filters.stockOperator === 'between' ? 'Stock min' : 'Valeur'}
-                    value={filters.stock}
-                    onChange={(e) => handleFilterChange('stock', e.target.value)}
-                    className={filterInputClass}
-                    aria-label="Valeur du filtre stock"
-                  />
-                  {filters.stockOperator === 'between' && (
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      placeholder="Stock max"
-                      value={filters.stockMax}
-                      onChange={(e) => handleFilterChange('stockMax', e.target.value)}
-                      className={filterInputClass}
-                      aria-label="Valeur maximale du filtre stock"
-                    />
-                  )}
-                </div>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4">
-                <select
-                  value={filters.supplier}
-                  onChange={(e) => handleFilterChange('supplier', e.target.value)}
-                  className={filterInputClass}
-                  aria-label="Filtrer par fournisseur"
-                >
-                  <option value="">Tous</option>
-                  {supplierOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </th>
-              <th className="px-4 py-3 lg:px-6 lg:py-4 text-right">
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    disabled={!hasActiveFilters}
-                    className={actionButtonClass}
-                  >
-                    Réinitialiser
-                  </button>
-                  <span className="text-xs text-slate-500">
-                    {filtered.length} produit{filtered.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </th>
-            </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
             {visibleProducts.map((p) => (
-              <tr key={p._id} className="hover:bg-slate-50 transition-colors" onClick={() => document.activeElement?.blur?.()}>
+              <tr key={p._id} className={`transition-colors ${selectedIds.includes(p._id) ? 'bg-[var(--ms-blue-soft)]' : 'hover:bg-[var(--colorNeutralBackground2)]'}`} onClick={() => document.activeElement?.blur?.()}>
+                <td className="px-3 py-3 lg:px-4 lg:py-4 align-top">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(p._id)}
+                    onChange={() => toggleSelect(p._id)}
+                    className="mt-1 h-4 w-4 cursor-pointer accent-[var(--ms-blue)]"
+                    aria-label={`Sélectionner ${p.name}`}
+                  />
+                </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4">
-                  <div className="flex flex-col gap-2 items-center">
-                    <Link
-                      to={productPath(p)}
-                      state={productLinkState}
-                      className="font-medium text-slate-950 hover:text-slate-700 transition line-clamp-2 text-center w-full"
-                      {...desktopLinkProps}
-                    >
-                      {p.name}
-                    </Link>
-                    {renderLossChip(lossMap, p)}
+                  <div className="flex min-w-[260px] items-center gap-3">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl object-cover border border-slate-100 mx-auto" />
+                      <img src={p.image} alt={p.name} className="h-14 w-14 shrink-0 rounded-[var(--radiusLarge)] border border-slate-100 object-cover bg-slate-50 lg:h-16 lg:w-16" loading="lazy" />
                     ) : (
-                      <div className="w-14 h-14 lg:w-16 lg:h-16 bg-slate-100 flex items-center justify-center rounded-xl border border-slate-100 text-slate-500 mx-auto"><Package className="h-6 w-6" /></div>
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] border border-slate-100 bg-slate-100 text-slate-500 lg:h-16 lg:w-16"><Package className="h-6 w-6" /></div>
                     )}
+                    <div className="min-w-0">
+                      <Link
+                        to={productPath(p)}
+                        state={productLinkState}
+                        className="line-clamp-2 font-semibold text-slate-950 transition hover:text-[var(--colorBrandForeground1)]"
+                        {...desktopLinkProps}
+                      >
+                        {p.name}
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                        {renderLossChip(lossMap, p)}
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-slate-600">{p.category}</td>
@@ -1634,8 +1569,15 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
       {/* Mobile cards (admin) */}
       <div className="md:hidden space-y-4 p-4">
         {visibleProducts.map((p) => (
-          <div key={p._id} className="border border-slate-200 rounded-2xl p-4 shadow-sm bg-white" onClick={() => document.activeElement?.blur?.()}>
+          <div key={p._id} className={`rounded-2xl p-4 shadow-sm ${selectedIds.includes(p._id) ? 'border-2 border-[var(--ms-blue)] bg-[var(--ms-blue-soft)]' : 'border border-slate-200 bg-white'}`} onClick={() => document.activeElement?.blur?.()}>
             <div className="flex gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(p._id)}
+                onChange={() => toggleSelect(p._id)}
+                className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--ms-blue)]"
+                aria-label={`Sélectionner ${p.name}`}
+              />
               {p.image ? (
                 <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-100" />
               ) : (
@@ -1746,5 +1688,85 @@ const Select = ({ label, options, className = '', emptyHint, ...props }) => (
     )}
   </div>
 );
+
+/* ─── Bulk edit modal ─────────────────────────────────── */
+const BULK_FIELDS = [
+  { key: 'category', label: 'Catégorie', type: 'select', source: 'categories' },
+  { key: 'container', label: 'Conteneur', type: 'select', source: 'containers' },
+  { key: 'warehouse', label: 'Entrepôt', type: 'select', source: 'warehouses' },
+  { key: 'supplierName', label: 'Fournisseur', type: 'select', source: 'suppliers' },
+  { key: 'price', label: 'Prix de vente (CFA)', type: 'number' },
+  { key: 'costPrice', label: 'Prix de revient (CFA)', type: 'number' },
+  { key: 'minStockLevel', label: 'Stock minimum', type: 'number' },
+];
+
+const BulkEditModal = ({ open, onClose, count, lookups = {}, onApply }) => {
+  const [enabled, setEnabled] = useState({});
+  const [values, setValues] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { if (open) { setEnabled({}); setValues({}); } }, [open]);
+
+  const sources = {
+    categories: lookups.categories || [],
+    containers: lookups.containers || [],
+    warehouses: lookups.warehouses || [],
+    suppliers: lookups.suppliers || [],
+  };
+
+  const apply = async (e) => {
+    e.preventDefault();
+    const updates = {};
+    BULK_FIELDS.forEach((f) => {
+      if (!enabled[f.key]) return;
+      const v = values[f.key];
+      if (f.type === 'number') { if (v !== '' && v != null) updates[f.key] = Number(v); }
+      else { updates[f.key] = v ?? ''; }
+    });
+    if (Object.keys(updates).length === 0) { toast.error('Cochez au moins un champ à modifier.'); return; }
+    setSubmitting(true);
+    try { await onApply(updates); }
+    catch (err) { toast.error(err.response?.data?.message || 'Erreur lors de la modification.'); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <Modal isOpen={open} onClose={onClose} title="Modifier en lot" subtitle={`${count} produit(s) sélectionné(s)`} size="md" mobileFullscreen>
+      <form onSubmit={apply} className="space-y-3">
+        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          Cochez les champs à modifier. Seuls les champs cochés seront appliqués aux {count} produit(s).
+          <br />Changer le <strong>conteneur</strong> met aussi à jour le nom des produits.
+        </p>
+        {BULK_FIELDS.map((f) => {
+          const on = !!enabled[f.key];
+          return (
+            <div key={f.key} className="rounded-[var(--radiusMedium)] p-3" style={{ border: '1px solid var(--colorNeutralStroke2)', background: on ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground1)' }}>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" checked={on} onChange={() => setEnabled((p) => ({ ...p, [f.key]: !on }))} className="h-4 w-4 accent-[var(--ms-blue)]" />
+                <span className="form-label">{f.label}</span>
+              </label>
+              {on && (
+                f.type === 'select' ? (
+                  <select className="form-control mt-2" value={values[f.key] ?? ''} onChange={(e) => setValues((p) => ({ ...p, [f.key]: e.target.value }))}>
+                    <option value="">— Vider / non défini —</option>
+                    {sources[f.source].map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+                  </select>
+                ) : (
+                  <input type="number" min="0" inputMode="numeric" className="form-control mt-2" value={values[f.key] ?? ''} onChange={(e) => setValues((p) => ({ ...p, [f.key]: e.target.value }))} placeholder="Nouvelle valeur" />
+                )
+              )}
+            </div>
+          );
+        })}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className="ms-button ms-button-secondary ms-button-md">Annuler</button>
+          <button type="submit" disabled={submitting} className="ms-button ms-button-primary ms-button-md disabled:opacity-60">
+            {submitting ? 'Application…' : `Appliquer à ${count}`}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
 
 export default Products;

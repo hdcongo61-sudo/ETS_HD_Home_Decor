@@ -818,44 +818,25 @@ const Dashboard = () => {
   const topProducts = salesStatsData?.topProducts || [];
   const saleTypeSummary = salesStatsData?.saleTypeSummary || {};
   const paymentStructureSummary = salesStatsData?.paymentStructureSummary || {};
-  const highlightedSalesCards = [
+  // Two distinct breakdowns, each a 100% split (clearer than 4 mixed cards).
+  const breakdownGroups = [
     {
-      key: "wholesale",
-      title: "Ventes en gros",
-      count: saleTypeSummary.wholesale?.count || 0,
-      amount: saleTypeSummary.wholesale?.totalAmount || 0,
-      percentage: saleTypeSummary.wholesale?.percentage || 0,
-      accent: "from-fuchsia-500 to-pink-500",
-      text: "text-fuchsia-700 dark:text-fuchsia-300",
+      key: "type",
+      title: "Types de commande",
+      icon: ShoppingCart,
+      segments: [
+        { key: "normal", label: "Ventes normales", count: saleTypeSummary.normal?.count || 0, amount: saleTypeSummary.normal?.totalAmount || 0, color: "#0F6CBD" },
+        { key: "wholesale", label: "Ventes en gros", count: saleTypeSummary.wholesale?.count || 0, amount: saleTypeSummary.wholesale?.totalAmount || 0, color: "#8B5CF6" },
+      ],
     },
     {
-      key: "normal",
-      title: "Ventes normales",
-      count: saleTypeSummary.normal?.count || 0,
-      amount: saleTypeSummary.normal?.totalAmount || 0,
-      percentage: saleTypeSummary.normal?.percentage || 0,
-      accent: "from-cyan-500 to-sky-500",
-      text: "text-cyan-700 dark:text-cyan-300",
-    },
-    {
-      key: "full_payment",
-      title: "Paiement complet",
-      count: paymentStructureSummary.full_payment?.count || 0,
-      amount: paymentStructureSummary.full_payment?.totalAmount || 0,
-      percentage: paymentStructureSummary.full_payment?.percentage || 0,
-      accent: "from-emerald-500 to-green-500",
-      text: "text-emerald-700 dark:text-emerald-300",
-      linkTo: "/sales/all?history=1&paymentStructure=full_payment",
-    },
-    {
-      key: "multiple_payments",
-      title: "Paiements multiples",
-      count: paymentStructureSummary.multiple_payments?.count || 0,
-      amount: paymentStructureSummary.multiple_payments?.totalAmount || 0,
-      percentage: paymentStructureSummary.multiple_payments?.percentage || 0,
-      accent: "from-amber-500 to-orange-500",
-      text: "text-amber-700 dark:text-amber-300",
-      linkTo: "/sales/all?history=1&paymentStructure=multiple_payments",
+      key: "payment",
+      title: "Structure des paiements",
+      icon: Coins,
+      segments: [
+        { key: "full_payment", label: "Paiement complet", count: paymentStructureSummary.full_payment?.count || 0, amount: paymentStructureSummary.full_payment?.totalAmount || 0, color: "#107C10", linkTo: "/sales/all?history=1&paymentStructure=full_payment" },
+        { key: "multiple_payments", label: "Paiements multiples (crédit)", count: paymentStructureSummary.multiple_payments?.count || 0, amount: paymentStructureSummary.multiple_payments?.totalAmount || 0, color: "#C19C00", linkTo: "/sales/all?history=1&paymentStructure=multiple_payments" },
+      ],
     },
   ];
 
@@ -2054,58 +2035,61 @@ const Dashboard = () => {
           )}
 
           {salesStatsData && (
-            <div className="mb-5">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">
-                  Types de commandes et structure des paiements
-                </h3>
-                <span className="text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                  Très visible sur la période sélectionnée
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                {highlightedSalesCards.map((card) => {
-                  const cardContent = (
-                    <div className="h-full rounded-[calc(1.5rem-1px)] bg-[var(--ms-white)] dark:bg-gray-900 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                        {card.title}
-                      </p>
-                      <div className={`mt-3 text-3xl font-black tabular-nums ${card.text}`}>
-                        {card.count}
-                      </div>
-                      <p className="mt-1 text-sm text-[var(--ms-text)] dark:text-gray-300">
-                        {card.amount.toLocaleString("fr-FR")} CFA
-                      </p>
-                      <div className="mt-3 flex items-center justify-between rounded-lg bg-[var(--ms-bg-subtle)] dark:bg-gray-800 px-3 py-2 text-xs">
-                        <span className="text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">Part des ventes</span>
-                        <span className={`font-semibold ${card.text}`}>
-                          {card.percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                      {card.linkTo && (
-                        <div className="mt-3 text-xs font-medium text-[var(--ms-blue)] dark:text-indigo-300">
-                          Voir les ventes
-                        </div>
-                      )}
+            <div className="mb-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {breakdownGroups.map((group) => {
+                const total = group.segments.reduce((s, x) => s + (x.amount || 0), 0);
+                const totalCount = group.segments.reduce((s, x) => s + (x.count || 0), 0);
+                const share = (x) => (total > 0 ? (x.amount || 0) / total * 100 : 0);
+                const GroupIcon = group.icon;
+                return (
+                  <div key={group.key} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                        <GroupIcon size={15} />
+                      </span>
+                      <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">{group.title}</h3>
+                      <span className="ml-auto text-xs text-[var(--ms-text-muted)]">{totalCount} vente{totalCount > 1 ? 's' : ''}</span>
                     </div>
-                  );
 
-                  if (!card.linkTo) {
-                    return <div key={card.key} className="fluent-card-filled">{cardContent}</div>;
-                  }
+                    {/* Barre de répartition (100%) */}
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full" style={{ background: 'var(--ms-bg-subtle)' }}>
+                      {group.segments.map((s) => (
+                        <div key={s.key} style={{ width: `${share(s)}%`, background: s.color }} title={`${s.label} — ${share(s).toFixed(0)}%`} />
+                      ))}
+                    </div>
 
-                  return (
-                    <Link
-                      key={card.key}
-                      to={card.linkTo}
-                      className="block fluent-card-filled fluent-card-interactive"
-                      aria-label={`Voir les ventes pour ${card.title.toLowerCase()}`}
-                    >
-                      {cardContent}
-                    </Link>
-                  );
-                })}
-              </div>
+                    {/* Légende détaillée */}
+                    <div className="mt-3 space-y-1">
+                      {group.segments.map((s) => {
+                        const row = (
+                          <>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
+                                <span className="truncate text-sm font-medium text-[var(--ms-text)] dark:text-gray-200">{s.label}</span>
+                              </span>
+                              <span className="shrink-0 text-sm font-bold tabular-nums" style={{ color: s.color }}>{share(s).toFixed(0)}%</span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5 pl-[18px] text-xs text-[var(--ms-text-muted)]">
+                              <span className="font-semibold text-[var(--ms-text)] dark:text-gray-300">{s.count}</span> vente{s.count > 1 ? 's' : ''}
+                              <span className="text-gray-300">·</span>
+                              {Math.round(s.amount).toLocaleString("fr-FR")} CFA
+                              {s.linkTo && <span className="ml-auto font-medium text-[var(--ms-blue)] dark:text-indigo-300">Voir →</span>}
+                            </div>
+                          </>
+                        );
+                        return s.linkTo ? (
+                          <Link key={s.key} to={s.linkTo} className="block rounded-md px-1.5 py-1 -mx-1.5 transition-colors hover:bg-[var(--ms-bg-subtle)]" aria-label={`Voir les ventes : ${s.label}`}>
+                            {row}
+                          </Link>
+                        ) : (
+                          <div key={s.key} className="px-1.5 py-1">{row}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

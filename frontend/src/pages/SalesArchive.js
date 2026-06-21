@@ -7,12 +7,16 @@ import {
   Boxes,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   ClipboardList,
   CreditCard,
+  LayoutGrid,
   PackageCheck,
+  Table2,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
+import { getSaleTypeText } from "../utils/saleUtils";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
 import {
@@ -32,6 +36,7 @@ import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-share
 import AppLoader from "../components/AppLoader";
 import {
   Button,
+  DataTable,
   EmptyState,
   KPICard,
   LoadingSkeleton,
@@ -63,6 +68,132 @@ const getSaleSellerName = (sale) => {
   return sale.user.name || sale.user.email || "";
 };
 
+const getSaleStatusTone = (status) => {
+  if (status === "completed") return "success";
+  if (status === "partially_paid") return "warning";
+  if (status === "cancelled") return "danger";
+  return "neutral";
+};
+
+const getDeliveryLabel = (deliveryStatus) =>
+  deliveryStatus === "delivered" ? "Livré" : deliveryStatus === "not_delivered" ? "Non livré" : "En attente";
+
+const getDeliveryTone = (deliveryStatus) => {
+  if (deliveryStatus === "delivered") return "success";
+  if (deliveryStatus === "not_delivered") return "danger";
+  return "neutral";
+};
+
+/**
+ * Dense, scannable desktop table for the sales archive.
+ * Each row links to the sale detail; financial columns are hidden when the
+ * viewer lacks the sensitive-financials permission.
+ */
+const SalesTable = React.memo(({ sales, showProfit, getProfitText }) => (
+  <DataTable>
+    <table>
+      <thead>
+        <tr>
+          <th>Vente</th>
+          <th>Date</th>
+          <th>Client</th>
+          <th>Statut</th>
+          <th className="!text-center">Art.</th>
+          <th className="!text-right">Total</th>
+          <th className="!text-right">Payé</th>
+          <th className="!text-right">Solde</th>
+          {showProfit && <th className="!text-right">Profit</th>}
+          <th aria-label="Détail" />
+        </tr>
+      </thead>
+      <tbody>
+        {sales.map((sale) => {
+          const { totalPaid, balance } = calculateSaleTotals(sale);
+          const itemCount = (sale.products || []).reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0
+          );
+          const isModified =
+            Number(sale.modificationCount || 0) > 0 ||
+            (Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0);
+          return (
+            <tr key={sale._id} className="group">
+              <td>
+                <Link
+                  to={`/sales/${sale._id}`}
+                  className="font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] whitespace-nowrap"
+                >
+                  #{sale._id.slice(-6)}
+                </Link>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <StatusBadge tone={sale.saleType === "wholesale" ? "warning" : "neutral"}>
+                    {getSaleTypeText(sale.saleType)}
+                  </StatusBadge>
+                  {isModified && <StatusBadge tone="warning">Modifiée</StatusBadge>}
+                </div>
+              </td>
+              <td className="whitespace-nowrap text-[var(--ms-text-muted)]">{formatDate(sale.saleDate)}</td>
+              <td className="max-w-[200px]">
+                <span className="block truncate font-medium text-[var(--ms-text-strong)]">
+                  {sale.client?.name || "Client non spécifié"}
+                </span>
+                {getSaleSellerName(sale) && (
+                  <span className="block truncate text-xs text-[var(--ms-text-muted)]">
+                    {getSaleSellerName(sale)}
+                  </span>
+                )}
+              </td>
+              <td>
+                <div className="flex flex-col items-start gap-1">
+                  <StatusBadge tone={getSaleStatusTone(sale.status)}>{getStatusText(sale.status)}</StatusBadge>
+                  {sale.status === "completed" && (
+                    <StatusBadge tone={getDeliveryTone(sale.deliveryStatus)}>
+                      {getDeliveryLabel(sale.deliveryStatus)}
+                    </StatusBadge>
+                  )}
+                </div>
+              </td>
+              <td className="text-center tabular-nums text-[var(--ms-text-muted)]">{itemCount}</td>
+              <td className="text-right tabular-nums font-semibold text-[var(--ms-text-strong)] whitespace-nowrap">
+                {formatCurrency(sale.totalAmount)}
+              </td>
+              <td className="text-right tabular-nums text-[var(--ms-success)] whitespace-nowrap">
+                {formatCurrency(totalPaid)}
+              </td>
+              <td
+                className={`text-right tabular-nums whitespace-nowrap ${
+                  balance > 0 ? "font-semibold text-[var(--ms-danger)]" : "text-[var(--ms-text-muted)]"
+                }`}
+              >
+                {formatCurrency(balance)}
+              </td>
+              {showProfit && (
+                <td className="text-right tabular-nums whitespace-nowrap" style={{ color: "var(--colorBrandForeground1)" }}>
+                  <span className="font-semibold">{formatCurrency(sale.computedProfit)}</span>
+                  {getProfitText && sale.computedCategory && (
+                    <span className="block text-xs text-[var(--ms-text-muted)]">
+                      {getProfitText(sale.computedCategory)}
+                    </span>
+                  )}
+                </td>
+              )}
+              <td className="text-right">
+                <Link
+                  to={`/sales/${sale._id}`}
+                  className="ms-icon-button opacity-60 transition-opacity group-hover:opacity-100"
+                  aria-label={`Voir la vente #${sale._id.slice(-6)}`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </DataTable>
+));
+
 const SalesArchive = () => {
   const location = useLocation();
   const { auth } = useContext(AuthContext);
@@ -83,6 +214,7 @@ const SalesArchive = () => {
   const [containerFilter, setContainerFilter] = useState("");
   const [containers, setContainers] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("table"); // desktop only: 'table' | 'cards'
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_SALES);
 
   useEffect(() => {
@@ -200,6 +332,49 @@ const SalesArchive = () => {
   );
 
   const hasMoreSales = visibleCount < filteredSales.length;
+
+  const saleCards = useMemo(
+    () =>
+      visibleSales.map((sale, index) => {
+        const { totalPaid, balance } = calculateSaleTotals(sale);
+        const isModified =
+          Number(sale.modificationCount || 0) > 0 ||
+          (Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0);
+        return (
+          <motion.div
+            key={sale._id}
+            className="h-full"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.3) }}
+          >
+            <SaleCard
+              sale={sale}
+              totalPaid={totalPaid}
+              balance={balance}
+              formatDate={formatDate}
+              getStatusClass={getStatusClass}
+              getStatusText={getStatusText}
+              getProfitCategoryClass={getProfitCategoryClass}
+              getProfitCategoryText={getProfitCategoryText}
+              showProfitBadge={canViewSensitiveFinancials}
+              profitCategory={sale.computedCategory}
+              isModified={isModified}
+              actions={
+                sale.status === "completed" ? (
+                  <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+                    <Suspense fallback={<div className="flex justify-center py-2"><AppLoader fullScreen={false} text="Facture…" /></div>}>
+                      <ExportSalesPdf sale={sale} />
+                    </Suspense>
+                  </div>
+                ) : null
+              }
+            />
+          </motion.div>
+        );
+      }),
+    [visibleSales, canViewSensitiveFinancials]
+  );
 
   const filteredStats = useMemo(() => {
     const initial = {
@@ -447,72 +622,70 @@ const SalesArchive = () => {
                 <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filteredSales.length}</span>
                 {filteredSales.length === 1 ? ' vente' : ' ventes'}
               </p>
-              <div className="ml-auto">
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                {/* Desktop-only view toggle: dense table vs. detailed cards */}
+                <div className="hidden md:inline-flex rounded-[var(--radiusMedium)] border p-0.5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }} role="group" aria-label="Mode d'affichage">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    className={`ms-button ms-button-sm ${viewMode === "table" ? "ms-button-primary" : "bg-transparent border-transparent text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"}`}
+                    aria-pressed={viewMode === "table"}
+                    title="Vue tableau"
+                  >
+                    <Table2 className="h-4 w-4" />
+                    <span className="hidden lg:inline">Tableau</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("cards")}
+                    className={`ms-button ms-button-sm ${viewMode === "cards" ? "ms-button-primary" : "bg-transparent border-transparent text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"}`}
+                    aria-pressed={viewMode === "cards"}
+                    title="Vue cartes"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    <span className="hidden lg:inline">Cartes</span>
+                  </button>
+                </div>
                 <SalesListExportButtons sales={filteredSales} filenamePrefix="archive-ventes" label="Archive des ventes" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              {filteredSales.length === 0 ? (
-                <EmptyState title="Aucune vente correspondante" description="Modifiez les filtres ou revenez plus tard." />
-              ) : (
-                <>
-                  {visibleSales.map((sale, index) => {
-                    const { totalPaid, balance } = calculateSaleTotals(sale);
-                    const isModified =
-                      Number(sale.modificationCount || 0) > 0 ||
-                      (Array.isArray(sale.modificationHistory) && sale.modificationHistory.length > 0);
-                    return (
-                      <motion.div
-                        key={sale._id}
-                        className="h-full"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.3) }}
-                      >
-                        <SaleCard
-                          sale={sale}
-                          totalPaid={totalPaid}
-                          balance={balance}
-                          formatDate={formatDate}
-                          getStatusClass={getStatusClass}
-                          getStatusText={getStatusText}
-                          getProfitCategoryClass={getProfitCategoryClass}
-                          getProfitCategoryText={getProfitCategoryText}
-                          showProfitBadge={canViewSensitiveFinancials}
-                          profitCategory={sale.computedCategory}
-                          isModified={isModified}
-                          actions={
-                            sale.status === "completed" ? (
-                              <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
-                                <Suspense fallback={<div className="flex justify-center py-2"><AppLoader fullScreen={false} text="Facture…" /></div>}>
-                                  <ExportSalesPdf sale={sale} />
-                                </Suspense>
-                              </div>
-                            ) : null
-                          }
-                        />
-                      </motion.div>
-                    );
-                  })}
+            {filteredSales.length === 0 ? (
+              <EmptyState title="Aucune vente correspondante" description="Modifiez les filtres ou revenez plus tard." />
+            ) : (
+              <>
+                {/* Mobile: always touch-friendly cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden">{saleCards}</div>
 
-                  {hasMoreSales && (
-                    <div className="flex justify-center pt-2">
-                      <Button
-                        type="button"
-                        onClick={() =>
-                          setVisibleCount((current) =>
-                            Math.min(current + VISIBLE_SALES_STEP, filteredSales.length)
-                          )
-                        }
-                      >
-                        Afficher plus ({formatNumber(visibleSales.length)} sur {formatNumber(filteredSales.length)})
-                      </Button>
-                    </div>
+                {/* Desktop: dense table (default) or detailed card grid */}
+                <div className="hidden md:block">
+                  {viewMode === "table" ? (
+                    <SalesTable
+                      sales={visibleSales}
+                      showProfit={canViewSensitiveFinancials}
+                      getProfitText={getProfitCategoryText}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">{saleCards}</div>
                   )}
-                </>
-              )}
-            </div>
+                </div>
+
+                {hasMoreSales && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        setVisibleCount((current) =>
+                          Math.min(current + VISIBLE_SALES_STEP, filteredSales.length)
+                        )
+                      }
+                    >
+                      Afficher plus ({formatNumber(visibleSales.length)} sur {formatNumber(filteredSales.length)})
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
     </Workspace>

@@ -6,6 +6,7 @@ const {
   registerUser,
   getUsers,
   getUserProfile,
+  updateMyProfile,
   getCurrentUser,
   getUserStats,
   createUserByAdmin,
@@ -28,7 +29,8 @@ router.route('/')
   .get(protect, admin, getUsers);
 router.post('/admin', protect, admin, imageUpload.single('photoFile'), createUserByAdmin);
 router.route('/profile')
-  .get(protect, getUserProfile);
+  .get(protect, getUserProfile)
+  .put(protect, imageUpload.single('photoFile'), updateMyProfile);
 
 // Add this new route for login statistics
 router.get('/login-stats', protect, admin, getLoginStats);

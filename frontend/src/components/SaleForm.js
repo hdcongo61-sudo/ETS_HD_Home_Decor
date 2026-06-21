@@ -295,6 +295,11 @@ const SaleForm = ({
           <div className="space-y-4">
             {selectedProducts.map((item, index) => {
               const selectedProduct = products.find(p => p._id === item.product);
+              const productSearchTerm = productSearchTerms[index] || '';
+              const hasProductSearch = productSearchTerm.trim().length > 0;
+              const filteredProducts = hasProductSearch
+                ? getFilteredProducts(productSearchTerm, item.product).slice(0, 30)
+                : [];
               return (
                 <div
                   key={index}
@@ -327,7 +332,7 @@ const SaleForm = ({
                     type="text"
                     placeholder="Rechercher un produit…"
                     className={inputBase}
-                    value={productSearchTerms[index] || ''}
+                    value={productSearchTerm}
                     onChange={(e) => {
                       const newTerms = [...productSearchTerms];
                       newTerms[index] = e.target.value;
@@ -336,20 +341,61 @@ const SaleForm = ({
                     aria-label={`Recherche produit ${index + 1}`}
                   />
 
-                  <select
-                    value={item.product}
-                    onChange={(e) => handleProductChange(index, e.target.value)}
-                    className={`${inputBase} ${errors[index] ? 'form-control-error' : ''}`}
-                    aria-invalid={!!errors[index]}
-                    aria-describedby={errors[index] ? `product-error-${index}` : undefined}
-                  >
-                    <option value="">Sélectionner un produit…</option>
-                    {getFilteredProducts(productSearchTerms[index], item.product).map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name} ({p.stock})
-                      </option>
-                    ))}
-                  </select>
+                  {hasProductSearch && (
+                    <div
+                      className={`overflow-hidden rounded-xl border bg-[var(--ms-white)] ${
+                        errors[index] ? 'border-[var(--ms-danger)]/50' : 'border-[var(--ms-border)]'
+                      }`}
+                      role="listbox"
+                      aria-label={`Choix produit ${index + 1}`}
+                      aria-invalid={!!errors[index]}
+                      aria-describedby={errors[index] ? `product-error-${index}` : undefined}
+                    >
+                      {filteredProducts.length > 0 ? (
+                        <div className="max-h-72 overflow-y-auto">
+                          {filteredProducts.map((p) => {
+                            const isSelected = p._id === item.product;
+                            return (
+                              <button
+                                key={p._id}
+                                type="button"
+                                onClick={() => handleProductChange(index, p._id)}
+                                className={`flex w-full items-center gap-3 border-b border-[var(--ms-border)] px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-[var(--ms-bg-subtle)] ${
+                                  isSelected ? 'bg-[var(--ms-blue-soft)]' : 'bg-transparent'
+                                }`}
+                                role="option"
+                                aria-selected={isSelected}
+                              >
+                                <img
+                                  src={p.image || '/placeholder.png'}
+                                  alt=""
+                                  className="h-12 w-12 shrink-0 rounded-lg border border-[var(--ms-border)] object-cover"
+                                  loading="lazy"
+                                />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold text-[var(--ms-text)]">
+                                    {p.name}
+                                  </span>
+                                  <span className="mt-0.5 block text-xs text-[var(--ms-text-muted)]">
+                                    Stock : {p.stock} · Prix : {(p.price || 0).toLocaleString('fr-FR')} CFA
+                                  </span>
+                                </span>
+                                {isSelected && (
+                                  <span className="shrink-0 rounded-full bg-[var(--ms-blue)] px-2 py-1 text-xs font-semibold text-white">
+                                    Choisi
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-4 text-sm text-[var(--ms-text-muted)]">
+                          Aucun produit disponible.
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>

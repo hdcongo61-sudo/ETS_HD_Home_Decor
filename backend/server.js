@@ -117,6 +117,8 @@ app.use('/api/users/password-update-request', authLimiter);
 // limit than the default endpoints. This route-specific parser runs first and
 // sets req.body; the global 10kb parser below then skips the already-read body.
 app.use('/api/products/import', express.json({ limit: '5mb' }));
+// Bulk product edits can carry a large list of ids.
+app.use('/api/products/bulk', express.json({ limit: '1mb' }));
 // Editable super-admin documents can exceed the tiny default body limit.
 app.use('/api/export/doc', express.json({ limit: '256kb' }));
 app.use(express.json({ limit: '10kb' }));

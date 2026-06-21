@@ -182,6 +182,40 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update the logged-in user's own profile (photo, name). Works for any
+//          authenticated user, including the super-admin.
+// @route   PUT /api/users/profile
+// @access  Private
+const updateMyProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (req.file?.buffer) {
+    user.photo = await uploadUserPhoto(req.file.buffer);
+  } else if (typeof req.body.photo === 'string') {
+    user.photo = req.body.photo; // allow clearing (empty string) or setting a URL
+  }
+  if (typeof req.body.name === 'string' && req.body.name.trim()) {
+    user.name = req.body.name.trim();
+  }
+
+  await user.save();
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone || '',
+    isAdmin: user.isAdmin,
+    isSuperAdmin: user.isSuperAdmin || false,
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+    photo: user.photo || '',
+  });
+});
+
 // @desc    Register new user
 // @route   POST /api/users
 // @access  Public
@@ -954,6 +988,7 @@ module.exports = {
   requestPasswordUpdate,
   getUsers,
   getUserProfile,
+  updateMyProfile,
   registerUser,
   getCurrentUser,
   getUserStats,

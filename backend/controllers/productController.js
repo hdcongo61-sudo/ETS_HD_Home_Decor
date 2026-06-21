@@ -6,6 +6,8 @@ const cloudinary = require('../utils/cloudinary');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 const STOCK_MOVEMENT_REASONS = ['casse', 'cadeau', 'vol', 'peremption', 'usage_personnel', 'correction', 'autre'];
+const PRODUCT_LIST_FIELDS =
+  'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku isActive minStockLevel';
 
 const normaliseId = (value) => {
   if (!value) return null;
@@ -55,9 +57,7 @@ const getProducts = async (req, res) => {
     let query = Product.find(tenantFilter(req)).sort({ stock: -1 });
 
     if (summaryMode === 'list') {
-      query = query.select(
-        'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku isActive minStockLevel'
-      );
+      query = query.select(PRODUCT_LIST_FIELDS);
     }
 
     const products = await query.lean();
@@ -1842,11 +1842,80 @@ const importProducts = async (req, res) => {
   }
 };
 
+// @desc    Bulk update several products at once (admin)
+// @route   PUT /api/products/bulk
+// @access  Private/Admin
+const bulkUpdateProducts = async (req, res) => {
+  try {
+    const { ids, updates } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'Aucun produit sélectionné.' });
+    }
+    const u = updates || {};
+
+    // Only the fields explicitly provided are changed.
+    const set = {};
+    if (typeof u.category === 'string') set.category = u.category.trim();
+    if (typeof u.warehouse === 'string') set.warehouse = u.warehouse.trim();
+    if (typeof u.supplierName === 'string') set.supplierName = u.supplierName.trim();
+    if (typeof u.supplierPhone === 'string') set.supplierPhone = u.supplierPhone.trim();
+    const price = parseNumberField(u.price);
+    if (price !== undefined) set.price = price;
+    const costPrice = parseNumberField(u.costPrice);
+    if (costPrice !== undefined) set.costPrice = costPrice;
+    const minStockLevel = parseNumberField(u.minStockLevel);
+    if (minStockLevel !== undefined) set.minStockLevel = minStockLevel;
+
+    const newContainer = typeof u.container === 'string' ? u.container.trim() : undefined;
+    const getUpdatedProducts = () =>
+      Product.find({ ...tenantFilter(req), _id: { $in: ids } })
+        .select(PRODUCT_LIST_FIELDS)
+        .lean();
+
+    // Changing the container must also rebuild each product's name suffix → loop.
+    if (newContainer !== undefined) {
+      const products = await Product.find({ ...tenantFilter(req), _id: { $in: ids } });
+      let modified = 0;
+      for (const p of products) {
+        const base = stripContainerSuffix(p.name, p.container || '');
+        p.container = newContainer;
+        p.name = buildProductNameWithContainer(base, newContainer);
+        Object.assign(p, set);
+        await p.save();
+        modified += 1;
+      }
+      const updatedProducts = await getUpdatedProducts();
+      return res.json({
+        modified,
+        products: updatedProducts.map((product) => stripSensitiveProductFields(product, req.user)),
+      });
+    }
+
+    if (Object.keys(set).length === 0) {
+      return res.status(400).json({ message: 'Aucune modification fournie.' });
+    }
+
+    const result = await Product.updateMany(
+      { ...tenantFilter(req), _id: { $in: ids } },
+      { $set: set }
+    );
+    const updatedProducts = await getUpdatedProducts();
+    res.json({
+      modified: result.modifiedCount ?? result.nModified ?? 0,
+      products: updatedProducts.map((product) => stripSensitiveProductFields(product, req.user)),
+    });
+  } catch (error) {
+    console.error('❌ [bulkUpdateProducts]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
+  bulkUpdateProducts,
   deleteProduct,
   getProductStats,
   getProductImages,

@@ -1,6 +1,8 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../services/api';
+import { confirmDialog } from '../components/ConfirmProvider';
 import QRCode from 'react-qr-code';
 import { Line } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
@@ -36,9 +38,23 @@ import {
   ExternalLink,
   Maximize2,
   Images,
+  AlertTriangle,
+  Plus,
+  RotateCcw,
 } from 'lucide-react';
 
 /* ─── utilities ─── */
+const LOSS_REASONS = [
+  { value: 'casse', label: 'Casse / abîmé' },
+  { value: 'cadeau', label: 'Cadeau / échantillon' },
+  { value: 'vol', label: 'Vol' },
+  { value: 'peremption', label: 'Péremption' },
+  { value: 'usage_personnel', label: 'Usage personnel' },
+  { value: 'correction', label: 'Correction de stock' },
+  { value: 'autre', label: 'Autre' },
+];
+const lossReasonLabel = (r) => (LOSS_REASONS.find((x) => x.value === r)?.label || r);
+
 const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (v) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(toNumber(v));
@@ -104,8 +120,27 @@ const ProductDetails = () => {
   const [requestReason, setRequestReason] = useState('');
   const [requestValue, setRequestValue] = useState('');
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  // Pertes & cadeaux (sorties de stock hors vente)
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [lossForm, setLossForm] = useState({ reason: 'casse', quantity: '1', note: '' });
+  const [lossSubmitting, setLossSubmitting] = useState(false);
+  const [lossMovements, setLossMovements] = useState([]);
+  const [lossLoading, setLossLoading] = useState(false);
   const qrCodeRef = useRef();
   const pageRef = useRef();
+
+  const fetchLossMovements = useCallback(async () => {
+    if (!id) return;
+    setLossLoading(true);
+    try {
+      const { data } = await api.get(`/products/stock-movements?product=${id}`);
+      setLossMovements(data.movements || []);
+    } catch {
+      setLossMovements([]);
+    } finally {
+      setLossLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     const load = async () => {
@@ -149,6 +184,49 @@ const ProductDetails = () => {
     load();
     loadHistory();
   }, [id]);
+
+  // Refresh product + stats after a stock movement (stock/profit change).
+  const refreshProductAndStats = useCallback(async () => {
+    try {
+      const res = await api.get(`/products/${id}`);
+      setProduct(res.data);
+      const statsRes = await api.get(`/products/${id}/stats?range=month`);
+      setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
+    } catch { /* ignore */ }
+  }, [id]);
+
+  useEffect(() => { if (isAdmin) fetchLossMovements(); }, [isAdmin, fetchLossMovements]);
+
+  const submitLoss = async (e) => {
+    e.preventDefault();
+    const qty = parseInt(lossForm.quantity, 10);
+    if (!qty || qty <= 0) { toast.error('Quantité invalide.'); return; }
+    setLossSubmitting(true);
+    try {
+      await api.post('/products/stock-movement', {
+        productId: id, quantity: qty, reason: lossForm.reason, note: lossForm.note.trim(),
+      });
+      toast.success('Sortie de stock enregistrée.');
+      setLossModalOpen(false);
+      setLossForm({ reason: 'casse', quantity: '1', note: '' });
+      await Promise.all([fetchLossMovements(), refreshProductAndStats()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement.");
+    } finally {
+      setLossSubmitting(false);
+    }
+  };
+
+  const undoLoss = async (movementId) => {
+    if (!(await confirmDialog('Annuler cette sortie ? Le stock sera restauré.'))) return;
+    try {
+      await api.delete(`/products/stock-movement/${movementId}`);
+      toast.success('Sortie annulée, stock restauré.');
+      await Promise.all([fetchLossMovements(), refreshProductAndStats()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur.');
+    }
+  };
 
   const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
   const canSeeSupplierContacts = isAdmin || userPermissions.includes('view_supplier_contacts');
@@ -285,6 +363,7 @@ const ProductDetails = () => {
   const TABS = [
     { id: 'overview',  label: 'Aperçu' },
     ...(canSeeFinancials ? [{ id: 'financial', label: 'Analyse financière' }] : []),
+    ...(isAdmin ? [{ id: 'losses', label: 'Pertes & cadeaux' }] : []),
   ];
 
   return (
@@ -332,6 +411,16 @@ const ProductDetails = () => {
               >
                 <FileDown size={14} />
                 <span className="hidden sm:inline">PDF</span>
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => { setLossForm({ reason: 'casse', quantity: '1', note: '' }); setLossModalOpen(true); }}
+                className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
+                title="Enregistrer une casse, un cadeau ou une autre sortie de stock"
+              >
+                <AlertTriangle size={14} />
+                <span className="hidden sm:inline">Perte / Cadeau</span>
               </button>
             )}
             {isAdmin && (
@@ -690,9 +779,89 @@ const ProductDetails = () => {
               </div>
             )}
 
+            {/* ── PERTES & CADEAUX ── */}
+            {activeTab === 'losses' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Sorties de stock (hors vente)</p>
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Casse, cadeaux, vol, péremption… Le coût est déduit du bénéfice net.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setLossForm({ reason: 'casse', quantity: '1', note: '' }); setLossModalOpen(true); }}
+                    className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus size={14} /> Enregistrer
+                  </button>
+                </div>
+
+                {lossLoading ? (
+                  <LoadingSkeleton rows={3} />
+                ) : lossMovements.length === 0 ? (
+                  <EmptyState title="Aucune perte ni cadeau" description="Aucune sortie de stock hors vente enregistrée pour ce produit." />
+                ) : (
+                  <ul className="space-y-2">
+                    {lossMovements.map((m) => (
+                      <li
+                        key={m._id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radiusLarge)] p-3"
+                        style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}
+                      >
+                        <div className="min-w-0">
+                          <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                            {lossReasonLabel(m.reason)} · {m.quantity} u
+                          </p>
+                          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                            {m.createdAt ? new Date(m.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                            {m.user?.name ? ` · ${m.user.name}` : ''}{m.note ? ` · ${m.note}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {canSeeFinancials && m.costImpact > 0 && (
+                            <span className="fui-caption1-strong" style={{ color: 'var(--colorStatusDangerForeground1)' }}>−{fmt(m.costImpact)}</span>
+                          )}
+                          <button type="button" onClick={() => undoLoss(m._id)} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1">
+                            <RotateCcw size={13} /> Annuler
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
 </div>
         </div>
       </div>
+
+      {/* ══ MODAL: PERTE / CADEAU ══ */}
+      <Modal isOpen={lossModalOpen} onClose={() => setLossModalOpen(false)} title="Enregistrer une sortie de stock" subtitle="Casse, cadeau, vol, péremption…" size="sm">
+        <form onSubmit={submitLoss} className="space-y-4">
+          <div>
+            <label className="form-label mb-1 block">Motif</label>
+            <select className="form-control" value={lossForm.reason} onChange={(e) => setLossForm((f) => ({ ...f, reason: e.target.value }))}>
+              {LOSS_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label mb-1 block">Quantité</label>
+            <input type="number" min="1" inputMode="numeric" className="form-control" value={lossForm.quantity} onChange={(e) => setLossForm((f) => ({ ...f, quantity: e.target.value }))} />
+            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Stock actuel : {toNumber(product.stock)} u</p>
+          </div>
+          <div>
+            <label className="form-label mb-1 block">Note (optionnel)</label>
+            <input type="text" className="form-control" maxLength={300} value={lossForm.note} onChange={(e) => setLossForm((f) => ({ ...f, note: e.target.value }))} placeholder="Précisez si besoin…" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setLossModalOpen(false)} className="ms-button ms-button-secondary ms-button-md">Annuler</button>
+            <button type="submit" disabled={lossSubmitting} className="ms-button ms-button-primary ms-button-md disabled:opacity-60">
+              {lossSubmitting ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ══ MODAL: IMAGE ZOOM ══ */}
       <Modal isOpen={imageZoom} onClose={() => setImageZoom(false)} title={product?.name || 'Image'} size="lg">

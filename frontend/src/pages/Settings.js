@@ -4,11 +4,11 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Check, X, RotateCcw, Save,
-  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight,
+  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight, Printer, FileSpreadsheet,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
+import { getLogoDataUrl, mixHexColors, resolveAppLogo } from '../utils/appBranding';
 import { PageHeader, Workspace, EmptyState, LoadingSkeleton } from '../components/business';
 
 const TABS = [
@@ -17,6 +17,15 @@ const TABS = [
   { key: 'containers', label: 'Conteneurs', endpoint: '/lookups/containers', icon: Boxes },
   { key: 'warehouses', label: 'Entrepôts', endpoint: '/lookups/warehouses', icon: Warehouse },
   { key: 'suppliers', label: 'Fournisseurs', endpoint: '/lookups/suppliers', icon: Truck },
+];
+
+// Top-level settings sections — drive the desktop sidebar and the mobile pill switcher.
+const SETTINGS_SECTIONS = [
+  { key: 'identite',    label: 'Identité',           icon: Sparkles,      adminOnly: true },
+  { key: 'preferences', label: 'Préférences',        icon: CalendarClock, adminOnly: true },
+  { key: 'abonnement',  label: 'Abonnement',         icon: CreditCard,    adminOnly: true },
+  { key: 'documents',   label: 'Documents',          icon: FileDown,      adminOnly: true },
+  { key: 'listes',      label: 'Listes de référence', icon: Tag,          adminOnly: false },
 ];
 
 const sortByName = (items) =>
@@ -38,6 +47,83 @@ const buildBrandingForm = (branding = {}) => ({
 });
 
 const settingInputClass = 'form-control';
+const currentDateValue = () => new Date().toISOString().slice(0, 10);
+
+const parseDateValue = (value) => {
+  const [year, month, day] = String(value || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
+
+const getDaysInRange = (startValue, endValue) => {
+  const start = parseDateValue(startValue);
+  const end = parseDateValue(endValue);
+  if (!start || !end || start > end) return [];
+
+  const days = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+};
+
+const sanitizeFilename = (value) =>
+  String(value || 'document')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const normalizeSaleReferencePrefix = (value) =>
+  sanitizeFilename(value)
+    .replace(/_/g, '')
+    .slice(0, 8)
+    .toUpperCase();
+
+const normalizeSaleReferenceSign = (value) =>
+  sanitizeFilename(value)
+    .replace(/_/g, '')
+    .slice(0, 4)
+    .toUpperCase();
+
+const buildSaleReferencePrefix = (branding = {}) => {
+  const name = branding.shortName || branding.appName || 'SHOP';
+  const words = String(name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-zA-Z0-9]+/g) || [];
+  const initials = words.length > 1
+    ? words.map((word) => word[0]).join('')
+    : words[0];
+  return normalizeSaleReferencePrefix(initials || 'SHOP') || 'SHOP';
+};
+
+const buildSaleEmployeeSign = (employeeName) => {
+  const words = String(employeeName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-zA-Z0-9]+/g) || [];
+  if (!words.length) return 'EMP';
+  const sign = words.length > 1
+    ? words.map((word) => word[0]).join('')
+    : words[0].slice(0, 3);
+  return normalizeSaleReferenceSign(sign) || 'EMP';
+};
+
+const formatSaleReferenceDate = (date) =>
+  `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+
+const formatDocumentDate = (value) => {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+};
 
 // Plan mis en avant comme « Recommandé ».
 const RECOMMENDED_PLAN = 'pro';
@@ -68,6 +154,7 @@ const Settings = () => {
   const { appSettings, setAppSettings } = useAppSettings();
   const [activeTab, setActiveTab] = useState('categories');
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const [activeSection, setActiveSection] = useState(isAdmin ? 'identite' : 'listes');
   const [brandingSettings, setBrandingSettings] = useState(() => buildBrandingForm(appSettings?.branding));
   const [brandingLogoFile, setBrandingLogoFile] = useState(null);
   const [brandingLogoPreview, setBrandingLogoPreview] = useState('');
@@ -78,6 +165,21 @@ const Settings = () => {
     manualPaymentDateEnabled: false,
   });
   const [savingDateSettings, setSavingDateSettings] = useState(false);
+  const [saleSheetStartDate, setSaleSheetStartDate] = useState(currentDateValue());
+  const [saleSheetEndDate, setSaleSheetEndDate] = useState(currentDateValue());
+  const [saleSheetEmployeeName, setSaleSheetEmployeeName] = useState('');
+  const [saleSheetEmployeeSign, setSaleSheetEmployeeSign] = useState('');
+  const [saleSheetReferencePrefix, setSaleSheetReferencePrefix] = useState(() => buildSaleReferencePrefix(appSettings?.branding));
+  const [saleSheetRowsPerDay, setSaleSheetRowsPerDay] = useState(12);
+  const [employees, setEmployees] = useState([]);
+  const [generatingSalesSheet, setGeneratingSalesSheet] = useState(false);
+  const [partialInvoiceProductRows, setPartialInvoiceProductRows] = useState(7);
+  const [partialInvoicePaymentRows, setPartialInvoicePaymentRows] = useState(6);
+  const [partialInvoiceCopies, setPartialInvoiceCopies] = useState(2);
+  const [generatingPartialInvoice, setGeneratingPartialInvoice] = useState(false);
+  const [finalInvoiceProductRows, setFinalInvoiceProductRows] = useState(12);
+  const [finalInvoiceCopies, setFinalInvoiceCopies] = useState(2);
+  const [generatingFinalInvoice, setGeneratingFinalInvoice] = useState(false);
 
   // ── Abonnement / plan ──
   const [myTenant, setMyTenant] = useState(null);
@@ -90,6 +192,13 @@ const Settings = () => {
     if (!isAdmin) return;
     api.get('/tenants/me').then(({ data }) => setMyTenant(data)).catch(() => setMyTenant(null));
     api.get('/tenants/plan-catalog').then(({ data }) => setPlanCatalog(data.plans || {})).catch(() => setPlanCatalog({}));
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.get('/employees')
+      .then(({ data }) => setEmployees(Array.isArray(data) ? data : []))
+      .catch(() => setEmployees([]));
   }, [isAdmin]);
 
   // Si on arrive via le bandeau d'essai (#abonnement), défiler jusqu'à la section.
@@ -131,6 +240,11 @@ const Settings = () => {
     setBrandingLogoFile(null);
     setBrandingLogoPreview('');
   }, [appSettings]);
+
+  useEffect(() => {
+    if (saleSheetReferencePrefix) return;
+    setSaleSheetReferencePrefix(buildSaleReferencePrefix(appSettings?.branding));
+  }, [appSettings?.branding, saleSheetReferencePrefix]);
 
   useEffect(() => () => {
     if (brandingLogoPreview) {
@@ -263,7 +377,535 @@ const Settings = () => {
     }
   };
 
+  const handleDownloadProductImportTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const productColumns = [
+        'name',
+        'description',
+        'price',
+        'stock',
+        'category',
+        'costPrice',
+        'supplierName',
+        'supplierPhone',
+        'container',
+        'warehouse',
+        'sku',
+        'minStockLevel',
+        'image',
+      ];
+      const exampleRows = [
+        {
+          name: 'Canapé 3 places',
+          description: 'Canapé tissu gris avec coussins',
+          price: 250000,
+          stock: 4,
+          category: 'Salon',
+          costPrice: 175000,
+          supplierName: 'Fournisseur SARL',
+          supplierPhone: '+242000000000',
+          container: 'CONT-001',
+          warehouse: 'Entrepôt principal',
+          sku: 'SAL-CAN-001',
+          minStockLevel: 2,
+          image: 'https://exemple.com/photos/canape.jpg',
+        },
+      ];
+      const guideRows = [
+        { colonne: 'name', obligatoire: 'Oui', aliases_acceptes: 'Name, Nom, nom', note: 'Nom du produit.' },
+        { colonne: 'description', obligatoire: 'Non', aliases_acceptes: 'Description, desc', note: 'Si vide, une description est générée automatiquement.' },
+        { colonne: 'price', obligatoire: 'Oui', aliases_acceptes: 'Price, Prix, prix', note: 'Prix de vente. Utiliser un nombre positif.' },
+        { colonne: 'stock', obligatoire: 'Non', aliases_acceptes: 'Stock, Quantité, quantite, qty', note: 'Quantité en stock. Vide = 0.' },
+        { colonne: 'category', obligatoire: 'Non', aliases_acceptes: 'Category, Catégorie, categorie', note: 'Vide = Non catégorisé.' },
+        { colonne: 'costPrice', obligatoire: 'Non', aliases_acceptes: 'costprice, Prix de revient, prix de revient, cost', note: 'Prix de revient pour calculer les bénéfices.' },
+        { colonne: 'supplierName', obligatoire: 'Non', aliases_acceptes: 'supplier, Fournisseur, fournisseur', note: 'Nom du fournisseur.' },
+        { colonne: 'supplierPhone', obligatoire: 'Non', aliases_acceptes: 'Téléphone fournisseur, telephone', note: 'Téléphone du fournisseur.' },
+        { colonne: 'container', obligatoire: 'Non', aliases_acceptes: 'Conteneur, conteneur', note: 'Conteneur associé au produit.' },
+        { colonne: 'warehouse', obligatoire: 'Non', aliases_acceptes: 'Entrepôt, entrepot', note: 'Entrepôt ou dépôt.' },
+        { colonne: 'sku', obligatoire: 'Non', aliases_acceptes: 'SKU, Référence, reference', note: 'Référence unique. Si vide, le système génère une SKU.' },
+        { colonne: 'minStockLevel', obligatoire: 'Non', aliases_acceptes: 'Stock minimum, stock minimum', note: 'Seuil d’alerte stock faible. Vide = 5.' },
+        { colonne: 'image', obligatoire: 'Non', aliases_acceptes: 'Image, imageUrl, photo', note: 'URL de la photo du produit.' },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      const productsSheet = XLSX.utils.json_to_sheet(exampleRows, { header: productColumns });
+      productsSheet['!cols'] = [
+        { wch: 26 },
+        { wch: 38 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 42 },
+      ];
+      const guideSheet = XLSX.utils.json_to_sheet(guideRows);
+      guideSheet['!cols'] = [
+        { wch: 18 },
+        { wch: 12 },
+        { wch: 44 },
+        { wch: 58 },
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, productsSheet, 'Produits');
+      XLSX.utils.book_append_sheet(workbook, guideSheet, 'Guide colonnes');
+      XLSX.writeFile(workbook, 'modele_import_produits.xlsx');
+      toast.success('Modèle Excel produits généré.');
+    } catch (error) {
+      console.error('Product import template error:', error);
+      toast.error('Impossible de générer le modèle Excel produits.');
+    }
+  };
+
+  const handleGenerateDailySalesPdf = async () => {
+    const employeeName = saleSheetEmployeeName.trim();
+    const referencePrefix = normalizeSaleReferencePrefix(saleSheetReferencePrefix || buildSaleReferencePrefix(appSettings?.branding));
+    const employeeSign = normalizeSaleReferenceSign(saleSheetEmployeeSign || buildSaleEmployeeSign(employeeName));
+    const days = getDaysInRange(saleSheetStartDate, saleSheetEndDate);
+    if (!saleSheetStartDate || !saleSheetEndDate) {
+      toast.error('Choisissez une date de début et une date de fin.');
+      return;
+    }
+    if (!days.length) {
+      toast.error('La date de fin doit être après la date de début.');
+      return;
+    }
+    if (!employeeName) {
+      toast.error("Choisissez ou saisissez le nom de l'employé.");
+      return;
+    }
+    if (!referencePrefix) {
+      toast.error('Saisissez un préfixe de référence.');
+      return;
+    }
+    if (!employeeSign) {
+      toast.error("Saisissez un signe pour l'employé.");
+      return;
+    }
+
+    try {
+      setGeneratingSalesSheet(true);
+      const [jsPDFModule, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default;
+      const autoTable = autoTableModule.default || autoTableModule;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const branding = appSettings?.branding || {};
+      const appName = branding.appName || branding.shortName || 'HD Gestion';
+      const logoDataUrl = await getLogoDataUrl(resolveAppLogo(branding.logoUrl));
+      const periodLabel = `${parseDateValue(saleSheetStartDate).toLocaleDateString('fr-FR')} - ${parseDateValue(saleSheetEndDate).toLocaleDateString('fr-FR')}`;
+      const rowsPerDay = Math.min(Math.max(Number(saleSheetRowsPerDay) || 12, 6), 20);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const columns = [
+        'N',
+        'Client',
+        'Article vendu',
+        'Qté',
+        'PU',
+        'Total vente',
+        'Montant payé',
+        'Note',
+      ];
+
+      days.forEach((day, dayIndex) => {
+        if (dayIndex > 0) doc.addPage('a4', 'landscape');
+
+        const dateLabel = day.toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        });
+
+        if (logoDataUrl) {
+          try {
+            doc.addImage(logoDataUrl, 40, 24, 42, 42);
+          } catch {
+            // Keep generating the document if the uploaded logo format cannot be embedded.
+          }
+        }
+
+        const titleX = logoDataUrl ? 94 : 40;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(32, 31, 30);
+        doc.setFontSize(15);
+        doc.text(appName, titleX, 38);
+        doc.setFontSize(12);
+        doc.text('Fiche journalière des ventes', titleX, 58);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Période : ${periodLabel}`, 40, 82);
+        doc.text(`Employé : ${employeeName} (${employeeSign})`, 220, 78);
+        doc.text(`Date : ${dateLabel}`, 460, 78);
+
+        doc.setFontSize(8);
+        doc.text("Le N contient le code boutique et le signe employé. Réutiliser le même N pour chaque paiement partiel.", 40, 96);
+
+        autoTable(doc, {
+          startY: 108,
+          head: [columns],
+          body: Array.from({ length: rowsPerDay }, (_, rowIndex) => [
+            `${referencePrefix}-${employeeSign}-${formatSaleReferenceDate(day)}-${String(rowIndex + 1).padStart(3, '0')}`,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+          ]),
+          theme: 'grid',
+          styles: {
+            fontSize: 8,
+            cellPadding: 5,
+            minCellHeight: 24,
+            lineColor: [200, 198, 196],
+            lineWidth: 0.7,
+            textColor: [32, 31, 30],
+          },
+          headStyles: {
+            fillColor: [0, 120, 212],
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          columnStyles: {
+            0: { cellWidth: 126 },
+            1: { cellWidth: 100 },
+            2: { cellWidth: 135 },
+            3: { cellWidth: 38, halign: 'center' },
+            4: { cellWidth: 55, halign: 'right' },
+            5: { cellWidth: 75, halign: 'right' },
+            6: { cellWidth: 80, halign: 'right' },
+            7: { cellWidth: 153 },
+          },
+          margin: { left: 40, right: 40 },
+        });
+
+        const summaryY = pageHeight - 92;
+        autoTable(doc, {
+          startY: summaryY,
+          body: [
+            ['Total ventes', '', 'Total encaissé', '', 'Signature employé', '', 'Signature admin', ''],
+          ],
+          theme: 'grid',
+          styles: {
+            fontSize: 8,
+            cellPadding: 6,
+            minCellHeight: 28,
+            lineColor: [200, 198, 196],
+            lineWidth: 0.7,
+          },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 70 },
+            1: { cellWidth: 105 },
+            2: { fontStyle: 'bold', cellWidth: 82 },
+            3: { cellWidth: 105 },
+            4: { fontStyle: 'bold', cellWidth: 100 },
+            5: { cellWidth: 140 },
+            6: { fontStyle: 'bold', cellWidth: 95 },
+            7: { cellWidth: 65 },
+          },
+          margin: { left: 40, right: 40 },
+        });
+
+        doc.setFontSize(8);
+        doc.setTextColor(96, 94, 92);
+        doc.text(`Page ${dayIndex + 1}/${days.length}`, pageWidth - 82, pageHeight - 24);
+      });
+
+      doc.save(`fiche_ventes_${sanitizeFilename(employeeName)}_${saleSheetStartDate}_${saleSheetEndDate}.pdf`);
+      toast.success('Fiche PDF générée.');
+    } catch (error) {
+      console.error('Daily sales sheet PDF error:', error);
+      toast.error('Impossible de générer la fiche PDF.');
+    } finally {
+      setGeneratingSalesSheet(false);
+    }
+  };
+
+  const handleGenerateSaleInvoiceTemplatePdf = async ({
+    variant,
+    productRowsCount,
+    paymentRowsCount = 0,
+    copyCount = 2,
+    setGenerating,
+  }) => {
+    const isPartial = variant === 'partial';
+    const isFourCopyLayout = Number(copyCount) === 4;
+    const fileLabel = isPartial ? 'partielle' : 'finale';
+    const successLabel = isPartial ? 'Modèle de facture partielle généré.' : 'Modèle de facture finale généré.';
+    const errorLabel = isPartial ? 'Impossible de générer le modèle de facture partielle.' : 'Impossible de générer le modèle de facture finale.';
+
+    try {
+      setGenerating(true);
+      const [jsPDFModule, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default;
+      const autoTable = autoTableModule.default || autoTableModule;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const branding = appSettings?.branding || {};
+      const companyName = branding.appName || branding.shortName || 'Boutique';
+      const companyLogo = await getLogoDataUrl(resolveAppLogo(branding.logoUrl));
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 8;
+      const copyWidth = pageWidth / 2;
+      const copyHeight = isFourCopyLayout ? pageHeight / 2 : pageHeight;
+      const title = isPartial ? 'FACTURE VENTE PARTIELLE' : 'FACTURE VENTE FINALE';
+      const partialFourCopyRowBudget = 6;
+      const productMaxRows = isPartial ? (isFourCopyLayout ? 5 : 10) : (isFourCopyLayout ? 4 : 12);
+      const paymentMaxRows = isPartial ? (isFourCopyLayout ? 5 : 8) : 0;
+      const productRowCount = Math.min(Math.max(Number(productRowsCount) || productMaxRows, 1), productMaxRows);
+      const availablePaymentRows = isPartial && isFourCopyLayout
+        ? Math.max(partialFourCopyRowBudget - productRowCount, 1)
+        : paymentMaxRows;
+      const paymentRowCount = Math.min(Math.max(Number(paymentRowsCount) || 0, 0), availablePaymentRows);
+      const productRows = Array.from({ length: productRowCount }, () => ['', '', '', '']);
+      const paymentRows = Array.from({ length: paymentRowCount }, (_, index) => [String(index + 1), '', '']);
+
+      const drawCopy = (copyLabel, pageIndex) => {
+        const offsetX = (pageIndex % 2) * copyWidth;
+        const offsetY = isFourCopyLayout ? Math.floor(pageIndex / 2) * copyHeight : 0;
+        const copyLeft = offsetX + margin;
+        const copyRight = offsetX + copyWidth - margin;
+        const copyUsableWidth = copyWidth - margin * 2;
+        const headerY = offsetY + (isFourCopyLayout ? 4 : 6);
+        const headerHeight = isFourCopyLayout ? 16 : 22;
+        const infoY = offsetY + (isFourCopyLayout ? 23 : 31);
+        const infoHeight = isFourCopyLayout ? 18 : 24;
+        const tableY = offsetY + (isFourCopyLayout ? 44 : 60);
+        const footerY = offsetY + copyHeight - (isFourCopyLayout ? 4 : 6);
+        const tableMargin = { left: copyLeft, right: pageWidth - copyRight };
+
+        if (pageIndex === 0) {
+          doc.setFillColor(248, 249, 251);
+          doc.rect(0, 0, pageWidth, pageHeight, 'F');
+          doc.setDrawColor(209, 213, 219);
+          doc.setLineWidth(0.25);
+          doc.line(pageWidth / 2, margin, pageWidth / 2, pageHeight - margin);
+          if (isFourCopyLayout) {
+            doc.line(margin, pageHeight / 2, pageWidth - margin, pageHeight / 2);
+          }
+        }
+
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(copyLeft, headerY, copyUsableWidth, headerHeight, 3, 3, 'F');
+
+        const hasLogo = Boolean(companyLogo);
+        if (hasLogo) {
+          try {
+            doc.addImage(companyLogo, 'PNG', copyLeft + 4, headerY + 3, isFourCopyLayout ? 10 : 14, isFourCopyLayout ? 10 : 14);
+          } catch {
+            // Continue without logo if the uploaded file cannot be embedded.
+          }
+        }
+
+        const headerX = hasLogo ? copyLeft + (isFourCopyLayout ? 17 : 22) : copyLeft + 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isFourCopyLayout ? 7.5 : 9);
+        doc.setTextColor(17, 24, 39);
+        doc.text(companyName, headerX, headerY + (isFourCopyLayout ? 6 : 7));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isFourCopyLayout ? 5 : 6);
+        doc.setTextColor(107, 114, 128);
+        const contactLine = [branding.address, branding.supportPhone, branding.supportEmail].filter(Boolean).join(' · ');
+        if (contactLine) doc.text(contactLine, headerX, headerY + (isFourCopyLayout ? 11 : 13), { maxWidth: copyUsableWidth * 0.52 });
+        if (!isFourCopyLayout && branding.footerText) doc.text(branding.footerText, headerX, headerY + 18, { maxWidth: copyUsableWidth * 0.52 });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isFourCopyLayout ? 7 : 8.5);
+        doc.setTextColor(17, 24, 39);
+        doc.text(title, copyRight - 4, headerY + (isFourCopyLayout ? 6 : 7), { align: 'right' });
+        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setTextColor(37, 99, 235);
+        doc.text(copyLabel, copyRight - 4, headerY + (isFourCopyLayout ? 12 : 15), { align: 'right' });
+
+        const cardWidth = (copyUsableWidth - 6) / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(copyLeft, infoY, cardWidth, infoHeight, 3, 3, 'F');
+        doc.roundedRect(copyLeft + cardWidth + 6, infoY, cardWidth, infoHeight, 3, 3, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isFourCopyLayout ? 5.5 : 6.5);
+        doc.setTextColor(107, 114, 128);
+        doc.text('ACHETEUR', copyLeft + 4, infoY + (isFourCopyLayout ? 5 : 6));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setTextColor(55, 65, 81);
+        doc.text('Nom :', copyLeft + 4, infoY + (isFourCopyLayout ? 11 : 13));
+        doc.line(copyLeft + 18, infoY + (isFourCopyLayout ? 11 : 13), copyLeft + cardWidth - 4, infoY + (isFourCopyLayout ? 11 : 13));
+        doc.text('Téléphone :', copyLeft + 4, infoY + (isFourCopyLayout ? 16 : 20));
+        doc.line(copyLeft + 30, infoY + (isFourCopyLayout ? 16 : 20), copyLeft + cardWidth - 4, infoY + (isFourCopyLayout ? 16 : 20));
+
+        const saleCardX = copyLeft + cardWidth + 6;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isFourCopyLayout ? 5.5 : 6.5);
+        doc.setTextColor(107, 114, 128);
+        doc.text('VENTE', saleCardX + 4, infoY + (isFourCopyLayout ? 5 : 6));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setTextColor(55, 65, 81);
+        doc.text('N :', saleCardX + 4, infoY + (isFourCopyLayout ? 10 : 12));
+        doc.line(saleCardX + 13, infoY + (isFourCopyLayout ? 10 : 12), saleCardX + cardWidth - 4, infoY + (isFourCopyLayout ? 10 : 12));
+        doc.text('Date :', saleCardX + 4, infoY + (isFourCopyLayout ? 15 : 18));
+        doc.line(saleCardX + 20, infoY + (isFourCopyLayout ? 15 : 18), saleCardX + cardWidth - 4, infoY + (isFourCopyLayout ? 15 : 18));
+        if (!isFourCopyLayout) {
+          doc.text('Vendeur :', saleCardX + 4, infoY + 23);
+          doc.line(saleCardX + 27, infoY + 23, saleCardX + cardWidth - 4, infoY + 23);
+        }
+
+        autoTable(doc, {
+          startY: tableY,
+          head: [['Produit', 'Prix unitaire', 'Qté', 'Total']],
+          body: productRows,
+          theme: 'grid',
+          margin: tableMargin,
+          headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold', fontSize: isFourCopyLayout ? 5.5 : 6.5, minCellHeight: isFourCopyLayout ? 4 : 5 },
+          styles: { fontSize: isFourCopyLayout ? 5.5 : 6.5, cellPadding: isFourCopyLayout ? 0.8 : 1, minCellHeight: isFourCopyLayout ? 4 : 5, lineColor: [229, 231, 235], lineWidth: 0.2 },
+          columnStyles: {
+            0: { cellWidth: 58 },
+            1: { cellWidth: 28, halign: 'right' },
+            2: { cellWidth: 14, halign: 'center' },
+            3: { cellWidth: 32, halign: 'right' },
+          },
+        });
+
+        if (isPartial) {
+          autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + (isFourCopyLayout ? 2 : 3),
+            head: [['#', 'Date du paiement', 'Montant payé']],
+            body: paymentRows,
+            theme: 'grid',
+            margin: tableMargin,
+            headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: isFourCopyLayout ? 5.5 : 6.5, minCellHeight: isFourCopyLayout ? 4 : 5 },
+            styles: { fontSize: isFourCopyLayout ? 5.5 : 6.5, cellPadding: isFourCopyLayout ? 0.8 : 1, minCellHeight: isFourCopyLayout ? 4 : 5, lineColor: [229, 231, 235], lineWidth: 0.2 },
+            columnStyles: {
+              0: { cellWidth: 12, halign: 'center' },
+              1: { cellWidth: 73 },
+              2: { cellWidth: 47, halign: 'right' },
+            },
+          });
+        }
+
+        const totalsY = doc.lastAutoTable.finalY + 4;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(copyRight - 60, totalsY, 60, isFourCopyLayout ? 11 : 14, 3, 3, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setTextColor(107, 114, 128);
+        doc.text('Prix total', copyRight - 56, totalsY + (isFourCopyLayout ? 4 : 5));
+        doc.text('Total payé', copyRight - 56, totalsY + (isFourCopyLayout ? 9 : 11));
+        doc.setDrawColor(156, 163, 175);
+        doc.line(copyRight - 30, totalsY + (isFourCopyLayout ? 4 : 5), copyRight - 4, totalsY + (isFourCopyLayout ? 4 : 5));
+        doc.line(copyRight - 30, totalsY + (isFourCopyLayout ? 9 : 11), copyRight - 4, totalsY + (isFourCopyLayout ? 9 : 11));
+
+        const signatureBottomOffset = isPartial ? (isFourCopyLayout ? 10 : 10) : (isFourCopyLayout ? 14 : 18);
+        const signatureY = Math.min(totalsY + (isFourCopyLayout ? 15 : 20), offsetY + copyHeight - signatureBottomOffset);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setTextColor(55, 65, 81);
+        doc.text('Signature acheteur', copyLeft, signatureY);
+        doc.text('Signature boutique', copyRight - 46, signatureY);
+        doc.setDrawColor(156, 163, 175);
+        doc.line(copyLeft, signatureY + (isFourCopyLayout ? 6 : 8), copyLeft + 46, signatureY + (isFourCopyLayout ? 6 : 8));
+        doc.line(copyRight - 46, signatureY + (isFourCopyLayout ? 6 : 8), copyRight, signatureY + (isFourCopyLayout ? 6 : 8));
+
+        if (!isPartial) {
+          doc.setFontSize(6.5);
+          doc.setTextColor(107, 114, 128);
+          doc.text(`Document généré le ${formatDocumentDate(new Date())}`, copyLeft, footerY);
+          doc.text(copyLabel, copyRight, footerY, { align: 'right' });
+        }
+      };
+
+      const copyLabels = isFourCopyLayout
+        ? ['Copie boutique', 'Copie client', 'Copie boutique', 'Copie client']
+        : ['Copie boutique', 'Copie client'];
+      copyLabels.forEach((copyLabel, index) => {
+        drawCopy(copyLabel, index);
+      });
+
+      doc.save(`modele_facture_${fileLabel}_${sanitizeFilename(companyName)}.pdf`);
+      toast.success(successLabel);
+    } catch (error) {
+      console.error('Sale invoice template PDF error:', error);
+      toast.error(errorLabel);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleGeneratePartialInvoicePdf = () => handleGenerateSaleInvoiceTemplatePdf({
+    variant: 'partial',
+    productRowsCount: partialInvoiceProductRows,
+    paymentRowsCount: partialInvoicePaymentRows,
+    copyCount: partialInvoiceCopies,
+    setGenerating: setGeneratingPartialInvoice,
+  });
+
+  const handleGenerateFinalInvoicePdf = () => handleGenerateSaleInvoiceTemplatePdf({
+    variant: 'final',
+    productRowsCount: finalInvoiceProductRows,
+    copyCount: finalInvoiceCopies,
+    setGenerating: setGeneratingFinalInvoice,
+  });
+
   const activeTabConfig = TABS.find((t) => t.key === activeTab);
+
+  const availableSections = SETTINGS_SECTIONS.filter((s) => isAdmin || !s.adminOnly);
+  const hasSectionNav = availableSections.length > 1;
+
+  const renderSectionButton = (section, variant) => {
+    const Icon = section.icon;
+    const active = activeSection === section.key;
+    if (variant === 'mobile') {
+      return (
+        <button
+          key={section.key}
+          type="button"
+          onClick={() => setActiveSection(section.key)}
+          aria-current={active ? 'page' : undefined}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${
+            active
+              ? 'border-[var(--ms-blue)] bg-[var(--ms-blue)] text-white'
+              : 'border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text-muted)]'
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+          {section.label}
+        </button>
+      );
+    }
+    return (
+      <button
+        key={section.key}
+        type="button"
+        onClick={() => setActiveSection(section.key)}
+        aria-current={active ? 'page' : undefined}
+        className={`flex w-full items-center gap-2.5 rounded-[var(--radiusMedium)] px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+          active
+            ? 'bg-[var(--ms-blue-soft)] text-[var(--colorBrandForeground1)]'
+            : 'text-[var(--ms-text)] hover:bg-[var(--colorNeutralBackground2)]'
+        }`}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{section.label}</span>
+      </button>
+    );
+  };
 
   return (
     <Workspace className="space-y-5">
@@ -273,7 +915,25 @@ const Settings = () => {
         description="Personnalisez l'identité de la boutique et gérez vos listes de référence."
       />
 
-      {isAdmin && myTenant && (() => {
+      {/* Sélecteur de section — pastilles défilables (mobile) */}
+      {hasSectionNav && (
+        <div className="lg:hidden -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: 'none' }}>
+          {availableSections.map((s) => renderSectionButton(s, 'mobile'))}
+        </div>
+      )}
+
+      <div className={hasSectionNav ? 'lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6 lg:items-start' : ''}>
+        {/* Barre latérale (desktop) */}
+        {hasSectionNav && (
+          <nav className="hidden lg:flex lg:flex-col lg:gap-1 fluent-card-filled self-start p-2 lg:sticky lg:top-[72px]" aria-label="Sections des paramètres">
+            {availableSections.map((s) => renderSectionButton(s, 'desktop'))}
+          </nav>
+        )}
+
+        {/* Contenu de la section active */}
+        <div className="min-w-0 space-y-5">
+
+      {isAdmin && activeSection === 'abonnement' && myTenant && (() => {
         const cur = planCatalog[myTenant.plan] || {};
         const pending = myTenant.planRequest && myTenant.planRequest.status === 'pending' ? myTenant.planRequest : null;
         const cfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
@@ -383,7 +1043,7 @@ const Settings = () => {
         );
       })()}
 
-      {isAdmin && (
+      {isAdmin && activeSection === 'identite' && (
         <section className="fluent-card-filled p-4 sm:p-6">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="flex items-start gap-3">
@@ -528,7 +1188,7 @@ const Settings = () => {
         </section>
       )}
 
-      {isAdmin && (
+      {isAdmin && activeSection === 'preferences' && (
         <section className="fluent-card-filled p-4 sm:p-6">
           <div className="mb-4 flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' }}>
@@ -550,7 +1210,329 @@ const Settings = () => {
         </section>
       )}
 
+      {isAdmin && activeSection === 'documents' && (
+        <section className="fluent-card-filled p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                <FileSpreadsheet className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Modèle import produits</h2>
+                <p className="fui-caption1 mt-0.5 max-w-2xl" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Téléchargez un fichier Excel prêt pour l'import des produits, avec les colonnes compatibles et un guide des alias acceptés.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadProductImportTemplate}
+              className="ms-button ms-button-primary ms-button-md w-full justify-center md:w-auto"
+            >
+              <FileDown className="h-4 w-4" />
+              Télécharger modèle Excel
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {['Colonnes compatibles import', 'Feuille guide incluse', 'Colonne image pour URL photo'].map((item) => (
+              <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                <Check className="mr-2 inline h-3.5 w-3.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isAdmin && activeSection === 'documents' && (
+        <section className="fluent-card-filled p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                <Printer className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Fiche ventes papier</h2>
+                <p className="fui-caption1 mt-0.5 max-w-2xl" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Générez un PDF par période avec une page par jour pour les employés qui notent les ventes et les paiements sur papier avant remise à l'administrateur.
+                </p>
+              </div>
+            </div>
+            <span className="fui-caption1 max-w-sm rounded-[var(--radiusMedium)] px-3 py-2 leading-relaxed" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground3)' }}>
+              Format du N : boutique-signe-date-numéro. Réutilisez le même N pour relier les paiements partiels.
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_130px_130px_170px_auto] xl:items-end">
+            <BrandingField label="Date début" description="Première journée à imprimer.">
+              <input
+                type="date"
+                value={saleSheetStartDate}
+                onChange={(event) => setSaleSheetStartDate(event.target.value)}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <BrandingField label="Date fin" description="Dernière journée à imprimer.">
+              <input
+                type="date"
+                value={saleSheetEndDate}
+                onChange={(event) => setSaleSheetEndDate(event.target.value)}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <BrandingField label="Employé" description="Choisissez un employé existant ou saisissez le nom exact à imprimer.">
+              <input
+                type="text"
+                list="daily-sales-employees"
+                value={saleSheetEmployeeName}
+                onChange={(event) => setSaleSheetEmployeeName(event.target.value)}
+                className={settingInputClass}
+                placeholder="Nom de l'employé"
+              />
+              <datalist id="daily-sales-employees">
+                {employees.map((employee) => (
+                  <option key={employee._id || employee.name} value={employee.name || employee.email || ''} />
+                ))}
+              </datalist>
+            </BrandingField>
+
+            <BrandingField label="Signe employé" description="Court code dans le N, ex. JM.">
+              <input
+                type="text"
+                value={saleSheetEmployeeSign}
+                onChange={(event) => setSaleSheetEmployeeSign(normalizeSaleReferenceSign(event.target.value))}
+                className={settingInputClass}
+                placeholder={buildSaleEmployeeSign(saleSheetEmployeeName)}
+              />
+            </BrandingField>
+
+            <BrandingField label="Préfixe N" description="Code boutique au début de chaque référence.">
+              <input
+                type="text"
+                value={saleSheetReferencePrefix}
+                onChange={(event) => setSaleSheetReferencePrefix(normalizeSaleReferencePrefix(event.target.value))}
+                className={settingInputClass}
+                placeholder={buildSaleReferencePrefix(appSettings?.branding)}
+              />
+            </BrandingField>
+
+            <BrandingField label="Lignes par jour" description="Entre 6 et 20 lignes.">
+              <input
+                type="number"
+                min="6"
+                max="20"
+                value={saleSheetRowsPerDay}
+                onChange={(event) => setSaleSheetRowsPerDay(event.target.value)}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <button
+              type="button"
+              onClick={handleGenerateDailySalesPdf}
+              disabled={generatingSalesSheet}
+              className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-60 lg:mb-0"
+            >
+              <FileDown className="h-4 w-4" />
+              {generatingSalesSheet ? 'Génération...' : 'Télécharger PDF'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {['N codé boutique + employé', 'Même N pour paiements liés', 'Montant payé à chaque passage'].map((item) => (
+              <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                <Check className="mr-2 inline h-3.5 w-3.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isAdmin && activeSection === 'documents' && (
+        <section className="fluent-card-filled p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' }}>
+                <CreditCard className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Facture vente partielle</h2>
+                <p className="fui-caption1 mt-0.5 max-w-2xl" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Téléchargez un modèle papier à remplir par le vendeur pour une vente partiellement payée.
+                </p>
+              </div>
+            </div>
+            <span className="fui-caption1 max-w-sm rounded-[var(--radiusMedium)] px-3 py-2 leading-relaxed" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground3)' }}>
+              Le PDF imprime la copie boutique et la copie acheteur côte à côte sur une seule page, sans utiliser les données enregistrées dans l'application.
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
+            <BrandingField
+              label="Lignes produits"
+              description={partialInvoiceCopies === 4 ? 'Produits + paiements = maximum 6 lignes.' : 'Maximum 10 lignes avec les deux copies côte à côte.'}
+            >
+              <input
+                type="number"
+                min="1"
+                max={partialInvoiceCopies === 4 ? String(Math.max(6 - (Number(partialInvoicePaymentRows) || 1), 1)) : '10'}
+                value={partialInvoiceProductRows}
+                onChange={(event) => {
+                  if (partialInvoiceCopies === 4) {
+                    const paymentRows = Math.min(Math.max(Number(partialInvoicePaymentRows) || 1, 1), 5);
+                    const nextProductRows = Math.min(Math.max(Number(event.target.value) || 1, 1), Math.max(6 - paymentRows, 1));
+                    setPartialInvoiceProductRows(nextProductRows);
+                    return;
+                  }
+                  setPartialInvoiceProductRows(event.target.value);
+                }}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <BrandingField
+              label="Lignes paiements"
+              description={partialInvoiceCopies === 4 ? 'Utilise les lignes restantes du total de 6.' : 'Maximum 8 paiements liés au même N.'}
+            >
+              <input
+                type="number"
+                min="1"
+                max={partialInvoiceCopies === 4 ? String(Math.max(6 - (Number(partialInvoiceProductRows) || 1), 1)) : '8'}
+                value={partialInvoicePaymentRows}
+                onChange={(event) => {
+                  if (partialInvoiceCopies === 4) {
+                    const productRows = Math.min(Math.max(Number(partialInvoiceProductRows) || 1, 1), 5);
+                    const nextPaymentRows = Math.min(Math.max(Number(event.target.value) || 1, 1), Math.max(6 - productRows, 1));
+                    setPartialInvoicePaymentRows(nextPaymentRows);
+                    return;
+                  }
+                  setPartialInvoicePaymentRows(event.target.value);
+                }}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <BrandingField label="Nombre de copies" description="2 copies ou 4 copies sur une page A4.">
+              <select
+                value={partialInvoiceCopies}
+                onChange={(event) => {
+                  const nextCopyCount = Number(event.target.value);
+                  setPartialInvoiceCopies(nextCopyCount);
+                  if (nextCopyCount === 4) {
+                    const productRows = Math.min(Math.max(Number(partialInvoiceProductRows) || 3, 1), 5);
+                    const paymentRows = Math.min(Math.max(Number(partialInvoicePaymentRows) || 3, 1), Math.max(6 - productRows, 1));
+                    setPartialInvoiceProductRows(Math.min(productRows, 6 - paymentRows));
+                    setPartialInvoicePaymentRows(paymentRows);
+                  }
+                }}
+                className={settingInputClass}
+              >
+                <option value={2}>2 copies</option>
+                <option value={4}>4 copies</option>
+              </select>
+            </BrandingField>
+
+            <button
+              type="button"
+              onClick={handleGeneratePartialInvoicePdf}
+              disabled={generatingPartialInvoice}
+              className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-60 lg:mb-0"
+            >
+              <FileDown className="h-4 w-4" />
+              {generatingPartialInvoice ? 'Génération...' : 'Télécharger PDF'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {['Copies côte à côte', 'Champs à remplir par le vendeur', 'Aucun mode ni solde restant'].map((item) => (
+              <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                <Check className="mr-2 inline h-3.5 w-3.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isAdmin && activeSection === 'documents' && (
+        <section className="fluent-card-filled p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                <Receipt className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Facture vente finale</h2>
+                <p className="fui-caption1 mt-0.5 max-w-2xl" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  Téléchargez un modèle papier pour une vente payée en totalité, à remplir par le vendeur.
+                </p>
+              </div>
+            </div>
+            <span className="fui-caption1 max-w-sm rounded-[var(--radiusMedium)] px-3 py-2 leading-relaxed" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground3)' }}>
+              Le PDF imprime la copie boutique et la copie acheteur côte à côte sur une seule page.
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+            <BrandingField
+              label="Lignes produits"
+              description={finalInvoiceCopies === 4 ? 'Maximum 4 lignes pour garder les 4 copies sur une page.' : 'Maximum 12 lignes avec les deux copies côte à côte.'}
+            >
+              <input
+                type="number"
+                min="1"
+                max={finalInvoiceCopies === 4 ? '4' : '12'}
+                value={finalInvoiceProductRows}
+                onChange={(event) => setFinalInvoiceProductRows(event.target.value)}
+                className={settingInputClass}
+              />
+            </BrandingField>
+
+            <BrandingField label="Nombre de copies" description="2 copies ou 4 copies sur une page A4.">
+              <select
+                value={finalInvoiceCopies}
+                onChange={(event) => {
+                  const nextCopyCount = Number(event.target.value);
+                  setFinalInvoiceCopies(nextCopyCount);
+                  if (nextCopyCount === 4) {
+                    setFinalInvoiceProductRows((current) => Math.min(Number(current) || 4, 4));
+                  }
+                }}
+                className={settingInputClass}
+              >
+                <option value={2}>2 copies</option>
+                <option value={4}>4 copies</option>
+              </select>
+            </BrandingField>
+
+            <button
+              type="button"
+              onClick={handleGenerateFinalInvoicePdf}
+              disabled={generatingFinalInvoice}
+              className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-60 lg:mb-0"
+            >
+              <FileDown className="h-4 w-4" />
+              {generatingFinalInvoice ? 'Génération...' : 'Télécharger PDF'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {['Copies côte à côte', 'Vente finale à remplir', 'Aucun solde restant'].map((item) => (
+              <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                <Check className="mr-2 inline h-3.5 w-3.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Listes de référence */}
+      {activeSection === 'listes' && (
       <section className="fluent-card-filled overflow-hidden">
         <div className="px-4 pt-4 sm:px-6">
           <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Listes de référence</h2>
@@ -583,6 +1565,9 @@ const Settings = () => {
           )}
         </div>
       </section>
+      )}
+        </div>
+      </div>
     </Workspace>
   );
 };

@@ -844,6 +844,19 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
   const [edits, setEdits] = useState({});      // per-tenant {maxUsers,maxProducts,monthlyPrice}
   const [savingId, setSavingId] = useState(null);
   const [statsTenant, setStatsTenant] = useState(null); // tenant whose stats profile is open
+  const [dialDraft, setDialDraft] = useState({}); // per-tenant WhatsApp dial code draft
+  const [savingDial, setSavingDial] = useState(null);
+
+  const saveDialCode = async (id) => {
+    const value = dialDraft[id] ?? '';
+    try {
+      setSavingDial(id);
+      const { data } = await api.put(`/tenants/${id}`, { dialCode: value });
+      setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, dialCode: data.dialCode } : t)));
+      setDialDraft((p) => { const n = { ...p }; delete n[id]; return n; });
+    } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
+    finally { setSavingDial(null); }
+  };
 
   const filtered = tenants.filter((t) => {
     if (filterStatus && t.status !== filterStatus) return false;
@@ -865,7 +878,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
       .catch(() => alert('Erreur export.'));
   };
 
-  const startEdit = (t) => setEdits((p) => ({ ...p, [t._id]: { maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice, dialCode: t.dialCode || '' } }));
+  const startEdit = (t) => setEdits((p) => ({ ...p, [t._id]: { maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice } }));
   const cancelEdit = (id) => setEdits((p) => { const n = { ...p }; delete n[id]; return n; });
   const saveLimits = async (id) => {
     const patch = edits[id]; if (!patch) return;
@@ -1030,23 +1043,36 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
                           <LimitField label="Max produits" used={t.stats?.productCount} editing={isEditing} value={isEditing ? e.maxProducts : t.maxProducts} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], maxProducts: v } }))} />
                           <LimitField label="Prix mensuel (CFA)" editing={isEditing} value={isEditing ? e.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], monthlyPrice: v } }))} />
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          <div>
-                            <p className="fui-caption1 mb-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Indicatif pays (WhatsApp)</p>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={e.dialCode || ''}
-                                onChange={(ev) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], dialCode: ev.target.value } }))}
-                                placeholder="+242"
-                                className="form-control text-sm"
-                              />
-                            ) : (
-                              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.dialCode || '—'}</p>
-                            )}
-                            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Utilisé pour les rappels WhatsApp aux clients de cette boutique.</p>
-                          </div>
+                      </div>
+
+                      {/* Indicatif WhatsApp — toujours modifiable (pas besoin du mode édition) */}
+                      <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}>
+                        <p className="fui-subtitle2 flex items-center gap-1.5 mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                          <span aria-hidden>💬</span> Indicatif pays (WhatsApp)
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            type="text"
+                            value={dialDraft[t._id] ?? (t.dialCode || '')}
+                            onChange={(ev) => setDialDraft((p) => ({ ...p, [t._id]: ev.target.value }))}
+                            placeholder="+242"
+                            className="form-control text-sm"
+                            style={{ maxWidth: 140 }}
+                          />
+                          <button
+                            onClick={() => saveDialCode(t._id)}
+                            disabled={savingDial === t._id || (dialDraft[t._id] ?? (t.dialCode || '')) === (t.dialCode || '')}
+                            className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <Save size={13} /> {savingDial === t._id ? '...' : 'Enregistrer'}
+                          </button>
+                          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                            Actuel : <strong style={{ color: 'var(--colorNeutralForeground1)' }}>{t.dialCode || '—'}</strong>
+                          </span>
                         </div>
+                        <p className="fui-caption2 mt-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          Préfixe ajouté aux numéros pour les rappels WhatsApp clients (ex. +242 pour le Congo).
+                        </p>
                       </div>
 
                       {/* Danger zone */}

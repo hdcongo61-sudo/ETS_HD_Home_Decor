@@ -30,19 +30,21 @@ const fmtCFA = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
 /**
  * Normalise a client phone number to an international, digits-only form
- * suitable for wa.me. Falls back to a best effort when no dial code is set.
+ * suitable for wa.me: the shop dial code (e.g. +242) directly followed by the
+ * client number AS STORED. The local leading 0 is KEPT (Congo +242 keeps it,
+ * e.g. +242 06 XXX XXXX). Falls back to a best effort when no dial code is set.
  */
 export const normalizePhone = (phone, dialCode) => {
   const raw = String(phone || '').trim();
-  let d = onlyDigits(raw);
+  const d = onlyDigits(raw);
   if (!d) return '';
   const dial = onlyDigits(dialCode);
-  // Already international (typed with a leading +) → keep as-is.
+  // Already international (typed with a leading +) → use as-is.
   if (raw.startsWith('+')) return d;
-  // Drop the national trunk prefix (leading zeros).
-  d = d.replace(/^0+/, '');
-  if (dial && !d.startsWith(dial)) d = dial + d;
-  return d;
+  // Already prefixed with the country code → use as-is.
+  if (dial && d.startsWith(dial)) return d;
+  // Otherwise: dial code followed by the client number (no trunk-0 stripping).
+  return dial ? dial + d : d;
 };
 
 export const canWhatsApp = (phone) => onlyDigits(phone).length >= 6;

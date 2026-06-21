@@ -5,6 +5,7 @@ const {
   getProductById,
   createProduct,
   updateProduct,
+  bulkUpdateProducts,
   deleteProduct,
   getProductStats,
   getProductImages,
@@ -51,6 +52,9 @@ router.route('/')
 
 router.route('/import')
   .post(protect, admin, importProducts);
+
+router.route('/bulk')
+  .put(protect, admin, bulkUpdateProducts);
 
 router.route('/image-library')
   .get(protect, getImageLibrary);

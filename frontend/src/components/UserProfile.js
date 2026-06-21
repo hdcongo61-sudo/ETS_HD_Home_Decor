@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   Activity,
   ArrowLeft,
   BadgeCheck,
   BarChart3,
   CalendarDays,
+  Camera,
   Clock3,
   Crown,
   Home,
@@ -23,6 +25,7 @@ import ErrorModal from './ErrorModal';
 import AppLoader from './AppLoader';
 import { PageHeader, Workspace, KPICard, Button, Surface, StatusBadge } from './business';
 import api from '../services/api';
+import AuthContext from '../context/AuthContext';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -33,7 +36,31 @@ const UserProfile = () => {
   const [salesStats, setSalesStats] = useState(null);
   const [salesError, setSalesError] = useState('');
   const [salesRange, setSalesRange] = useState('30days');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileRef = useRef(null);
+  const { auth, setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Choisissez un fichier image.'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image trop lourde (max 5 Mo).'); return; }
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('photoFile', file);
+      const { data } = await api.put('/users/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setUser((u) => ({ ...(u || {}), photo: data.photo }));
+      if (setAuth && auth?.user) setAuth({ ...auth, user: { ...auth.user, photo: data.photo } });
+      toast.success('Photo de profil mise à jour.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la mise à jour de la photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -154,15 +181,37 @@ const UserProfile = () => {
       <Surface>
         <div className="p-5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            {/* Avatar */}
+            {/* Avatar (cliquable pour changer la photo) */}
             <div className="relative shrink-0">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-2xl font-semibold text-[var(--ms-text-muted)]">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploadingPhoto}
+                title="Changer la photo de profil"
+                className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-2xl font-semibold text-[var(--ms-text-muted)]"
+              >
                 {user?.photo ? (
                   <img src={user.photo} alt={user.name || 'Profil'} className="h-full w-full object-cover" />
                 ) : (
                   userInitials || <UserRound className="h-8 w-8" />
                 )}
-              </div>
+                <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  {uploadingPhoto
+                    ? <RefreshCw className="h-5 w-5 animate-spin" />
+                    : <Camera className="h-5 w-5" />}
+                </span>
+              </button>
+              {/* Badge appareil photo (indique que c'est modifiable) */}
+              <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ms-blue)] text-white shadow-sm">
+                <Camera className="h-3 w-3" />
+              </span>
               {user?.isAdmin && (
                 <span className="absolute -bottom-1 -right-1 inline-flex items-center gap-1 rounded-full bg-[var(--ms-blue)] px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
                   <Crown className="h-3 w-3" />

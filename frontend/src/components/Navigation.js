@@ -1,17 +1,16 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowUpRight,
   BriefcaseBusiness,
   FileText,
   LayoutGrid,
-  Menu,
   Package,
   Search,
-  Sparkles,
   UserRound,
   X,
   ShoppingCart,
@@ -39,13 +38,17 @@ import { useModal } from "../context/ModalContext";
 import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
 
 const Navigation = () => {
-  const { auth, setAuth } = useContext(AuthContext);
+  const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  // While searching, keep the top bar pinned (the mobile keyboard fires scroll
+  // events that would otherwise hide/show the bar and make the page "seek").
+  const searchActiveRef = useRef(false);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
@@ -79,24 +82,6 @@ const Navigation = () => {
     if (isMenuOpen) { document.addEventListener("keydown", onEscape); return () => document.removeEventListener("keydown", onEscape); }
   }, [isMenuOpen]);
 
-  // === Déconnexion ===
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    try {
-      sessionStorage.removeItem("accessRestrictionInfo");
-    } catch (error) {
-      console.error("Unable to clear restriction info", error);
-    }
-    setAuth({
-      isAuthenticated: false,
-      user: null,
-      isAdmin: false,
-      isLoading: false,
-    });
-    setIsMenuOpen(false);
-  };
-
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
 
   useEffect(() => {
@@ -118,6 +103,12 @@ const Navigation = () => {
     };
   }, []);
 
+  // Track whether the user is searching (input has text or quick access open).
+  useEffect(() => {
+    searchActiveRef.current = Boolean(query) || quickAccessOpen;
+    if (searchActiveRef.current) setNavHidden(false);
+  }, [query, quickAccessOpen]);
+
   // === Masquer la barre de navigation au défilement (mobile uniquement) ===
   // Vers le bas → cachée ; vers le haut ou près du sommet → visible.
   useEffect(() => {
@@ -130,7 +121,7 @@ const Navigation = () => {
       window.requestAnimationFrame(() => {
         const y = window.scrollY;
         const delta = y - lastY;
-        if (isMenuOpen || y < 60) {
+        if (isMenuOpen || y < 60 || searchActiveRef.current) {
           setNavHidden(false);
         } else if (delta > 6) {
           setNavHidden(true);
@@ -198,6 +189,7 @@ const Navigation = () => {
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
 
   return (
+    <>
     <nav
       className={`sticky top-0 z-50 nav-safe-top border-b border-[var(--colorNeutralStroke2)] fluent-acrylic transition-transform duration-300 ease-out will-change-transform ${isFormContext ? 'hidden md:block' : ''}`}
       style={{ boxShadow: 'var(--shadow2)', transform: navHidden ? 'translateY(-100%)' : 'translateY(0)' }}
@@ -296,6 +288,16 @@ const Navigation = () => {
 
           {/* === Profil & Actions === */}
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            {showSearchBar && (
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                className="md:hidden flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] transition-colors"
+                aria-label="Rechercher"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            )}
             <Link
               to="/profile"
               onClick={closeMenu}
@@ -309,88 +311,22 @@ const Navigation = () => {
               )}
             </Link>
 
-            {!isDesktop && (
-              <button
-                onClick={toggleMenu}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] transition-colors"
-                aria-label={isMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-                aria-expanded={isMenuOpen}
-              >
-                {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </button>
-            )}
           </div>
         </div>
-
-        {/* === Barre de recherche mobile === */}
-        {showSearchBar && (
-          <GlobalSearchBar
-            query={query}
-            setQuery={setQuery}
-            results={results}
-            onSelectResult={handleSelectResult}
-            className="md:hidden pb-3 w-full"
-            isMobile
-          />
-        )}
-
-        {/* Backdrop: tap outside to close (mobile only) */}
-        {!isDesktop && isMenuOpen && (
-          <button
-            type="button"
-            aria-label="Fermer le menu"
-            onClick={closeMenu}
-            className="fixed inset-0 z-40 bg-[rgba(32,31,30,0.18)] backdrop-blur-sm md:hidden"
-            style={{ top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-        )}
-
-        <AnimatePresence>
-          {!isDesktop && isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-              className="relative z-[51] md:hidden"
-            >
-          <div
-            className="mt-1.5 overflow-y-auto overflow-x-hidden rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.1)] touch-manipulation"
-            style={{
-              paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
-              WebkitOverflowScrolling: "touch",
-              maxHeight: "min(78vh, 720px)",
-            }}
-          >
-            {auth.isAuthenticated && (
-              <div
-                className="mb-3 flex min-h-[64px] items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3"
-              >
-                <div className="w-11 h-11 rounded-full overflow-hidden bg-[var(--ms-surface-muted)] border border-[var(--ms-border)] flex items-center justify-center shrink-0">
-                  {auth.user?.photo ? (
-                    <img src={auth.user.photo} alt={auth.user.name || 'Profil'} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[var(--ms-text)] font-semibold text-base">{userInitial}</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--ms-text-strong)] leading-tight truncate">{auth.user?.name}</p>
-                  <p className="text-xs text-[var(--ms-text-muted)] truncate">{auth.user?.email}</p>
-                </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--ms-white)] text-[var(--ms-text)] shadow-sm">
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                </div>
-              </div>
-            )}
-            <div className="flex flex-col gap-0">
-              {renderNavigationLinks(auth, handleLogout, closeMenu, true, true, false, () => {}  )}
-            </div>
-          </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </nav>
+
+    {showSearchBar && (
+      <MobileSearchOverlay
+        open={mobileSearchOpen}
+        onClose={() => setMobileSearchOpen(false)}
+        query={query}
+        setQuery={setQuery}
+        results={results}
+        onSelectResult={handleSelectResult}
+      />
+    )}
+    </>
   );
 };
 
@@ -405,7 +341,7 @@ const MobileMenuSection = ({ title, children }) => (
 );
 
 // === Liens du menu (desktop + mobile) ===
-const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
+export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
   const linkClass = isMobile
     ? "group/nav flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 py-2.5 text-[14px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] active:bg-[var(--ms-surface-muted)] touch-manipulation"
     : "group/nav relative flex h-[36px] items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]";
@@ -1071,12 +1007,57 @@ const getResultDescription = (item) => {
   return item.type || "";
 };
 
+// Keep the window from jumping (scroll-padding-top makes the browser pull the
+// focused field — which lives in the sticky top bar — to the top of the page).
+const keepScroll = (fn) => (e) => {
+  const y = window.scrollY;
+  fn?.(e);
+  requestAnimationFrame(() => {
+    if (Math.abs(window.scrollY - y) > 1) window.scrollTo({ top: y });
+  });
+};
+
+// === Élément de résultat de recherche (partagé : barre desktop + overlay mobile) ===
+const SearchResultItem = ({ item, onSelect }) => {
+  const isProduct = item.type === "product";
+  const meta = SEARCH_RESULT_META[item.type] || SEARCH_RESULT_META.default;
+  const ResultIcon = meta.icon;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item)}
+      className="group/search flex w-full items-center gap-3 rounded-[18px] border border-gray-200 bg-white px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-gray-300 hover:bg-[var(--ms-bg-subtle)] active:scale-[0.99]"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-[var(--ms-text)]">
+        {isProduct && item.image ? (
+          <img src={item.image} alt={item.name || "Produit"} className="h-full w-full object-cover" />
+        ) : (
+          <ResultIcon className="h-5 w-5" aria-hidden="true" />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-gray-900">
+          {getResultTitle(item)}
+        </span>
+        <span className="mt-0.5 block truncate text-xs font-medium text-[var(--ms-text-muted)]">
+          {getResultDescription(item)}
+        </span>
+      </span>
+      <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 sm:inline-flex ${meta.tone}`}>
+        {meta.label}
+      </span>
+      <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover/search:text-[var(--ms-text-muted)]" aria-hidden="true" />
+    </button>
+  );
+};
+
 const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className = "", isMobile = false, compact = false }) => (
   <div className={`relative ${className}`}>
     <input
       type="text"
       value={query}
-      onChange={(e) => setQuery(e.target.value)}
+      onChange={keepScroll((e) => setQuery(e.target.value))}
+      onFocus={keepScroll()}
       placeholder={isMobile ? "Rechercher produits, clients, ventes..." : "Recherche rapide"}
       aria-label="Recherche globale"
       className={`w-full rounded-2xl border border-gray-200/90 bg-white/92 pl-9 pr-9 text-sm font-medium text-[var(--ms-text)] shadow-[0_8px_24px_rgba(15,23,42,0.05)] outline-none transition-all placeholder:text-[var(--ms-text-muted)] focus:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-900/5 ${
@@ -1103,46 +1084,132 @@ const GlobalSearchBar = ({ query, setQuery, results, onSelectResult, className =
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-          className={`absolute ${isMobile ? "left-0 right-0 w-full" : "right-0 w-[min(420px,90vw)]"} z-[80] mt-2 max-h-[min(70vh,360px)] overflow-y-auto rounded-[24px] border border-gray-200 bg-[#f7f6f3] p-2 shadow-[0_28px_80px_rgba(15,23,42,0.28)] ring-1 ring-gray-950/10`}
+          className={`absolute ${isMobile ? "left-0 right-0 w-full" : "right-0 w-[min(420px,90vw)]"} z-[80] mt-2 max-h-[min(70vh,360px)] overflow-y-auto overscroll-contain rounded-[24px] border border-gray-200 bg-[#f7f6f3] p-2 shadow-[0_28px_80px_rgba(15,23,42,0.28)] ring-1 ring-gray-950/10`}
         >
-          {results.map((item) => {
-            const isProduct = item.type === "product";
-            const meta = SEARCH_RESULT_META[item.type] || SEARCH_RESULT_META.default;
-            const ResultIcon = meta.icon;
-            return (
-              <li key={item._id}>
-                <button
-                  type="button"
-                  onClick={() => onSelectResult(item)}
-                  className="group/search flex w-full items-center gap-3 rounded-[18px] border border-gray-200 bg-white px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-gray-300 hover:bg-[var(--ms-bg-subtle)] active:scale-[0.99]"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-[var(--ms-text)]">
-                    {isProduct && item.image ? (
-                      <img src={item.image} alt={item.name || "Produit"} className="h-full w-full object-cover" />
-                    ) : (
-                      <ResultIcon className="h-5 w-5" aria-hidden="true" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-gray-900">
-                      {getResultTitle(item)}
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs font-medium text-[var(--ms-text-muted)]">
-                      {getResultDescription(item)}
-                    </span>
-                  </span>
-                  <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 sm:inline-flex ${meta.tone}`}>
-                    {meta.label}
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover/search:text-[var(--ms-text-muted)]" aria-hidden="true" />
-                </button>
-              </li>
-            );
-          })}
+          {results.map((item) => (
+            <li key={item._id}>
+              <SearchResultItem item={item} onSelect={onSelectResult} />
+            </li>
+          ))}
         </motion.ul>
       )}
     </AnimatePresence>
   </div>
 );
+
+// === Recherche plein écran (mobile uniquement) ===
+const MobileSearchOverlay = ({ open, onClose, query, setQuery, results, onSelectResult }) => {
+  const inputRef = useRef(null);
+
+  // Auto-focus the field shortly after opening + lock body scroll while open.
+  useEffect(() => {
+    if (!open) return undefined;
+    const focusTimer = setTimeout(() => inputRef.current?.focus(), 60);
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      clearTimeout(focusTimer);
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onEscape = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [open, onClose]);
+
+  const handleSelect = (item) => {
+    onSelectResult(item);
+    onClose();
+  };
+
+  const hasQuery = query.trim().length >= 2;
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+          className="fixed inset-0 z-[90] flex flex-col bg-[var(--ms-white)] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Recherche"
+        >
+          {/* En-tête : retour + champ */}
+          <div
+            className="flex items-center gap-2 border-b border-[var(--ms-border)] px-3"
+            style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "0.5rem" }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fermer la recherche"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] active:scale-[0.97]"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ms-text-muted)]" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher produits, clients, ventes..."
+                aria-label="Recherche globale"
+                autoComplete="off"
+                className="w-full rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] py-2.5 pl-9 pr-9 text-[16px] font-medium text-[var(--ms-text)] outline-none transition-colors placeholder:text-[var(--ms-text-muted)] focus:border-[var(--ms-blue)] focus:bg-white focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Corps : résultats ou état vide */}
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+            style={{ WebkitOverflowScrolling: "touch", paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+          >
+            {results.length > 0 ? (
+              <ul className="space-y-2">
+                {results.map((item) => (
+                  <li key={item._id}>
+                    <SearchResultItem item={item} onSelect={handleSelect} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center justify-center px-6 pt-24 text-center">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--ms-bg-subtle)] text-[var(--ms-text-muted)]">
+                  <Search className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--ms-text-strong)]">
+                  {hasQuery ? "Aucun résultat" : "Rechercher"}
+                </p>
+                <p className="mt-1 text-xs text-[var(--ms-text-muted)]">
+                  {hasQuery ? "Essayez un autre nom ou numéro." : "Produits, clients, ventes, employés…"}
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export default Navigation;

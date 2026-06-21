@@ -129,6 +129,39 @@ const GlassCard = ({ children, className = "" }) => (
   <div className={`fluent-card-filled ${className}`}>{children}</div>
 );
 
+// Mobile-only segmented control (< lg) to switch between the sale form and the
+// history list, so sellers don't have to scroll past the long form on a phone.
+const MobilePanelToggle = ({ value, onChange, className = "" }) => {
+  const tabs = [
+    { key: "form", label: "Nouvelle vente" },
+    { key: "history", label: "Historique" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Affichage des ventes"
+      className={`lg:hidden grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1 ${className}`}
+    >
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          role="tab"
+          aria-selected={value === t.key}
+          onClick={() => onChange(t.key)}
+          className={`min-h-[40px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${
+            value === t.key
+              ? "bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]"
+              : "text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const truncateLabel = (str, max = 14) =>
   typeof str === "string" && str.length > max ? str.slice(0, max) + "…" : str || "";
 const CHART_LABEL_FONT = { size: 10, family: "system-ui" };
@@ -915,6 +948,9 @@ const Sales = () => {
 
   // Vues
   const [viewMode, setViewMode] = useState("dashboard"); // 'dashboard' | 'analytics' | 'profits' | 'clients'
+  // Mobile only (< lg) : bascule entre le formulaire de vente et l'historique
+  // (sur desktop les deux colonnes restent côte à côte).
+  const [mobilePanel, setMobilePanel] = useState("form"); // 'form' | 'history'
   const [timeRange, setTimeRange] = useState("30days");
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -957,6 +993,7 @@ const Sales = () => {
   // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
   useEffect(() => {
     if (location.pathname === "/sales" && location.hash === "#sale-form") {
+      setMobilePanel("form"); // make sure the form is the visible panel on mobile
       const t = setTimeout(() => {
         const el = document.getElementById("sale-form");
         if (el) {
@@ -1869,8 +1906,10 @@ const Sales = () => {
           }
         />
 
+          <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
+            <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"} lg:block`}>
               <GlassCard>
                 <div className="p-5 sm:p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -1880,7 +1919,7 @@ const Sales = () => {
               </GlassCard>
             </div>
 
-            <GlassCard>
+            <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"} lg:block`}>
               <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
                 <div className="ms-command-bar mb-5 flex-wrap gap-y-2">
                   <h2 id="history-heading-main" className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
@@ -2653,8 +2692,10 @@ const Sales = () => {
             )}
 
             {/* Formulaire & Historique */}
+            <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
+              <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"} lg:block`}>
                 <GlassCard>
                   <div className="p-6">
                     <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -2664,7 +2705,7 @@ const Sales = () => {
                 </GlassCard>
               </div>
 
-              <GlassCard>
+              <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"} lg:block`}>
                 <section className="p-5 sm:p-6" aria-labelledby="history-heading-admin">
                   <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
                     <h2 id="history-heading-admin" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">
@@ -2757,7 +2798,7 @@ const Sales = () => {
 
                   <HistoryStatsSummary />
 
-                  <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-medium text-gray-600">
                       Export des ventes affichées: <span className="font-semibold text-gray-950">{filteredSales.length}</span>
                     </p>
