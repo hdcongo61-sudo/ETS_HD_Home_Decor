@@ -166,7 +166,7 @@ export const PaymentForm = ({
                 setPaymentDate(e.target.value);
                 setError('');
               }}
-              className="w-full min-h-[44px] px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+              className="form-control"
             />
             <p className="mt-2 text-xs text-[var(--ms-text-muted)]">
               Optionnel. Utilisez-la pour rattraper un paiement encaissé plus tôt.
@@ -175,25 +175,40 @@ export const PaymentForm = ({
         )}
 
         <div>
-          <label className="block text-sm font-medium text-[var(--ms-text)] mb-2">
-            Montant à payer
-          </label>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label className="block text-sm font-medium text-[var(--ms-text)]">
+              Montant à payer
+            </label>
+            {balance > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAmount(String(balance));
+                  setError('');
+                }}
+                className="text-xs font-semibold text-[var(--ms-blue)] hover:underline"
+              >
+                Solde complet ({formatAmount(balance)})
+              </button>
+            )}
+          </div>
           <div className="relative">
             <input
               type="number"
               step="0.01"
               min="0.01"
               max={balance}
+              inputMode="decimal"
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
                 setError('');
               }}
-              placeholder="0.00"
+              placeholder="0"
               required
-              className="w-full min-h-[44px] px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-12"
+              className="form-control pr-14 text-lg font-semibold"
             />
-            <span className="absolute right-3 top-3 text-[var(--ms-text-muted)] text-sm">CFA</span>
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--ms-text-muted)]">CFA</span>
           </div>
         </div>
 
@@ -240,7 +255,7 @@ export const PaymentForm = ({
                 onClick={() => setMethod(opt)}
                 className={`min-h-[44px] p-3 rounded-md border-2 text-sm font-medium transition-all touch-manipulation ${
                   method === opt
-                    ? 'border-indigo-500 bg-[var(--ms-blue-soft)] text-indigo-700'
+                    ? 'border-[var(--ms-blue)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]'
                     : 'border-[var(--ms-border)] bg-[var(--ms-white)] hover:border-[var(--ms-border-strong)]'
                 }`}
               >
@@ -302,7 +317,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-md font-medium border border-[var(--ms-border-strong)] text-[var(--ms-text)] bg-[var(--ms-white)] hover:bg-[var(--ms-bg-subtle)] transition-colors touch-manipulation disabled:opacity-70"
+            className="ms-button ms-button-secondary ms-button-md w-full justify-center sm:w-auto"
           >
             Annuler
           </button>
@@ -310,7 +325,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
             type="submit"
             form="sale-payment-form"
             disabled={isSubmitting}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-md font-medium bg-[var(--ms-blue)] hover:bg-indigo-700 text-white disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
+            className="ms-button ms-button-primary ms-button-md w-full justify-center sm:w-auto"
           >
             {isSubmitting ? (
               <>

@@ -344,6 +344,44 @@ form label,
   color: #374151;
 }
 
+/* Date & time inputs — consistent, touch-friendly, no iOS zoom.
+   Pair with .form-control for the box (border/radius/background). */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 16px; /* >=16px prevents iOS Safari zoom-on-focus */
+  line-height: 1.4;
+  accent-color: var(--ms-blue);
+}
+
+/* Left-align the value (mobile Safari centers it by default). */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Branded, tappable calendar/clock picker button. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 4px;
+  margin-left: 4px;
+  border-radius: 6px;
+  transition: opacity 150ms var(--ms-transition), background-color 150ms var(--ms-transition);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background: var(--ms-bg-subtle);
+}
+
 form input[type="checkbox"],
 form input[type="radio"],
 .form-check {

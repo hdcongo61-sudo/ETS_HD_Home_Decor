@@ -151,9 +151,9 @@ const Overview = () => {
           <Plus className="h-4 w-4" /> Nouvelle vente
         </Link>
         {isAdmin && (
-          <Link to="/dashboard" className="ms-button ms-button-secondary ms-button-md">
-            <BarChart3 className="h-4 w-4" /> Tableau de bord complet
-          </Link>
+          <a href="#tableau-de-bord" className="ms-button ms-button-secondary ms-button-md">
+            <BarChart3 className="h-4 w-4" /> Voir le tableau de bord
+          </a>
         )}
       </div>
     </header>
@@ -212,8 +212,9 @@ const Overview = () => {
   const status = sales?.statusStats || {};
   const toSettle = (status.partially_paid?.count || 0) + (status.pending?.count || 0);
 
-  const lowStock = products?.lowStockCount ?? products?.lowStock;
-  const outOfStock = products?.outOfStockCount ?? products?.outOfStock;
+  // /products/dashboard returns lowStockProducts / outOfStockProducts as arrays.
+  const lowStock = products?.lowStockProducts?.length ?? products?.lowStockCount;
+  const outOfStock = products?.outOfStockProducts?.length ?? products?.outOfStockCount;
   const stockValue = products?.totalStockValue;
 
   const kpis = [

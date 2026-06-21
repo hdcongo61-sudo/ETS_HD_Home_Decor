@@ -50,7 +50,7 @@ const ExportModal = ({
               value={startDate || ""}
               max={endDate || undefined}
               onChange={(e) => onStartDateChange?.(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="form-control mt-2"
             />
           </label>
           <label className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
@@ -62,7 +62,7 @@ const ExportModal = ({
               value={endDate || ""}
               min={startDate || undefined}
               onChange={(e) => onEndDateChange?.(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="form-control mt-2"
             />
           </label>
         </div>
