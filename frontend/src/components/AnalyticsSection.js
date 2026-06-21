@@ -37,7 +37,7 @@ const AnalyticsSection = ({ metrics }) => {
           value={`${metrics.profitMargin.toFixed(1)}%`}
           change={metrics.weeklyGrowth}
           trend={metrics.weeklyGrowth >= 0 ? "up" : "down"}
-          color={{ bg: "bg-blue-50 dark:bg-blue-900/30", text: "blue-700" }}
+          color={{ bg: "bg-[var(--ms-blue-soft)] dark:bg-[var(--ms-blue-dark)]", text: "var(--ms-blue-dark)" }}
         />
         <MetricCard
           title="ROI"

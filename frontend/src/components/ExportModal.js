@@ -24,7 +24,7 @@ const ExportModal = ({
           type="button"
           onClick={onExport}
           disabled={exporting}
-          className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 touch-manipulation"
+          className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white flex items-center justify-center gap-2 touch-manipulation"
         >
           <FileDown size={18} />
           {exporting ? "Export..." : "Exporter Excel"}
@@ -32,11 +32,11 @@ const ExportModal = ({
       }
     >
       <div className="space-y-4">
-        <div className="rounded-2xl border border-[var(--ms-blue)]/20 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
-          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+        <div className="rounded-2xl border border-[var(--ms-blue)]/20 bg-[var(--ms-blue-soft)] p-4 dark:border-[var(--ms-blue-dark)] dark:bg-[var(--ms-blue-dark)]">
+          <p className="text-sm font-semibold text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue-soft)]">
             Choisissez la période à exporter
           </p>
-          <p className="mt-1 text-sm text-blue-800 dark:text-blue-300">
+          <p className="mt-1 text-sm text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)]">
             {filterLabel || "Période personnalisée"}
           </p>
         </div>

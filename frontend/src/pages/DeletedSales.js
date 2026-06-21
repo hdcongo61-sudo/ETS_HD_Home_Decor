@@ -40,7 +40,7 @@ const DeletedSales = () => {
           title="Ventes supprimées"
           description="Historique complet des ventes supprimées, avec la raison et l'auteur."
           actions={
-          <Link to="/sales" className="text-sm text-indigo-600 hover:text-indigo-700 underline">
+          <Link to="/sales" className="text-sm text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] underline">
             Retour aux ventes
           </Link>
           }

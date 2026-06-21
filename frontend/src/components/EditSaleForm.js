@@ -284,7 +284,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     <textarea
                         value={modificationNote}
                         onChange={(e) => setModificationNote(e.target.value)}
-                        className="w-full px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-h-[120px] text-[var(--ms-text-strong)] placeholder-gray-400"
+                        className="w-full px-4 py-3 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)] transition-colors min-h-[120px] text-[var(--ms-text-strong)] placeholder-gray-400"
                         placeholder="Expliquez pourquoi vous modifiez cette vente (quantités, prix, produits…)"
                         required
                         aria-describedby="modification-note-hint"
@@ -300,7 +300,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                     <button
                         type="button"
                         onClick={addProduct}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] hover:bg-blue-100 rounded-md transition-colors"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] hover:bg-[var(--ms-blue-soft)] rounded-md transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -323,7 +323,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                         <input
                                             type="text"
                                             placeholder="Nom ou conteneur..."
-                                            className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[var(--ms-text-strong)] placeholder-gray-400"
+                                            className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent text-[var(--ms-text-strong)] placeholder-gray-400"
                                             value={productSearchTerms[index] || ''}
                                             onChange={(e) => {
                                                 const newTerms = [...productSearchTerms];
@@ -339,7 +339,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                         <div className="md:col-span-5">
                                             <label className="block text-xs font-medium text-[var(--ms-text-muted)] mb-1">Produit</label>
                                             <select
-                                                className={`w-full px-3 py-2.5 border rounded-md bg-[var(--ms-white)] text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
+                                                className={`w-full px-3 py-2.5 border rounded-md bg-[var(--ms-white)] text-[var(--ms-text-strong)] focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
                                                 value={item.product}
                                                 onChange={(e) => handleProductChange(index, e.target.value)}
                                                 aria-invalid={!!errors[index]}
@@ -368,7 +368,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                                 inputMode="numeric"
                                                 min="1"
                                                 step="1"
-                                                className={`w-full px-3 py-2.5 border rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
+                                                className={`w-full px-3 py-2.5 border rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent ${errors[index] ? 'border-red-500' : 'border-[var(--ms-border-strong)]'}`}
                                                 value={item.quantity}
                                                 onChange={(e) => handleQuantityChange(index, e.target.value)}
                                                 aria-invalid={!!errors[index]}
@@ -380,7 +380,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                             <input
                                                 type="number"
                                                 inputMode="decimal"
-                                                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-[var(--ms-text-strong)] focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent"
                                                 value={item.price || ''}
                                                 onChange={(e) => handlePriceChange(index, e.target.value)}
                                                 placeholder="0"

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { buildCacheKey, writeCache, readCache, clearCache } from '../utils/offlineCache';
 
 const DEV_API_CANDIDATES = ['http://localhost:5001/api', 'http://localhost:5002/api'];
 const DEV_API_STORAGE_KEY = 'ets_hd_api_base_url';
@@ -89,9 +90,14 @@ api.interceptors.response.use(
         storeDevApiBaseUrl(responseBaseUrl);
       }
     }
+    // Cache successful GETs so they can be served offline (read-only).
+    const cfg = response?.config || {};
+    if ((cfg.method || 'get').toLowerCase() === 'get' && response?.data != null && !cfg.__noOfflineCache) {
+      writeCache(buildCacheKey(cfg), response.data);
+    }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (isRetriableDevFallback(error)) {
       const currentBaseUrl = error.config.baseURL || api.defaults.baseURL;
       const alternateBaseUrl = getAlternateDevBaseUrl(currentBaseUrl);
@@ -110,11 +116,33 @@ api.interceptors.response.use(
       try {
         sessionStorage.removeItem('accessRestrictionInfo');
       } catch (_) {}
+      // Drop cached data so the next user on this device doesn't see stale data.
+      clearCache();
       const isLoginRoute = typeof window !== 'undefined' && window.location.pathname === '/login';
       if (!isLoginRoute && typeof window !== 'undefined') {
         window.location.href = '/login';
       }
     }
+
+    // Offline read-through: a GET with no server response (network down) falls
+    // back to the last cached data so lists/dashboards still render.
+    const cfg = error.config || {};
+    if (!error.response && (cfg.method || 'get').toLowerCase() === 'get' && !cfg.__noOfflineCache) {
+      const cached = await readCache(buildCacheKey(cfg));
+      if (cached && cached.value != null) {
+        return {
+          data: cached.value,
+          status: 200,
+          statusText: 'OK (cache hors ligne)',
+          headers: {},
+          config: cfg,
+          request: error.request,
+          fromOfflineCache: true,
+          cachedAt: cached.ts,
+        };
+      }
+    }
+
     return Promise.reject(error);
   }
 );

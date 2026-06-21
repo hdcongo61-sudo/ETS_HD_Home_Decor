@@ -171,7 +171,7 @@ const exportToPDF = async () => {
   if (loading)
     return (
       <div className="flex justify-center items-center h-72">
-        <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-[var(--ms-blue)]"></div>
       </div>
     );
 
@@ -213,7 +213,7 @@ const exportToPDF = async () => {
             type="text"
             placeholder="🔍 Rechercher un produit..."
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-[var(--ms-blue)]"
           />
           <select
             onChange={(e) => setFilterCategory(e.target.value)}
@@ -311,7 +311,7 @@ const exportToPDF = async () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.03 }}
-                      className="hover:bg-indigo-50 transition-colors"
+                      className="hover:bg-[var(--ms-blue-soft)] transition-colors"
                     >
                       <td className="px-6 py-3 font-medium text-[var(--colorNeutralForeground2)]">
                         {product.name}
@@ -329,7 +329,7 @@ const exportToPDF = async () => {
                       <td className="px-6 py-3 flex gap-3">
                         <button
                           onClick={() => navigate(productPath(product))}
-                          className="text-indigo-600 hover:text-indigo-800 font-medium"
+                          className="text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] font-medium"
                         >
                           Voir
                         </button>
@@ -372,7 +372,7 @@ const exportToPDF = async () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => navigate(productPath(product))}
-                        className="text-indigo-600 hover:text-indigo-800 font-medium"
+                        className="text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] font-medium"
                       >
                         Voir
                       </button>
@@ -399,7 +399,7 @@ const exportToPDF = async () => {
 
       {/* Message analytique */}
       {stats.totalProducts && (
-        <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-4 rounded-xl shadow-sm mt-8">
+        <div className="bg-[var(--ms-blue-soft)] border border-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] p-4 rounded-xl shadow-sm mt-8">
           {stats.total / stats.totalProducts > 0.3
             ? '⚠️ Plus de 30% de vos produits n’ont jamais été vendus. Pensez à une promotion ou une mise en avant visuelle.'
             : '✅ Excellent ! Moins de 30% de vos produits n’ont jamais été vendus.'}

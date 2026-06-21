@@ -40,7 +40,7 @@ const STATUS_LABELS = {
 
 const EXECUTION_STYLES = {
   none: 'bg-slate-100 text-slate-700',
-  action_required: 'bg-blue-100 text-blue-800',
+  action_required: 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]',
   executed: 'bg-emerald-100 text-emerald-800',
   failed: 'bg-red-100 text-red-800',
 };
@@ -149,7 +149,7 @@ const AdminRequests = () => {
                   {request.targetLabel && getTargetLink(request) ? (
                     <Link
                       to={getTargetLink(request)}
-                      className="mt-1 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                      className="mt-1 inline-flex text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)]"
                     >
                       {request.targetModel === 'User' ? `Ouvrir le profil: ${request.targetLabel}` : request.targetLabel}
                     </Link>
@@ -192,7 +192,7 @@ const AdminRequests = () => {
                     value={adminComment}
                     onChange={(e) => setAdminComment(e.target.value)}
                     placeholder="Commentaire admin optionnel"
-                    className="min-h-[88px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                    className="min-h-[88px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                     <Button variant="danger" size="sm" onClick={() => handleReview(request._id, 'rejected')} disabled={reviewingId === request._id}>Rejeter</Button>

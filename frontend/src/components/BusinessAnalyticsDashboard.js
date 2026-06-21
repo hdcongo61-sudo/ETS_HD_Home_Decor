@@ -28,7 +28,7 @@ const formatCFA = (value) =>
 const StatCard = ({ icon: Icon, title, value, helper, tone = "slate" }) => {
   const toneClasses = {
     green: "bg-[var(--ms-success)]/10 text-emerald-700 border-emerald-200 dark:bg-[var(--ms-success)]/100/10 dark:text-emerald-300 dark:border-emerald-500/20",
-    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
+    blue: "bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] border-[var(--ms-blue-soft)] dark:bg-[var(--ms-blue)] dark:text-[var(--ms-blue)] dark:border-[var(--ms-blue)]",
     red: "bg-[var(--ms-danger)]/10 text-rose-700 border-rose-200 dark:bg-[var(--ms-danger)]/100/10 dark:text-rose-300 dark:border-rose-500/20",
     violet: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
     slate: "bg-gray-100 text-gray-700 border-gray-200   ",
@@ -279,7 +279,7 @@ const BusinessAnalyticsDashboard = ({
                   : tone === "green"
                   ? "text-emerald-700 dark:text-emerald-300"
                   : tone === "blue"
-                  ? "text-blue-700 dark:text-blue-300"
+                  ? "text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)]"
                   : "text-gray-950 "
               }`}>
                 {value}

@@ -101,7 +101,7 @@ const ProfitAnalysis = () => {
               <select
                 value={filters.period}
                 onChange={(e) => handleFilterChange('period', e.target.value)}
-                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent"
               >
                 <option value="day">Jour</option>
                 <option value="week">Semaine</option>
@@ -115,7 +115,7 @@ const ProfitAnalysis = () => {
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ const ProfitAnalysis = () => {
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-[var(--ms-border-strong)] rounded-md text-sm focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-transparent"
               />
             </div>
             <div className="flex items-end">

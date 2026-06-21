@@ -348,7 +348,7 @@ const ProductDashboard = () => {
                       to={`/suppliers/${encodeURIComponent(
                         s.supplierName || 'Inconnu'
                       )}`}
-                      className="text-indigo-700 hover:text-indigo-900 hover:underline"
+                      className="text-[var(--ms-blue-dark)] hover:text-[var(--ms-blue-dark)] hover:underline"
                     >
                       {s.supplierName}
                     </Link>
@@ -359,7 +359,7 @@ const ProductDashboard = () => {
                   <td className="py-2 px-3 text-green-600 font-semibold">
                     {Number(s.totalRevenue || 0).toLocaleString()} CFA
                   </td>
-                  <td className="py-2 px-3 text-indigo-600 font-semibold">
+                  <td className="py-2 px-3 text-[var(--ms-blue)] font-semibold">
                     {Number(s.totalProfit || 0).toLocaleString()} CFA
                   </td>
                   <td className="py-2 px-3 text-yellow-600">
@@ -437,7 +437,7 @@ const ProductDashboard = () => {
                   <td className="py-2 px-3 text-emerald-700 font-semibold">
                     {Number(c.totalRevenue || 0).toLocaleString()} CFA
                   </td>
-                  <td className="py-2 px-3 text-indigo-600 font-semibold">
+                  <td className="py-2 px-3 text-[var(--ms-blue)] font-semibold">
                     {Number(c.totalProfit || 0).toLocaleString()} CFA
                   </td>
                   <td className="py-2 px-3 text-yellow-600">

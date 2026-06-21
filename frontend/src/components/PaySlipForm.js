@@ -132,7 +132,7 @@ const PaySlipForm = () => {
         return (
             <div className="flex justify-center items-center h-screen">
                 <div className="relative">
-                    <div className="w-12 h-12 rounded-full absolute border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin"></div>
+                    <div className="w-12 h-12 rounded-full absolute border-2 border-transparent border-t-[var(--ms-blue)] border-r-[var(--ms-blue)] animate-spin"></div>
                     <div className="w-12 h-12 rounded-full absolute border-2 border-[var(--ms-border)] opacity-20"></div>
                 </div>
             </div>
@@ -213,7 +213,7 @@ const PaySlipForm = () => {
                                 name="month"
                                 value={formData.month}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 required
                             >
                                 {Array.from({ length: 12 }, (_, i) => {
@@ -245,7 +245,7 @@ const PaySlipForm = () => {
                                 value={formData.year}
                                 onChange={handleChange}
                                 min="2000"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 required
                             />
                             {errors.year && (
@@ -268,7 +268,7 @@ const PaySlipForm = () => {
                                 value={formData.deductions}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                             />
                             {errors.deductions && (
                                 <div className="text-red-500 text-sm flex items-center gap-1.5">
@@ -324,7 +324,7 @@ const PaySlipForm = () => {
                                 value={formData.bonuses}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                             />
                             {errors.bonuses && (
                                 <div className="text-red-500 text-sm flex items-center gap-1.5">
@@ -414,7 +414,7 @@ const PaySlipForm = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-[var(--ms-shadow-sm)]"
+                            className="bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-[var(--ms-shadow-sm)]"
                         >
                             {isSubmitting ? (
                                 <>

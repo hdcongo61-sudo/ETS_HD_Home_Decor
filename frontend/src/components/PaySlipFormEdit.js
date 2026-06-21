@@ -120,7 +120,7 @@ const PaySlipFormEdit = () => {
         return (
             <div className="flex justify-center items-center h-screen">
                 <div className="relative">
-                    <div className="w-12 h-12 rounded-full absolute border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin"></div>
+                    <div className="w-12 h-12 rounded-full absolute border-2 border-transparent border-t-[var(--ms-blue)] border-r-[var(--ms-blue)] animate-spin"></div>
                     <div className="w-12 h-12 rounded-full absolute border-2 border-[var(--ms-border)] opacity-20"></div>
                 </div>
             </div>
@@ -171,7 +171,7 @@ const PaySlipFormEdit = () => {
                         </button>
                         <button
                             onClick={() => navigate(employeePayrollPath(employeeReference))}
-                            className="bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center transition-colors shadow-[var(--ms-shadow-sm)]"
+                            className="bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center transition-colors shadow-[var(--ms-shadow-sm)]"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -255,7 +255,7 @@ const PaySlipFormEdit = () => {
                                 name="month"
                                 value={formData.month}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 required
                                 disabled={isSubmitting}
                             >
@@ -288,7 +288,7 @@ const PaySlipFormEdit = () => {
                                 value={formData.year}
                                 onChange={handleChange}
                                 min="2000"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 required
                                 disabled={isSubmitting}
                             />
@@ -312,7 +312,7 @@ const PaySlipFormEdit = () => {
                                 value={formData.deductions}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 disabled={isSubmitting}
                             />
                             {errors.deductions && (
@@ -335,7 +335,7 @@ const PaySlipFormEdit = () => {
                                 value={formData.bonuses}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border border-[var(--ms-border)] focus:ring-2 focus:ring-[var(--ms-blue-soft)] focus:border-[var(--ms-blue)] transition-colors"
                                 disabled={isSubmitting}
                             />
                             {errors.bonuses && (
@@ -425,7 +425,7 @@ const PaySlipFormEdit = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-[var(--ms-shadow-sm)]"
+                            className="bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-5 py-2.5 rounded-md flex items-center gap-2 justify-center disabled:opacity-50 transition-colors shadow-[var(--ms-shadow-sm)]"
                         >
                             {isSubmitting ? (
                                 <>

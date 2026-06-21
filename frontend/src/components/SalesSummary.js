@@ -113,7 +113,7 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
           </div>
 
           <div className="bg-[var(--ms-blue-soft)] p-4 rounded-lg flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-full">
+            <div className="bg-[var(--ms-blue-soft)] p-3 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
@@ -171,7 +171,7 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
           </div>
 
           <div className="bg-[var(--ms-blue-soft)] p-4 rounded-lg flex items-center gap-4">
-            <div className="bg-indigo-100 p-3 rounded-full">
+            <div className="bg-[var(--ms-blue-soft)] p-3 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--ms-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />

@@ -153,7 +153,7 @@ const ExportSales = () => {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[var(--ms-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Exporter les ventes
@@ -162,11 +162,11 @@ const ExportSales = () => {
             Générez des rapports Excel détaillés avec filtres avancés
           </p>
         </div>
-        <div className="bg-blue-50 rounded-full px-3 py-1 flex items-center">
-          <svg className="w-4 h-4 text-blue-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-[var(--ms-blue-soft)] rounded-full px-3 py-1 flex items-center">
+          <svg className="w-4 h-4 text-[var(--ms-blue)] mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          <span className="text-blue-700 text-sm font-medium">Export Excel</span>
+          <span className="text-[var(--ms-blue-dark)] text-sm font-medium">Export Excel</span>
         </div>
       </div>
 
@@ -184,7 +184,7 @@ const ExportSales = () => {
             <div className="relative">
               <label className="block text-sm font-medium mb-1">Période</label>
               <select
-                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 pr-8"
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-[var(--ms-blue)] pr-8"
                 value={period}
                 onChange={(e) => {
                   setPeriod(e.target.value);
@@ -212,7 +212,7 @@ const ExportSales = () => {
             <div className="relative">
               <label className="block text-sm font-medium mb-1">Statut</label>
               <select
-                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 pr-8"
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-[var(--ms-blue)] pr-8"
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
@@ -238,7 +238,7 @@ const ExportSales = () => {
                   <label className="block text-sm font-medium mb-1">De</label>
                   <input
                     type="date"
-                    className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-[var(--ms-blue)]"
                     value={startDate}
                     onChange={(e) => {
                       setStartDate(e.target.value);
@@ -251,7 +251,7 @@ const ExportSales = () => {
                   <label className="block text-sm font-medium mb-1">À</label>
                   <input
                     type="date"
-                    className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-[var(--ms-blue)]"
                     value={endDate}
                     onChange={(e) => {
                       setEndDate(e.target.value);
@@ -265,7 +265,7 @@ const ExportSales = () => {
             )}
 
             {period === 'weekly' && currentWeekDates.start && (
-              <div className="bg-blue-100 p-3 rounded-lg text-blue-800 text-sm">
+              <div className="bg-[var(--ms-blue-soft)] p-3 rounded-lg text-[var(--ms-blue-dark)] text-sm">
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -277,9 +277,9 @@ const ExportSales = () => {
           </div>
         </div>
 
-        <div className="bg-blue-50 p-5 rounded-lg flex flex-col">
+        <div className="bg-[var(--ms-blue-soft)] p-5 rounded-lg flex flex-col">
           <div className="flex items-center mb-4">
-            <svg className="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[var(--ms-blue)] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h3 className="text-md font-semibold">Résumé de l'export</h3>
@@ -346,7 +346,7 @@ const ExportSales = () => {
           </div>
 
           <div className="mt-4 pt-3 border-t">
-            <div className="flex items-center text-sm text-blue-700">
+            <div className="flex items-center text-sm text-[var(--ms-blue-dark)]">
               <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -393,7 +393,7 @@ const ExportSales = () => {
           onClick={handleExport}
           disabled={loading || (period === 'custom' && (!startDate || !endDate))}
           className={`
-            bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg
+            bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-6 py-3 rounded-lg
             transition-colors flex items-center justify-center gap-2 flex-1
             disabled:bg-gray-400 disabled:cursor-not-allowed
             ${loading ? 'animate-pulse' : ''}
@@ -445,7 +445,7 @@ const ExportSales = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <h4 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
-              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[var(--ms-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
               </svg>
               Format du rapport

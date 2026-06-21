@@ -140,7 +140,7 @@ const TopSellingProducts = () => {
               </div>
               <div>
                 <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Marge</p>
-                <p className="font-semibold text-indigo-600">
+                <p className="font-semibold text-[var(--ms-blue)]">
                   {p.margin ? p.margin.toFixed(1) + '%' : '—'}
                 </p>
               </div>

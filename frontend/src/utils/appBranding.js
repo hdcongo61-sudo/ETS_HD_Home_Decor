@@ -101,3 +101,66 @@ export const mixHexColors = (baseColor, ratio = 0.16, targetColor = '#FFFFFF') =
 
   return `#${mixed.join('').toUpperCase()}`;
 };
+
+export const BRAND_COLOR_STORAGE_KEY = 'hd-brand-color';
+
+/**
+ * Apply the tenant brand colour to the app's design tokens at runtime.
+ * Derives hover/pressed/dark/soft shades from a single primaryColor and writes
+ * them onto :root, so every component using the brand / --ms-blue tokens follows
+ * the shop's colour. This is the single source of truth for the accent colour.
+ */
+export const applyBrandTheme = (primaryColor) => {
+  if (typeof document === 'undefined') return;
+  const base = HEX_COLOR_PATTERN.test(primaryColor || '')
+    ? primaryColor.toUpperCase()
+    : DEFAULT_APP_SETTINGS.branding.primaryColor;
+
+  const hover = mixHexColors(base, 0.12, '#000000');
+  const pressed = mixHexColors(base, 0.22, '#000000');
+  const dark = mixHexColors(base, 0.28, '#000000');
+  const soft = mixHexColors(base, 0.88, '#FFFFFF');
+  const softer = mixHexColors(base, 0.93, '#FFFFFF');
+
+  const tokens = {
+    // Fluent brand family
+    '--colorBrandBackground': base,
+    '--colorBrandBackgroundHover': hover,
+    '--colorBrandBackgroundPressed': pressed,
+    '--colorBrandForeground1': base,
+    '--colorBrandStroke1': base,
+    '--colorStatusInfoForeground1': base,
+    '--colorStatusInfoBackground1': softer,
+    // Legacy --ms-* accent family (unified with the brand)
+    '--ms-blue': base,
+    '--ms-blue-dark': dark,
+    '--ms-blue-soft': soft,
+    '--ms-info': base,
+    '--app-accent-soft': soft,
+  };
+
+  const root = document.documentElement;
+  Object.entries(tokens).forEach(([name, value]) => root.style.setProperty(name, value));
+
+  // Remember the colour so the next load can theme the very first paint.
+  try {
+    localStorage.setItem(BRAND_COLOR_STORAGE_KEY, base);
+  } catch {
+    /* ignore storage errors (private mode, etc.) */
+  }
+};
+
+/**
+ * Apply the last-known brand colour synchronously at app start (before React
+ * renders), so the first paint is already themed instead of flashing the
+ * default accent until settings load.
+ */
+export const bootstrapBrandTheme = () => {
+  let cached = null;
+  try {
+    cached = localStorage.getItem(BRAND_COLOR_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  applyBrandTheme(cached || DEFAULT_APP_SETTINGS.branding.primaryColor);
+};

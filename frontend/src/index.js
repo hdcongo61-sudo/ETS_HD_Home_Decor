@@ -2,10 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
 import './index.css'; // Import crucial ici
+import { bootstrapBrandTheme } from './utils/appBranding';
 import {
   register as registerServiceWorker,
   unregister as unregisterServiceWorker
 } from './serviceWorkerRegistration';
+
+// Theme the very first paint from the last-known brand colour (avoids a flash
+// of the default accent before app settings load).
+bootstrapBrandTheme();
 
 ReactDOM.render(
   <React.StrictMode>

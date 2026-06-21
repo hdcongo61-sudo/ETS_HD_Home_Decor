@@ -5,6 +5,7 @@ import { Home, ShoppingCart, Package, Plus, Menu as MenuIcon, X } from "lucide-r
 import AuthContext from "../context/AuthContext";
 import { useModal } from "../context/ModalContext";
 import { renderNavigationLinks } from "./Navigation";
+import { clearCache } from "../utils/offlineCache";
 
 // Mobile-first primary navigation: thumb-reachable tabs around a raised central
 // "Vendre" action, plus a "Menu" sheet that opens the full navigation. Desktop
@@ -85,6 +86,7 @@ const BottomTabBar = () => {
     } catch (error) {
       console.error("Unable to clear restriction info", error);
     }
+    clearCache();
     setAuth({ isAuthenticated: false, user: null, isAdmin: false, isLoading: false });
     setMenuOpen(false);
   };

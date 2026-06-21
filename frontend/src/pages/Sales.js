@@ -490,9 +490,19 @@ const ProfitAnalysis = () => {
       },
       {
         type: "bar",
-        label: "Bénéfice",
+        label: "Bénéfice attendu",
         data: periodAnalytics.map((i) => i.totalProfit || 0),
-        backgroundColor: "rgba(16,124,16,0.55)",
+        backgroundColor: "rgba(16,124,16,0.28)",
+        borderColor: "rgba(16,124,16,0.6)",
+        borderWidth: 1,
+        yAxisID: "y",
+        order: 2,
+      },
+      {
+        type: "bar",
+        label: "Bénéfice encaissé",
+        data: periodAnalytics.map((i) => i.realizedProfit || 0),
+        backgroundColor: "rgba(16,124,16,0.85)",
         borderColor: "rgb(16,124,16)",
         borderWidth: 1,
         yAxisID: "y",
@@ -536,12 +546,16 @@ const ProfitAnalysis = () => {
 
   const lossCost = gs.lossCost || 0;
   const netProfit = gs.netProfit != null ? gs.netProfit : (gs.totalProfit || 0);
+  const realizedProfit = gs.realizedProfit != null ? gs.realizedProfit : null;
   const kpis = [
     { title: "Chiffre d'affaires", value: cfa(gs.totalRevenue), icon: <Wallet className="h-4 w-4" />, tone: "neutral", ctx: `${(gs.saleCount || 0).toLocaleString("fr-FR")} vente(s)` },
+    ...(realizedProfit != null ? [
+      { title: "Bénéfice encaissé", value: cfa(realizedProfit), icon: <Coins className="h-4 w-4" />, tone: "brand", ctx: `Paiements reçus · ${cfa(gs.collectedRevenue)} encaissé` },
+    ] : []),
     { title: "Coût des marchandises", value: cfa(gs.totalCost), icon: <Package className="h-4 w-4" />, tone: "neutral", ctx: "COGS sur la période" },
-    { title: "Bénéfice brut", value: cfa(gs.grossProfit != null ? gs.grossProfit : gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: "Ventes (CA − coût)" },
+    { title: "Bénéfice brut attendu", value: cfa(gs.grossProfit != null ? gs.grossProfit : gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: "Ventes de la période (CA − coût)" },
     { title: "Pertes casse/cadeau", value: lossCost ? `- ${cfa(lossCost)}` : cfa(0), icon: <PackageMinus className="h-4 w-4" />, tone: lossCost > 0 ? "danger" : "neutral", ctx: `Casse ${cfa(gs.lossCasse || 0)} · Cadeau ${cfa(gs.lossCadeau || 0)}` },
-    { title: "Bénéfice net", value: cfa(netProfit), icon: <Coins className="h-4 w-4" />, tone: netProfit >= 0 ? "success" : "danger", ctx: "Brut − pertes" },
+    { title: "Bénéfice net attendu", value: cfa(netProfit), icon: <Coins className="h-4 w-4" />, tone: netProfit >= 0 ? "success" : "danger", ctx: "Brut − pertes (à pleine encaisse)" },
     { title: "Marge nette", value: pctOf(gs.netMargin != null ? gs.netMargin : gs.averageMargin), icon: <Percent className="h-4 w-4" />, tone: (gs.netMargin ?? 0) >= 0 ? "success" : "danger", ctx: "Net ÷ CA" },
   ];
 
@@ -629,7 +643,7 @@ const ProfitAnalysis = () => {
       {/* Top products table */}
       <div className="fluent-card-filled overflow-hidden">
         <div className="px-4 py-3 border-b" style={{ borderColor: "var(--colorNeutralStroke2)" }}>
-          <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Détail des produits les plus rentables</p>
+          <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Détail des produits les plus rentables <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>· encaissé sur la période</span></p>
         </div>
         {topProducts.length === 0 ? (
           <EmptyState title="Aucune donnée" description="Aucune vente détaillée sur la période." />
@@ -664,7 +678,7 @@ const ProfitAnalysis = () => {
       {/* Category breakdown */}
       {profitByCategory.length > 0 && (
         <div className="fluent-card-filled p-5">
-          <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Bénéfices par catégorie</p>
+          <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Bénéfices par catégorie <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>· encaissé</span></p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="h-64"><Doughnut data={categoryChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { font: CHART_LABEL_FONT } } } }} /></div>
             <div className="overflow-x-auto">
@@ -696,7 +710,7 @@ const ProfitAnalysis = () => {
       {profitByContainer.length > 0 && (
         <div className="fluent-card-filled overflow-hidden">
           <div className="px-4 py-3 border-b" style={{ borderColor: "var(--colorNeutralStroke2)" }}>
-            <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Gains par conteneur</p>
+            <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Gains par conteneur <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>· encaissé</span></p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1813,7 +1827,7 @@ const Sales = () => {
         label: "Ventes filtrées",
         value: filteredHistoryStats.salesCount.toLocaleString("fr-FR"),
         helper: `${filteredHistoryStats.salesTotal.toLocaleString("fr-FR")} CFA vendus`,
-        color: "border-indigo-100 bg-indigo-50 text-indigo-700",
+        color: "border-[var(--ms-blue-soft)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]",
       },
       {
         label: "Encaissé sur ventes",
@@ -1825,7 +1839,7 @@ const Sales = () => {
         label: paymentTitle,
         value: `${filteredHistoryStats.paymentsOnSelectedDate.toLocaleString("fr-FR")} CFA`,
         helper: `${filteredHistoryStats.paymentsOnSelectedDateCount} paiement(s). ${paymentHelper}`,
-        color: "border-blue-100 bg-blue-50 text-blue-700",
+        color: "border-[var(--ms-blue-soft)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]",
         clickable: dateFilter,
         onClick: () => handleOpenPaymentsDetail(),
       },
@@ -1943,14 +1957,14 @@ const Sales = () => {
                   <button
                     type="button"
                     onClick={() => setHistoryFiltersOpen((o) => !o)}
-                    className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                    className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-inset"
                     aria-expanded={historyFiltersOpen}
                     aria-controls="history-filters-main"
                     id="history-filters-toggle-main"
                   >
                     <span className="font-medium text-gray-900">Filtres</span>
                     {hasActiveFilters && (
-                      <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
+                      <span className="text-xs font-medium text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] px-2.5 py-1 rounded-full">
                         Actifs
                       </span>
                     )}
@@ -2099,7 +2113,7 @@ const Sales = () => {
                   <button
                     type="button"
                     onClick={() => setShowDeliveryModal(false)}
-                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
                     aria-label="Fermer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2116,7 +2130,7 @@ const Sales = () => {
                       id="delivery-status-nonadmin"
                       value={deliveryStatus || selectedSale.deliveryStatus || "pending"}
                       onChange={(e) => setDeliveryStatus(e.target.value)}
-                      className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)]"
                     >
                       <option value="pending">En attente</option>
                       <option value="delivered">Livré</option>
@@ -2132,7 +2146,7 @@ const Sales = () => {
                       value={deliveryNote || selectedSale.deliveryNote || ""}
                       onChange={(e) => setDeliveryNote(e.target.value)}
                       placeholder="Notes sur la livraison…"
-                      className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+                      className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)] resize-y"
                       rows={3}
                       maxLength={500}
                     />
@@ -2144,7 +2158,7 @@ const Sales = () => {
                     type="button"
                     onClick={() => setShowDeliveryModal(false)}
                     disabled={isUpdatingDelivery}
-                    className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60"
+                    className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2 disabled:opacity-60"
                   >
                     Annuler
                   </button>
@@ -2152,7 +2166,7 @@ const Sales = () => {
                     type="button"
                     onClick={handleUpdateDelivery}
                     disabled={isUpdatingDelivery}
-                    className="min-h-[44px] px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    className="min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] text-white rounded-xl hover:bg-[var(--ms-blue-dark)] flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2"
                   >
                     {isUpdatingDelivery ? (
                       <>
@@ -2422,7 +2436,7 @@ const Sales = () => {
 
             {dashboardLoading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--ms-blue)]" />
               </div>
             ) : (
               <>
@@ -2459,7 +2473,7 @@ const Sales = () => {
                     title="Paiements (nb)"
                     value={dashboardData.paymentsSummary.paymentsCount}
                     icon={<CreditCard className="h-5 w-5" />}
-                    color="bg-indigo-50 text-indigo-700"
+                    color="bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]"
                   />
                   <StatCard
                     title="Total payé"
@@ -2665,7 +2679,7 @@ const Sales = () => {
                           {[
                             ["Payée", "completed", "bg-green-50 border-green-200/80", "text-green-800"],
                             ["Partiellement payée", "partially_paid", "bg-amber-50 border-amber-200/80", "text-amber-800"],
-                            ["En attente", "pending", "bg-blue-50 border-blue-200/80", "text-blue-800"],
+                            ["En attente", "pending", "bg-[var(--ms-blue-soft)] border-[var(--ms-blue-soft)]", "text-[var(--ms-blue-dark)]"],
                             ["Annulée", "cancelled", "bg-gray-100 border-gray-200/80", "text-gray-700"],
                           ].map(([label, key, cardClass, textClass]) => {
                             const count = dashboardData.statusStats?.[key]?.count || 0;
@@ -2718,7 +2732,7 @@ const Sales = () => {
                       <button
                         type="button"
                         onClick={() => setShowHistoryModal(true)}
-                        className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        className="inline-flex items-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] hover:bg-[var(--ms-blue-soft)] rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2"
                       >
                         {historyLinkLabel}
                       </button>
@@ -2739,14 +2753,14 @@ const Sales = () => {
                     <button
                       type="button"
                       onClick={() => setHistoryFiltersOpen((o) => !o)}
-                      className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                      className="w-full flex items-center justify-between gap-3 py-4 px-4 sm:hidden bg-white hover:bg-gray-50/80 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-inset"
                       aria-expanded={historyFiltersOpen}
                       aria-controls="history-filters-admin"
                       id="history-filters-toggle-admin"
                     >
                       <span className="font-medium text-gray-900">Filtres</span>
                       {hasActiveFilters && (
-                        <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
+                        <span className="text-xs font-medium text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] px-2.5 py-1 rounded-full">
                           Actifs
                         </span>
                       )}
@@ -2900,7 +2914,7 @@ const Sales = () => {
                 >
                   <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-[var(--ms-blue-soft)] text-[var(--ms-blue)]">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -2910,7 +2924,7 @@ const Sales = () => {
                     <button
                       type="button"
                       onClick={() => setShowExportModal(false)}
-                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
                       aria-label="Fermer"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2949,7 +2963,7 @@ const Sales = () => {
                     <button
                       type="button"
                       onClick={() => setShowDeliveryModal(false)}
-                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
                       aria-label="Fermer"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2966,7 +2980,7 @@ const Sales = () => {
                         id="delivery-status-admin"
                         value={deliveryStatus || selectedSale.deliveryStatus || "pending"}
                         onChange={(e) => setDeliveryStatus(e.target.value)}
-                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)]"
                       >
                         <option value="pending">En attente</option>
                         <option value="delivered">Livré</option>
@@ -2982,7 +2996,7 @@ const Sales = () => {
                         value={deliveryNote || selectedSale.deliveryNote || ""}
                         onChange={(e) => setDeliveryNote(e.target.value)}
                         placeholder="Notes sur la livraison…"
-                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+                        className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)] resize-y"
                         rows={3}
                         maxLength={500}
                       />
@@ -2994,7 +3008,7 @@ const Sales = () => {
                       type="button"
                       onClick={() => setShowDeliveryModal(false)}
                       disabled={isUpdatingDelivery}
-                      className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60"
+                      className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2 disabled:opacity-60"
                     >
                       Annuler
                     </button>
@@ -3002,7 +3016,7 @@ const Sales = () => {
                       type="button"
                       onClick={handleUpdateDelivery}
                       disabled={isUpdatingDelivery}
-                      className="min-h-[44px] px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                      className="min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] text-white rounded-xl hover:bg-[var(--ms-blue-dark)] flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2"
                     >
                       {isUpdatingDelivery ? (
                         <>
@@ -3159,7 +3173,7 @@ const Sales = () => {
                 >
                   <div className="flex items-center justify-between px-5 py-4 sm:px-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <ReceiptText className="h-5 w-5 text-indigo-600" />
+                      <ReceiptText className="h-5 w-5 text-[var(--ms-blue)]" />
                       Historique des ventes
                       <span className="text-sm font-normal text-[var(--ms-text-muted)]">({filteredSales.length} ventes)</span>
                     </h2>

@@ -65,10 +65,13 @@ const DayDetailsModal = ({
     const totalSales = sales.reduce((s, x) => s + (x?.totalAmount || 0), 0);
     const totalExpenses = expenses.reduce((s, x) => s + (x?.amount || 0), 0);
     const totalPayments = payments.reduce((s, x) => s + (x?.amount || 0), 0);
-    const profit = totalPayments - totalExpenses;
+    // Realized (cash-basis) gross profit: margin actually collected via payments.
+    const realizedProfit = payments.reduce((s, x) => s + (x?.profit || 0), 0);
+    // Net profit = realized gross profit − expenses (same basis as the dashboard).
+    const profit = realizedProfit - totalExpenses;
     const profitMargin =
-      totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
-    return { totalSales, totalExpenses, totalPayments, profit, profitMargin };
+      totalPayments > 0 ? ((realizedProfit / totalPayments) * 100).toFixed(1) : 0;
+    return { totalSales, totalExpenses, totalPayments, realizedProfit, profit, profitMargin };
   }, [sales, expenses, payments]);
 
   const wholesaleStats = useMemo(() => {
@@ -94,7 +97,7 @@ const DayDetailsModal = ({
       profitMargin >= 30
         ? { text: "Excellente performance", icon: <TrendingUp className="text-green-500" /> }
         : profitMargin >= 15
-        ? { text: "Performance stable", icon: <LineChart className="text-blue-500" /> }
+        ? { text: "Performance stable", icon: <LineChart className="text-[var(--ms-blue)]" /> }
         : { text: "Marge faible", icon: <TrendingDown className="text-red-500" /> };
 
     return {
@@ -160,11 +163,12 @@ const DayDetailsModal = ({
           </div>
 
           {/* Stat Row */}
-          <div className="grid grid-cols-2 gap-2 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-3 sm:grid-cols-5 sm:px-4">
+          <div className="grid grid-cols-2 gap-2 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-3 sm:grid-cols-3 lg:grid-cols-6 sm:px-4">
             <KPICard title="Ventes" value={`${totals.totalSales.toLocaleString("fr-FR")} CFA`} tone="success" />
             <KPICard title="Encaissements" value={`${totals.totalPayments.toLocaleString("fr-FR")} CFA`} tone="neutral" />
             <KPICard title="Depenses" value={`${totals.totalExpenses.toLocaleString("fr-FR")} CFA`} tone="danger" />
-            <KPICard title="Profit" value={`${totals.profit.toLocaleString("fr-FR")} CFA`} tone={totals.profit >= 0 ? "success" : "danger"} />
+            <KPICard title="Bénéfice encaissé" value={`${totals.realizedProfit.toLocaleString("fr-FR")} CFA`} context="Marge collectée" tone="brand" />
+            <KPICard title="Profit net" value={`${totals.profit.toLocaleString("fr-FR")} CFA`} context="Encaissé − dépenses" tone={totals.profit >= 0 ? "success" : "danger"} />
             <KPICard title="Vente en gros" value={`${wholesaleStats.totalAmount.toLocaleString("fr-FR")} CFA`} context={`${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}`} tone="warning" />
           </div>
 

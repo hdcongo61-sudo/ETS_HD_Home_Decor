@@ -49,7 +49,7 @@ export const getStatusClass = (status) => {
     case "partially_paid":
       return "bg-yellow-100 text-yellow-800";
     case "pending":
-      return "bg-blue-100 text-blue-800";
+      return "bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]";
     case "cancelled":
       return "bg-red-100 text-red-800";
     default:
@@ -79,7 +79,7 @@ export const getProfitCategoryClass = (category) => {
     case "élevé":
       return "bg-green-100 text-green-800";
     case "moyen":
-      return "bg-blue-100 text-blue-800";
+      return "bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]";
     case "faible":
       return "bg-yellow-100 text-yellow-800";
     default:
@@ -117,6 +117,45 @@ export const calculateSaleMargin = (sale) => {
   if (totalAmount === 0) return 0;
   const totalProfit = calculateSaleProfit(sale);
   return (totalProfit / totalAmount) * 100;
+};
+
+/* ─────────────────────────────────────────────────────────────
+   Cash-basis (realized) profit — profit recognized in proportion
+   to the money actually collected, on each payment's date.
+   Proportional method: each franc collected carries the sale's margin.
+   ───────────────────────────────────────────────────────────── */
+
+// Profit earned per franc of revenue (= margin as a fraction).
+export const getSaleProfitRatio = (sale) => {
+  const totalAmount = Number(sale?.totalAmount) || 0;
+  if (totalAmount === 0) return 0;
+  return calculateSaleProfit(sale) / totalAmount;
+};
+
+// Profit realized by a single payment.
+export const calculatePaymentProfit = (sale, payment) =>
+  (Number(payment?.amount) || 0) * getSaleProfitRatio(sale);
+
+// Total profit collected so far (sum of payments × margin).
+export const calculateRealizedProfit = (sale) =>
+  calculateSaleTotals(sale).totalPaid * getSaleProfitRatio(sale);
+
+// Profit still owed (not yet collected).
+export const calculateOutstandingProfit = (sale) =>
+  calculateSaleProfit(sale) - calculateRealizedProfit(sale);
+
+// Realized profit from payments recognized within [start, end] (by payment date).
+// Pass Date objects; either bound may be null/undefined to leave it open.
+export const calculateRealizedProfitInRange = (sale, start, end) => {
+  if (!Array.isArray(sale?.payments)) return 0;
+  const ratio = getSaleProfitRatio(sale);
+  return sale.payments.reduce((sum, payment) => {
+    const date = parseDateSafely(payment?.paymentDate || payment?.createdAt);
+    if (!date) return sum;
+    if (start && date < start) return sum;
+    if (end && date > end) return sum;
+    return sum + (Number(payment?.amount) || 0) * ratio;
+  }, 0);
 };
 
 export const deriveProfitCategoryFromMargin = (margin) => {

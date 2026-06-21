@@ -15,8 +15,8 @@ function OfflineIndicator() {
     >
       <div className="rounded-xl border border-yellow-400 bg-white/95 p-3 shadow-2xl backdrop-blur">
         <p className="text-center text-sm font-medium text-yellow-600">
-          Vous êtes hors-ligne. Les données mises en cache restent disponibles, certaines actions
-          seront synchronisées à la reconnexion.
+          Vous êtes hors-ligne. Les dernières données chargées restent consultables ;
+          les modifications nécessitent une connexion.
         </p>
       </div>
     </div>

@@ -242,7 +242,7 @@ const UserDashboard = () => {
                     </div>
                     <h2 className="text-xl font-semibold text-[var(--ms-text-strong)] mb-2">Accès administrateur requis</h2>
                     <p className="text-[var(--ms-text)] mb-6">Vous n'avez pas la permission d'accéder à cette page</p>
-                    <Link to="/" className="px-5 py-2.5 bg-[var(--ms-blue)] text-white rounded-md hover:bg-blue-700 transition-colors font-medium">
+                    <Link to="/" className="px-5 py-2.5 bg-[var(--ms-blue)] text-white rounded-md hover:bg-[var(--ms-blue-dark)] transition-colors font-medium">
                         Retour à l'accueil
                     </Link>
                 </div>
@@ -309,7 +309,7 @@ const UserDashboard = () => {
                             placeholder="Rechercher des utilisateurs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-[var(--ms-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 border border-[var(--ms-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] text-sm"
                         />
                         <svg className="w-4 h-4 text-[var(--ms-text-muted)] absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -321,7 +321,7 @@ const UserDashboard = () => {
                             setShowForm(true);
                         }}
                         disabled={stats.totalUsers >= 4}
-                        className="flex items-center justify-center gap-2 bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-4 py-2.5 rounded-md transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
+                        className="flex items-center justify-center gap-2 bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-4 py-2.5 rounded-md transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
                     >
                         <PlusIcon className="w-4 h-4 text-white" />
                         {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
@@ -440,7 +440,7 @@ const UserDashboard = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]'}`}>
                                                     {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                                 </span>
                                                 {!user.isAdmin && Array.isArray(user.permissions) && user.permissions.length > 0 && (
@@ -550,7 +550,7 @@ const UserDashboard = () => {
                                                 <div className="flex space-x-2">
                                                     <Link
                                                         to={`/sales/user/${user._id}`}
-                                                        className="flex items-center text-[var(--ms-blue)] hover:text-blue-800 bg-[var(--ms-blue-soft)] hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors text-sm"
+                                                        className="flex items-center text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] bg-[var(--ms-blue-soft)] hover:bg-[var(--ms-blue-soft)] px-2.5 py-1.5 rounded-lg transition-colors text-sm"
                                                         title="Voir le tableau de bord des ventes"
                                                     >
                                                         <ChartIcon className="w-4 h-4 mr-1" />
@@ -611,7 +611,7 @@ const UserDashboard = () => {
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1.5">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isAdmin ? 'bg-[var(--ms-success)]/15 text-green-800' : 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]'}`}>
                                       {user.isAdmin ? 'Admin' : 'Utilisateur'}
                                     </span>
                                     <StatusBadge tone={user.isActive !== false ? 'success' : 'danger'}>
@@ -696,7 +696,7 @@ const UserDashboard = () => {
                                 <div className="flex flex-wrap gap-2 pt-2">
                                   <Link
                                     to={`/sales/user/${user._id}`}
-                                    className="flex-1 min-w-[120px] text-center text-[var(--ms-blue)] hover:text-blue-800 bg-[var(--ms-blue-soft)] hover:bg-blue-100 px-3 py-2 rounded-md text-sm font-medium"
+                                    className="flex-1 min-w-[120px] text-center text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] bg-[var(--ms-blue-soft)] hover:bg-[var(--ms-blue-soft)] px-3 py-2 rounded-md text-sm font-medium"
                                   >
                                     Tableau des ventes
                                   </Link>
@@ -739,7 +739,7 @@ const UserDashboard = () => {
                             <button
                                 onClick={() => setShowForm(true)}
                                 disabled={stats.totalUsers >= 3}
-                                className="flex items-center gap-2 bg-[var(--ms-blue)] hover:bg-blue-700 text-white px-4 py-2.5 rounded-md font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
+                                className="flex items-center gap-2 bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white px-4 py-2.5 rounded-md font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ms-blue)]"
                             >
                                 <PlusIcon className="w-4 h-4 text-white" />
                                 {stats.totalUsers >= 3 ? 'Limite atteinte' : 'Ajouter un utilisateur'}
@@ -755,7 +755,7 @@ const UserDashboard = () => {
 // StatCard Component with Apple Design
 const StatCard = ({ title, value, icon, color = 'blue', isName = false }) => {
     const colorClasses = {
-        blue: { bg: 'bg-blue-100', text: 'text-[var(--ms-blue)]', border: 'border-blue-200' },
+        blue: { bg: 'bg-[var(--ms-blue-soft)]', text: 'text-[var(--ms-blue)]', border: 'border-[var(--ms-blue-soft)]' },
         green: { bg: 'bg-[var(--ms-success)]/15', text: 'text-[var(--ms-success)]', border: 'border-green-200' },
         purple: { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
         orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },

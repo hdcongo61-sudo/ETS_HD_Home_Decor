@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
-import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from '../utils/appBranding';
+import { DEFAULT_APP_SETTINGS, normalizeAppSettings, applyBrandTheme } from '../utils/appBranding';
 
 const AppSettingsContext = createContext({
   appSettings: DEFAULT_APP_SETTINGS,
@@ -48,6 +48,11 @@ export const AppSettingsProvider = ({ children }) => {
       document.title = appSettings.branding.appName || DEFAULT_APP_SETTINGS.branding.appName;
     }
   }, [appSettings.branding.appName]);
+
+  // Apply the tenant brand colour to the design tokens (accent everywhere).
+  useEffect(() => {
+    applyBrandTheme(appSettings.branding.primaryColor);
+  }, [appSettings.branding.primaryColor]);
 
   const value = useMemo(
     () => ({

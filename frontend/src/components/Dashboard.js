@@ -54,7 +54,6 @@ import {
   Sun,
   Moon,
   CalendarDays,
-  ChevronDown,
   Coins,
   Truck,
   PackageCheck,
@@ -110,10 +109,6 @@ const Dashboard = () => {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
-  // Heavy hub is open by default on desktop, collapsed on mobile (action-first home).
-  const [isHomeHubOpen, setIsHomeHubOpen] = useState(
-    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true)
-  );
   const activeYear = useMemo(() => {
     const parsed = parseInt(selectedYear, 10);
     return Number.isNaN(parsed) ? currentYear : parsed;
@@ -322,7 +317,7 @@ const Dashboard = () => {
   const processCombinedData = (sales, expenses, payments) => {
     const map = {};
     const ensure = (d) =>
-      (map[d] ||= { date: d, sales: 0, paid: 0, expenses: 0 });
+      (map[d] ||= { date: d, sales: 0, paid: 0, paidProfit: 0, expenses: 0 });
 
     sales.forEach((s) => {
       const d = format(new Date(s.saleDate || s.createdAt), "yyyy-MM-dd");
@@ -336,7 +331,10 @@ const Dashboard = () => {
       const dt = p?.paymentDate || p?.createdAt;
       if (!dt) return;
       const d = format(new Date(dt), "yyyy-MM-dd");
-      ensure(d).paid += p.amount || 0;
+      const bucket = ensure(d);
+      bucket.paid += p.amount || 0;
+      // Realized (cash-basis) gross profit carried by this payment.
+      bucket.paidProfit += p.profit || 0;
     });
 
     return Object.values(map).sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -488,7 +486,7 @@ const Dashboard = () => {
         prevLen - 1
       );
       const prev = prevCombinedData[j] || {};
-      const prevProfit = (prev.paid || 0) - (prev.expenses || 0);
+      const prevProfit = (prev.paidProfit || 0) - (prev.expenses || 0);
       return {
         ...d,
         prevSales: prev.sales ?? null,
@@ -510,14 +508,21 @@ const Dashboard = () => {
     () => combinedData.reduce((s, d) => s + d.expenses, 0),
     [combinedData]
   );
-  const profit = totalPaid - totalExpenses;
+  // Realized gross profit (cash-basis): margin actually collected via payments.
+  const totalPaidProfit = useMemo(
+    () => combinedData.reduce((s, d) => s + (d.paidProfit || 0), 0),
+    [combinedData]
+  );
+  // Net profit = realized gross profit − expenses (cash-basis).
+  const profit = totalPaidProfit - totalExpenses;
 
   // Totaux période comparée (pour cartes + tendance selon compareMode)
   const prevPeriodTotals = useMemo(() => {
     const s = prevCombinedData.reduce((sum, d) => sum + (d.sales || 0), 0);
     const p = prevCombinedData.reduce((sum, d) => sum + (d.paid || 0), 0);
+    const pp = prevCombinedData.reduce((sum, d) => sum + (d.paidProfit || 0), 0);
     const e = prevCombinedData.reduce((sum, d) => sum + (d.expenses || 0), 0);
-    return { sales: s, paid: p, expenses: e, profit: p - e };
+    return { sales: s, paid: p, paidProfit: pp, expenses: e, profit: pp - e };
   }, [prevCombinedData]);
 
   // Tendances: vs période comparée si active, sinon vs semaine précédente
@@ -531,12 +536,12 @@ const Dashboard = () => {
           new Date(s.saleDate || s.createdAt) <= prevWeek.end
       )
       .reduce((a, b) => a + (b.totalAmount || 0), 0);
-    const prevPaid = paymentsData
-      .filter((p) => {
-        const dt = p.paymentDate || p.createdAt;
-        return new Date(dt) >= prevWeek.start && new Date(dt) <= prevWeek.end;
-      })
-      .reduce((a, b) => a + (b.amount || 0), 0);
+    const prevWeekPayments = paymentsData.filter((p) => {
+      const dt = p.paymentDate || p.createdAt;
+      return new Date(dt) >= prevWeek.start && new Date(dt) <= prevWeek.end;
+    });
+    const prevPaid = prevWeekPayments.reduce((a, b) => a + (b.amount || 0), 0);
+    const prevPaidProfit = prevWeekPayments.reduce((a, b) => a + (b.profit || 0), 0);
     const prevExp = expensesData
       .filter(
           (e) =>
@@ -544,7 +549,7 @@ const Dashboard = () => {
           new Date(e.date || e.createdAt) <= prevWeek.end
       )
       .reduce((a, b) => a + (b.amount || 0), 0);
-    return { s: prevSales, p: prevPaid, e: prevExp, pr: prevPaid - prevExp };
+    return { s: prevSales, p: prevPaid, e: prevExp, pr: prevPaidProfit - prevExp };
   }, [prevWeek, salesData, paymentsData, expensesData]);
 
   const pct = (cur, prev) => {
@@ -1103,7 +1108,6 @@ const Dashboard = () => {
     );
 
   const today = new Date();
-  const userName = auth?.user?.name || auth?.user?.username || "";
   const periodLabel =
     timeRange === "day"
       ? "Aujourd'hui"
@@ -1242,95 +1246,120 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* ===== HOME HUB ===== */}
-        <header className="overflow-hidden fluent-card-filled">
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 lg:p-6">
-            <div className="min-w-0">
-              {userName && (
-                <p className="text-sm font-medium text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                  Bienvenue, <span className="text-[var(--ms-text-strong)] dark:text-gray-100">{userName}</span>
-                </p>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white sm:text-3xl">
-                  Accueil opérationnel
-                </h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ms-text)] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                  <CalendarDays size={13} />
-                  {periodLabel}
-                </span>
-              </div>
-              <p className="mt-2 max-w-2xl text-sm text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)] sm:text-base">
-                {isAdmin
-                  ? "Pilotez les ventes, la caisse, les produits, les clients et l'équipe."
-                  : "Enregistrez vos ventes et encaissez vos clients en quelques secondes."}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsHomeHubOpen((current) => !current)}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-semibold text-[var(--ms-text)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600"
-              aria-expanded={isHomeHubOpen}
-              aria-controls="home-hub-content"
-            >
-              {isHomeHubOpen ? "Réduire" : "Afficher"}
-              <ChevronDown
-                size={18}
-                className={`transition-transform duration-200 ${isHomeHubOpen ? "rotate-180" : ""}`}
-              />
-            </button>
+        {/* ===== PAGES RATTACHÉES ===== */}
+        <section className="fluent-card-filled p-4 sm:p-5 lg:p-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+              Pages rattachées
+            </h2>
+            <span className="text-xs font-medium text-[var(--ms-text-muted)]">{homeShortcuts.length} accès</span>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}>
+                    <Icon size={20} />
+                  </span>
+                  <span className="ms-status-badge ms-status-neutral">
+                    {meta}
+                  </span>
+                </div>
+                <p className="mt-4 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{label}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                  {description}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-          {isHomeHubOpen && (
-            <motion.div
-              id="home-hub-content"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-          <div className="grid gap-5 border-t border-[var(--ms-border)] p-4 pt-5 dark:border-gray-800 sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]">
-                Actions rapides
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  to="/sales#sale-form"
-                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-                  style={{ background: 'var(--colorBrandBackground)' }}
-                >
-                  <ShoppingCart size={16} /> Nouvelle vente
-                </Link>
-                <Link
-                  to="/sales"
-                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                >
-                  {isAdmin ? "Voir les ventes" : "Mes ventes"}
-                </Link>
-                {isAdmin && (
-                  <>
-                    <Link
-                      to="/expenses"
-                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    >
-                      <Receipt size={16} /> Dépense
-                    </Link>
-                    <Link
-                      to="/bank"
-                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] transition hover:bg-[var(--ms-bg-subtle)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    >
-                      <Landmark size={16} /> Caisse
-                    </Link>
-                  </>
-                )}
+        {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
+        <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
+          {chartLoading && (
+            <div className="absolute inset-0 z-20 flex items-start justify-center rounded-lg bg-[var(--ms-white)]/55 pt-5 dark:bg-gray-950/35">
+              <div className="rounded-full border border-[var(--ms-blue-soft)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-blue-dark)] shadow-lg dark:border-[var(--ms-blue-dark)] dark:bg-gray-900 dark:text-[var(--ms-blue-soft)]">
+                Mise à jour du graphique…
               </div>
-              <p className="mt-4 text-xs text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                Astuce : le bouton flottant permet de vendre depuis n'importe quel écran.
-              </p>
             </div>
+          )}
+
+          <motion.section
+            className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'xl:grid-cols-4' : ''} gap-3 sm:gap-4 transition-opacity ${
+              chartLoading ? "opacity-60" : "opacity-100"
+            }`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            aria-label="Indicateurs clés"
+          >
+            {[
+              {
+                title: "Ventes totales",
+                value: totalSales,
+                prevValue: hasCompare ? prevPeriodTotals.sales : null,
+                icon: <DollarSign size={22} />,
+                trend: salesTrend,
+                style: CARD_STYLES[0],
+              },
+              {
+                title: "Encaissements",
+                value: totalPaid,
+                prevValue: hasCompare ? prevPeriodTotals.paid : null,
+                icon: <Coins size={22} />,
+                trend: pct(totalPaid, totalSales),
+                style: CARD_STYLES[1],
+              },
+              {
+                title: "Dépenses",
+                value: totalExpenses,
+                prevValue: hasCompare ? prevPeriodTotals.expenses : null,
+                icon: <TrendingDown size={22} />,
+                trend: expenseTrend,
+                style: CARD_STYLES[2],
+              },
+              {
+                title: "Profit net",
+                value: profit,
+                prevValue: hasCompare ? prevPeriodTotals.profit : null,
+                icon: <PieIcon size={22} />,
+                trend: profitTrend,
+                style: CARD_STYLES[3],
+              },
+            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => (
+              <article key={i} className="fluent-card-filled p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+                    style={{ background: stat.style.iconBg, color: stat.style.color }}
+                  >
+                    {stat.icon}
+                  </div>
+                  <span
+                    className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
+                    style={{ color: String(stat.trend).startsWith('+') ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
+                  >
+                    {String(stat.trend).startsWith('+') ? '↑' : '↓'} {stat.trend}
+                  </span>
+                </div>
+                <h2 className="fui-caption1 mt-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  {stat.title}
+                </h2>
+                <p className="mt-1 fui-title2 tabular-nums" style={{ color: stat.style.color }}>
+                  {stat.value.toLocaleString('fr-FR')} <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>CFA</span>
+                </p>
+                {stat.prevValue != null && (
+                  <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Vs période préc. : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
+                  </p>
+                )}
+              </article>
+            ))}
+          </motion.section>
 
             <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
               <div className="flex items-start justify-between gap-3 px-1 pb-3">
@@ -1506,124 +1535,6 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="border-t border-[var(--ms-border)] px-4 py-4 dark:border-gray-800 sm:px-5 lg:px-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                Pages rattachées
-              </h2>
-              <span className="text-xs font-medium text-[var(--ms-text-muted)]">{homeShortcuts.length} accès</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}>
-                      <Icon size={20} />
-                    </span>
-                    <span className="ms-status-badge ms-status-neutral">
-                      {meta}
-                    </span>
-                  </div>
-                  <p className="mt-4 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{label}</p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                    {description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-            </motion.div>
-          )}
-        </header>
-
-        {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
-        <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
-          {chartLoading && (
-            <div className="absolute inset-0 z-20 flex items-start justify-center rounded-lg bg-[var(--ms-white)]/55 pt-5 dark:bg-gray-950/35">
-              <div className="rounded-full border border-indigo-100 bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-indigo-700 shadow-lg dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-200">
-                Mise à jour du graphique…
-              </div>
-            </div>
-          )}
-
-          <motion.section
-            className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'xl:grid-cols-4' : ''} gap-3 sm:gap-4 transition-opacity ${
-              chartLoading ? "opacity-60" : "opacity-100"
-            }`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            aria-label="Indicateurs clés"
-          >
-            {[
-              {
-                title: "Ventes totales",
-                value: totalSales,
-                prevValue: hasCompare ? prevPeriodTotals.sales : null,
-                icon: <DollarSign size={22} />,
-                trend: salesTrend,
-                style: CARD_STYLES[0],
-              },
-              {
-                title: "Encaissements",
-                value: totalPaid,
-                prevValue: hasCompare ? prevPeriodTotals.paid : null,
-                icon: <Coins size={22} />,
-                trend: pct(totalPaid, totalSales),
-                style: CARD_STYLES[1],
-              },
-              {
-                title: "Dépenses",
-                value: totalExpenses,
-                prevValue: hasCompare ? prevPeriodTotals.expenses : null,
-                icon: <TrendingDown size={22} />,
-                trend: expenseTrend,
-                style: CARD_STYLES[2],
-              },
-              {
-                title: "Profit net",
-                value: profit,
-                prevValue: hasCompare ? prevPeriodTotals.profit : null,
-                icon: <PieIcon size={22} />,
-                trend: profitTrend,
-                style: CARD_STYLES[3],
-              },
-            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => (
-              <article key={i} className="fluent-card-filled p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
-                    style={{ background: stat.style.iconBg, color: stat.style.color }}
-                  >
-                    {stat.icon}
-                  </div>
-                  <span
-                    className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
-                    style={{ color: String(stat.trend).startsWith('+') ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
-                  >
-                    {String(stat.trend).startsWith('+') ? '↑' : '↓'} {stat.trend}
-                  </span>
-                </div>
-                <h2 className="fui-caption1 mt-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                  {stat.title}
-                </h2>
-                <p className="mt-1 fui-title2 tabular-nums" style={{ color: stat.style.color }}>
-                  {stat.value.toLocaleString('fr-FR')} <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>CFA</span>
-                </p>
-                {stat.prevValue != null && (
-                  <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    Vs période préc. : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
-                  </p>
-                )}
-              </article>
-            ))}
-          </motion.section>
 
           {/* ===== GRAPHIQUE FINANCIER — carte professionnelle (admin only) ===== */}
           {isAdmin && (
@@ -1644,7 +1555,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={() => handleOpenDayDetails(today)}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white rounded-xl font-medium text-sm transition-colors"
             >
               <CalendarDays size={18} /> Détails du jour
             </button>
@@ -1895,7 +1806,7 @@ const Dashboard = () => {
                       </span>
                       <Link
                         to={`/products/${product._id}`}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--ms-blue)] hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)] dark:hover:text-[var(--ms-blue-soft)]"
                       >
                         Voir produit <ArrowRight size={15} />
                       </Link>
@@ -1913,7 +1824,7 @@ const Dashboard = () => {
               <div className="mt-4 flex justify-end">
                 <Link
                   to="/product-dashboard"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[var(--ms-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[var(--ms-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--ms-blue-dark)]"
                 >
                   Voir tout le dashboard produits <ArrowRight size={16} />
                 </Link>
@@ -2074,7 +1985,7 @@ const Dashboard = () => {
                               <span className="font-semibold text-[var(--ms-text)] dark:text-gray-300">{s.count}</span> vente{s.count > 1 ? 's' : ''}
                               <span className="text-gray-300">·</span>
                               {Math.round(s.amount).toLocaleString("fr-FR")} CFA
-                              {s.linkTo && <span className="ml-auto font-medium text-[var(--ms-blue)] dark:text-indigo-300">Voir →</span>}
+                              {s.linkTo && <span className="ml-auto font-medium text-[var(--ms-blue)] dark:text-[var(--ms-blue)]">Voir →</span>}
                             </div>
                           </>
                         );
@@ -2273,7 +2184,7 @@ const Dashboard = () => {
 
 const salesToneClasses = {
   amber: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
-  blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300",
+  blue: "border-[var(--ms-blue-soft)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] dark:border-[var(--ms-blue)] dark:bg-[var(--ms-blue)] dark:text-[var(--ms-blue)]",
   emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
   rose: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300",
   violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300",

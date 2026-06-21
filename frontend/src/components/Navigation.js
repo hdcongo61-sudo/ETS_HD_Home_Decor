@@ -566,7 +566,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
             {auth.isAdmin && <NavIcon to="/users/stats" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 13h8V3H3zm10 8h8V11h-8zm0-8h8V3h-8zM3 21h8v-6H3z" /></svg>} label="Dashboard Utilisateurs" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
           </MobileMenuSection>
           <MobileMenuSection title="Ventes">
-            <NavIcon to="/sales#sale-form" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} label="Enregistrer une vente" className={`${linkClass} text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)]/80 active:bg-indigo-100/60`} onClick={closeMenu} isMobile={isMobile} />
+            <NavIcon to="/sales#sale-form" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} label="Enregistrer une vente" className={`${linkClass} text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)]/80 active:bg-[var(--ms-blue-soft)]`} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} label="Liste des ventes" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales/all" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} label="Archives" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             <NavIcon to="/sales/all?history=1&paymentStructure=full_payment" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13l4 4L19 7" /></svg>} label="Paiement complet" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
@@ -958,7 +958,7 @@ const SEARCH_RESULT_META = {
   client: {
     label: "Client",
     icon: UserRound,
-    tone: "bg-blue-50 text-blue-700 ring-blue-100",
+    tone: "bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] ring-[var(--ms-blue-soft)]",
   },
   sale: {
     label: "Vente",

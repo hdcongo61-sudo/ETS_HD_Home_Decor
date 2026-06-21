@@ -128,7 +128,7 @@ export const PaymentForm = ({
                     <div
                       className={`p-1.5 rounded-lg ${
                         p.method === 'cash'
-                          ? 'bg-blue-100 text-[var(--ms-blue)]'
+                          ? 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue)]'
                           : p.method === 'MobileMoney'
                           ? 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]'
                           : 'bg-purple-100 text-purple-600'
@@ -263,7 +263,7 @@ export const PaymentForm = ({
                   <div
                     className={`p-2 rounded-lg ${
                       opt === 'cash'
-                        ? 'bg-blue-100 text-[var(--ms-blue)]'
+                        ? 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue)]'
                         : opt === 'MobileMoney'
                         ? 'bg-[var(--ms-success)]/15 text-[var(--ms-success)]'
                         : 'bg-purple-100 text-purple-600'

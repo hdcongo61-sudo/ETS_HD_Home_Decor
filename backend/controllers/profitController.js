@@ -135,11 +135,140 @@ const getProfitAnalytics = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // ── Shared per-line pipeline using the profitData.productProfits SNAPSHOT ──
-    // This guarantees product/category/container totals reconcile with the
-    // headline (both use the cost captured at sale time, not current cost).
+    // ── 2b) Cash-basis (encaissé) — realized profit recognized by PAYMENT date ──
+    // Each payment realizes its share of the sale margin: amount × (profit / total).
+    // The date range here filters on the PAYMENT date, so a payment received in the
+    // period counts even when the sale itself is older (partial / deferred payments).
+    const paymentPeriodKey = {
+      day:   { $dateToString: { format: '%Y-%m-%d', date: '$__payDate' } },
+      week:  { $dateToString: { format: '%G-S%V', date: '$__payDate' } },
+      month: { $dateToString: { format: '%Y-%m', date: '$__payDate' } },
+      year:  { $dateToString: { format: '%Y', date: '$__payDate' } },
+    }[period] || { $dateToString: { format: '%Y-%m', date: '$__payDate' } };
+
+    const realizedBaseMatch = {
+      ...tenantFilter(req),
+      status: { $ne: 'cancelled' },
+      ...(containerProductIds ? { 'products.product': { $in: containerProductIds } } : {}),
+    };
+
+    const realizedAgg = await Sale.aggregate([
+      { $match: realizedBaseMatch },
+      {
+        $addFields: {
+          __ratio: {
+            $cond: [{ $gt: ['$totalAmount', 0] },
+              { $divide: [{ $ifNull: ['$profitData.totalProfit', 0] }, '$totalAmount'] }, 0],
+          },
+        },
+      },
+      { $unwind: '$payments' },
+      { $addFields: { __payDate: { $ifNull: ['$payments.paymentDate', '$saleDate'] } } },
+      ...((startDate || endDate) ? [{
+        $match: {
+          __payDate: {
+            ...(startDate ? { $gte: new Date(startDate) } : {}),
+            ...(endDate ? { $lte: new Date(endDate) } : {}),
+          },
+        },
+      }] : []),
+      { $addFields: { __realized: { $multiply: [{ $ifNull: ['$payments.amount', 0] }, '$__ratio'] } } },
+      {
+        $group: {
+          _id: paymentPeriodKey,
+          realizedProfit: { $sum: '$__realized' },
+          collected: { $sum: { $ifNull: ['$payments.amount', 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const realizedTotals = realizedAgg.reduce(
+      (acc, r) => ({
+        realizedProfit: acc.realizedProfit + (r.realizedProfit || 0),
+        collected: acc.collected + (r.collected || 0),
+      }),
+      { realizedProfit: 0, collected: 0 },
+    );
+
+    // Cash-basis headline figures (encaissé), kept alongside the accrual ones.
+    Object.assign(generalStats, {
+      expectedProfit: totalProfit,                                  // accrual (sales in range)
+      realizedProfit: Math.round(realizedTotals.realizedProfit),   // encaissé (payments in range)
+      collectedRevenue: Math.round(realizedTotals.collected),
+      realizedNetProfit: Math.round(realizedTotals.realizedProfit - lossCost),
+      realizedMargin: realizedTotals.collected
+        ? Number(((realizedTotals.realizedProfit / realizedTotals.collected) * 100).toFixed(2))
+        : 0,
+    });
+
+    // Merge realized figures into the period trend (union of accrual + payment keys).
+    periodAnalytics.forEach((p) => { p.realizedProfit = 0; p.collected = 0; });
+    const periodMap = new Map(periodAnalytics.map((p) => [p._id, p]));
+    realizedAgg.forEach((r) => {
+      const existing = periodMap.get(r._id);
+      if (existing) {
+        existing.realizedProfit = Math.round(r.realizedProfit || 0);
+        existing.collected = Math.round(r.collected || 0);
+      } else {
+        periodMap.set(r._id, {
+          _id: r._id,
+          totalSales: 0,
+          totalProfit: 0,
+          totalCost: 0,
+          saleCount: 0,
+          margin: 0,
+          realizedProfit: Math.round(r.realizedProfit || 0),
+          collected: Math.round(r.collected || 0),
+        });
+      }
+    });
+    const mergedPeriodAnalytics = Array.from(periodMap.values())
+      .sort((a, b) => String(a._id).localeCompare(String(b._id)));
+
+    // ── Shared per-line pipeline — CASH-BASIS (encaissé) ──
+    // Each sale's line revenue/profit is weighted by the share of the sale total
+    // COLLECTED within the period (payments dated in range). So a previous sale
+    // paid now contributes its margin to this period's product/category/container
+    // breakdown — consistent with the "Bénéfice encaissé" headline.
+    const collectedInRangeExpr = {
+      $sum: {
+        $map: {
+          input: {
+            $filter: {
+              input: { $ifNull: ['$payments', []] },
+              as: 'p',
+              cond: {
+                $and: [
+                  ...(startDate ? [{ $gte: [{ $ifNull: ['$$p.paymentDate', '$saleDate'] }, new Date(startDate)] }] : []),
+                  ...(endDate ? [{ $lte: [{ $ifNull: ['$$p.paymentDate', '$saleDate'] }, new Date(endDate)] }] : []),
+                ],
+              },
+            },
+          },
+          as: 'p',
+          in: { $ifNull: ['$$p.amount', 0] },
+        },
+      },
+    };
+
     const lineBase = [
-      { $match: baseMatch },
+      {
+        $match: {
+          ...tenantFilter(req),
+          status: { $ne: 'cancelled' },
+          ...(containerProductIds ? { 'products.product': { $in: containerProductIds } } : {}),
+        },
+      },
+      { $addFields: { __collectedInRange: collectedInRangeExpr } },
+      {
+        $addFields: {
+          __ratio: {
+            $cond: [{ $gt: ['$totalAmount', 0] }, { $divide: ['$__collectedInRange', '$totalAmount'] }, 0],
+          },
+        },
+      },
+      { $match: { __collectedInRange: { $gt: 0 } } },
       { $unwind: '$profitData.productProfits' },
       {
         $lookup: {
@@ -154,8 +283,8 @@ const getProfitAnalytics = async (req, res) => {
     ];
 
     const lineFields = {
-      lineRevenue: { $ifNull: ['$profitData.productProfits.revenue', 0] },
-      lineProfit: { $ifNull: ['$profitData.productProfits.profit', 0] },
+      lineRevenue: { $multiply: [{ $ifNull: ['$profitData.productProfits.revenue', 0] }, '$__ratio'] },
+      lineProfit: { $multiply: [{ $ifNull: ['$profitData.productProfits.profit', 0] }, '$__ratio'] },
       lineQty: { $ifNull: ['$profitData.productProfits.quantity', 0] },
     };
 
@@ -217,17 +346,7 @@ const getProfitAnalytics = async (req, res) => {
 
     // By container
     const profitByContainer = await Sale.aggregate([
-      { $match: baseMatch },
-      { $unwind: '$profitData.productProfits' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'profitData.productProfits.product',
-          foreignField: '_id',
-          as: 'pi',
-        },
-      },
-      { $unwind: { path: '$pi', preserveNullAndEmptyArrays: true } },
+      ...lineBase,
       { $addFields: lineFields },
       {
         $group: {
@@ -249,17 +368,17 @@ const getProfitAnalytics = async (req, res) => {
       { $sort: { totalRevenue: -1 } },
     ]);
 
-    // Detail coverage: share of revenue that has line-level snapshot detail
-    // (older sales may lack productProfits, so breakdowns can be < headline).
+    // Detail coverage: share of COLLECTED revenue that has line-level snapshot
+    // detail (breakdowns are cash-basis, so compare against amount collected).
     const categoryRevenue = profitByCategory.reduce((s, c) => s + (c.totalRevenue || 0), 0);
-    generalStats.detailCoverage = totalRevenue > 0
-      ? Number(((categoryRevenue / totalRevenue) * 100).toFixed(0))
+    generalStats.detailCoverage = realizedTotals.collected > 0
+      ? Number(((categoryRevenue / realizedTotals.collected) * 100).toFixed(0))
       : 100;
 
     res.json({
       success: true,
       data: {
-        periodAnalytics,
+        periodAnalytics: mergedPeriodAnalytics,
         topProducts,
         generalStats,
         profitByCategory,

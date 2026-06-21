@@ -958,6 +958,16 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
       {
         $match: paymentsMatch
       },
+      {
+        // Sale margin ratio (profit per franc) so each payment can carry its
+        // realized profit share = amount × ratio (cash-basis profit).
+        $addFields: {
+          __ratio: {
+            $cond: [{ $gt: ["$totalAmount", 0] },
+              { $divide: [{ $ifNull: ["$profitData.totalProfit", 0] }, "$totalAmount"] }, 0],
+          },
+        },
+      },
       { $unwind: "$payments" },
       {
         $match: {
@@ -971,6 +981,7 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
         $project: {
           _id: "$payments._id",
           amount: "$payments.amount",
+          profit: { $multiply: [{ $ifNull: ["$payments.amount", 0] }, "$__ratio"] },
           method: "$payments.method",
           paymentDate: "$payments.paymentDate",
           user: "$payments.user",
@@ -995,6 +1006,7 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
               $project: {
                 _id: 1,
                 amount: 1,
+                profit: 1,
                 method: 1,
                 paymentDate: 1,
                 saleId: 1,
@@ -1012,6 +1024,7 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
               $project: {
                 _id: 1,
                 amount: 1,
+                profit: 1,
                 method: 1,
                 paymentDate: 1,
                 user: "$user",
