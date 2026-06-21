@@ -22,6 +22,7 @@ import ServerWakeup from './components/ServerWakeup';
 import TrialBanner from './components/TrialBanner';
 
 const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
 const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
@@ -103,6 +104,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Home />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
                     </ProtectedRoute>
                   }
                 />
