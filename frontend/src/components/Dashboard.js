@@ -684,8 +684,10 @@ const Dashboard = () => {
       );
       const exportTotalSales = exportCombinedData.reduce((sum, row) => sum + (row.sales || 0), 0);
       const exportTotalPaid = exportCombinedData.reduce((sum, row) => sum + (row.paid || 0), 0);
+      const exportTotalPaidProfit = exportCombinedData.reduce((sum, row) => sum + (row.paidProfit || 0), 0);
       const exportTotalExpenses = exportCombinedData.reduce((sum, row) => sum + (row.expenses || 0), 0);
-      const exportProfit = exportTotalPaid - exportTotalExpenses;
+      // Cash-basis: realized margin collected − expenses (matches the dashboard).
+      const exportProfit = exportTotalPaidProfit - exportTotalExpenses;
 
       const summaryRows = [
         {
@@ -694,8 +696,9 @@ const Dashboard = () => {
           "Date fin": endValue,
           "Total ventes": exportTotalSales,
           "Total encaissements": exportTotalPaid,
+          "Bénéfice encaissé": Math.round(exportTotalPaidProfit),
           "Total dépenses": exportTotalExpenses,
-          Profit: exportProfit,
+          "Profit net": Math.round(exportProfit),
           "Lignes exportées": exportCombinedData.length,
         },
       ];
@@ -703,8 +706,9 @@ const Dashboard = () => {
         Date: format(new Date(d.date), "dd/MM/yyyy"),
         Ventes: d.sales,
         Encaissements: d.paid,
+        "Bénéfice encaissé": Math.round(d.paidProfit || 0),
         Dépenses: d.expenses,
-        Profit: d.paid - d.expenses,
+        "Profit net": Math.round((d.paidProfit || 0) - d.expenses),
       }));
       const wb = XLSX.utils.book_new();
       const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
@@ -1086,6 +1090,40 @@ const Dashboard = () => {
         XLSX.utils.json_to_sheet(productRows),
         "TopProduits"
       );
+
+      // Bénéfices (cash-basis / encaissé) — reuse the profit-analytics endpoint.
+      try {
+        const profitRes = await api.get(`/sales/profit-analytics?period=month`);
+        const pdata = profitRes.data?.data || {};
+        const gs = pdata.generalStats || {};
+        const beneficeRows = [{
+          "Chiffre d'affaires (CFA)": Math.round(gs.totalRevenue || 0),
+          "Encaissé (CFA)": Math.round(gs.collectedRevenue || 0),
+          "Bénéfice encaissé (CFA)": Math.round(gs.realizedProfit || 0),
+          "Bénéfice attendu (CFA)": Math.round(gs.expectedProfit ?? gs.totalProfit ?? 0),
+          "Marge encaissée (%)": Number(gs.realizedMargin || 0),
+          "Pertes casse/cadeau (CFA)": Math.round(gs.lossCost || 0),
+        }];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(beneficeRows), "Bénéfices");
+
+        const beneficeTrendRows = (pdata.periodAnalytics || []).map((p) => ({
+          Période: p._id,
+          "Bénéfice attendu (CFA)": Math.round(p.totalProfit || 0),
+          "Bénéfice encaissé (CFA)": Math.round(p.realizedProfit || 0),
+          "Encaissé (CFA)": Math.round(p.collected || 0),
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(beneficeTrendRows), "BénéficesTendance");
+
+        const beneficeProductRows = (pdata.topProducts || []).map((p) => ({
+          Produit: p.productName,
+          "CA encaissé (CFA)": Math.round(p.totalRevenue || 0),
+          "Bénéfice encaissé (CFA)": Math.round(p.totalProfit || 0),
+          "Marge (%)": Number(p.profitMargin || 0),
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(beneficeProductRows), "BénéficesProduits");
+      } catch (profitErr) {
+        console.warn("Bénéfices (encaissé) non inclus dans l'export:", profitErr);
+      }
 
       XLSX.writeFile(
         wb,

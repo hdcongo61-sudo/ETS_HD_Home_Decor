@@ -22,6 +22,7 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import {
   calculateSaleProfit,
+  calculateRealizedProfit,
   calculateSaleTotals,
   getPaymentStructureKey,
   getSaleTypeText,
@@ -351,6 +352,7 @@ const UserSalesDashboard = () => {
           const totalAmount = safeNumber(sale?.totalAmount);
           const { totalPaid, balance } = calculateSaleTotals(sale);
           const profit = calculateSaleProfit(sale);
+          const realizedProfit = calculateRealizedProfit(sale); // encaissé (margin collected)
           const products = Array.isArray(sale?.products) ? sale.products : [];
           const productNames = products
             .map((item) => item?.product?.name || item?.productName || null)
@@ -372,6 +374,7 @@ const UserSalesDashboard = () => {
             totalPaid: safeNumber(totalPaid),
             balance: Math.max(safeNumber(balance), 0),
             profit,
+            realizedProfit: safeNumber(realizedProfit),
             itemsCount,
             productNames,
             containers,
@@ -443,6 +446,7 @@ const UserSalesDashboard = () => {
       totalPaid: 0,
       outstandingAmount: 0,
       totalProfit: 0,
+      totalRealizedProfit: 0,
       totalItems: 0,
       totalPayments: 0,
       activeDays: 0,
@@ -484,6 +488,7 @@ const UserSalesDashboard = () => {
       initial.totalPaid += sale.totalPaid;
       initial.outstandingAmount += sale.balance;
       initial.totalProfit += sale.profit;
+      initial.totalRealizedProfit += sale.realizedProfit || 0;
       initial.totalItems += sale.itemsCount;
       initial.totalPayments += Array.isArray(sale.payments) ? sale.payments.length : 0;
 
@@ -696,7 +701,7 @@ const UserSalesDashboard = () => {
       ];
 
       if (canSeeFinancials) {
-        statsRows.splice(6, 0, ['Bénéfice', analytics.totalProfit]);
+        statsRows.splice(6, 0, ['Bénéfice encaissé', Math.round(analytics.totalRealizedProfit)], ['Bénéfice attendu', Math.round(analytics.totalProfit)]);
       }
 
       const statsSheet = XLSX.utils.aoa_to_sheet(statsRows);
@@ -720,7 +725,8 @@ const UserSalesDashboard = () => {
           };
 
           if (canSeeFinancials) {
-            row.Benefice = sale.profit;
+            row['Benefice encaisse'] = Math.round(sale.realizedProfit || 0);
+            row['Benefice attendu'] = Math.round(sale.profit || 0);
           }
 
           return row;
@@ -776,7 +782,7 @@ const UserSalesDashboard = () => {
       ];
 
       if (canSeeFinancials) {
-        pdfKpiRows.splice(4, 0, ['Bénéfice', formatCFA(analytics.totalProfit)]);
+        pdfKpiRows.splice(4, 0, ['Bénéfice encaissé', formatCFA(analytics.totalRealizedProfit)], ['Bénéfice attendu', formatCFA(analytics.totalProfit)]);
       }
 
       autoTable(doc, {
@@ -1028,9 +1034,9 @@ const UserSalesDashboard = () => {
           />
           {canSeeFinancials && (
             <DashboardStatCard
-              label="Bénéfice"
-              value={formatCFA(analytics.totalProfit)}
-              helper={`Marge moyenne ${formatPercent(analytics.marginRate)}`}
+              label="Bénéfice encaissé"
+              value={formatCFA(analytics.totalRealizedProfit)}
+              helper={`Attendu ${formatCFA(analytics.totalProfit)} · Marge ${formatPercent(analytics.marginRate)}`}
               tone="sky"
             />
           )}
@@ -1388,8 +1394,11 @@ const UserSalesDashboard = () => {
                       </div>
                       {canSeeFinancials && (
                         <div className="rounded-lg bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)]">
-                          <p className="text-sm text-[var(--ms-text-muted)]">Bénéfice</p>
-                          <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.profit)}</p>
+                          <p className="text-sm text-[var(--ms-text-muted)]">Bénéfice encaissé</p>
+                          <p className="mt-2 text-lg font-semibold text-sky-700">{formatCFA(sale.realizedProfit)}</p>
+                          {sale.realizedProfit < sale.profit - 0.5 && (
+                            <p className="text-xs text-[var(--ms-text-muted)]">Attendu {formatCFA(sale.profit)}</p>
+                          )}
                         </div>
                       )}
                     </div>
