@@ -73,6 +73,7 @@ const SaleForm = lazy(() => import("../components/SaleForm"));
 const ExportSales = lazy(() => import("../components/ExportSales"));
 const ExportSalesPdf = lazy(() => import("../components/ExportSalesPdf"));
 const PaymentModal = lazy(() => import("../components/PaymentModal"));
+const ProformaHistory = lazy(() => import("../components/ProformaHistory"));
 
 /* ===============================
    Utilitaires
@@ -1920,6 +1921,10 @@ const Sales = () => {
           }
         />
 
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <ProformaHistory clients={clients} products={products} />
+          </Suspense>
+
           <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2205,6 +2210,10 @@ const Sales = () => {
             )
           }
         />
+
+        <Suspense fallback={<LoadingSkeleton rows={2} />}>
+          <ProformaHistory clients={clients} products={products} />
+        </Suspense>
 
         {/* Fluent 2 Pivot — view modes */}
         {isAdmin && (

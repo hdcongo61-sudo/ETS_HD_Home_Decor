@@ -13,6 +13,11 @@ const saleSchema = mongoose.Schema(
       ref: 'Client',
       required: true,
     },
+    sourceProforma: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Proforma',
+      default: null,
+    },
     products: [
       {
         product: {
@@ -223,6 +228,13 @@ saleSchema.index({ status: 1, saleDate: -1 });
 saleSchema.index({ user: 1, status: 1, saleDate: -1 });
 saleSchema.index({ client: 1, saleDate: -1 });
 saleSchema.index({ 'payments.paymentDate': -1, status: 1 });
+saleSchema.index(
+  { sourceProforma: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { sourceProforma: { $type: 'objectId' } },
+  }
+);
 
 // VIRTUALS EXISTANTS AMÉLIORÉS
 saleSchema.virtual('balance').get(function () {

@@ -687,7 +687,6 @@ const Settings = () => {
         const infoY = offsetY + (isFourCopyLayout ? 23 : 31);
         const infoHeight = isFourCopyLayout ? 18 : 24;
         const tableY = offsetY + (isFourCopyLayout ? 44 : 60);
-        const footerY = offsetY + copyHeight - (isFourCopyLayout ? 4 : 6);
         const tableMargin = { left: copyLeft, right: pageWidth - copyRight };
 
         if (pageIndex === 0) {
@@ -823,12 +822,6 @@ const Settings = () => {
         doc.line(copyLeft, signatureY + (isFourCopyLayout ? 6 : 8), copyLeft + 46, signatureY + (isFourCopyLayout ? 6 : 8));
         doc.line(copyRight - 46, signatureY + (isFourCopyLayout ? 6 : 8), copyRight, signatureY + (isFourCopyLayout ? 6 : 8));
 
-        if (!isPartial) {
-          doc.setFontSize(6.5);
-          doc.setTextColor(107, 114, 128);
-          doc.text(`Document généré le ${formatDocumentDate(new Date())}`, copyLeft, footerY);
-          doc.text(copyLabel, copyRight, footerY, { align: 'right' });
-        }
       };
 
       const copyLabels = isFourCopyLayout

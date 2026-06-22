@@ -2,8 +2,10 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { getCompanyIdentity } from '../utils/appBranding';
+import { generateProformaPdf } from '../utils/proformaPdf';
 import { getSaleTypeText } from '../utils/saleUtils';
-import { Button } from './business';
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -19,10 +21,12 @@ const SaleForm = ({
   clients = [],
   products: initialProducts = [],
   onSubmit,
+  onProformaCreated,
   formId = 'sale-form',
   hideSubmit = false,
 }) => {
   const { auth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const manualSaleDateEnabled = isAdmin && Boolean(auth?.user?.adminPreferences?.manualSaleDateEnabled);
   const safeClients = useMemo(() => normalizeCollection(clients, ['clients', 'data']), [clients]);
@@ -48,6 +52,12 @@ const SaleForm = ({
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
+  const [documentMode, setDocumentMode] = useState('sale');
+  const [validUntil, setValidUntil] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 15);
+    return date.toISOString().slice(0, 10);
+  });
 
 	
   useEffect(() => {
@@ -188,6 +198,7 @@ const SaleForm = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setFormError('');
 
     if (!selectedClient) {
       setFormError('Sélectionnez un client.');
@@ -197,6 +208,57 @@ const SaleForm = ({
     if (!validatePrices()) {
       setFormError('Corrigez les erreurs du formulaire.');
       setIsSubmitting(false);
+      return;
+    }
+
+    if (documentMode === 'proforma') {
+      try {
+        const client = safeClients.find((item) => item._id === selectedClient);
+        const items = selectedProducts.map((item) => {
+          const product = products.find((candidate) => candidate._id === item.product);
+          return {
+            name: product?.name || 'Produit',
+            quantity: Number(item.quantity),
+            price: Number(item.price),
+          };
+        });
+        const { data: proforma } = await api.post('/proformas', {
+          client: selectedClient,
+          products: selectedProducts.map((item) => ({
+            product: item.product,
+            quantity: Number(item.quantity),
+            price: Number(item.price),
+          })),
+          note,
+          validUntil,
+        });
+        onProformaCreated?.(proforma);
+        window.dispatchEvent(new CustomEvent('proformaCreated', { detail: proforma }));
+        try {
+          await generateProformaPdf({
+            client: proforma.client || client || {},
+            items: (proforma.products || items).map((item) => ({
+              name: item.productName || item.name || item.product?.name || 'Produit',
+              quantity: item.quantity,
+              price: item.price,
+            })),
+            note: proforma.note,
+            validUntil: proforma.validUntil,
+            sellerName: auth?.user?.name || auth?.user?.email || '',
+            company: getCompanyIdentity(appSettings.branding),
+            reference: proforma.reference,
+            issueDate: proforma.createdAt,
+          });
+        } catch (pdfError) {
+          console.error('Unable to generate saved proforma PDF:', pdfError);
+          setFormError('Proforma enregistrée, mais le téléchargement du PDF a échoué.');
+        }
+      } catch (error) {
+        console.error('Unable to generate proforma PDF:', error);
+        setFormError('Impossible de générer la facture proforma.');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -246,8 +308,36 @@ const SaleForm = ({
     >
       {/* Header */}
       <div className="border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4 sm:px-6 sm:py-5">
-        <h3 className="text-lg font-semibold text-[var(--ms-text-strong)]">Nouvelle vente</h3>
-        <p className="text-sm text-[var(--ms-text-muted)] mt-0.5">Renseignez le client, les produits et le paiement.</p>
+        <h3 className="text-lg font-semibold text-[var(--ms-text-strong)]">
+          {documentMode === 'sale' ? 'Nouvelle vente' : 'Facture proforma'}
+        </h3>
+        <p className="text-sm text-[var(--ms-text-muted)] mt-0.5">
+          {documentMode === 'sale'
+            ? 'Renseignez le client, les produits et le paiement.'
+            : 'Préparez une proposition commerciale sans enregistrer de vente.'}
+        </p>
+        {!hideSubmit && <div className="mt-4 grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1">
+          {[
+            { key: 'sale', label: 'Vente' },
+            { key: 'proforma', label: 'Proforma' },
+          ].map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => {
+                setDocumentMode(mode.key);
+                setFormError('');
+              }}
+              className={`min-h-[40px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${
+                documentMode === mode.key
+                  ? 'bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]'
+                  : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>}
       </div>
 
       <div className="p-5 sm:p-6 space-y-8">
@@ -474,7 +564,26 @@ const SaleForm = ({
           />
         </section>
 
-        {manualSaleDateEnabled && (
+        {documentMode === 'proforma' && (
+          <section className="space-y-3" aria-labelledby="proforma-validity">
+            <h4 id="proforma-validity" className={sectionTitleClass}>
+              Validité de l’offre
+            </h4>
+            <div className="form-panel p-4 space-y-2">
+              <input
+                type="date"
+                value={validUntil}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setValidUntil(e.target.value)}
+                className={inputBase}
+                required
+              />
+              <p className="form-help">Cette date apparaîtra sur la facture proforma.</p>
+            </div>
+          </section>
+        )}
+
+        {documentMode === 'sale' && manualSaleDateEnabled && (
           <section className="space-y-3" aria-labelledby="sale-form-date">
             <h4 id="sale-form-date" className={sectionTitleClass}>
               Date réelle de vente
@@ -494,7 +603,7 @@ const SaleForm = ({
           </section>
         )}
 
-        {isAdmin && (
+        {documentMode === 'sale' && isAdmin && (
           <section className="space-y-3" aria-labelledby="sale-form-type">
             <h4 id="sale-form-type" className={sectionTitleClass}>
               Type de vente
@@ -539,7 +648,7 @@ const SaleForm = ({
         )}
 
         {/* REMINDER */}
-        <section className="space-y-3" aria-labelledby="sale-form-reminder">
+        {documentMode === 'sale' && <section className="space-y-3" aria-labelledby="sale-form-reminder">
           <h4 id="sale-form-reminder" className={sectionTitleClass}>
             Rappel de paiement
           </h4>
@@ -577,10 +686,10 @@ const SaleForm = ({
               />
             </div>
           )}
-        </section>
+        </section>}
 
         {/* PAYMENT METHOD */}
-        <section className="space-y-3" aria-labelledby="sale-form-payment">
+        {documentMode === 'sale' && <section className="space-y-3" aria-labelledby="sale-form-payment">
           <h4 id="sale-form-payment" className={sectionTitleClass}>
             Méthode de paiement
           </h4>
@@ -665,7 +774,7 @@ const SaleForm = ({
               </label>
             )}
           </div>
-        </section>
+        </section>}
 
         {/* TOTAL */}
         <div className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4">
@@ -681,7 +790,13 @@ const SaleForm = ({
             disabled={isSubmitting}
             className="form-button-primary w-full"
           >
-            {isSubmitting ? 'Enregistrement...' : 'Enregistrer la vente'}
+            {isSubmitting
+              ? documentMode === 'proforma'
+                ? 'Génération du PDF...'
+                : 'Enregistrement...'
+              : documentMode === 'proforma'
+                ? 'Télécharger la proforma'
+                : 'Enregistrer la vente'}
           </button>
         )}
 
@@ -718,6 +833,7 @@ SaleForm.propTypes = {
     PropTypes.object,
   ]),
   onSubmit: PropTypes.func.isRequired,
+  onProformaCreated: PropTypes.func,
   formId: PropTypes.string,
   hideSubmit: PropTypes.bool,
 };

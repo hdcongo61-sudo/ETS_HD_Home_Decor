@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
+const Proforma = require('../models/proformaModel');
 const User = require('../models/userModel');
 const Expense = require('../models/expenseModel');
 const DeletedSale = require('../models/deletedSaleModel');
@@ -463,7 +464,8 @@ const createSale = asyncHandler(async (req, res) => {
     saleType,
     initialPaymentAmount,
     markAsDelivered,
-    saleDate
+    saleDate,
+    proformaId
   } = req.body;
 
   let session;
@@ -471,6 +473,23 @@ const createSale = asyncHandler(async (req, res) => {
   try {
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: 'Ajoutez au moins un produit à la vente' });
+    }
+
+    let sourceProforma = null;
+    if (proformaId) {
+      sourceProforma = await Proforma.findOne({
+        ...tenantFilter(req),
+        _id: proformaId,
+      }).select('_id status client');
+      if (!sourceProforma) {
+        return res.status(404).json({ message: 'Proforma introuvable' });
+      }
+      if (sourceProforma.status === 'converted') {
+        return res.status(400).json({ message: 'Cette proforma a déjà été convertie' });
+      }
+      if (String(sourceProforma.client) !== String(client)) {
+        return res.status(400).json({ message: 'Le client ne correspond pas à la proforma' });
+      }
     }
 
     let totalAmount = 0;
@@ -569,6 +588,7 @@ const createSale = asyncHandler(async (req, res) => {
       note,
       saleDate: effectiveSaleDate,
       user: req.user._id,
+      sourceProforma: sourceProforma?._id || null,
       // Stock is deducted explicitly below in the controller.
       stockDeducted: true
     };
@@ -619,6 +639,20 @@ const createSale = asyncHandler(async (req, res) => {
 
     if (stockOperations.length > 0) {
       await Product.bulkWrite(stockOperations, { session });
+    }
+
+    if (sourceProforma) {
+      await Proforma.updateOne(
+        { _id: sourceProforma._id, status: { $ne: 'converted' } },
+        {
+          $set: {
+            status: 'converted',
+            convertedSale: sale._id,
+            convertedAt: new Date(),
+          },
+        },
+        { session }
+      );
     }
 
     await recalculateClientPurchaseMetrics(client, session);

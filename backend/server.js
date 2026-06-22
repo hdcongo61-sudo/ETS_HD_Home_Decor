@@ -29,6 +29,7 @@ mongoose.plugin(require('./utils/tenantGuardPlugin'));
 const productRoutes = require('./routes/productRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const saleRoutes = require('./routes/saleRoutes');
+const proformaRoutes = require('./routes/proformaRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -142,6 +143,7 @@ app.use(hpp({
 app.use('/api/products', productRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/proformas', proformaRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/users', userRoutes);
