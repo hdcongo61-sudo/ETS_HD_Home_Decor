@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
@@ -12,28 +12,31 @@ import {
   ProductPageShell,
   ProductSection,
 } from '../components/ProductAnalyticsUI';
-import { Workspace } from '../components/business';
+import { EmptyState, LoadingSkeleton, Workspace } from '../components/business';
 
 const CriticalStockProducts = () => {
   const [products, setProducts] = useState([]);
-  const [, setError] = useState('');
-  const [, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCriticalProducts = async () => {
-      try {
-        const res = await api.get('/products/dashboard');
-        setProducts(res.data.lowStockProducts || []);
-      } catch (err) {
-        console.error(err);
-        setError('Erreur lors du chargement des produits à stock critique.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCriticalProducts();
+  const fetchCriticalProducts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.get('/products/dashboard');
+      setProducts(res.data.lowStockProducts || []);
+    } catch (err) {
+      console.error(err);
+      setError('Erreur lors du chargement des produits à stock critique.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCriticalProducts();
+  }, [fetchCriticalProducts]);
 
   const totalValue = products.reduce((sum, p) => sum + (p.price || 0) * (p.stock || 0), 0);
 
@@ -52,6 +55,38 @@ const CriticalStockProducts = () => {
         onBack={() => navigate('/product-dashboard')}
       />
 
+      {error ? (
+        <ProductSection title="Produits à traiter">
+          <EmptyState
+            title="Erreur de chargement"
+            description={error}
+            action={
+              <button
+                type="button"
+                onClick={fetchCriticalProducts}
+                className="ms-button ms-button-primary ms-button-md"
+              >
+                Réessayer
+              </button>
+            }
+          />
+        </ProductSection>
+      ) : loading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-24 animate-pulse rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)]"
+              />
+            ))}
+          </div>
+          <ProductSection title="Produits à traiter" description="Chargement…">
+            <LoadingSkeleton rows={6} />
+          </ProductSection>
+        </div>
+      ) : (
+      <>
       {/* Statistiques */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <ProductMetricCard title="Produits critiques" value={products.length} tone="amber" icon={AlertTriangle} />
@@ -178,6 +213,8 @@ const CriticalStockProducts = () => {
         ))}
       </div>
       </ProductSection>
+      </>
+      )}
     </ProductPageShell>
   </Workspace>
   );

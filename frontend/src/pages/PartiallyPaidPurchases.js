@@ -16,6 +16,7 @@ import {
   ChartCard,
   EmptyState,
   KPICard,
+  LoadingSkeleton,
   PageHeader,
   SearchBox,
   Surface,
@@ -59,15 +60,25 @@ const PartiallyPaidPurchases = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [remindedSales, setRemindedSales] = useState({});
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchSales = useCallback(async () => {
-    const { data } = await api.get("/sales", {
-      params: {
-        status: "partially_paid",
-        summary: "compact",
-      },
-    });
-    setSales(data || []);
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/sales", {
+        params: {
+          status: "partially_paid",
+          summary: "compact",
+        },
+      });
+      setSales(data || []);
+    } catch {
+      setError("Impossible de charger les ventes partiellement payées.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -151,10 +162,19 @@ const PartiallyPaidPurchases = () => {
       client: selectedSale.client,
       products: selectedSale.products,
     };
+    // Once the balance is settled the sale is no longer "partially paid":
+    // drop it from the list immediately instead of waiting for a reload.
+    const isSettled =
+      nextSale.status === "completed" || Number(nextSale.balance ?? 1) <= 0;
     setSales((prev) =>
-      prev.map((sale) => (sale._id === selectedSale._id ? nextSale : sale))
+      isSettled
+        ? prev.filter((sale) => sale._id !== selectedSale._id)
+        : prev.map((sale) => (sale._id === selectedSale._id ? nextSale : sale))
     );
-    setSelectedSale(nextSale);
+    if (isSettled) {
+      toast.success("Vente soldée ✓");
+    }
+    setSelectedSale(null);
     setShowPaymentModal(false);
   };
 
@@ -192,10 +212,10 @@ const PartiallyPaidPurchases = () => {
 
         {/* KPIs & Donut */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KPICard title="Nombre" value={partiallyPaid.length} context="Ventes filtrées" />
-          <KPICard title="Total" value={`${totals.total.toLocaleString("fr-FR")} CFA`} context="Montant facturé" />
-          <KPICard title="Payé" value={`${totals.paid.toLocaleString("fr-FR")} CFA`} context="Déjà encaissé" tone="success" />
-          <KPICard title="Solde" value={`${totals.due.toLocaleString("fr-FR")} CFA`} context="Reste à encaisser" tone="danger" />
+          <KPICard title="Nombre" value={loading ? "—" : partiallyPaid.length} context="Ventes filtrées" />
+          <KPICard title="Total" value={loading ? "—" : `${totals.total.toLocaleString("fr-FR")} CFA`} context="Montant facturé" />
+          <KPICard title="Payé" value={loading ? "—" : `${totals.paid.toLocaleString("fr-FR")} CFA`} context="Déjà encaissé" tone="success" />
+          <KPICard title="Solde" value={loading ? "—" : `${totals.due.toLocaleString("fr-FR")} CFA`} context="Reste à encaisser" tone="danger" />
         </div>
 
         <ChartCard title="Répartition" description="Payé contre restant dû">
@@ -214,7 +234,11 @@ const PartiallyPaidPurchases = () => {
         <Surface>
           <div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Détail des ventes</h3>
-            {partiallyPaid.length === 0 ? (
+            {loading ? (
+              <LoadingSkeleton rows={6} />
+            ) : error ? (
+              <EmptyState title="Erreur de chargement" description={error} action={<Button onClick={fetchSales}>Réessayer</Button>} />
+            ) : partiallyPaid.length === 0 ? (
               <EmptyState title="Aucune vente partiellement payée" description="Les ventes avec solde restant apparaîtront ici." />
             ) : (
               <div className="space-y-4">
