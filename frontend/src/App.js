@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmProvider from './components/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
+import { FEATURE_KEYS } from './config/features';
 import Navigation from './components/Navigation';
 import { ModalProvider } from './context/ModalContext';
 import GlobalModals from './components/GlobalModals';
@@ -38,6 +39,7 @@ const TopSellingProducts = lazy(() => import('./pages/TopSellingProducts'));
 const CriticalStockProducts = lazy(() => import('./pages/CriticalStockProducts'));
 const OutOfStockProducts = lazy(() => import('./pages/OutOfStockProducts'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+const ClientLoyalty = lazy(() => import('./pages/ClientLoyalty'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 const Bank = lazy(() => import('./pages/Bank'));
 
@@ -63,7 +65,6 @@ const UserSalesDashboard = lazy(() => import('./pages/UserSalesDashboard'));
 const SaleDetailPage = lazy(() => import('./components/SaleDetailPage'));
 const ResumeConnexions = lazy(() => import('./components/ResumeConnexions'));
 const LoginActivityDetail = lazy(() => import('./components/LoginActivityDetail'));
-const EditSalePage = lazy(() => import('./pages/EditSalePage'));
 const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -279,7 +280,7 @@ function App() {
                 <Route
                   path="/bank"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.BANK}>
                       <Bank />
                     </ProtectedRoute>
                   }
@@ -317,14 +318,6 @@ function App() {
                   }
                 />
                 <Route
-                  path="/sales/:id/edit"
-                  element={
-                    <ProtectedRoute adminOnly>
-                      <EditSalePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/clients"
                   element={
                     <ProtectedRoute>
@@ -337,6 +330,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ClientDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/clients/loyalty"
+                  element={
+                    <ProtectedRoute adminOnly feature={FEATURE_KEYS.LOYALTY}>
+                      <ClientLoyalty />
                     </ProtectedRoute>
                   }
                 />
@@ -359,7 +360,7 @@ function App() {
                 <Route
                   path="/expenses/monthly-plan"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute adminOnly feature={FEATURE_KEYS.MONTHLY_SPENDING_PLAN}>
                       <MonthlySpendingPlan />
                     </ProtectedRoute>
                   }
@@ -367,7 +368,7 @@ function App() {
                 <Route
                   path="/documents"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute adminOnly feature={FEATURE_KEYS.DOCUMENTS}>
                       <Documents />
                     </ProtectedRoute>
                   }
@@ -407,7 +408,7 @@ function App() {
                 <Route
                   path="/employees"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <EmployeeList />
                     </ProtectedRoute>
                   }
@@ -415,7 +416,7 @@ function App() {
                 <Route
                   path="/employees/new"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <EmployeeForm />
                     </ProtectedRoute>
                   }
@@ -423,7 +424,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <EmployeeDetails />
                     </ProtectedRoute>
                   }
@@ -431,7 +432,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?/edit"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <EmployeeForm />
                     </ProtectedRoute>
                   }
@@ -439,7 +440,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?/payroll"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <PaySlipList />
                     </ProtectedRoute>
                   }
@@ -447,7 +448,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?/payroll/new"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <PaySlipForm />
                     </ProtectedRoute>
                   }
@@ -455,7 +456,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?/payroll/:payslipId/edit"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <PaySlipFormEdit />
                     </ProtectedRoute>
                   }
@@ -463,7 +464,7 @@ function App() {
                 <Route
                   path="/employees/:id/:slug?/payroll/:payslipId/print"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute feature={FEATURE_KEYS.EMPLOYEES_PAYROLL}>
                       <PaySlipPrint />
                     </ProtectedRoute>
                   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
@@ -62,49 +62,58 @@ const ProductDashboard = () => {
     warehouseStats: []
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.get('/products/dashboard');
-        setStats({
-          totalProducts: res.data.totalProducts || 0,
-          soldProducts: res.data.soldProducts || 0,
-          totalStockValue: res.data.totalStockValue || 0,
-          neverSoldStockValue: res.data.neverSoldStockValue || 0,
-          neverSoldCount: res.data.neverSoldProducts?.length || 0,
-          topSellingProducts: res.data.topSellingProducts || [],
-          lowStockProducts: res.data.lowStockProducts || [],
-          outOfStockProducts: res.data.outOfStockProducts || [],
-          salesTrend: res.data.salesTrend || [],
-          supplierStats: res.data.supplierStats || [],
-          containerStats: res.data.containerStats || [],
-          warehouseStats: res.data.warehouseStats || []
-        });
+  const fetchData = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
+    try {
+      const res = await api.get('/products/dashboard');
+      setStats({
+        totalProducts: res.data.totalProducts || 0,
+        soldProducts: res.data.soldProducts || 0,
+        totalStockValue: res.data.totalStockValue || 0,
+        neverSoldStockValue: res.data.neverSoldStockValue || 0,
+        neverSoldCount: res.data.neverSoldProducts?.length || 0,
+        topSellingProducts: res.data.topSellingProducts || [],
+        lowStockProducts: res.data.lowStockProducts || [],
+        outOfStockProducts: res.data.outOfStockProducts || [],
+        salesTrend: res.data.salesTrend || [],
+        supplierStats: res.data.supplierStats || [],
+        containerStats: res.data.containerStats || [],
+        warehouseStats: res.data.warehouseStats || []
+      });
 
-        if (res.data.outOfStockProducts?.length > 0) {
-          toast.error(
-            `🚨 ${res.data.outOfStockProducts.length} produit(s) en rupture de stock !`,
-            { duration: 6000, position: 'top-right' }
-          );
-        }
-
-        if (res.data.lowStockProducts?.length > 0) {
-          toast(
-            `⚠️ ${res.data.lowStockProducts.length} produit(s) en stock critique.`,
-            { icon: '⚠️', duration: 5000, position: 'top-right' }
-          );
-        }
-
-      } catch (err) {
-        console.error(err);
-        setError("Erreur lors du chargement du tableau de bord produits.");
-        toast.error("Erreur lors du chargement du tableau de bord.");
-      } finally {
-        setLoading(false);
+      if (!silent && res.data.outOfStockProducts?.length > 0) {
+        toast.error(
+          `🚨 ${res.data.outOfStockProducts.length} produit(s) en rupture de stock !`,
+          { duration: 6000, position: 'top-right' }
+        );
       }
-    };
-    fetchData();
+
+      if (!silent && res.data.lowStockProducts?.length > 0) {
+        toast(
+          `⚠️ ${res.data.lowStockProducts.length} produit(s) en stock critique.`,
+          { icon: '⚠️', duration: 5000, position: 'top-right' }
+        );
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors du chargement du tableau de bord produits.");
+      if (!silent) toast.error("Erreur lors du chargement du tableau de bord.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // A sale created from the global modal changes stock — refresh silently.
+  useEffect(() => {
+    const refresh = () => fetchData({ silent: true });
+    window.addEventListener('saleCreated', refresh);
+    return () => window.removeEventListener('saleCreated', refresh);
+  }, [fetchData]);
 
   // 📦 Export supplier stats to Excel
   const exportSuppliersToExcel = () => {

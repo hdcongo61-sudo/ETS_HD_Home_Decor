@@ -58,6 +58,12 @@ const ClientDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Refresh when a sale is created from the global modal (affects client stats).
+  useEffect(() => {
+    window.addEventListener('saleCreated', fetchDashboardData);
+    return () => window.removeEventListener('saleCreated', fetchDashboardData);
+  }, [fetchDashboardData]);
+
   const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
 
   // --- Derived analytics ---

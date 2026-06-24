@@ -1,18 +1,32 @@
 import { confirmDialog } from '../components/ConfirmProvider';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import {
   Button,
-  CommandBar,
   EmptyState,
+  KPICard,
   LoadingSkeleton,
   PageHeader,
+  SearchBox,
   StatusBadge,
+  Surface,
   Workspace,
 } from '../components/business';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  CalendarClock,
+  ExternalLink,
+  File as FileIcon,
+  FileSpreadsheet,
+  FileText,
+  FolderOpen,
+  Image as ImageIcon,
+  Layers,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 const DOCUMENT_TYPES = [
   { value: 'fiscal', label: 'Fiscal' },
@@ -31,10 +45,24 @@ const formatDate = (value) => {
 const sortDocumentsByDate = (items) =>
   [...items].sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
 
+const typeLabel = (value) => DOCUMENT_TYPES.find((t) => t.value === value)?.label || value || 'Autre';
+
+// File-type visual metadata derived from the file extension.
+const getFileMeta = (fileName = '') => {
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  if (ext === 'pdf') return { label: 'PDF', Icon: FileText, bg: 'rgba(209,52,56,0.12)', fg: 'var(--ms-danger)' };
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg', 'bmp'].includes(ext)) return { label: 'Image', Icon: ImageIcon, bg: 'rgba(14,116,144,0.12)', fg: '#0e7490' };
+  if (['doc', 'docx'].includes(ext)) return { label: 'Word', Icon: FileText, bg: 'var(--ms-blue-soft)', fg: 'var(--ms-blue)' };
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return { label: 'Excel', Icon: FileSpreadsheet, bg: 'rgba(16,124,16,0.12)', fg: 'var(--ms-success)' };
+  return { label: ext ? ext.toUpperCase() : 'Fichier', Icon: FileIcon, bg: 'var(--colorNeutralBackground3)', fg: 'var(--ms-text-muted)' };
+};
+
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [years, setYears] = useState([]);
   const [yearFilter, setYearFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -143,84 +171,219 @@ const Documents = () => {
     }
   };
 
-  const typeLabel = (value) => DOCUMENT_TYPES.find((t) => t.value === value)?.label || value;
+  const closeUpload = () => {
+    if (uploading) return;
+    setShowUpload(false);
+    setForm({ type: 'fiscal', note: '', date: new Date().toISOString().slice(0, 10) });
+    setFile(null);
+  };
+
+  /* ------- Derived data ------- */
+  const typeCounts = useMemo(() => {
+    const counts = {};
+    documents.forEach((d) => { counts[d.type] = (counts[d.type] || 0) + 1; });
+    return counts;
+  }, [documents]);
+
+  const stats = useMemo(() => {
+    const distinctTypes = new Set(documents.map((d) => d.type)).size;
+    const latest = documents.reduce((max, d) => {
+      const t = new Date(d?.date).getTime();
+      return Number.isFinite(t) && t > max ? t : max;
+    }, 0);
+    return { total: documents.length, distinctTypes, latest: latest ? new Date(latest) : null };
+  }, [documents]);
+
+  const filteredDocuments = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return documents.filter((d) => {
+      const typeOk = !typeFilter || d.type === typeFilter;
+      const text = `${d.fileName || ''} ${d.note || ''}`.toLowerCase();
+      const searchOk = !term || text.includes(term);
+      return typeOk && searchOk;
+    });
+  }, [documents, typeFilter, search]);
+
+  const isFiltered = Boolean(typeFilter || search.trim());
 
   return (
     <Workspace className="space-y-5">
       <PageHeader
-        title="Documents de l'entreprise"
-        description="Fiscaux, loyers, contrats et autres pièces"
+        eyebrow="Entreprise"
+        title="Documents"
+        description="Pièces fiscales, loyers, assurances, contrats et autres documents."
         actions={<Button variant="primary" onClick={() => setShowUpload(true)}><Plus className="h-4 w-4" /> Ajouter un document</Button>}
       />
-      {error && (<div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]"><svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>{error}</div>)}
-      <CommandBar><div className="flex items-center gap-3"><label htmlFor="doc-year" className="text-sm font-semibold text-[var(--ms-text)]">Année</label><select id="doc-year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="form-control max-w-[200px]"><option value="">Toutes les années</option>{years.map((y) => (<option key={y} value={y}>{y}</option>))}</select></div></CommandBar>
-      {loading ? (<LoadingSkeleton rows={5} />) : documents.length === 0 ? (
+
+      {error && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ms-danger)]/20 bg-[#FDF3F4] px-4 py-3 text-sm text-[var(--ms-danger)]">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Overview */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KPICard title="Documents" value={stats.total} context={yearFilter ? `Année ${yearFilter}` : 'Toutes les années'} icon={<FolderOpen className="h-4 w-4" />} tone="brand" />
+        <KPICard title="Catégories" value={stats.distinctTypes} context={`${DOCUMENT_TYPES.length} types disponibles`} icon={<Layers className="h-4 w-4" />} tone="neutral" />
+        <KPICard title="Dernier ajout" value={stats.latest ? formatDate(stats.latest) : '—'} context="Date la plus récente" icon={<CalendarClock className="h-4 w-4" />} tone="neutral" />
+      </div>
+
+      {/* Toolbar */}
+      <Surface className="space-y-3 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <SearchBox
+            label="Rechercher un document"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom de fichier ou note…"
+            className="flex-1"
+          />
+          <div className="flex items-center gap-2">
+            <label htmlFor="doc-year" className="text-sm font-semibold text-[var(--ms-text-muted)]">Année</label>
+            <select id="doc-year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="form-control w-auto min-w-[140px]">
+              <option value="">Toutes</option>
+              {years.map((y) => (<option key={y} value={y}>{y}</option>))}
+            </select>
+          </div>
+        </div>
+
+        {/* Type filter chips */}
+        <div className="flex flex-wrap gap-2">
+          {[{ value: '', label: 'Tous' }, ...DOCUMENT_TYPES].map((t) => {
+            const count = t.value ? (typeCounts[t.value] || 0) : documents.length;
+            const active = typeFilter === t.value;
+            return (
+              <button
+                key={t.value || 'all'}
+                type="button"
+                onClick={() => setTypeFilter(t.value)}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  active
+                    ? 'border-transparent bg-[var(--ms-blue)] text-white'
+                    : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-[var(--ms-surface-muted)]'
+                }`}
+              >
+                {t.label}
+                <span className={`rounded-full px-1.5 text-xs font-semibold ${active ? 'bg-white/20' : 'bg-[var(--ms-white)] text-[var(--ms-text-muted)]'}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Surface>
+
+      {/* Results */}
+      {loading ? (
+        <LoadingSkeleton rows={6} />
+      ) : documents.length === 0 ? (
         <EmptyState
           title={`Aucun document${yearFilter ? ` pour ${yearFilter}` : ''}`}
-          description="Ajoutez des documents fiscaux, loyers, contrats et autres pieces."
+          description="Ajoutez vos documents fiscaux, loyers, contrats et autres pièces."
           action={<Button variant="primary" onClick={() => setShowUpload(true)}><Plus className="h-4 w-4" /> Ajouter un document</Button>}
         />
+      ) : filteredDocuments.length === 0 ? (
+        <EmptyState
+          title="Aucun résultat"
+          description="Aucun document ne correspond à votre recherche ou au filtre sélectionné."
+          action={<Button onClick={() => { setSearch(''); setTypeFilter(''); }}>Réinitialiser les filtres</Button>}
+        />
       ) : (
-        <div className="space-y-2">
-          {documents.map((doc) => (
-            <div key={doc._id} className="ms-surface flex flex-col sm:flex-row sm:items-center gap-4 p-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <StatusBadge tone="neutral">{typeLabel(doc.type)}</StatusBadge>
-                  <span className="text-xs text-[var(--ms-text-muted)]">{formatDate(doc.date)}</span>
-                </div>
-                <p className="font-semibold text-[var(--ms-text)] truncate" title={doc.fileName}>{doc.fileName}</p>
-                {doc.note && <p className="text-sm text-[var(--ms-text-muted)] mt-1 line-clamp-2">{doc.note}</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-secondary ms-button-sm inline-flex items-center gap-2 no-underline">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                  Ouvrir
-                </a>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          <p className="text-sm text-[var(--ms-text-muted)]">
+            <span className="font-semibold text-[var(--ms-text)]">{filteredDocuments.length}</span>
+            {filteredDocuments.length > 1 ? ' documents' : ' document'}
+            {isFiltered ? ' (filtrés)' : ''}
+          </p>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredDocuments.map((doc) => {
+              const meta = getFileMeta(doc.fileName);
+              const { Icon } = meta;
+              return (
+                <article key={doc._id} className="ms-surface flex h-full flex-col p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: meta.bg, color: meta.fg }}>
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge tone="neutral">{typeLabel(doc.type)}</StatusBadge>
+                        <span className="text-xs font-medium" style={{ color: meta.fg }}>{meta.label}</span>
+                      </div>
+                      <p className="mt-1.5 truncate font-semibold text-[var(--ms-text-strong)]" title={doc.fileName}>{doc.fileName}</p>
+                      <p className="text-xs text-[var(--ms-text-muted)]">{formatDate(doc.date)}</p>
+                    </div>
+                  </div>
+
+                  {doc.note && <p className="mt-3 line-clamp-2 text-sm text-[var(--ms-text-muted)]">{doc.note}</p>}
+
+                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--ms-border)] pt-3">
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ms-button ms-button-secondary ms-button-sm flex-1 justify-center no-underline"
+                    >
+                      <ExternalLink className="h-4 w-4" /> Ouvrir
+                    </a>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)} aria-label="Supprimer le document">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Modal
         show={showUpload}
-        onClose={() => {
-          if (!uploading) {
-            setShowUpload(false);
-            setForm({ type: 'fiscal', note: '', date: new Date().toISOString().slice(0, 10) });
-            setFile(null);
-          }
-        }}
+        onClose={closeUpload}
         title="Ajouter un document"
-        subtitle="Fiscal, loyer, contrat... (PDF, images, 5 Mo max)"
+        subtitle="Fiscal, loyer, contrat… (PDF, Word, Excel ou images — 5 Mo max)"
         size="md"
+        icon={<FileText className="h-5 w-5" />}
       >
         <form onSubmit={handleUpload} className="space-y-4">
-          <div>
-            <label className="form-label block mb-1">Type</label>
-            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="form-control" required>
-              {DOCUMENT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
-            </select>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="form-label mb-1 block">Type</label>
+              <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="form-control" required>
+                {DOCUMENT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="form-label mb-1 block">Date</label>
+              <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="form-control" required />
+            </div>
           </div>
           <div>
-            <label className="form-label block mb-1">Date</label>
-            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="form-control" required />
+            <label className="form-label mb-1 block">Note (optionnel)</label>
+            <textarea value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} rows={3} placeholder="Ex. Reçu loyer mars 2024" className="form-control resize-y" />
           </div>
           <div>
-            <label className="form-label block mb-1">Note (optionnel)</label>
-            <textarea value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} rows={3} placeholder="Ex. Recu loyer mars 2024" className="form-control" />
+            <label className="form-label mb-1 block">Fichier</label>
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] px-4 py-6 text-center transition-colors hover:bg-[var(--ms-surface-muted)]">
+              <FolderOpen className="h-6 w-6 text-[var(--ms-text-muted)]" />
+              <span className="text-sm font-medium text-[var(--ms-text)]">
+                {file ? file.name : 'Cliquez pour choisir un fichier'}
+              </span>
+              <span className="text-xs text-[var(--ms-text-muted)]">PDF, Word, Excel ou images · Max 5 Mo</span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="sr-only"
+                required
+              />
+            </label>
           </div>
-          <div>
-            <label className="form-label block mb-1">Fichier</label>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="block w-full text-sm text-[var(--ms-text)] file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-[var(--ms-blue-soft)] file:text-[var(--ms-blue)] file:font-semibold" required />
-            <p className="form-help mt-1">PDF, Word, Excel ou images. Max 5 Mo.</p>
-          </div>
-          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4 border-t border-[var(--ms-border)]">
-            <Button type="button" variant="secondary" onClick={() => setShowUpload(false)} disabled={uploading}>Annuler</Button>
+          <div className="flex flex-col-reverse justify-end gap-3 border-t border-[var(--ms-border)] pt-4 sm:flex-row">
+            <Button type="button" variant="secondary" onClick={closeUpload} disabled={uploading}>Annuler</Button>
             <Button type="submit" variant="primary" disabled={uploading}>
-              {uploading ? (<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Envoi...</>) : 'Enregistrer'}
+              {uploading ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Envoi…</>) : 'Enregistrer'}
             </Button>
           </div>
         </form>

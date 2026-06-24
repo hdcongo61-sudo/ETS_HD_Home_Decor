@@ -6,6 +6,8 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import { generateProformaPdf } from '../utils/proformaPdf';
 import { getSaleTypeText } from '../utils/saleUtils';
+import { useFeature } from './FeatureGate';
+import { FEATURE_KEYS } from '../config/features';
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -52,6 +54,7 @@ const SaleForm = ({
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
+  const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
   const [documentMode, setDocumentMode] = useState('sale');
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
@@ -316,7 +319,7 @@ const SaleForm = ({
             ? 'Renseignez le client, les produits et le paiement.'
             : 'Préparez une proposition commerciale sans enregistrer de vente.'}
         </p>
-        {!hideSubmit && <div className="mt-4 grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1">
+        {!hideSubmit && canProforma && <div className="mt-4 grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1">
           {[
             { key: 'sale', label: 'Vente' },
             { key: 'proforma', label: 'Proforma' },

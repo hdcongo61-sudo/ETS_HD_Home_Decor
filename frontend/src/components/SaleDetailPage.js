@@ -7,6 +7,7 @@ import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, formatReminderAgo, REMINDER_CHANNEL_LABEL } from '../utils/clientReminder';
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
+import { ExternalLink } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
@@ -23,10 +24,12 @@ import {
     EmptyState,
     LoadingSkeleton,
     PageHeader,
+    StatusBadge,
     Workspace,
 } from './business';
 
 const ExportSalesPdf = lazy(() => import('./ExportSalesPdf'));
+const EditSaleForm = lazy(() => import('./EditSaleForm'));
 
 // Enregistrer les composants de Chart.js
 ChartJS.register(
@@ -53,6 +56,9 @@ const SaleDetailPage = () => {
     const [showReminderModal, setShowReminderModal] = useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [deleteReason, setDeleteReason] = useState('');
+    const [deleteError, setDeleteError] = useState('');
     const [mobileHistoryTab, setMobileHistoryTab] = useState('payments');
     const [message, setMessage] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
@@ -391,6 +397,52 @@ const SaleDetailPage = () => {
         }
     };
 
+    const openEditModal = () => {
+        setDeleteReason('');
+        setDeleteError('');
+        setShowEditModal(true);
+    };
+
+    const handleUpdateSale = async (updateData) => {
+        try {
+            const { data } = await api.put(`/sales/${sale._id}`, {
+                products: updateData.products,
+                note: updateData.note,
+                saleDate: updateData.saleDate
+            });
+            setSale(mergeSaleState(data));
+            setShowEditModal(false);
+            setMessage('✅ Vente mise à jour avec succès');
+        } catch (err) {
+            console.error('Update error:', err.response?.data || err.message);
+            throw err; // EditSaleForm surfaces the message inline
+        }
+    };
+
+    const handleDeleteSale = async () => {
+        const reason = deleteReason.trim();
+        if (!reason) {
+            setDeleteError('Une raison est requise pour supprimer la vente.');
+            return;
+        }
+
+        const confirmed = await confirmDialog(
+            'Voulez-vous vraiment supprimer cette vente ? Cette action est irréversible.'
+        );
+        if (!confirmed) return;
+
+        try {
+            setIsDeleting(true);
+            setDeleteError('');
+            await api.delete(`/sales/${sale._id}`, { data: { reason } });
+            navigate('/sales', { state: { message: 'Vente supprimée avec succès' } });
+        } catch (deleteErr) {
+            setDeleteError(deleteErr.response?.data?.message || 'Erreur lors de la suppression.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const getStatusClass = (status) => {
         switch (status) {
             case 'completed': return 'bg-green-100 text-green-800';
@@ -499,6 +551,18 @@ const SaleDetailPage = () => {
         return (change.product && change.product.name)
             || (productId ? productNames[productId.toString()] : null)
             || 'Produit inconnu';
+    };
+
+    // Resolve a navigable target for a history product change (prefers the full
+    // object so the URL gets a slug; falls back to the raw id, or null if absent).
+    const getHistoryProductLinkTarget = (change) => {
+        if (change.product && typeof change.product === 'object' && change.product._id) {
+            return change.product;
+        }
+        const productId = typeof change.product === 'object'
+            ? (change.product?._id || change.product?.toString?.())
+            : change.product;
+        return productId || null;
     };
 
     const formatHistoryPrice = (value) =>
@@ -783,15 +847,16 @@ const SaleDetailPage = () => {
                                     </button>
                                 )}
                                 {isAdmin && sale.status !== 'cancelled' && (
-                                    <Link
-                                        to={`/sales/${sale._id}/edit`}
+                                    <button
+                                        type="button"
+                                        onClick={openEditModal}
                                         className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30 sm:min-h-[44px] sm:px-4 sm:py-2.5"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                         Modifier
-                                    </Link>
+                                    </button>
                                 )}
                                 {!isAdmin && sale.status !== 'cancelled' && (
                                     <button
@@ -1889,8 +1954,8 @@ const SaleDetailPage = () => {
                     <div className="p-0 overflow-y-auto min-h-0">
                                 {sale.modificationHistory && sale.modificationHistory.length > 0 ? (
                                     <div className="space-y-6 pb-2">
-                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Historique ({sale.modificationHistory.length} entrée{sale.modificationHistory.length > 1 ? 's' : ''})
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ms-text-muted)]">
+                                            {sale.modificationHistory.length} entrée{sale.modificationHistory.length > 1 ? 's' : ''} enregistrée{sale.modificationHistory.length > 1 ? 's' : ''}
                                         </p>
                                         {sale.modificationHistory.map((history, index) => {
                                             const historyUser = history.user;
@@ -1911,172 +1976,98 @@ const SaleDetailPage = () => {
                                             return (
                                                 <article
                                                     key={index}
-                                                    className="rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 overflow-hidden"
+                                                    className="ms-surface overflow-hidden"
                                                 >
                                                     {/* Header: date, user, type */}
-                                                    <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-gray-200 dark:border-gray-600 bg-white/80 dark:bg-gray-800/50">
-                                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                                            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                                                                <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
-                                                                    {formatModificationDate(history.date)}
-                                                                </span>
-                                                                <span className="text-gray-400 dark:text-gray-500">·</span>
-                                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{userName}</span>
-                                                                <span>{getRoleBadge(userRole)}</span>
-                                                            </div>
-                                                            <span className="text-xs font-medium text-[var(--ms-blue)] dark:text-[var(--ms-blue)] bg-[var(--ms-blue-soft)] dark:bg-[var(--ms-blue-dark)] px-2.5 py-1 rounded-lg">
-                                                                {changeTypeLabel}
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-sm font-semibold text-[var(--ms-text-strong)] tabular-nums">
+                                                                {formatModificationDate(history.date)}
                                                             </span>
+                                                            <span className="text-[var(--ms-text-muted)]">·</span>
+                                                            <span className="text-sm text-[var(--ms-text)]">{userName}</span>
+                                                            {getRoleBadge(userRole)}
                                                         </div>
+                                                        <StatusBadge tone="neutral">{changeTypeLabel}</StatusBadge>
                                                     </div>
 
-                                                    <div className="p-4 sm:p-5 space-y-4">
-                                                        {/* Section: Note */}
-                                                        <section className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/50 p-4">
-                                                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                                                                Note
+                                                    <div className="space-y-4 p-4">
+                                                        {/* Note */}
+                                                        {hasNote && (
+                                                            <div className="rounded-[var(--radiusLarge)] border px-3.5 py-2.5 text-sm" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                                                                <span className="font-semibold text-[var(--ms-text-muted)]">Note : </span>
+                                                                <span className="text-[var(--ms-text)]">{history.note}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Produits concernés */}
+                                                        <section className="space-y-3">
+                                                            <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--ms-text-muted)]">
+                                                                Produits concernés
                                                             </h4>
-                                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                                                {hasNote ? history.note : <span className="italic text-gray-500 dark:text-gray-400">Aucune note</span>}
-                                                            </p>
-                                                        </section>
+                                                            {hasProducts ? (
+                                                                <div className="space-y-2.5">
+                                                                    {history.changes.products.map((change, idx) => {
+                                                                        const status = getHistoryProductStatus(change);
+                                                                        const productName = getHistoryProductName(change);
+                                                                        const linkTarget = getHistoryProductLinkTarget(change);
+                                                                        const oldQuantity = Number(change.oldQuantity || 0);
+                                                                        const newQuantity = Number(change.newQuantity || 0);
+                                                                        const oldPrice = Number(change.oldPrice || 0);
+                                                                        const newPrice = Number(change.newPrice || 0);
+                                                                        const isRemoved = status === 'removed';
+                                                                        const statusMeta = ({
+                                                                            removed: { label: 'Retiré', tone: 'danger' },
+                                                                            added: { label: 'Ajouté', tone: 'success' },
+                                                                            changed: { label: 'Modifié', tone: 'warning' },
+                                                                            unchanged: { label: 'Inchangé', tone: 'neutral' },
+                                                                        })[status] || { label: 'Inchangé', tone: 'neutral' };
 
-                                                        {/* Section: Modifications produits */}
-                                                        <section className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/50 p-4">
-                                                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                                                                Modifications produits
-                                                            </h4>
-                                                            {hasProducts ? (() => {
-                                                                const productChanges = history.changes.products;
-                                                                const removedProducts = productChanges.filter(
-                                                                    (change) => getHistoryProductStatus(change) === 'removed'
-                                                                );
-                                                                const activeProducts = productChanges.filter(
-                                                                    (change) => getHistoryProductStatus(change) !== 'removed'
-                                                                );
-                                                                const renderChangeCard = (change, idx, mode) => {
-                                                                    const status = getHistoryProductStatus(change);
-                                                                    const productName = getHistoryProductName(change);
-                                                                    const oldQuantity = Number(change.oldQuantity || 0);
-                                                                    const newQuantity = Number(change.newQuantity || 0);
-                                                                    const oldPrice = Number(change.oldPrice || 0);
-                                                                    const newPrice = Number(change.newPrice || 0);
-                                                                    const statusLabel =
-                                                                        status === 'removed'
-                                                                            ? 'Retiré'
-                                                                            : status === 'added'
-                                                                                ? 'Ajouté'
-                                                                                : status === 'changed'
-                                                                                    ? 'Modifié'
-                                                                                    : 'Inchangé';
-                                                                    const statusClass =
-                                                                        status === 'removed'
-                                                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                                                                            : status === 'added'
-                                                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                                                                : status === 'changed'
-                                                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-
-                                                                    return (
-                                                                        <div
-                                                                            key={`${mode}-${idx}`}
-                                                                            className={`rounded-lg border p-3 sm:p-4 ${
-                                                                                mode === 'removed'
-                                                                                    ? 'border-red-200 bg-red-50/80 dark:border-red-900/60 dark:bg-red-900/15'
-                                                                                    : 'border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-700/50'
-                                                                            }`}
-                                                                        >
-                                                                            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-                                                                                <p className={`text-sm font-semibold ${
-                                                                                    mode === 'removed'
-                                                                                        ? 'text-red-700 dark:text-red-300'
-                                                                                        : 'text-[var(--ms-blue)] dark:text-[var(--ms-blue)]'
-                                                                                }`}>
-                                                                                    {productName}
-                                                                                </p>
-                                                                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass}`}>
-                                                                                    {statusLabel}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                                                                                <div className="rounded-lg bg-white/80 p-3 dark:bg-gray-800/60">
-                                                                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                                                                        Avant
-                                                                                    </p>
-                                                                                    <div className="mt-2 space-y-1 tabular-nums text-gray-900 dark:text-white">
-                                                                                        <p>Qté: <span className="font-semibold">{oldQuantity}</span></p>
-                                                                                        <p>Prix: <span className="font-semibold">{formatHistoryPrice(oldPrice)}</span></p>
-                                                                                    </div>
+                                                                        return (
+                                                                            <div
+                                                                                key={idx}
+                                                                                className="rounded-[var(--radiusLarge)] border p-3"
+                                                                                style={isRemoved
+                                                                                    ? { borderColor: 'var(--colorStatusDangerStroke1)', background: 'var(--colorStatusDangerBackground1)' }
+                                                                                    : { borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}
+                                                                            >
+                                                                                <div className="flex items-start justify-between gap-2">
+                                                                                    {linkTarget ? (
+                                                                                        <Link
+                                                                                            to={productPath(linkTarget)}
+                                                                                            onClick={() => setShowHistoryModal(false)}
+                                                                                            className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)]"
+                                                                                            title={`Voir la fiche de ${productName}`}
+                                                                                        >
+                                                                                            <span className="truncate">{productName}</span>
+                                                                                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                                                                        </Link>
+                                                                                    ) : (
+                                                                                        <span className="truncate text-sm font-semibold text-[var(--ms-text-strong)]">{productName}</span>
+                                                                                    )}
+                                                                                    <StatusBadge tone={statusMeta.tone}>{statusMeta.label}</StatusBadge>
                                                                                 </div>
-                                                                                <div className={`rounded-lg p-3 ${
-                                                                                    mode === 'removed'
-                                                                                        ? 'bg-red-100/70 dark:bg-red-900/25'
-                                                                                        : 'bg-green-50 dark:bg-green-900/15'
-                                                                                }`}>
-                                                                                    <p className={`text-xs font-semibold uppercase tracking-wide ${
-                                                                                        mode === 'removed'
-                                                                                            ? 'text-red-600 dark:text-red-300'
-                                                                                            : 'text-green-600 dark:text-green-300'
-                                                                                    }`}>
-                                                                                        Après
-                                                                                    </p>
-                                                                                    <div className="mt-2 space-y-1 tabular-nums text-gray-900 dark:text-white">
-                                                                                        <p>Qté: <span className="font-semibold">{newQuantity}</span></p>
-                                                                                        <p>Prix: <span className="font-semibold">{formatHistoryPrice(newPrice)}</span></p>
+
+                                                                                <div className="mt-2.5 grid grid-cols-2 gap-2 text-sm">
+                                                                                    <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-white)' }}>
+                                                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Avant</p>
+                                                                                        <p className="mt-1 tabular-nums text-[var(--ms-text)]">Qté <span className="font-semibold">{oldQuantity}</span></p>
+                                                                                        <p className="tabular-nums text-[var(--ms-text)]">{formatHistoryPrice(oldPrice)}</p>
+                                                                                    </div>
+                                                                                    <div className="rounded-lg px-3 py-2" style={isRemoved
+                                                                                        ? { background: 'var(--colorStatusDangerBackground1)' }
+                                                                                        : { background: 'var(--colorStatusSuccessBackground1)' }}>
+                                                                                        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: isRemoved ? 'var(--ms-danger)' : 'var(--ms-success)' }}>Après</p>
+                                                                                        <p className="mt-1 tabular-nums text-[var(--ms-text)]">Qté <span className="font-semibold">{newQuantity}</span></p>
+                                                                                        <p className="tabular-nums text-[var(--ms-text)]">{formatHistoryPrice(newPrice)}</p>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
-                                                                    );
-                                                                };
-
-                                                                return (
-                                                                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                                                        <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 dark:border-red-900/60 dark:bg-red-900/10">
-                                                                            <div className="mb-3 flex items-center justify-between gap-2">
-                                                                                <h5 className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
-                                                                                    Produits retirés
-                                                                                </h5>
-                                                                                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-gray-800 dark:text-red-300">
-                                                                                    {removedProducts.length}
-                                                                                </span>
-                                                                            </div>
-                                                                            {removedProducts.length > 0 ? (
-                                                                                <div className="space-y-3">
-                                                                                    {removedProducts.map((change, idx) => renderChangeCard(change, idx, 'removed'))}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <p className="rounded-lg border border-dashed border-red-200 bg-white/70 p-3 text-sm text-red-600/80 dark:border-red-900/50 dark:bg-gray-800/40 dark:text-red-300/80">
-                                                                                    Aucun produit retiré.
-                                                                                </p>
-                                                                            )}
-                                                                        </div>
-
-                                                                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/10">
-                                                                            <div className="mb-3 flex items-center justify-between gap-2">
-                                                                                <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                                                                                    Produits après modification
-                                                                                </h5>
-                                                                                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-gray-800 dark:text-emerald-300">
-                                                                                    {activeProducts.length}
-                                                                                </span>
-                                                                            </div>
-                                                                            {activeProducts.length > 0 ? (
-                                                                                <div className="space-y-3">
-                                                                                    {activeProducts.map((change, idx) => renderChangeCard(change, idx, 'active'))}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <p className="rounded-lg border border-dashed border-emerald-200 bg-white/70 p-3 text-sm text-emerald-700/80 dark:border-emerald-900/50 dark:bg-gray-800/40 dark:text-emerald-300/80">
-                                                                                    Aucun produit restant dans cette modification.
-                                                                                </p>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })() : (
-                                                                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun détail de modification produit pour cette entrée.</p>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-sm text-[var(--ms-text-muted)]">Aucun détail de modification produit pour cette entrée.</p>
                                                             )}
                                                         </section>
                                                     </div>
@@ -2086,15 +2077,82 @@ const SaleDetailPage = () => {
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-10 sm:py-12 text-center">
-                                        <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 mb-4">
+                                        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--ms-bg-subtle)] text-[var(--ms-text-muted)]">
                                             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </span>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 px-4">Aucune modification enregistrée pour cette vente</p>
+                                        <p className="px-4 text-sm text-[var(--ms-text-muted)]">Aucune modification enregistrée pour cette vente</p>
                                     </div>
                                 )}
                     </div>
+                </Modal>
+
+                <Modal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    title="Modifier la vente"
+                    subtitle="Ajustez les lignes, corrigez la date réelle si besoin et enregistrez une note de modification."
+                    size="xl"
+                >
+                    {showEditModal && (
+                        <div className="space-y-6">
+                            <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                                <EditSaleForm
+                                    sale={sale}
+                                    clients={[]}
+                                    onUpdate={handleUpdateSale}
+                                    onCancel={() => setShowEditModal(false)}
+                                />
+                            </Suspense>
+
+                            {isAdmin && (
+                                <section className="overflow-hidden rounded-lg border border-[rgba(209,52,56,0.22)] bg-[#FDF3F4]" aria-labelledby="delete-heading">
+                                    <div className="border-b border-[rgba(209,52,56,0.22)] bg-white px-4 py-3">
+                                        <h2 id="delete-heading" className="text-sm font-semibold text-red-800">
+                                            Zone dangereuse — Supprimer la vente
+                                        </h2>
+                                    </div>
+                                    <div className="p-4 md:p-5">
+                                        <p className="text-sm text-gray-700">
+                                            La suppression supprime définitivement la vente et réintègre les quantités au stock. Cette action est irréversible.
+                                        </p>
+                                        <div className="mt-4">
+                                            <label htmlFor="delete-reason" className="block text-sm font-medium text-gray-700 mb-1">
+                                                Raison de suppression <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                id="delete-reason"
+                                                value={deleteReason}
+                                                onChange={(e) => {
+                                                    setDeleteReason(e.target.value);
+                                                    if (deleteError) setDeleteError('');
+                                                }}
+                                                rows={3}
+                                                className="form-control"
+                                                placeholder="Expliquez pourquoi cette vente est supprimée…"
+                                                aria-invalid={!!deleteError}
+                                                aria-describedby={deleteError ? 'delete-error' : undefined}
+                                            />
+                                        </div>
+                                        {deleteError && (
+                                            <p id="delete-error" className="mt-2 text-sm text-red-600" role="alert">
+                                                {deleteError}
+                                            </p>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={handleDeleteSale}
+                                            disabled={isDeleting}
+                                            className="ms-button ms-button-danger ms-button-md mt-4"
+                                        >
+                                            {isDeleting ? 'Suppression…' : 'Supprimer définitivement la vente'}
+                                        </button>
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+                    )}
                 </Modal>
             </div>
         </div>

@@ -65,6 +65,9 @@ const tenantSchema = new mongoose.Schema(
     // International dialing code for the shop's country (e.g. "+242"), set by
     // the super-admin. Used to build WhatsApp/phone links for client reminders.
     dialCode: { type: String, default: '' },
+    // Per-shop feature overrides (super-admin). Shape: { [featureKey]: true|false }.
+    // true = force-grant, false = force-revoke, absent = inherit from the plan.
+    featureOverrides: { type: mongoose.Schema.Types.Mixed, default: {} },
     // Plan change requested by the shop owner, awaiting super-admin decision.
     planRequest: {
       requestedPlan: { type: String, enum: ['basic', 'pro', 'enterprise', null], default: null },

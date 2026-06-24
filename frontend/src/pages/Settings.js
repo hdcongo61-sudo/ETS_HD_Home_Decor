@@ -10,6 +10,7 @@ import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getLogoDataUrl, mixHexColors, resolveAppLogo } from '../utils/appBranding';
 import { PageHeader, Workspace, EmptyState, LoadingSkeleton } from '../components/business';
+import { FEATURE_LABELS } from '../config/features';
 
 const TABS = [
   { key: 'categories', label: 'Catégories produits', endpoint: '/lookups/categories', icon: Tag },
@@ -1029,6 +1030,31 @@ const Settings = () => {
                       </li>
                     ))}
                   </ul>
+
+                  {/* Fonctionnalités réellement incluses dans ce forfait */}
+                  {Array.isArray(p.features) && (
+                    <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                      <p className="fui-caption1-strong mb-2 uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.04em' }}>
+                        Fonctionnalités du forfait
+                      </p>
+                      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                        {Object.entries(FEATURE_LABELS).map(([k, label]) => {
+                          const has = p.features.includes(k);
+                          return (
+                            <li key={k} className="fui-caption1 flex items-center gap-2" style={{ color: has ? 'var(--colorNeutralForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                              {has
+                                ? <Check className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                                : <X className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--colorNeutralForeground3)' }} />}
+                              <span className={has ? '' : 'line-through opacity-70'}>{label}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="fui-caption2 mt-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        Ventes, produits, clients, paiements, dépenses et rappels WhatsApp sont inclus dans tous les forfaits.
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })()}

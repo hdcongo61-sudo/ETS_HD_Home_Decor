@@ -5,6 +5,7 @@ const LoginHistory = require('../models/loginHistoryModel');
 const AdminRequest = require('../models/adminRequestModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
+const { resolveTenantFeatures } = require('../config/features');
 
 const uploadUserPhoto = (buffer) => new Promise((resolve, reject) => {
   const stream = cloudinary.uploader.upload_stream(
@@ -568,6 +569,7 @@ const getCurrentUser = async (req, res) => {
         name: t.name || '',
         plan: t.plan || 'trial',
         status: t.status || 'trial',
+        features: await resolveTenantFeatures(t),
         dialCode: t.dialCode || '',
         trialEndsAt: t.trialEndsAt || null,
         trialDaysLeft: daysLeft,

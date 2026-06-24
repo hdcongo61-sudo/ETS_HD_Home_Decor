@@ -55,6 +55,20 @@ const clientSchema = mongoose.Schema(
       type: Date,
       default: null
     },
+    // Loyalty program — earned points are derived from spend; this stores the
+    // net manual adjustment (bonus points given − points redeemed) and a ledger.
+    loyalty: {
+      pointsAdjust: { type: Number, default: 0 },
+      history: [
+        {
+          delta: { type: Number, required: true }, // + bonus, − redemption
+          reason: { type: String, enum: ['redeem', 'bonus'], default: 'redeem' },
+          note: { type: String, default: '' },
+          at: { type: Date, default: Date.now },
+          by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        },
+      ],
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

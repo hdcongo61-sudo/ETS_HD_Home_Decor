@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { FeatureLockedView } from './FeatureGate';
 
 const storeRestrictionInfo = (payload) => {
   try {
@@ -10,8 +11,8 @@ const storeRestrictionInfo = (payload) => {
   }
 };
 
-const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { auth } = useContext(AuthContext);
+const ProtectedRoute = ({ children, adminOnly = false, feature = null }) => {
+  const { auth, hasFeature } = useContext(AuthContext);
 
   const restrictedPayload = (() => {
     if (!auth.user?.accessControlEnabled) {
@@ -47,6 +48,11 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
   if (adminOnly && !auth.isAdmin) {
     return <Navigate to="/" replace />;
+  }
+
+  // Plan/feature gating — show an in-place upgrade page instead of the feature.
+  if (feature && typeof hasFeature === 'function' && !hasFeature(feature)) {
+    return <FeatureLockedView feature={feature} />;
   }
 
   return children;

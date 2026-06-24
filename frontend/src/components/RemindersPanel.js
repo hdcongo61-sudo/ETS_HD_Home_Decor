@@ -12,10 +12,12 @@ import {
   CalendarClock,
   Users,
   Wallet,
+  PackageCheck,
   MessageCircle,
   Phone,
   Copy,
 } from "lucide-react";
+import api from "../services/api";
 import { employeePayrollNewPath } from "../utils/paths";
 import {
   buildReminderMessage,
@@ -178,6 +180,78 @@ const SalaryReminderCard = ({ employee }) => (
   </motion.div>
 );
 
+const StockReplacementCard = ({ reminder, onConfirmed }) => {
+  const [confirming, setConfirming] = React.useState(false);
+  const product = reminder.product || {};
+  const productName = product.name || reminder.productName || "Produit";
+  const currentStock = product.stock ?? reminder.currentStock ?? 0;
+  const warehouseName = product.warehouse || reminder.warehouseName || "Dépôt non défini";
+
+  const confirmReplacement = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (confirming) return;
+
+    try {
+      setConfirming(true);
+      await api.post(`/stock-replacement-reminders/${reminder._id}/confirm`);
+      toast.success("Transfert dépôt → boutique confirmé");
+      onConfirmed?.(reminder._id);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Confirmation impossible");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <motion.article
+      whileHover={{ y: -2 }}
+      className="rounded-[22px] border border-emerald-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-emerald-500/20 dark:bg-gray-900"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="truncate font-semibold text-gray-950 dark:text-white">{productName}</h4>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            À remettre en boutique :{" "}
+            <span className="font-semibold text-gray-950 dark:text-white">
+              {Number(reminder.quantityToReplace || 0).toLocaleString("fr-FR")}
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Source : {warehouseName}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Stock actuel indicatif : {Number(currentStock || 0).toLocaleString("fr-FR")}
+          </p>
+          {reminder.lastSaleAt && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Dernière vente : {new Date(reminder.lastSaleAt).toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          Dépôt → boutique
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={confirmReplacement}
+        disabled={confirming}
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <CheckCircle2 size={16} />
+        {confirming ? "Confirmation..." : "Confirmer mis en boutique"}
+      </button>
+    </motion.article>
+  );
+};
+
 const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amount, tone, daysSince, shopName, dialCode }) => {
   const toneClass =
     tone === "rose"
@@ -225,7 +299,16 @@ const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amou
   );
 };
 
-const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryReminders = [], shopName = "", dialCode = "" }) => {
+const RemindersPanel = ({
+  overdue = [],
+  upcoming = [],
+  neverPaid = [],
+  salaryReminders = [],
+  stockReplacementReminders = [],
+  onStockReplacementConfirmed = () => {},
+  shopName = "",
+  dialCode = "",
+}) => {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [partialAgeFilter, setPartialAgeFilter] = useState("10");
@@ -393,6 +476,12 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
       icon: <Wallet size={16} className="text-gray-700" />,
       count: salaryReminders.length,
     },
+    {
+      key: "stock",
+      label: "Dépôt → boutique",
+      icon: <PackageCheck size={16} className="text-emerald-600" />,
+      count: stockReplacementReminders.length,
+    },
   ];
 
   return (
@@ -481,6 +570,21 @@ const RemindersPanel = ({ overdue = [], upcoming = [], neverPaid = [], salaryRem
               <div className="col-span-full flex flex-col items-center rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
                 <Wallet className="w-10 h-10 mb-2 opacity-60" />
                 <p>Aucun salaire à payer aujourd'hui</p>
+              </div>
+            )
+          ) : activeTab === "stock" ? (
+            stockReplacementReminders.length > 0 ? (
+              stockReplacementReminders.map((reminder) => (
+                <StockReplacementCard
+                  key={reminder._id}
+                  reminder={reminder}
+                  onConfirmed={onStockReplacementConfirmed}
+                />
+              ))
+            ) : (
+              <div className="col-span-full flex flex-col items-center rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
+                <PackageCheck className="w-10 h-10 mb-2 opacity-60" />
+                <p>Aucun transfert dépôt → boutique à confirmer</p>
               </div>
             )
           ) : filtered.length > 0 ? (

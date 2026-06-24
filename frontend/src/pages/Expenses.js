@@ -70,6 +70,14 @@ const Expenses = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpenses uses filter
   }, [filter]);
 
+  // Refresh when an expense is created elsewhere (e.g. the global expense modal).
+  useEffect(() => {
+    const onExpenseCreated = () => fetchExpenses();
+    window.addEventListener('expenseCreated', onExpenseCreated);
+    return () => window.removeEventListener('expenseCreated', onExpenseCreated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpenses uses filter
+  }, [filter]);
+
   useEffect(() => {
     const fetchExpenseCategories = async () => {
       try {

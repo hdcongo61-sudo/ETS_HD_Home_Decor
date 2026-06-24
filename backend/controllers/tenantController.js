@@ -6,6 +6,7 @@ const { PLAN_CATALOG } = require('../models/tenantModel');
 const User = require('../models/userModel');
 const PlatformAudit = require('../models/platformAuditModel');
 const PlatformConfig = require('../models/platformConfigModel');
+const { effectivePlanFeatures, invalidateFeatureCache, ALL_FEATURES } = require('../config/features');
 const generateToken = require('../utils/generateToken');
 const { seedTenantSettings } = require('./appSettingsController');
 
@@ -234,6 +235,17 @@ const updateTenant = asyncHandler(async (req, res) => {
     tenant.dialCode = raw ? (raw.startsWith('+') ? raw : `+${raw.replace(/^0+/, '')}`) : '';
   }
   if (branding) tenant.branding = { ...tenant.branding, ...branding };
+
+  // Per-shop feature overrides — keep only known features with boolean values.
+  if (req.body.featureOverrides && typeof req.body.featureOverrides === 'object') {
+    const clean = {};
+    ALL_FEATURES.forEach((key) => {
+      const v = req.body.featureOverrides[key];
+      if (v === true || v === false) clean[key] = v;
+    });
+    tenant.featureOverrides = clean;
+    tenant.markModified('featureOverrides');
+  }
 
   await tenant.save();
 
@@ -471,6 +483,33 @@ const getOverviewStats = asyncHandler(async (req, res) => {
   const planDist = {};
   tenants.forEach((t) => { planDist[t.plan] = (planDist[t.plan] || 0) + 1; });
 
+  // Growth & churn over the last 6 months: new shops (createdAt) vs lost shops
+  // (suspend events from the audit log). Reactivations net the loss back.
+  const growth = {};
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    growth[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`] = { new: 0, lost: 0 };
+  }
+  Object.keys(signups).forEach((key) => { if (growth[key]) growth[key].new = signups[key]; });
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const churnEvents = await PlatformAudit.find({
+    action: { $in: ['tenant.suspend', 'tenant.reactivate'] },
+    createdAt: { $gte: sixMonthsAgo },
+  }).select('action createdAt').lean();
+  churnEvents.forEach((ev) => {
+    const d = new Date(ev.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!growth[key]) return;
+    if (ev.action === 'tenant.suspend') growth[key].lost += 1;
+    else if (ev.action === 'tenant.reactivate') growth[key].lost = Math.max(0, growth[key].lost - 1);
+  });
+  // Current-month churn rate = lost this month / shops active at month start.
+  const monthKeys = Object.keys(growth);
+  const lastKey = monthKeys[monthKeys.length - 1];
+  const lostThisMonth = growth[lastKey]?.lost || 0;
+  const activeBase = paying.length + lostThisMonth;
+  const churnRate = activeBase > 0 ? Math.round((lostThisMonth / activeBase) * 1000) / 10 : 0;
+
   // Attention lists
   const liveStats = await getLiveStats(tenants.map((t) => t._id));
   const soon = 3 * 86400000;
@@ -509,6 +548,8 @@ const getOverviewStats = asyncHandler(async (req, res) => {
     },
     signups,
     planDist,
+    growth,
+    churnRate,
     attention: { trialsExpiring, paymentsOverdue, dormant, nearLimit },
   });
 });
@@ -712,7 +753,20 @@ const getTenantStats = asyncHandler(async (req, res) => {
 // GET /api/tenants/plans
 const getPlans = asyncHandler(async (req, res) => {
   const cfg = await PlatformConfig.getCatalog();
-  res.json(cfg.plans);
+  // Return the *effective* feature list per plan (DB override, else code
+  // default) so the editor reflects what shops actually get.
+  const out = {};
+  ['trial', 'basic', 'pro', 'enterprise'].forEach((key) => {
+    const p = (cfg.plans && cfg.plans[key]) || {};
+    out[key] = {
+      label: p.label || '',
+      price: p.price ?? 0,
+      maxUsers: p.maxUsers ?? 1,
+      maxProducts: p.maxProducts ?? 1,
+      features: effectivePlanFeatures(key, Array.from(p.features || [])),
+    };
+  });
+  res.json(out);
 });
 
 // ── Super-admin: update the plan catalog (prices + limits) ──
@@ -732,6 +786,7 @@ const updatePlans = asyncHandler(async (req, res) => {
   });
 
   await cfg.save();
+  invalidateFeatureCache();
 
   PlatformAudit.record({ req, action: 'plans.update', tenant: null, meta: {} });
 
@@ -743,7 +798,10 @@ const updatePlans = asyncHandler(async (req, res) => {
 const getPlanCatalog = asyncHandler(async (req, res) => {
   const keys = ['trial', 'basic', 'pro', 'enterprise'];
   const plans = {};
-  for (const k of keys) plans[k] = { key: k, ...(await resolvePlan(k)) };
+  for (const k of keys) {
+    const p = await resolvePlan(k);
+    plans[k] = { key: k, ...p, features: effectivePlanFeatures(k, Array.from(p.features || [])) };
+  }
   res.json({ plans });
 });
 

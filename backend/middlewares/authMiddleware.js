@@ -5,6 +5,13 @@ const Tenant = require('../models/tenantModel');
 const { runWithTenant } = require('../utils/tenantContext');
 
 const protect = asyncHandler(async (req, res, next) => {
+  // Idempotent: when protect already ran earlier in this chain (e.g. a
+  // mount-level guard before per-route protect), skip re-verifying. The tenant
+  // context established by the first call is still active downstream.
+  if (req.user) {
+    return next();
+  }
+
   let token;
 
   if (

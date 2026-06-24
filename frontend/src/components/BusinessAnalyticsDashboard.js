@@ -101,6 +101,20 @@ const BusinessAnalyticsDashboard = ({
   const collectionRate = totalSales ? (totalPaid / totalSales) * 100 : 0;
   const expenseRate = totalPaid ? (totalExpenses / totalPaid) * 100 : 0;
 
+  // Two kinds of gross profit the app tracks:
+  //  • Bénéfice encaissé (realized / cash-basis): margin actually collected via payments.
+  //  • Bénéfice attendu (expected / accrual): margin on all sales of the period.
+  const realizedProfit = useMemo(
+    () => weeklyPayments.reduce((sum, p) => sum + (p.profit || 0), 0),
+    [weeklyPayments]
+  );
+  const expectedProfit = useMemo(
+    () => weeklySales.reduce((sum, s) => sum + (s.profitData?.totalProfit || 0), 0),
+    [weeklySales]
+  );
+  const realizedMargin = totalPaid ? (realizedProfit / totalPaid) * 100 : 0;
+  const expectedMargin = totalSales ? (expectedProfit / totalSales) * 100 : 0;
+
   // === Analyse des produits ===
   const productStats = useMemo(() => {
     const map = {};
@@ -252,10 +266,12 @@ const BusinessAnalyticsDashboard = ({
 
       <div className="space-y-6 p-4 sm:p-5">
         {/* Cartes principales */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard title="Ventes" value={totalSales} icon={DollarSign} helper={`${weeklySales.length} vente(s)`} tone="green" />
           <StatCard title="Encaissements" value={totalPaid} icon={Coins} helper={`${collectionRate.toFixed(0)}% encaissé`} tone="blue" />
           <StatCard title="Dépenses" value={totalExpenses} icon={TrendingDown} helper={`${weeklyExpenses.length} ligne(s)`} tone="red" />
+          <StatCard title="Bénéfice encaissé" value={realizedProfit} icon={BadgePercent} helper={`${realizedMargin.toFixed(1)}% marge`} tone="violet" />
+          <StatCard title="Bénéfice attendu" value={expectedProfit} icon={Sparkles} helper={`${expectedMargin.toFixed(1)}% marge`} tone="blue" />
           <StatCard title="Profit net" value={profit} icon={PieIcon} helper={`${margin.toFixed(1)}% marge`} tone={profit >= 0 ? "violet" : "red"} />
         </div>
 

@@ -49,6 +49,12 @@ const PAYMENT_METHOD_LABELS = {
 
 const formatGenderLabel = (gender) => PROFILE_GENDER_LABELS[gender] || PROFILE_GENDER_LABELS.unknown;
 
+const formatUserName = (user) => {
+  if (!user) return 'Utilisateur non disponible';
+  if (typeof user === 'string') return user;
+  return user.name || user.email || 'Utilisateur non disponible';
+};
+
 const ClientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -321,6 +327,7 @@ const ClientProfile = () => {
       return acc;
     }, {})
   );
+  const lastModifiedBy = formatUserName(client.updatedBy);
 
   return (
     <Workspace className="space-y-5">
@@ -392,7 +399,7 @@ const ClientProfile = () => {
           <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CalendarDays className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Inscrit le</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(client.createdAt)}</p></div></div>
           <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CreditCard className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Dernier achat</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(stats.lastPurchaseDate || client.lastPurchaseDate)}</p></div></div>
           <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><CreditCard className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Dernier paiement</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(stats.lastPaymentDate)}</p></div></div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><Edit3 className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Derniere modification</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(client.updatedAt)}</p></div></div>
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"><Edit3 className="h-4 w-4 text-[var(--ms-text-muted)]" /><div><p className="font-semibold text-[var(--ms-text)]">Derniere modification</p><p className="text-[var(--ms-text-muted)] text-xs">{formatDate(client.updatedAt)}</p><p className="text-[var(--ms-text-muted)] text-xs">par {lastModifiedBy}</p></div></div>
         </div>
       </Surface>
 

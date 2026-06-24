@@ -1,11 +1,13 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
+import { FEATURE_KEYS } from "../config/features";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ArrowUpRight,
+  Award,
   BriefcaseBusiness,
   FileText,
   LayoutGrid,
@@ -802,7 +804,7 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
 /* ═══════════════════════════════════════════
    QUICK ACCESS PANEL — Fluent 2 Mega-Menu
    ═══════════════════════════════════════════ */
-const QA_GROUPS = (auth) => [
+const QA_GROUPS = (auth, hasFeature = () => true) => ([
   {
     label: 'Ventes',
     items: [
@@ -830,22 +832,23 @@ const QA_GROUPS = (auth) => [
     label: 'Clients',
     items: [
       { to: '/clients',           icon: Users,         label: 'Liste des clients' },
+      ...(auth.isAdmin ? [{ to: '/clients/loyalty', icon: Award, label: 'Fidélité', feature: FEATURE_KEYS.LOYALTY }] : []),
     ],
   },
   ...(auth.isAdmin ? [{
     label: 'Employés',
     items: [
-      { to: '/employees',     icon: BriefcaseBusiness, label: 'Liste des employés' },
-      { to: '/employees/new', icon: PlusCircle,        label: 'Nouvel employé' },
+      { to: '/employees',     icon: BriefcaseBusiness, label: 'Liste des employés', feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
+      { to: '/employees/new', icon: PlusCircle,        label: 'Nouvel employé',     feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
     ],
   }] : []),
   ...(auth.isAdmin ? [
     {
       label: 'Finances',
       items: [
-        { to: '/bank',                  icon: Landmark,  label: 'Caisse' },
+        { to: '/bank',                  icon: Landmark,  label: 'Caisse', feature: FEATURE_KEYS.BANK },
         { to: '/expenses',              icon: Receipt,   label: 'Dépenses' },
-        { to: '/expenses/monthly-plan', icon: ClipboardList, label: 'Objectif mensuel' },
+        { to: '/expenses/monthly-plan', icon: ClipboardList, label: 'Objectif mensuel', feature: FEATURE_KEYS.MONTHLY_SPENDING_PLAN },
       ],
     },
     {
@@ -855,7 +858,7 @@ const QA_GROUPS = (auth) => [
         { to: '/support',        icon: LifeBuoy,   label: 'Assistance' },
         { to: '/admin/users',    icon: UserCheck,  label: 'Gestion utilisateurs' },
         { to: '/users/stats',    icon: BarChart2,  label: 'Dashboard utilisateurs' },
-        { to: '/documents',      icon: FileStack,  label: 'Documents' },
+        { to: '/documents',      icon: FileStack,  label: 'Documents', feature: FEATURE_KEYS.DOCUMENTS },
         { to: '/admin-requests', icon: FileText,   label: 'Demandes admin' },
       ],
     },
@@ -863,15 +866,16 @@ const QA_GROUPS = (auth) => [
     {
       label: 'Autres',
       items: [
-        { to: '/bank',           icon: Landmark,      label: 'Caisse' },
+        { to: '/bank',           icon: Landmark,      label: 'Caisse', feature: FEATURE_KEYS.BANK },
         { to: '/admin-requests', icon: ClipboardList, label: 'Mes demandes' },
       ],
     },
   ]),
-];
+]).map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || hasFeature(it.feature)) }));
 
 const QuickAccessPanel = ({ auth, onClose }) => {
-  const groups = QA_GROUPS(auth).filter(g => g.items.length > 0);
+  const { hasFeature } = useContext(AuthContext);
+  const groups = QA_GROUPS(auth, hasFeature).filter(g => g.items.length > 0);
 
   return (
     <motion.div

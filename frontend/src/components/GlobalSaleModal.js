@@ -1,6 +1,7 @@
 // components/GlobalSaleModal.js
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, Loader2, ReceiptText, RefreshCw, Users, Boxes } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
 import Modal from './Modal';
@@ -99,6 +100,7 @@ const GlobalSaleModal = () => {
       await api.post('/sales', payload);
       closeModal();
       window.dispatchEvent(new CustomEvent('saleCreated'));
+      toast.success('Vente enregistrée — données à jour.');
     } catch (error) {
       console.error('Error creating sale:', error);
       throw error;

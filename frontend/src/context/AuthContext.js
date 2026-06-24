@@ -86,8 +86,16 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // Plan-based feature entitlement check. Super-admins and platform operators
+  // (no tenant) get everything; otherwise read the tenant's resolved feature
+  // list from the /me payload.
+  const hasFeature = (feature) => {
+    if (auth?.isSuperAdmin || !auth?.tenant) return true;
+    return Array.isArray(auth.tenant.features) && auth.tenant.features.includes(feature);
+  };
+
   return (
-    <AuthContext.Provider value={{ auth, setAuth: setAuthWithStorage }}>
+    <AuthContext.Provider value={{ auth, setAuth: setAuthWithStorage, hasFeature }}>
       {children}
     </AuthContext.Provider>
   );

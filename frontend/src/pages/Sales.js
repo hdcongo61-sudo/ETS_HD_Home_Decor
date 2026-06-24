@@ -23,6 +23,7 @@ import {
   CreditCard,
   Crown,
   Download,
+  Lock,
   Gem,
   ReceiptText,
   Repeat2,
@@ -67,6 +68,8 @@ import {
   PageHeader,
   Workspace,
 } from "../components/business";
+import { useFeature, UpgradeModal, LockedFeatureButton } from "../components/FeatureGate";
+import { FEATURE_KEYS } from "../config/features";
 
 // Lazy components
 const SaleForm = lazy(() => import("../components/SaleForm"));
@@ -963,6 +966,10 @@ const Sales = () => {
 
   // Vues
   const [viewMode, setViewMode] = useState("dashboard"); // 'dashboard' | 'analytics' | 'profits' | 'clients'
+  const canViewProfit = useFeature(FEATURE_KEYS.PROFIT_ANALYSIS); // "Bénéfices" — forfait Entreprise
+  const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk exports — la facture reste accessible à tous
+  const [profitUpgradeOpen, setProfitUpgradeOpen] = useState(false);
   // Mobile only (< lg) : bascule entre le formulaire de vente et l'historique
   // (sur desktop les deux colonnes restent côte à côte).
   const [mobilePanel, setMobilePanel] = useState("form"); // 'form' | 'history'
@@ -1921,9 +1928,11 @@ const Sales = () => {
           }
         />
 
-          <Suspense fallback={<LoadingSkeleton rows={2} />}>
-            <ProformaHistory clients={clients} products={products} />
-          </Suspense>
+          {canProforma && (
+            <Suspense fallback={<LoadingSkeleton rows={2} />}>
+              <ProformaHistory clients={clients} products={products} />
+            </Suspense>
+          )}
 
           <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
 
@@ -2203,17 +2212,23 @@ const Sales = () => {
           meta={isAdmin ? "Admin" : null}
           actions={
             isAdmin && (
-              <Button onClick={() => setShowExportModal(true)} size="sm">
-                <Download className="h-4 w-4" aria-hidden />
-                <span>Exporter</span>
-              </Button>
+              canExport ? (
+                <Button onClick={() => setShowExportModal(true)} size="sm">
+                  <Download className="h-4 w-4" aria-hidden />
+                  <span>Exporter</span>
+                </Button>
+              ) : (
+                <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT} icon={<Download className="h-4 w-4" />}>Exporter</LockedFeatureButton>
+              )
             )
           }
         />
 
-        <Suspense fallback={<LoadingSkeleton rows={2} />}>
-          <ProformaHistory clients={clients} products={products} />
-        </Suspense>
+        {canProforma && (
+          <Suspense fallback={<LoadingSkeleton rows={2} />}>
+            <ProformaHistory clients={clients} products={products} />
+          </Suspense>
+        )}
 
         {/* Fluent 2 Pivot — view modes */}
         {isAdmin && (
@@ -2224,18 +2239,23 @@ const Sales = () => {
                 { value: "analytics", label: "Analytics",       icon: BarChart3 },
                 { value: "profits",   label: "Bénéfices",       icon: Banknote },
                 { value: "clients",   label: "Clients",         icon: Users },
-              ].map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  role="tab"
-                  aria-selected={viewMode === value}
-                  onClick={() => setViewMode(value)}
-                  className={`fui-pivot__tab flex items-center gap-1.5 ${viewMode === value ? 'fui-pivot__tab--active' : ''}`}
-                >
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
-                  {label}
-                </button>
-              ))}
+              ].map(({ value, label, icon: Icon }) => {
+                const locked = value === "profits" && !canViewProfit;
+                return (
+                  <button
+                    key={value}
+                    role="tab"
+                    aria-selected={viewMode === value}
+                    onClick={() => (locked ? setProfitUpgradeOpen(true) : setViewMode(value))}
+                    className={`fui-pivot__tab flex items-center gap-1.5 ${viewMode === value ? 'fui-pivot__tab--active' : ''}`}
+                    title={locked ? "Bénéfices — réservé au forfait Entreprise" : undefined}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    {label}
+                    {locked && <Lock className="h-3 w-3 ml-0.5" aria-hidden />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -2354,7 +2374,7 @@ const Sales = () => {
           </div>
         )}
 
-        {viewMode === "profits" && (
+        {viewMode === "profits" && canViewProfit && (
           <div className="space-y-4">
             <div className="ms-command-bar flex-wrap gap-y-2">
               <div>
@@ -2365,6 +2385,12 @@ const Sales = () => {
             <ProfitAnalysis />
           </div>
         )}
+
+        <UpgradeModal
+          open={profitUpgradeOpen}
+          onClose={() => setProfitUpgradeOpen(false)}
+          feature={FEATURE_KEYS.PROFIT_ANALYSIS}
+        />
 
         {viewMode === "clients" && (
           <div className="space-y-5">

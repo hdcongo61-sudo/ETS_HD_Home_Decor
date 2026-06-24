@@ -1,5 +1,8 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { buildCacheKey, writeCache, readCache, clearCache } from '../utils/offlineCache';
+
+let lastFeatureToastAt = 0;
 
 const DEV_API_CANDIDATES = ['http://localhost:5001/api', 'http://localhost:5002/api'];
 const DEV_API_STORAGE_KEY = 'ets_hd_api_base_url';
@@ -108,6 +111,16 @@ api.interceptors.response.use(
         api.defaults.baseURL = alternateBaseUrl;
         storeDevApiBaseUrl(alternateBaseUrl);
         return api.request(error.config);
+      }
+    }
+
+    // Plan/feature gating: surface a friendly message for any gated call that
+    // bypassed the UI guards (deep link, stale view). Throttled to avoid spam.
+    if (error.response?.status === 403 && error.response.data?.code === 'FEATURE_NOT_IN_PLAN') {
+      const now = Date.now();
+      if (now - lastFeatureToastAt > 2500) {
+        lastFeatureToastAt = now;
+        toast.error(error.response.data?.message || "Fonctionnalité non incluse dans votre forfait.");
       }
     }
 

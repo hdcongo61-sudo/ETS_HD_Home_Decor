@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import ProductImportModal from '../components/ProductImportModal';
 import Modal from '../components/Modal';
+import FeatureGate, { LockedFeatureButton } from '../components/FeatureGate';
+import { FEATURE_KEYS } from '../config/features';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
@@ -146,6 +148,13 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
+  }, [fetchProducts]);
+
+  // A sale created from the global modal decrements stock — refresh silently.
+  useEffect(() => {
+    const refresh = () => fetchProducts({ showLoading: false });
+    window.addEventListener('saleCreated', refresh);
+    return () => window.removeEventListener('saleCreated', refresh);
   }, [fetchProducts]);
 
   useEffect(() => {
@@ -306,18 +315,28 @@ const Products = () => {
               <Plus className="h-4 w-4" />
               Ajouter
             </Button>
-            <Button variant="secondary" size="sm" disabled={selectedIds.length === 0} onClick={() => setBulkOpen(true)}>
-              <Edit3 className="h-4 w-4" />
-              Modifier{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowImportModal(true)}
+            <FeatureGate
+              feature={FEATURE_KEYS.BULK_EDIT}
+              locked={<LockedFeatureButton feature={FEATURE_KEYS.BULK_EDIT} icon={<Edit3 className="h-4 w-4" />}>Modifier</LockedFeatureButton>}
             >
-              <FileSpreadsheet className="h-4 w-4" />
-              Importer Excel
-            </Button>
+              <Button variant="secondary" size="sm" disabled={selectedIds.length === 0} onClick={() => setBulkOpen(true)}>
+                <Edit3 className="h-4 w-4" />
+                Modifier{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+              </Button>
+            </FeatureGate>
+            <FeatureGate
+              feature={FEATURE_KEYS.PRODUCT_IMPORT}
+              locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_IMPORT} icon={<FileSpreadsheet className="h-4 w-4" />}>Importer Excel</LockedFeatureButton>}
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowImportModal(true)}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Importer Excel
+              </Button>
+            </FeatureGate>
             </div>
           </div>
           <div className="rounded-[var(--radiusMedium)] px-3 py-2 text-sm" style={{ background: selectedIds.length ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground2)', color: selectedIds.length ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground3)' }}>

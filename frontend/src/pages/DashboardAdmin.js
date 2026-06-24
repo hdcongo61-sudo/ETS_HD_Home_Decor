@@ -29,6 +29,8 @@ import {
 } from 'recharts';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
+import { FEATURE_KEYS } from '../config/features';
 import AppLoader from '../components/AppLoader';
 import { PageHeader, KPICard } from '../components/business';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -155,6 +157,7 @@ const buildSalesSummary = (salesStats, totalUsers = 0) => {
 
 const DashboardAdmin = () => {
   const { auth } = useContext(AuthContext);
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT);
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const [activeTab, setActiveTab] = useState('overview');
@@ -1214,24 +1217,30 @@ const DashboardAdmin = () => {
                     <Save className="h-4 w-4" />
                     {savingReportPreferences ? 'Enregistrement...' : 'Enregistrer'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={exportWeeklyExcel}
-                    disabled={reportActionLoading.length > 0}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
-                  >
-                    <Download className="h-4 w-4" />
-                    {reportActionLoading === 'excel' ? 'Export...' : 'Excel hebdo'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportWeeklyPdf}
-                    disabled={reportActionLoading.length > 0}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
-                  >
-                    <Download className="h-4 w-4" />
-                    {reportActionLoading === 'pdf' ? 'Export...' : 'PDF hebdo'}
-                  </button>
+                  {canExport ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={exportWeeklyExcel}
+                        disabled={reportActionLoading.length > 0}
+                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" />
+                        {reportActionLoading === 'excel' ? 'Export...' : 'Excel hebdo'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exportWeeklyPdf}
+                        disabled={reportActionLoading.length > 0}
+                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" />
+                        {reportActionLoading === 'pdf' ? 'Export...' : 'PDF hebdo'}
+                      </button>
+                    </>
+                  ) : (
+                    <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT}>Export hebdo</LockedFeatureButton>
+                  )}
                   <button
                     type="button"
                     onClick={sendWeeklyReminder}

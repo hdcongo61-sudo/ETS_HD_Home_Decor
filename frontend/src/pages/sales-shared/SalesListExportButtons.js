@@ -6,6 +6,8 @@ import { FileDown, FileSpreadsheet } from "lucide-react";
 import { useAppSettings } from "../../context/AppSettingsContext";
 import { resolveAppLogo } from "../../utils/appBranding";
 import { calculateSaleTotals, getPaymentStructureKey, getStatusText } from "../../utils/saleUtils";
+import { useFeature, LockedFeatureButton } from "../../components/FeatureGate";
+import { FEATURE_KEYS } from "../../config/features";
 
 const formatAmount = (value) => Number(value || 0).toLocaleString("fr-FR").replace(/\s/g, ".");
 
@@ -59,6 +61,7 @@ const getLogoDataUrl = async (logoUrl) => {
 
 const SalesListExportButtons = ({ sales = [], filenamePrefix = "ventes", label = "Exporter" }) => {
   const { appSettings } = useAppSettings();
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT);
   const [exporting, setExporting] = useState("");
   const branding = appSettings.branding;
   const logoUrl = resolveAppLogo(branding.logoUrl);
@@ -127,6 +130,10 @@ const SalesListExportButtons = ({ sales = [], filenamePrefix = "ventes", label =
       setExporting("");
     }
   };
+
+  if (!canExport) {
+    return <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT} icon={<FileDown className="h-4 w-4" />}>Exporter</LockedFeatureButton>;
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">

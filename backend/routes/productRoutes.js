@@ -25,6 +25,8 @@ const {
 } = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
+const { requireFeature } = require('../middlewares/featureMiddleware');
+const { FEATURE_KEYS } = require('../config/features');
 
 router.route('/never-sold').get(protect, getNeverSoldProducts);
 router.route('/slow-movers').get(protect, admin, getSlowMovingProducts);
@@ -51,10 +53,10 @@ router.route('/')
   .post(protect, admin, imageUpload.single('imageFile'), createProduct);
 
 router.route('/import')
-  .post(protect, admin, importProducts);
+  .post(protect, admin, requireFeature(FEATURE_KEYS.PRODUCT_IMPORT), importProducts);
 
 router.route('/bulk')
-  .put(protect, admin, bulkUpdateProducts);
+  .put(protect, admin, requireFeature(FEATURE_KEYS.BULK_EDIT), bulkUpdateProducts);
 
 router.route('/image-library')
   .get(protect, getImageLibrary);

@@ -3,6 +3,7 @@ const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const Client = require('../models/clientModel');
 const Proforma = require('../models/proformaModel');
+const StockReplacementReminder = require('../models/stockReplacementReminderModel');
 const User = require('../models/userModel');
 const Expense = require('../models/expenseModel');
 const DeletedSale = require('../models/deletedSaleModel');
@@ -501,7 +502,7 @@ const createSale = asyncHandler(async (req, res) => {
     }));
     const uniqueProductIds = [...new Set(requestedItems.map((item) => item.productId).filter(Boolean))];
     const productDocuments = await Product.find({ ...tenantFilter(req), _id: { $in: uniqueProductIds } })
-      .select('_id name stock costPrice')
+      .select('_id name stock costPrice warehouse')
       .lean();
     const productMap = new Map(productDocuments.map((product) => [String(product._id), product]));
     const requestedQuantities = new Map();
@@ -660,6 +661,55 @@ const createSale = asyncHandler(async (req, res) => {
     await session.commitTransaction();
     session.endSession();
     session = null;
+
+    const stockReplacementOperations = [...requestedQuantities.entries()]
+      .map(([productId, quantity]) => {
+        const product = productMap.get(productId);
+        const remainingStock = Math.max(0, (Number(product?.stock) || 0) - quantity);
+
+        if (!product || remainingStock <= 0) return null;
+
+        return {
+          updateOne: {
+            filter: {
+              tenantId: req.tenantId || null,
+              product: product._id,
+              status: 'pending',
+            },
+            update: {
+              // Insert-only fields. productName / warehouseName live in $set
+              // (kept fresh on every update); a field cannot appear in both
+              // $setOnInsert and $set or Mongo raises a path conflict.
+              $setOnInsert: {
+                tenantId: req.tenantId || null,
+                product: product._id,
+                status: 'pending',
+                createdBy: req.user?._id || null,
+              },
+              $set: {
+                productName: product.name,
+                warehouseName: product.warehouse || '',
+                currentStock: remainingStock,
+                lastSale: sale._id,
+                lastSaleAt: effectiveSaleDate,
+                updatedBy: req.user?._id || null,
+              },
+              $inc: {
+                quantityToReplace: quantity,
+              },
+              $addToSet: {
+                sales: sale._id,
+              },
+            },
+            upsert: true,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    if (stockReplacementOperations.length > 0) {
+      StockReplacementReminder.bulkWrite(stockReplacementOperations).catch(() => {});
+    }
 
     const clientNameForNotification = updatedClient?.name || '';
 
@@ -944,7 +994,7 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
 
     if (isDashboardSummary) {
       query = query
-        .select('_id saleNumber client products totalAmount saleType saleDate createdAt')
+        .select('_id saleNumber client products totalAmount saleType saleDate createdAt profitData')
         .populate('client', 'name')
         .populate('products.product', 'name price');
     } else {
@@ -955,6 +1005,12 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
     }
 
     const sales = await query.lean();
+
+    // Expected (accrual) gross profit is sensitive — strip it for users without
+    // the financials permission.
+    if (!hasUserPermission(req.user, 'view_sensitive_financials')) {
+      sales.forEach((s) => { delete s.profitData; });
+    }
 
     res.json(sales);
 
@@ -2696,7 +2752,7 @@ const getBestDays = asyncHandler(async (req, res) => {
       start.setTime(0);
   }
 
-  const [bestSales, bestPayments, bestExpenses] = await Promise.all([
+  const [bestSales, bestPayments, bestExpenses, bestPaidProfit, bestExpectedProfit] = await Promise.all([
     Sale.aggregate([
       {
         $match: {
@@ -2752,6 +2808,34 @@ const getBestDays = asyncHandler(async (req, res) => {
       },
       { $sort: { totalAmount: -1 } },
       { $limit: 1 }
+    ]),
+    // Best day by realized (collected) profit — margin carried by payments.
+    Sale.aggregate([
+      { $match: { saleDate: { $gte: start, $lte: end }, status: { $ne: 'cancelled' } } },
+      { $unwind: '$payments' },
+      { $match: { 'payments.paymentDate': { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$payments.paymentDate' } },
+          totalAmount: { $sum: { $ifNull: ['$payments.profit', 0] } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 1 }
+    ]),
+    // Best day by expected (accrual) profit — margin on the day's sales.
+    Sale.aggregate([
+      { $match: { saleDate: { $gte: start, $lte: end }, status: { $ne: 'cancelled' } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$saleDate' } },
+          totalAmount: { $sum: { $ifNull: ['$profitData.totalProfit', 0] } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 1 }
     ])
   ]);
 
@@ -2782,9 +2866,22 @@ const getBestDays = asyncHandler(async (req, res) => {
       { $match: { date: { $gte: s, $lte: e } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]))[0]?.total || 0;
+  const sumPaidProfit = async (s, e) =>
+    (await Sale.aggregate([
+      { $match: { saleDate: { $gte: s, $lte: e }, status: { $ne: 'cancelled' } } },
+      { $unwind: '$payments' },
+      { $match: { 'payments.paymentDate': { $gte: s, $lte: e } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$payments.profit', 0] } } } },
+    ]))[0]?.total || 0;
+  const sumExpectedProfit = async (s, e) =>
+    (await Sale.aggregate([
+      { $match: { saleDate: { $gte: s, $lte: e }, status: { $ne: 'cancelled' } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$profitData.totalProfit', 0] } } } },
+    ]))[0]?.total || 0;
 
-  const [salesTotal, paymentsTotal, expensesTotal] = await Promise.all([
+  const [salesTotal, paymentsTotal, expensesTotal, paidProfitTotal, expectedProfitTotal] = await Promise.all([
     sumSales(start, end), sumPayments(start, end), sumExpenses(start, end),
+    sumPaidProfit(start, end), sumExpectedProfit(start, end),
   ]);
 
   // Previous window of the same length, immediately before `start`.
@@ -2793,10 +2890,11 @@ const getBestDays = asyncHandler(async (req, res) => {
   if (['7days', '30days', 'year'].includes(range) && rangeMs > 0) {
     const prevEnd = new Date(start.getTime() - 1);
     const prevStart = new Date(start.getTime() - rangeMs);
-    const [ps, pp, pe] = await Promise.all([
+    const [ps, pp, pe, ppp, pep] = await Promise.all([
       sumSales(prevStart, prevEnd), sumPayments(prevStart, prevEnd), sumExpenses(prevStart, prevEnd),
+      sumPaidProfit(prevStart, prevEnd), sumExpectedProfit(prevStart, prevEnd),
     ]);
-    previousTotals = { sales: ps, payments: pp, expenses: pe };
+    previousTotals = { sales: ps, payments: pp, expenses: pe, paidProfit: ppp, expectedProfit: pep };
   }
 
   res.json({
@@ -2804,7 +2902,9 @@ const getBestDays = asyncHandler(async (req, res) => {
     sales: formatEntry(bestSales[0]),
     payments: formatEntry(bestPayments[0]),
     expenses: formatEntry(bestExpenses[0]),
-    totals: { sales: salesTotal, payments: paymentsTotal, expenses: expensesTotal },
+    paidProfit: formatEntry(bestPaidProfit[0]),
+    expectedProfit: formatEntry(bestExpectedProfit[0]),
+    totals: { sales: salesTotal, payments: paymentsTotal, expenses: expensesTotal, paidProfit: paidProfitTotal, expectedProfit: expectedProfitTotal },
     previousTotals,
   });
 });

@@ -4,17 +4,23 @@ import {
   AlertCircle,
   Banknote,
   Check,
+  ChevronDown,
   CreditCard,
   Loader2,
+  Package,
   ReceiptText,
   RefreshCw,
   Search,
+  User,
   Wallet,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
 import Modal from './Modal';
 import { PaymentForm } from './PaymentModal';
+import { StatusBadge } from './business';
+import { getSaleTypeText, getStatusText } from '../utils/saleUtils';
 
 const formatAmount = (value) =>
   `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
@@ -46,49 +52,117 @@ const PaymentModalSkeleton = () => (
   </div>
 );
 
-const SaleChoiceCard = ({ sale, active, onSelect }) => {
+const STATUS_TONES = {
+  completed: 'success',
+  partially_paid: 'warning',
+  pending: 'neutral',
+  cancelled: 'danger',
+};
+
+const lineTotal = (item) =>
+  (Number(item?.priceAtSale ?? item?.price ?? 0)) * (Number(item?.quantity) || 0);
+
+const SaleChoiceCard = ({ sale, active, expanded, onSelect, onToggleExpand }) => {
   const balance = calculateBalance(sale);
   const totalPaid = getTotalPaid(sale);
+  const products = Array.isArray(sale.products) ? sale.products : [];
+  const itemCount = products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+  const sellerName = sale.user?.name || '';
+  const paymentCount = Array.isArray(sale.payments) ? sale.payments.length : 0;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      className={`fluent-card-filled w-full p-4 text-left transition ${
-        active
-          ? 'ring-2 ring-[var(--ms-blue)]'
-          : 'hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow-sm)]'
+    <div
+      className={`fluent-card-filled overflow-hidden transition ${
+        active ? 'ring-2 ring-[var(--ms-blue)]' : 'hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow-sm)]'
       }`}
       style={active ? { borderColor: 'var(--ms-blue)', background: 'var(--ms-blue-soft)' } : undefined}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
-            {sale.client?.name || 'Client non spécifié'}
-          </p>
-          <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            Vente #{String(sale._id || '').slice(-6)} · {formatShortDate(sale.saleDate || sale.createdAt)}
-          </p>
+      {/* Selectable summary */}
+      <button type="button" onClick={onSelect} aria-pressed={active} className="w-full p-4 text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+              {sale.client?.name || 'Client non spécifié'}
+            </p>
+            <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              Vente #{String(sale._id || '').slice(-6)} · {formatShortDate(sale.saleDate || sale.createdAt)}
+            </p>
+          </div>
+          <StatusBadge tone={STATUS_TONES[sale.status] || 'neutral'}>{getStatusText(sale.status)}</StatusBadge>
         </div>
-        <span
-          className="shrink-0 rounded-full px-2.5 py-1 fui-caption1-strong"
-          style={{ background: active ? 'var(--ms-blue)' : 'var(--colorNeutralBackground3)', color: active ? '#fff' : 'var(--colorNeutralForeground2)' }}
-        >
-          Solde
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+            <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Total</span>
+            <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorNeutralForeground1)' }}>{formatAmount(sale.totalAmount)}</p>
+          </div>
+          <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+            <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Payé</span>
+            <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{formatAmount(totalPaid)}</p>
+          </div>
+          <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+            <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Restant</span>
+            <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{formatAmount(balance)}</p>
+          </div>
+        </div>
+      </button>
+
+      {/* Expand toggle */}
+      <div className="flex items-center justify-between gap-2 border-t px-4 py-2" style={{ borderColor: 'var(--ms-border)' }}>
+        <span className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          {itemCount} article{itemCount > 1 ? 's' : ''}{sellerName ? ` · ${sellerName}` : ''}
         </span>
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          aria-expanded={expanded}
+          className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radiusMedium)] px-2 py-1 fui-caption1-strong transition-colors hover:bg-[var(--ms-bg-subtle)]"
+          style={{ color: 'var(--colorBrandForeground1)' }}
+        >
+          {expanded ? 'Masquer' : 'Détails'}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
-          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Restant</span>
-          <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{formatAmount(balance)}</p>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="space-y-3 border-t px-4 py-3" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-white)' }}>
+          <div>
+            <p className="mb-1.5 flex items-center gap-1.5 fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.04em' }}>
+              <Package className="h-3.5 w-3.5" /> Produits
+            </p>
+            {products.length > 0 ? (
+              <ul className="space-y-1">
+                {products.map((p, i) => (
+                  <li key={p._id || i} className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      {p.product?.name || 'Produit'}
+                      <span className="ml-1" style={{ color: 'var(--colorNeutralForeground3)' }}>×{p.quantity}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{formatAmount(lineTotal(p))}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun détail produit.</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-2.5 fui-caption1" style={{ borderColor: 'var(--ms-border)', color: 'var(--colorNeutralForeground3)' }}>
+            <span className="inline-flex items-center gap-1">
+              <ReceiptText className="h-3.5 w-3.5" /> {getSaleTypeText(sale.saleType)}
+            </span>
+            {sellerName && (
+              <span className="inline-flex items-center gap-1">
+                <User className="h-3.5 w-3.5" /> {sellerName}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <CreditCard className="h-3.5 w-3.5" /> {paymentCount} paiement{paymentCount > 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
-        <div className="rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
-          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Payé</span>
-          <p className="fui-body1-strong mt-0.5" style={{ color: 'var(--colorNeutralForeground1)' }}>{formatAmount(totalPaid)}</p>
-        </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 };
 
@@ -117,6 +191,7 @@ const GlobalPaymentModal = () => {
   const isOpen = activeModal === 'payment';
   const [sales, setSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState('');
+  const [expandedSaleId, setExpandedSaleId] = useState(null);
   const [saleSearch, setSaleSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -142,6 +217,7 @@ const GlobalPaymentModal = () => {
     if (!isOpen) return;
     fetchOpenSales();
     setSelectedSale('');
+    setExpandedSaleId(null);
     setSaleSearch('');
     setIsSubmitting(false);
   }, [fetchOpenSales, isOpen]);
@@ -184,6 +260,7 @@ const GlobalPaymentModal = () => {
     await api.post(`/sales/${selectedSaleData._id}/payments`, payload);
     closeModal();
     window.dispatchEvent(new CustomEvent('paymentCreated'));
+    toast.success('Paiement enregistré — données à jour.');
   };
 
   if (!isOpen) return null;
@@ -193,7 +270,7 @@ const GlobalPaymentModal = () => {
       isOpen={isOpen}
       onClose={closeModal}
       title="Ajouter un paiement"
-      subtitle="Choisissez une vente ouverte, puis encaissez le paiement."
+      subtitle="Choisissez une vente ouverte, dépliez-la pour voir les produits, puis encaissez."
       size="xl"
       mobileFullscreen
       suppressGlobal={false}
@@ -295,7 +372,9 @@ const GlobalPaymentModal = () => {
                     key={sale._id}
                     sale={sale}
                     active={selectedSale === sale._id}
+                    expanded={expandedSaleId === sale._id}
                     onSelect={() => setSelectedSale(sale._id)}
+                    onToggleExpand={() => setExpandedSaleId((prev) => (prev === sale._id ? null : sale._id))}
                   />
                 ))
               )}
@@ -304,12 +383,49 @@ const GlobalPaymentModal = () => {
 
           <section className="min-w-0">
             {selectedSaleData ? (
-              <PaymentForm
-                sale={selectedSaleData}
-                onAddPayment={handleAddPayment}
-                formId="global-payment-form"
-                onSubmittingChange={setIsSubmitting}
-              />
+              <div className="space-y-4">
+                {/* Selected sale — product breakdown (complements the totals/history in the form below) */}
+                {Array.isArray(selectedSaleData.products) && selectedSaleData.products.length > 0 && (
+                  <div className="fluent-card-filled p-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="inline-flex items-center gap-1.5 fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.04em' }}>
+                        <Package className="h-3.5 w-3.5" /> Produits de la vente
+                      </p>
+                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        Vente #{String(selectedSaleData._id || '').slice(-6)}
+                      </span>
+                    </div>
+                    <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
+                      {selectedSaleData.products.map((p, i) => (
+                        <li key={p._id || i} className="flex items-baseline justify-between gap-2 text-sm">
+                          <span className="min-w-0 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                            {p.product?.name || 'Produit'}
+                            <span className="ml-1" style={{ color: 'var(--colorNeutralForeground3)' }}>×{p.quantity}</span>
+                          </span>
+                          <span className="shrink-0 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{formatAmount(lineTotal(p))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-2.5 fui-caption1" style={{ borderColor: 'var(--ms-border)', color: 'var(--colorNeutralForeground3)' }}>
+                      <span className="inline-flex items-center gap-1">
+                        <ReceiptText className="h-3.5 w-3.5" /> {getSaleTypeText(selectedSaleData.saleType)}
+                      </span>
+                      {selectedSaleData.user?.name && (
+                        <span className="inline-flex items-center gap-1">
+                          <User className="h-3.5 w-3.5" /> {selectedSaleData.user.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <PaymentForm
+                  sale={selectedSaleData}
+                  onAddPayment={handleAddPayment}
+                  formId="global-payment-form"
+                  onSubmittingChange={setIsSubmitting}
+                />
+              </div>
             ) : (
               <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] px-6 text-center">
                 <Wallet className="h-10 w-10" style={{ color: 'var(--colorNeutralForeground3)' }} />

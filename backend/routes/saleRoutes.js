@@ -28,11 +28,13 @@ const {
   getBestDays
 } = require('../controllers/saleController');
 const { getProfitAnalytics, getProfitReport } = require('../controllers/profitController');
+const { requireFeature } = require('../middlewares/featureMiddleware');
+const { FEATURE_KEYS } = require('../config/features');
 
 
-// Nouvelles routes pour l'analyse des bénéfices
-router.route('/profit-analytics').get(protect, getProfitAnalytics);
-router.route('/profit-report').get(protect, getProfitReport);
+// Nouvelles routes pour l'analyse des bénéfices (forfait Entreprise)
+router.route('/profit-analytics').get(protect, requireFeature(FEATURE_KEYS.PROFIT_ANALYSIS), getProfitAnalytics);
+router.route('/profit-report').get(protect, requireFeature(FEATURE_KEYS.PROFIT_ANALYSIS), getProfitReport);
 
 router.route('/user/:userId')
   .get(protect, getUserSales)

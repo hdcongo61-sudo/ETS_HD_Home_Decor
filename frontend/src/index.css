@@ -1433,50 +1433,6 @@ button:focus {
   box-shadow: var(--shadow4);
 }
 
-.fluent-nav-rail__header {
-  display: flex;
-  align-items: center;
-  padding: 10px 8px;
-  min-height: 52px;
-  border-bottom: 1px solid var(--colorNeutralStroke2);
-  flex-shrink: 0;
-}
-
-.fluent-nav-rail__logo-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: var(--radiusLarge);
-  padding: 5px 6px;
-  min-width: 0;
-  text-decoration: none;
-  transition: background-color 120ms;
-  width: 100%;
-}
-
-.fluent-nav-rail__logo-btn:hover {
-  background: var(--colorNeutralBackground3);
-}
-
-.fluent-nav-rail__logo-img {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radiusMedium);
-  border: 1px solid var(--colorNeutralStroke2);
-  object-fit: contain;
-  background: white;
-  flex-shrink: 0;
-}
-
-.fluent-nav-rail__logo-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--colorNeutralForeground1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .fluent-nav-rail__nav {
   flex: 1;
   overflow-y: auto;

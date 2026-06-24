@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import {
   Building2, Users, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
-  ChevronDown, Clock, Search, Plus, Download, LogIn, Trash2, X,
-  Package, ShoppingCart, StickyNote, TrendingUp, Wallet, Receipt,
+  Clock, Search, Plus, Download, LogIn, Trash2, X,
+  Package, TrendingUp, Wallet, Receipt,
   CreditCard, History, BadgeDollarSign, Activity, ArrowRight, Zap,
   Layers, Save, Pencil, BarChart3, TrendingDown, Boxes, AlertCircle,
   RotateCcw, BookOpen, LifeBuoy,
 } from 'lucide-react';
-import { EmptyState, LoadingSkeleton, PageHeader, Workspace } from '../components/business';
+import { AreaChart, Area, BarChart, Bar, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, PieChart, Pie, Cell } from 'recharts';
+import { EmptyState, LoadingSkeleton, PageHeader, RightDetailPanel, Workspace } from '../components/business';
+import { FEATURE_LABELS } from '../config/features';
+
+const PLAN_COLORS = { trial: '#F59E0B', basic: '#0EA5E9', pro: '#0F6CBD', enterprise: '#7C3AED' };
 
 /* ─── Helpers ─────────────────────────────────────────── */
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR');
@@ -53,13 +57,27 @@ const StatusBadge = ({ status }) => {
   return <span className={`ms-status-badge ms-status-${m.tone}`}>{m.label}</span>;
 };
 
-const Kpi = ({ label, value, sub, accent }) => (
-  <div className="ms-kpi-card">
-    <div>
-      <p className="ms-kpi-title">{label}</p>
-      <p className="ms-kpi-value" style={{ fontSize: 22, color: accent || 'var(--colorNeutralForeground1)' }}>{value}</p>
-      {sub && <p className="ms-kpi-context">{sub}</p>}
+const Kpi = ({ label, value, sub, accent = 'var(--colorBrandForeground1)', icon: Icon, trend }) => (
+  <div className="ms-kpi-card" style={{ position: 'relative', overflow: 'hidden' }}>
+    <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: accent }} />
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="ms-kpi-title">{label}</p>
+        <p className="ms-kpi-value tabular-nums" style={{ fontSize: 24 }}>{value}</p>
+        {sub && <p className="ms-kpi-context">{sub}</p>}
+      </div>
+      {Icon && (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radiusMedium)]" style={{ background: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent }}>
+          <Icon size={18} />
+        </span>
+      )}
     </div>
+    {trend != null && Number.isFinite(trend) && (
+      <span className="mt-2 inline-flex items-center gap-1 fui-caption1-strong" style={{ color: trend >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>
+        {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+        <span style={{ color: 'var(--colorNeutralForeground3)', fontWeight: 400 }}>vs mois préc.</span>
+      </span>
+    )}
   </div>
 );
 
@@ -374,6 +392,16 @@ const SupportTab = ({ onCountChange }) => {
   }, [status, category, q, onCountChange]);
   useEffect(() => { load(); }, [load]);
 
+  // Unread first, then open before resolved, then most recent.
+  const sorted = useMemo(() => [...tickets].sort((a, b) => {
+    const au = a.unreadForSupport > 0 ? 1 : 0, bu = b.unreadForSupport > 0 ? 1 : 0;
+    if (au !== bu) return bu - au;
+    const ao = a.status !== 'resolved' ? 1 : 0, bo = b.status !== 'resolved' ? 1 : 0;
+    if (ao !== bo) return bo - ao;
+    return new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0);
+  }), [tickets]);
+  const unreadCount = tickets.reduce((n, t) => n + (t.unreadForSupport > 0 ? 1 : 0), 0);
+
   if (openId) return <AdminTicketThread id={openId} onBack={() => { setOpenId(null); load(); }} onChanged={onCountChange} />;
 
   return (
@@ -396,27 +424,46 @@ const SupportTab = ({ onCountChange }) => {
       ) : tickets.length === 0 ? (
         <EmptyState title="Aucun message" description="Aucune boutique n'a contacté le support pour ces filtres." />
       ) : (
-        <div className="space-y-2">
-          {tickets.map((t) => (
-            <button key={t._id} type="button" onClick={() => setOpenId(t._id)} className="fluent-card-filled flex w-full items-center gap-3 p-4 text-left transition hover:brightness-[0.98]">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.subject}</p>
-                  {t.unreadForSupport > 0 && (
-                    <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: 'var(--colorStatusDangerForeground1)' }}>{t.unreadForSupport}</span>
-                  )}
-                </div>
-                <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                  {t.tenantName || 'Boutique'} · {SUPPORT_CATS[t.category] || t.category} · {t.lastMessage ? `${t.lastMessage.sender === 'support' ? 'Vous : ' : ''}${t.lastMessage.body}` : ''}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`ms-status-badge ${t.status === 'resolved' ? 'ms-status-success' : 'ms-status-warning'}`}>{t.status === 'resolved' ? 'Résolu' : 'Ouvert'}</span>
-                <span className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{fmtDateTime(t.lastMessageAt)}</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(tickets.length)}</span> conversation{tickets.length > 1 ? 's' : ''}
+            </p>
+            {unreadCount > 0 && <span className="ms-status-badge ms-status-danger">{unreadCount} non lu{unreadCount > 1 ? 's' : ''}</span>}
+          </div>
+          <div className="space-y-2">
+            {sorted.map((t) => {
+              const unread = t.unreadForSupport > 0;
+              return (
+                <button
+                  key={t._id}
+                  type="button"
+                  onClick={() => setOpenId(t._id)}
+                  className="fluent-card-filled flex w-full items-center gap-3 p-4 text-left transition hover:brightness-[0.98]"
+                  style={unread ? { borderLeft: '3px solid var(--colorStatusDangerForeground1)', background: 'var(--colorStatusDangerBackground1)' } : undefined}
+                >
+                  {unread && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: 'var(--colorStatusDangerForeground1)' }} aria-hidden />}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className={`truncate ${unread ? 'fui-body1-strong' : 'fui-body1'}`} style={{ color: 'var(--colorNeutralForeground1)' }}>{t.subject}</p>
+                      {unread && (
+                        <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: 'var(--colorStatusDangerForeground1)' }}>{t.unreadForSupport}</span>
+                      )}
+                    </div>
+                    <p className="fui-caption1 mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      <span className="rounded px-1.5 py-0.5" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground2)' }}>{SUPPORT_CATS[t.category] || t.category}</span>
+                      {' · '}{t.tenantName || 'Boutique'}{t.lastMessage ? ` · ${t.lastMessage.sender === 'support' ? 'Vous : ' : ''}${t.lastMessage.body}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`ms-status-badge ${t.status === 'resolved' ? 'ms-status-success' : 'ms-status-warning'}`}>{t.status === 'resolved' ? 'Résolu' : 'Ouvert'}</span>
+                    <span className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{fmtDateTime(t.lastMessageAt)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
@@ -614,16 +661,21 @@ const SuperAdmin = () => {
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState(null);
   const [supportUnread, setSupportUnread] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   const fetchSupportUnread = useCallback(() => {
     api.get('/support/admin/unread').then(({ data }) => setSupportUnread(data?.unread || 0)).catch(() => {});
   }, []);
-  useEffect(() => { fetchSupportUnread(); }, [fetchSupportUnread]);
+  useEffect(() => {
+    fetchSupportUnread();
+    const id = setInterval(fetchSupportUnread, 60000); // live unread badge
+    return () => clearInterval(id);
+  }, [fetchSupportUnread]);
 
   useEffect(() => { if (!auth.isLoading && !auth.isSuperAdmin) navigate('/', { replace: true }); }, [auth, navigate]);
 
   const fetchTenants = useCallback(async () => {
-    try { setLoading(true); const { data } = await api.get('/tenants'); setTenants(data); }
+    try { setLoading(true); const { data } = await api.get('/tenants'); setTenants(data); setLastRefresh(Date.now()); }
     catch (err) { setError(err.response?.data?.message || 'Erreur de chargement.'); }
     finally { setLoading(false); }
   }, []);
@@ -664,9 +716,15 @@ const SuperAdmin = () => {
         title="Super Admin"
         description="Pilotez l'ensemble des boutiques : revenus, abonnements, supervision et journal."
         actions={
-          <button onClick={fetchTenants} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
-            <RefreshCw size={14} /> Actualiser
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="hidden items-center gap-1.5 fui-caption1 sm:inline-flex" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--colorStatusSuccessForeground1)' }} />
+              {lastRefresh ? `Mis à jour à ${new Date(lastRefresh).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'En direct'}
+            </span>
+            <button onClick={fetchTenants} disabled={loading} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5 disabled:opacity-60">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualiser
+            </button>
+          </div>
         }
       />
 
@@ -703,28 +761,80 @@ const SuperAdmin = () => {
 const OverviewTab = ({ onJump }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    (async () => {
-      try { const { data } = await api.get('/tenants/stats/overview'); setStats(data); }
-      catch { /* ignore */ } finally { setLoading(false); }
-    })();
+  const load = useCallback(async (initial) => {
+    try { const { data } = await api.get('/tenants/stats/overview'); setStats(data); }
+    catch { /* ignore */ } finally { if (initial) setLoading(false); }
   }, []);
+  useEffect(() => {
+    load(true);
+    const id = setInterval(() => load(false), 60000); // silent background refresh
+    return () => clearInterval(id);
+  }, [load]);
 
   if (loading) return <LoadingSkeleton rows={6} />;
   if (!stats) return <EmptyState title="Statistiques indisponibles" />;
 
-  const { revenue, funnel, signups, planDist, attention } = stats;
-  const maxSignup = Math.max(1, ...Object.values(signups));
+  const { revenue, funnel, signups, planDist, attention, growth = {}, churnRate = 0 } = stats;
   const attentionTotal = attention.trialsExpiring.length + attention.paymentsOverdue.length + attention.dormant.length + attention.nearLimit.length;
+
+  const growthData = Object.entries(growth).map(([m, v]) => ({ month: m.slice(5), Nouvelles: v.new || 0, Perdues: v.lost || 0 }));
+  const totalNew = growthData.reduce((s, d) => s + d.Nouvelles, 0);
+  const totalLost = growthData.reduce((s, d) => s + d.Perdues, 0);
+
+  const signupEntries = Object.entries(signups);
+  const signupData = signupEntries.map(([month, count]) => ({ month: month.slice(5), count }));
+  const lastSignup = signupEntries.length ? signupEntries[signupEntries.length - 1][1] : 0;
+  const prevSignup = signupEntries.length > 1 ? signupEntries[signupEntries.length - 2][1] : 0;
+  const signupTrend = prevSignup > 0 ? Math.round(((lastSignup - prevSignup) / prevSignup) * 100) : null;
+  const planTotal = Object.values(planDist).reduce((a, b) => a + b, 0) || 1;
+  const planData = PLAN_OPTIONS.map(([k]) => ({ key: k, name: PLAN_LABELS[k], value: planDist[k] || 0 }));
+
+  const tooltipStyle = { background: 'var(--ms-white)', border: '1px solid var(--colorNeutralStroke2)', borderRadius: 8, fontSize: 12, boxShadow: 'var(--ms-shadow-sm)' };
+
+  const exportCsv = () => {
+    const rows = [['Section', 'Métrique', 'Valeur']];
+    rows.push(['Revenu', 'MRR (CFA)', Math.round(revenue.mrr || 0)]);
+    rows.push(['Revenu', 'ARR (CFA)', Math.round(revenue.arr || 0)]);
+    rows.push(['Revenu', 'Encaissé ce mois (CFA)', Math.round(revenue.revenueThisMonth || 0)]);
+    rows.push(['Boutiques', 'Total', funnel.total]);
+    rows.push(['Boutiques', 'Payantes', funnel.paying]);
+    rows.push(['Boutiques', 'Essais', funnel.trials]);
+    rows.push(['Boutiques', 'Suspendues', funnel.suspended]);
+    rows.push(['Boutiques', 'Perdues', funnel.churned]);
+    PLAN_OPTIONS.forEach(([k, v]) => {
+      const count = planDist[k] || 0;
+      rows.push([`Plan ${v}`, 'Nombre', count]);
+      rows.push([`Plan ${v}`, 'Revenu mensuel (CFA)', count * PLAN_PRICES[k]]);
+    });
+    signupEntries.forEach(([month, count]) => rows.push(['Inscriptions', month, count]));
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `plateforme-apercu-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   return (
     <div className="space-y-4">
+      {/* Section header + export */}
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Vue d'ensemble de la plateforme</p>
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Revenus, abonnements et signaux d'attention</p>
+        </div>
+        <button onClick={exportCsv} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
+          <Download size={14} /> Exporter
+        </button>
+      </div>
+
       {/* Revenue */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="MRR (revenu mensuel)" value={money(revenue.mrr)} sub="Boutiques actives" accent="var(--colorStatusSuccessForeground1)" />
-        <Kpi label="ARR (annualisé)" value={money(revenue.arr)} sub="MRR × 12" />
-        <Kpi label="Encaissé ce mois" value={money(revenue.revenueThisMonth)} sub="Paiements enregistrés" accent="var(--colorBrandForeground1)" />
-        <Kpi label="Boutiques payantes" value={fmt(funnel.paying)} sub={`sur ${fmt(funnel.total)} au total`} />
+        <Kpi label="MRR (revenu mensuel)" value={money(revenue.mrr)} sub="Boutiques actives" accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
+        <Kpi label="ARR (annualisé)" value={money(revenue.arr)} sub="MRR × 12" accent="#7C3AED" icon={TrendingUp} />
+        <Kpi label="Encaissé ce mois" value={money(revenue.revenueThisMonth)} sub="Paiements enregistrés" accent="var(--colorBrandForeground1)" icon={Receipt} />
+        <Kpi label="Boutiques payantes" value={fmt(funnel.paying)} sub={`sur ${fmt(funnel.total)} au total`} accent="var(--colorStatusWarningForeground1)" icon={Building2} />
       </div>
 
       <PlanRequests />
@@ -740,7 +850,7 @@ const OverviewTab = ({ onJump }) => {
             { label: 'Suspendues', value: funnel.suspended, color: 'var(--colorStatusDangerForeground1)' },
             { label: 'Perdues', value: funnel.churned, color: 'var(--colorNeutralForeground3)' },
           ].map((f) => (
-            <div key={f.label} className="rounded-[var(--radiusLarge)] p-3 text-center" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+            <div key={f.label} className="rounded-[var(--radiusLarge)] p-3 text-center" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)', borderTop: `3px solid ${f.color}` }}>
               <p className="fui-title2 tabular-nums" style={{ color: f.color }}>{fmt(f.value)}</p>
               <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{f.label}</p>
             </div>
@@ -751,40 +861,99 @@ const OverviewTab = ({ onJump }) => {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Signups */}
         <div className="fluent-card-filled p-5">
-          <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Inscriptions (6 derniers mois)</p>
-          <div className="flex items-end justify-between gap-2 h-32">
-            {Object.entries(signups).map(([month, count]) => (
-              <div key={month} className="flex-1 flex flex-col items-center gap-1.5">
-                <span className="fui-caption2 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{count}</span>
-                <div className="w-full rounded-t-[var(--radiusMedium)]" style={{ height: `${(count / maxSignup) * 100}%`, minHeight: count ? 4 : 0, background: 'var(--colorBrandBackground)' }} />
-                <span className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{month.slice(5)}</span>
-              </div>
-            ))}
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Inscriptions (6 derniers mois)</p>
+            {signupTrend != null && (
+              <span className="inline-flex items-center gap-1 fui-caption1-strong" style={{ color: signupTrend >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>
+                {signupTrend >= 0 ? '↑' : '↓'} {Math.abs(signupTrend)}%
+              </span>
+            )}
+          </div>
+          <div style={{ height: 160 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={signupData} margin={{ top: 6, right: 6, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="sa-signups" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0F6CBD" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="#0F6CBD" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} />
+                <RTooltip contentStyle={tooltipStyle} formatter={(v) => [v, 'Inscriptions']} labelFormatter={(l) => `Mois ${l}`} />
+                <Area type="monotone" dataKey="count" stroke="#0F6CBD" strokeWidth={2.5} fill="url(#sa-signups)" dot={{ r: 2.5, fill: '#0F6CBD' }} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Plan distribution */}
         <div className="fluent-card-filled p-5">
           <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Répartition par plan</p>
-          <div className="space-y-3">
-            {PLAN_OPTIONS.map(([k, v]) => {
-              const count = planDist[k] || 0;
-              const total = Object.values(planDist).reduce((a, b) => a + b, 0) || 1;
-              const pct = (count / total) * 100;
-              return (
-                <div key={k}>
-                  <div className="flex justify-between fui-caption1 mb-1">
-                    <span style={{ color: 'var(--colorNeutralForeground2)' }}>{v} <span style={{ color: 'var(--colorNeutralForeground3)' }}>· {money(PLAN_PRICES[k])}/mois</span></span>
-                    <span className="tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{count}</span>
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
+            <div className="relative shrink-0" style={{ width: 150, height: 150 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={planData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={72} paddingAngle={2} stroke="none">
+                    {planData.map((d) => <Cell key={d.key} fill={PLAN_COLORS[d.key]} />)}
+                  </Pie>
+                  <RTooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="fui-title2 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(planTotal)}</span>
+                <span className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>boutiques</span>
+              </div>
+            </div>
+            <div className="w-full flex-1 space-y-2">
+              {PLAN_OPTIONS.map(([k, v]) => {
+                const count = planDist[k] || 0;
+                const pct = Math.round((count / planTotal) * 100);
+                return (
+                  <div key={k} className="flex items-center gap-2 text-sm">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PLAN_COLORS[k] }} />
+                    <span className="min-w-0 flex-1 truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>{v}</span>
+                    <span className="tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{money(count * PLAN_PRICES[k])}/m</span>
+                    <span className="w-10 text-right tabular-nums font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>{count} <span className="font-normal" style={{ color: 'var(--colorNeutralForeground3)' }}>({pct}%)</span></span>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--colorNeutralBackground3)' }}>
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--colorBrandBackground)' }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Growth & retention */}
+      <div className="fluent-card-filled p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Croissance & rétention</p>
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Nouvelles boutiques contre boutiques suspendues (6 mois)</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Taux d'attrition (mois)</p>
+              <p className="fui-subtitle2 tabular-nums" style={{ color: churnRate > 5 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorStatusSuccessForeground1)' }}>{churnRate}%</p>
+            </div>
+            <div className="text-right">
+              <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Net (6 mois)</p>
+              <p className="fui-subtitle2 tabular-nums" style={{ color: totalNew - totalLost >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}>{totalNew - totalLost >= 0 ? '+' : ''}{fmt(totalNew - totalLost)}</p>
+            </div>
+          </div>
+        </div>
+        <div style={{ height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={growthData} margin={{ top: 6, right: 6, left: -24, bottom: 0 }} barGap={2}>
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} />
+              <RTooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--colorNeutralBackground2)' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+              <Bar dataKey="Nouvelles" fill="#107C10" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="Perdues" fill="#D13438" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {totalLost === 0 && totalNew === 0 && (
+          <p className="mt-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Pas encore de mouvement enregistré sur la période.</p>
+        )}
       </div>
 
       {/* Attention queue */}
@@ -834,29 +1003,219 @@ const COLS = 'grid-cols-[minmax(0,1fr)_116px_132px_64px_64px_132px]';
 const usagePct = (used, max) => (max ? Math.min(100, Math.round((used / max) * 100)) : 0);
 
 /* ─── TAB: Tenants (realigned) ────────────────────────── */
+const FEATURE_OVERRIDE_OPTIONS = [
+  { value: 'inherit', label: 'Hérité' },
+  { value: 'on', label: 'Activé' },
+  { value: 'off', label: 'Désactivé' },
+];
+
+// Per-shop feature overrides editor (super-admin): force a feature on/off for
+// one boutique independently of its forfait.
+const TenantFeatureOverrides = ({ tenant, onSaved }) => {
+  const overridesKey = JSON.stringify(tenant.featureOverrides || {});
+  const initial = useMemo(() => {
+    const o = tenant.featureOverrides || {};
+    const map = {};
+    Object.keys(FEATURE_LABELS).forEach((k) => {
+      map[k] = o[k] === true ? 'on' : o[k] === false ? 'off' : 'inherit';
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overridesKey]);
+
+  const [draft, setDraft] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setDraft(initial); }, [initial]);
+
+  const dirty = Object.keys(FEATURE_LABELS).some((k) => draft[k] !== initial[k]);
+
+  const save = async () => {
+    try {
+      setSaving(true);
+      const featureOverrides = {};
+      Object.entries(draft).forEach(([k, v]) => {
+        if (v === 'on') featureOverrides[k] = true;
+        else if (v === 'off') featureOverrides[k] = false;
+      });
+      const { data } = await api.put(`/tenants/${tenant._id}`, { featureOverrides });
+      onSaved?.(data.featureOverrides || featureOverrides);
+      toast.success('Dérogations enregistrées.');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}>
+      <p className="fui-subtitle2 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
+        <span aria-hidden>🧩</span> Dérogations de fonctionnalités
+      </p>
+      <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        Forcer l'activation ou la désactivation pour cette boutique, indépendamment de son forfait.
+      </p>
+      <div className="mt-3 space-y-2">
+        {Object.entries(FEATURE_LABELS).map(([k, label]) => (
+          <div key={k} className="flex items-center justify-between gap-3">
+            <span className="text-sm" style={{ color: 'var(--colorNeutralForeground2)' }}>{label}</span>
+            <div className="inline-flex shrink-0 rounded-[var(--radiusMedium)] border p-0.5" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+              {FEATURE_OVERRIDE_OPTIONS.map((opt) => {
+                const active = draft[k] === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDraft((p) => ({ ...p, [k]: opt.value }))}
+                    className={`rounded px-2 py-1 text-xs font-medium transition-colors ${active ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--colorNeutralForeground3)] hover:bg-[var(--colorNeutralBackground2)]'}`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button onClick={save} disabled={!dirty || saving} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 disabled:opacity-50">
+          <Save size={13} /> {saving ? '...' : 'Enregistrer'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Tenant detail drawer (config, limits, overrides, danger zone) ─── */
+const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelete, onImpersonate, updating }) => {
+  const [edit, setEdit] = useState(null);
+  const [savingLimits, setSavingLimits] = useState(false);
+  const [dial, setDial] = useState('');
+  const [savingDial, setSavingDial] = useState(false);
+
+  const tenantId = tenant?._id;
+  useEffect(() => { setEdit(null); setDial(tenant?.dialCode || ''); }, [tenantId, tenant?.dialCode]);
+
+  if (!tenant) return null;
+  const t = tenant;
+  const isUpdating = updating === t._id;
+
+  const saveLimits = async () => {
+    if (!edit) return;
+    try {
+      setSavingLimits(true);
+      const { data } = await api.put(`/tenants/${t._id}`, edit);
+      onPatch(t._id, { maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice });
+      setEdit(null);
+    } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
+    finally { setSavingLimits(false); }
+  };
+
+  const saveDial = async () => {
+    try {
+      setSavingDial(true);
+      const { data } = await api.put(`/tenants/${t._id}`, { dialCode: dial });
+      onPatch(t._id, { dialCode: data.dialCode });
+      setDial(data.dialCode || '');
+    } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
+    finally { setSavingDial(false); }
+  };
+
+  return (
+    <RightDetailPanel
+      isOpen={Boolean(tenant)}
+      onClose={onClose}
+      title={t.name}
+      subtitle={`${t.code} · ${t.ownerEmail}`}
+      footer={
+        <button onClick={() => onImpersonate(t._id)} disabled={isUpdating} className="ms-button ms-button-secondary ms-button-md flex items-center gap-1.5 disabled:opacity-60">
+          <LogIn size={14} /> Superviser la boutique
+        </button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <StatusBadge status={t.status} />
+          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Plan : <strong style={{ color: 'var(--colorNeutralForeground1)' }}>{PLAN_LABELS[t.plan]}</strong></span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Propriétaire', value: t.ownerName },
+            { label: 'Téléphone', value: t.ownerPhone || '—' },
+            { label: 'Créée le', value: fmtDate(t.createdAt) },
+            { label: 'Dernière activité', value: relativeDays(t.stats?.lastActiveAt) },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+              <p className="fui-body1-strong mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Editable limits */}
+        <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="fui-subtitle2 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}><BadgeDollarSign size={15} /> Limites & tarif</p>
+            {!edit
+              ? <button onClick={() => setEdit({ maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice })} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"><Pencil size={13} /> Modifier</button>
+              : (
+                <div className="flex gap-2">
+                  <button onClick={() => setEdit(null)} className="ms-button ms-button-secondary ms-button-sm">Annuler</button>
+                  <button onClick={saveLimits} disabled={savingLimits} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1"><Save size={13} /> {savingLimits ? '...' : 'Enregistrer'}</button>
+                </div>
+              )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <LimitField label="Max utilisateurs" used={t.stats?.userCount} editing={Boolean(edit)} value={edit ? edit.maxUsers : t.maxUsers} onChange={(v) => setEdit((p) => ({ ...p, maxUsers: v }))} />
+            <LimitField label="Max produits" used={t.stats?.productCount} editing={Boolean(edit)} value={edit ? edit.maxProducts : t.maxProducts} onChange={(v) => setEdit((p) => ({ ...p, maxProducts: v }))} />
+            <LimitField label="Prix mensuel (CFA)" editing={Boolean(edit)} value={edit ? edit.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdit((p) => ({ ...p, monthlyPrice: v }))} />
+          </div>
+        </div>
+
+        {/* WhatsApp dial code */}
+        <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+          <p className="fui-subtitle2 flex items-center gap-1.5 mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}><span aria-hidden>💬</span> Indicatif pays (WhatsApp)</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="text" value={dial} onChange={(e) => setDial(e.target.value)} placeholder="+242" className="form-control text-sm" style={{ maxWidth: 140 }} />
+            <button onClick={saveDial} disabled={savingDial || dial === (t.dialCode || '')} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 disabled:opacity-50"><Save size={13} /> {savingDial ? '...' : 'Enregistrer'}</button>
+          </div>
+          <p className="fui-caption2 mt-2" style={{ color: 'var(--colorNeutralForeground3)' }}>Préfixe ajouté aux numéros pour les rappels WhatsApp clients (ex. +242 pour le Congo).</p>
+        </div>
+
+        {/* Feature overrides */}
+        <TenantFeatureOverrides tenant={t} onSaved={(fo) => onPatch(t._id, { featureOverrides: fo })} />
+
+        {/* Danger zone */}
+        <div className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorStatusDangerBackground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
+          <p className="fui-caption1 mb-2" style={{ color: 'var(--colorStatusDangerForeground1)' }}>Actions sensibles</p>
+          <div className="flex flex-wrap gap-2">
+            {t.status !== 'suspended'
+              ? <button onClick={() => onStatus(t._id, 'suspended')} disabled={isUpdating} className="ms-button ms-button-danger ms-button-sm">Suspendre</button>
+              : <button onClick={() => onStatus(t._id, 'active')} disabled={isUpdating} className="ms-button ms-button-secondary ms-button-sm">Réactiver</button>}
+            <button onClick={() => onRequestDelete(t._id)} disabled={isUpdating} className="ms-button ms-button-danger ms-button-sm flex items-center gap-1"><Trash2 size={13} /> Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </RightDetailPanel>
+  );
+};
+
 const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonate, setTenants }) => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPlan, setFilterPlan] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
-  const [edits, setEdits] = useState({});      // per-tenant {maxUsers,maxProducts,monthlyPrice}
-  const [savingId, setSavingId] = useState(null);
+  const [detailId, setDetailId] = useState(null); // tenant open in the config drawer
   const [statsTenant, setStatsTenant] = useState(null); // tenant whose stats profile is open
-  const [dialDraft, setDialDraft] = useState({}); // per-tenant WhatsApp dial code draft
-  const [savingDial, setSavingDial] = useState(null);
+  const [selected, setSelected] = useState(() => new Set()); // bulk selection
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkPlan, setBulkPlan] = useState('');
+  const [confirmPlan, setConfirmPlan] = useState(false);
 
-  const saveDialCode = async (id) => {
-    const value = dialDraft[id] ?? '';
-    try {
-      setSavingDial(id);
-      const { data } = await api.put(`/tenants/${id}`, { dialCode: value });
-      setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, dialCode: data.dialCode } : t)));
-      setDialDraft((p) => { const n = { ...p }; delete n[id]; return n; });
-    } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
-    finally { setSavingDial(null); }
-  };
+  const patch = (id, p) => setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, ...p } : t)));
+  const detailTenant = detailId ? tenants.find((t) => t._id === detailId) || null : null;
 
   const filtered = tenants.filter((t) => {
     if (filterStatus && t.status !== filterStatus) return false;
@@ -868,8 +1227,58 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     return true;
   });
 
+  const hasFilters = Boolean(search || filterStatus || filterPlan);
+
+  // Bulk selection (acts on the filtered set).
+  const toggleSelect = (id) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allSelected = filtered.length > 0 && filtered.every((t) => selected.has(t._id));
+  const toggleSelectAll = () => setSelected(() => (allSelected ? new Set() : new Set(filtered.map((t) => t._id))));
+  // Drop selections that are no longer visible when filters change.
+  useEffect(() => {
+    setSelected((prev) => { const visible = new Set(filtered.map((t) => t._id)); const n = new Set([...prev].filter((id) => visible.has(id))); return n.size === prev.size ? prev : n; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, filterStatus, filterPlan, tenants]);
+
+  const bulkUpdate = async (status) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    try {
+      setBulkBusy(true);
+      await Promise.all(ids.map((id) => api.put(`/tenants/${id}`, { status }).then(({ data }) => patch(id, { status: data.status }))));
+      setSelected(new Set());
+    } catch (err) { alert(err.response?.data?.message || "Erreur lors de l'action groupée."); }
+    finally { setBulkBusy(false); }
+  };
+
+  const bulkUpdatePlan = async () => {
+    const ids = [...selected];
+    if (!ids.length || !bulkPlan) return;
+    try {
+      setBulkBusy(true);
+      await Promise.all(ids.map((id) => api.put(`/tenants/${id}`, { plan: bulkPlan }).then(({ data }) =>
+        patch(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts })
+      )));
+      setSelected(new Set());
+      setBulkPlan('');
+      setConfirmPlan(false);
+    } catch (err) { alert(err.response?.data?.message || 'Erreur lors du changement de plan.'); }
+    finally { setBulkBusy(false); }
+  };
+  const summary = useMemo(() => ({
+    total: tenants.length,
+    active: tenants.filter((t) => t.status === 'active').length,
+    trials: tenants.filter((t) => t.status === 'trial').length,
+    suspended: tenants.filter((t) => t.status === 'suspended' || t.status === 'expired').length,
+    mrr: tenants.filter((t) => t.status === 'active').reduce((s, t) => s + (Number(t.monthlyPrice) || 0), 0),
+  }), [tenants]);
+
   const handleDelete = async () => {
-    try { await api.delete(`/tenants/${deleteTarget}`); setTenants((prev) => prev.filter((t) => t._id !== deleteTarget)); setDeleteTarget(null); }
+    try {
+      await api.delete(`/tenants/${deleteTarget}`);
+      setTenants((prev) => prev.filter((t) => t._id !== deleteTarget));
+      if (detailId === deleteTarget) setDetailId(null);
+      setDeleteTarget(null);
+    }
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
   };
   const handleExportCsv = () => {
@@ -878,21 +1287,16 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
       .catch(() => alert('Erreur export.'));
   };
 
-  const startEdit = (t) => setEdits((p) => ({ ...p, [t._id]: { maxUsers: t.maxUsers, maxProducts: t.maxProducts, monthlyPrice: t.monthlyPrice } }));
-  const cancelEdit = (id) => setEdits((p) => { const n = { ...p }; delete n[id]; return n; });
-  const saveLimits = async (id) => {
-    const patch = edits[id]; if (!patch) return;
-    try {
-      setSavingId(id);
-      const { data } = await api.put(`/tenants/${id}`, patch);
-      setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice, dialCode: data.dialCode } : t)));
-      cancelEdit(id);
-    } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
-    finally { setSavingId(null); }
-  };
-
   return (
     <div className="space-y-3">
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Boutiques" value={fmt(summary.total)} sub="Au total" accent="var(--colorBrandForeground1)" icon={Building2} />
+        <Kpi label="Actives" value={fmt(summary.active)} sub={`${money(summary.mrr)} MRR`} accent="var(--colorStatusSuccessForeground1)" icon={CheckCircle2} />
+        <Kpi label="Essais" value={fmt(summary.trials)} sub="En période d'essai" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
+        <Kpi label="Suspendues / expirées" value={fmt(summary.suspended)} sub="Inactives" accent={summary.suspended ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={XCircle} />
+      </div>
+
       {/* Filters */}
       <div className="ms-command-bar flex-wrap gap-y-2">
         <div className="relative flex-1 min-w-[200px]">
@@ -911,11 +1315,43 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
         <button onClick={() => setShowCreate(true)} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5"><Plus size={14} /> Nouvelle</button>
       </div>
 
-      {loading ? <LoadingSkeleton rows={6} /> : filtered.length === 0 ? <EmptyState title="Aucune boutique" /> : (
+      {/* Result count */}
+      {!loading && (
+        <div className="flex items-center justify-between gap-2 px-1">
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(filtered.length)}</span> boutique{filtered.length > 1 ? 's' : ''}{hasFilters ? ' (filtrées)' : ''}
+          </p>
+          {hasFilters && (
+            <button onClick={() => { setSearch(''); setFilterStatus(''); setFilterPlan(''); }} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
+              <RotateCcw size={13} /> Réinitialiser
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Bulk actions */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--ms-blue-soft)', border: '1px solid var(--ms-blue)' }}>
+          <span className="fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{selected.size} boutique{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}</span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <select value={bulkPlan} onChange={(e) => setBulkPlan(e.target.value)} disabled={bulkBusy} className="form-control w-auto text-sm min-h-[34px]">
+              <option value="">Changer le plan…</option>
+              {PLAN_OPTIONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button onClick={() => setConfirmPlan(true)} disabled={bulkBusy || !bulkPlan} className="ms-button ms-button-secondary ms-button-sm disabled:opacity-60">Appliquer</button>
+            <span aria-hidden style={{ color: 'var(--ms-blue)', opacity: 0.4 }}>|</span>
+            <button onClick={() => bulkUpdate('active')} disabled={bulkBusy} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1 disabled:opacity-60"><CheckCircle2 size={13} /> Réactiver</button>
+            <button onClick={() => bulkUpdate('suspended')} disabled={bulkBusy} className="ms-button ms-button-danger ms-button-sm flex items-center gap-1 disabled:opacity-60"><XCircle size={13} /> Suspendre</button>
+            <button onClick={() => setSelected(new Set())} disabled={bulkBusy} className="ms-button ms-button-secondary ms-button-sm">Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? <LoadingSkeleton rows={6} /> : filtered.length === 0 ? <EmptyState title="Aucune boutique correspondante" description={hasFilters ? 'Aucune boutique ne correspond à vos filtres.' : undefined} /> : (
         <div className="fluent-card-filled overflow-hidden">
           {/* Desktop column headers — aligned to COLS template */}
           <div className={`hidden lg:grid ${COLS} gap-3 px-4 py-2.5 items-center fui-caption1-strong uppercase border-b`} style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-            <span>Boutique</span>
+            <span className="flex items-center gap-2"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="form-check" title="Tout sélectionner" /> Boutique</span>
             <span>Statut</span>
             <span>Plan</span>
             <span className="flex items-center justify-center gap-1" title="Utilisateurs"><Users size={12} /></span>
@@ -925,25 +1361,24 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
 
           <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
             {filtered.map((t) => {
-              const isExpanded = expandedId === t._id;
               const isUpdating = updating === t._id;
-              const isEditing = Boolean(edits[t._id]);
-              const isSaving = savingId === t._id;
               const trialDays = t.status === 'trial' ? daysLeft(t.trialEndsAt) : null;
-              const e = edits[t._id] || {};
 
               return (
                 <div key={t._id}>
                   {/* ── Desktop row ── */}
                   <div className={`hidden lg:grid ${COLS} gap-3 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)] transition-colors`}>
                     {/* Boutique */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
-                        <span className="fui-caption2 shrink-0 rounded px-1.5 py-0.5" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground3)' }}>{t.code}</span>
+                    <div className="flex items-start gap-2 min-w-0">
+                      <input type="checkbox" checked={selected.has(t._id)} onChange={() => toggleSelect(t._id)} className="form-check mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
+                          <span className="fui-caption2 shrink-0 rounded px-1.5 py-0.5" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground3)' }}>{t.code}</span>
+                        </div>
+                        <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</p>
+                        {trialDays !== null && <p className="fui-caption2" style={{ color: trialDays <= 3 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorStatusWarningForeground1)' }}>{trialDays > 0 ? `${trialDays}j restants` : 'Expiré'}</p>}
                       </div>
-                      <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</p>
-                      {trialDays !== null && <p className="fui-caption2" style={{ color: trialDays <= 3 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorStatusWarningForeground1)' }}>{trialDays > 0 ? `${trialDays}j restants` : 'Expiré'}</p>}
                     </div>
                     {/* Statut */}
                     <div><StatusBadge status={t.status} /></div>
@@ -967,19 +1402,22 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => setStatsTenant(t)} className="ms-icon-button" title="Profil statistique"><BarChart3 size={14} /></button>
                       <button onClick={() => onImpersonate(t._id)} disabled={isUpdating} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1" title="Superviser"><LogIn size={13} /> Accéder</button>
-                      <button onClick={() => setExpandedId(isExpanded ? null : t._id)} className="ms-icon-button" title="Détails"><ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
+                      <button onClick={() => setDetailId(t._id)} className="ms-icon-button" title="Configurer la boutique"><Pencil size={14} /></button>
                     </div>
                   </div>
 
                   {/* ── Mobile card ── */}
                   <div className="lg:hidden p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
-                          <span className="fui-caption2 shrink-0 rounded px-1.5 py-0.5" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground3)' }}>{t.code}</span>
+                      <div className="flex items-start gap-2 min-w-0">
+                        <input type="checkbox" checked={selected.has(t._id)} onChange={() => toggleSelect(t._id)} className="form-check mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
+                            <span className="fui-caption2 shrink-0 rounded px-1.5 py-0.5" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground3)' }}>{t.code}</span>
+                          </div>
+                          <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</p>
                         </div>
-                        <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</p>
                       </div>
                       <StatusBadge status={t.status} />
                     </div>
@@ -1003,90 +1441,10 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
                       </select>
                       <button onClick={() => setStatsTenant(t)} className="ms-icon-button" title="Statistiques"><BarChart3 size={14} /></button>
                       <button onClick={() => onImpersonate(t._id)} disabled={isUpdating} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"><LogIn size={13} /> Accéder</button>
-                      <button onClick={() => setExpandedId(isExpanded ? null : t._id)} className="ms-icon-button"><ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
+                      <button onClick={() => setDetailId(t._id)} className="ms-icon-button" title="Configurer"><Pencil size={14} /></button>
                     </div>
                   </div>
 
-                  {/* ── Expand: details + editable limits + danger zone ── */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 space-y-3" style={{ background: 'var(--colorNeutralBackground2)' }}>
-                      {/* Read-only detail grid */}
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {[
-                          { label: 'Propriétaire', value: t.ownerName },
-                          { label: 'Téléphone', value: t.ownerPhone || '—' },
-                          { label: 'Créée le', value: fmtDate(t.createdAt) },
-                          { label: 'Dernière activité', value: relativeDays(t.stats?.lastActiveAt) },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}>
-                            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
-                            <p className="fui-body1-strong mt-0.5 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Editable limits */}
-                      <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}>
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="fui-subtitle2 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}><BadgeDollarSign size={15} /> Limites & tarif</p>
-                          {!isEditing
-                            ? <button onClick={() => startEdit(t)} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"><Pencil size={13} /> Modifier</button>
-                            : (
-                              <div className="flex gap-2">
-                                <button onClick={() => cancelEdit(t._id)} className="ms-button ms-button-secondary ms-button-sm">Annuler</button>
-                                <button onClick={() => saveLimits(t._id)} disabled={isSaving} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1"><Save size={13} /> {isSaving ? '...' : 'Enregistrer'}</button>
-                              </div>
-                            )}
-                        </div>
-                        <div className="grid sm:grid-cols-3 gap-3">
-                          <LimitField label="Max utilisateurs" used={t.stats?.userCount} editing={isEditing} value={isEditing ? e.maxUsers : t.maxUsers} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], maxUsers: v } }))} />
-                          <LimitField label="Max produits" used={t.stats?.productCount} editing={isEditing} value={isEditing ? e.maxProducts : t.maxProducts} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], maxProducts: v } }))} />
-                          <LimitField label="Prix mensuel (CFA)" editing={isEditing} value={isEditing ? e.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdits((p) => ({ ...p, [t._id]: { ...p[t._id], monthlyPrice: v } }))} />
-                        </div>
-                      </div>
-
-                      {/* Indicatif WhatsApp — toujours modifiable (pas besoin du mode édition) */}
-                      <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}>
-                        <p className="fui-subtitle2 flex items-center gap-1.5 mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                          <span aria-hidden>💬</span> Indicatif pays (WhatsApp)
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={dialDraft[t._id] ?? (t.dialCode || '')}
-                            onChange={(ev) => setDialDraft((p) => ({ ...p, [t._id]: ev.target.value }))}
-                            placeholder="+242"
-                            className="form-control text-sm"
-                            style={{ maxWidth: 140 }}
-                          />
-                          <button
-                            onClick={() => saveDialCode(t._id)}
-                            disabled={savingDial === t._id || (dialDraft[t._id] ?? (t.dialCode || '')) === (t.dialCode || '')}
-                            className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 disabled:opacity-50"
-                          >
-                            <Save size={13} /> {savingDial === t._id ? '...' : 'Enregistrer'}
-                          </button>
-                          <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                            Actuel : <strong style={{ color: 'var(--colorNeutralForeground1)' }}>{t.dialCode || '—'}</strong>
-                          </span>
-                        </div>
-                        <p className="fui-caption2 mt-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                          Préfixe ajouté aux numéros pour les rappels WhatsApp clients (ex. +242 pour le Congo).
-                        </p>
-                      </div>
-
-                      {/* Danger zone */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorStatusDangerBackground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
-                        <span className="fui-caption1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>Actions sensibles</span>
-                        <div className="flex gap-2">
-                          {t.status !== 'suspended'
-                            ? <button onClick={() => onStatus(t._id, 'suspended')} disabled={isUpdating} className="ms-button ms-button-danger ms-button-sm">Suspendre</button>
-                            : <button onClick={() => onStatus(t._id, 'active')} disabled={isUpdating} className="ms-button ms-button-secondary ms-button-sm">Réactiver</button>}
-                          <button onClick={() => setDeleteTarget(t._id)} disabled={isUpdating} className="ms-button ms-button-danger ms-button-sm flex items-center gap-1"><Trash2 size={13} /> Supprimer</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -1094,8 +1452,25 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
         </div>
       )}
 
+      <TenantDetailDrawer
+        tenant={detailTenant}
+        onClose={() => setDetailId(null)}
+        onPatch={patch}
+        onStatus={onStatus}
+        onRequestDelete={(id) => setDeleteTarget(id)}
+        onImpersonate={onImpersonate}
+        updating={updating}
+      />
       <CreateTenantModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={(nt) => setTenants((prev) => [{ ...nt, stats: { userCount: 1, productCount: 0, saleCount: 0 } }, ...prev])} />
       <ConfirmDialog open={Boolean(deleteTarget)} title="Supprimer cette boutique ?" description="Toutes ses données seront définitivement supprimées. Action irréversible." confirmLabel="Supprimer définitivement" danger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog
+        open={confirmPlan}
+        title="Changer le plan en lot ?"
+        description={`${selected.size} boutique${selected.size > 1 ? 's' : ''} passeront au plan « ${PLAN_LABELS[bulkPlan] || bulkPlan} ». Leur tarif et leurs limites seront ajustés au catalogue de ce forfait.`}
+        confirmLabel="Changer le plan"
+        onConfirm={bulkUpdatePlan}
+        onCancel={() => setConfirmPlan(false)}
+      />
       {statsTenant && <TenantStatsModal tenant={statsTenant} onClose={() => setStatsTenant(null)} />}
     </div>
   );
@@ -1124,15 +1499,47 @@ const BillingTab = ({ tenants, loading, onReload }) => {
   const totalMRR = tenants.filter((t) => t.status === 'active').reduce((s, t) => s + (t.monthlyPrice || 0), 0);
   const overdue = tenants.filter((t) => t.status === 'active' && t.nextPaymentDue && new Date(t.nextPaymentDue) < now);
 
+  // Aging of overdue receivables (days past the due date).
+  const aging = { d30: { count: 0, amount: 0 }, d60: { count: 0, amount: 0 }, d60plus: { count: 0, amount: 0 } };
+  overdue.forEach((t) => {
+    const days = Math.floor((now - new Date(t.nextPaymentDue)) / 86400000);
+    const amt = Number(t.monthlyPrice) || 0;
+    const bucket = days <= 30 ? aging.d30 : days <= 60 ? aging.d60 : aging.d60plus;
+    bucket.count += 1; bucket.amount += amt;
+  });
+  const agingTotal = aging.d30.amount + aging.d60.amount + aging.d60plus.amount;
+
   if (loading) return <LoadingSkeleton rows={6} />;
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Kpi label="MRR" value={money(totalMRR)} sub="Revenu mensuel récurrent" accent="var(--colorStatusSuccessForeground1)" />
-        <Kpi label="Paiements en retard" value={fmt(overdue.length)} sub="Boutiques actives échues" accent={overdue.length ? 'var(--colorStatusDangerForeground1)' : undefined} />
-        <Kpi label="Boutiques facturables" value={fmt(tenants.filter((t) => t.monthlyPrice > 0).length)} />
+        <Kpi label="MRR" value={money(totalMRR)} sub="Revenu mensuel récurrent" accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
+        <Kpi label="Paiements en retard" value={fmt(overdue.length)} sub="Boutiques actives échues" accent={overdue.length ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={AlertCircle} />
+        <Kpi label="Boutiques facturables" value={fmt(tenants.filter((t) => t.monthlyPrice > 0).length)} accent="var(--colorBrandForeground1)" icon={Receipt} />
       </div>
+
+      {/* Aging of overdue receivables */}
+      {overdue.length > 0 && (
+        <div className="fluent-card-filled p-4">
+          <p className="fui-subtitle2 mb-3 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            <AlertCircle size={15} style={{ color: 'var(--colorStatusDangerForeground1)' }} /> Encours en retard — <span className="tabular-nums">{money(agingTotal)}</span>
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: '≤ 30 jours', ...aging.d30, color: 'var(--colorStatusWarningForeground1)' },
+              { label: '31 – 60 jours', ...aging.d60, color: '#C2410C' },
+              { label: '> 60 jours', ...aging.d60plus, color: 'var(--colorStatusDangerForeground1)' },
+            ].map((b) => (
+              <div key={b.label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorNeutralBackground2)', borderLeft: `3px solid ${b.color}` }}>
+                <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{b.label}</p>
+                <p className="fui-subtitle2 tabular-nums" style={{ color: b.color }}>{money(b.amount)}</p>
+                <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{b.count} boutique{b.count > 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="fluent-card-filled overflow-hidden">
         <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
@@ -1169,6 +1576,7 @@ const BillingTab = ({ tenants, loading, onReload }) => {
 const AuditTab = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
   useEffect(() => {
     (async () => {
       try { const { data } = await api.get('/tenants/audit?limit=200'); setLogs(data); }
@@ -1179,10 +1587,25 @@ const AuditTab = () => {
   if (loading) return <LoadingSkeleton rows={8} />;
   if (logs.length === 0) return <EmptyState title="Journal vide" description="Les actions super-admin apparaîtront ici." />;
 
+  const filtered = filter ? logs.filter((l) => l.action === filter) : logs;
+
   return (
-    <div className="fluent-card-filled overflow-hidden">
-      <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-        {logs.map((log) => {
+    <div className="space-y-3">
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(filtered.length)}</span> entrée{filtered.length > 1 ? 's' : ''}
+        </p>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="form-control w-auto text-sm min-h-[36px] ml-auto">
+          <option value="">Toutes les actions</option>
+          {Object.entries(AUDIT_META).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
+        </select>
+      </div>
+      <div className="fluent-card-filled overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune action de ce type.</div>
+        ) : (
+        <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          {filtered.map((log) => {
           const meta = AUDIT_META[log.action] || { label: log.action, tone: 'neutral', icon: Activity };
           const Icon = meta.icon;
           return (
@@ -1204,6 +1627,8 @@ const AuditTab = () => {
             </div>
           );
         })}
+        </div>
+        )}
       </div>
     </div>
   );
@@ -1232,6 +1657,14 @@ const PlansTab = () => {
   const dirty = plans && draft && JSON.stringify(plans) !== JSON.stringify(draft);
 
   const setField = (key, field, value) => setDraft((p) => ({ ...p, [key]: { ...p[key], [field]: value } }));
+
+  const toggleFeature = (key, featureKey) => setDraft((p) => {
+    const current = Array.isArray(p[key]?.features) ? p[key].features : [];
+    const next = current.includes(featureKey)
+      ? current.filter((f) => f !== featureKey)
+      : [...current, featureKey];
+    return { ...p, [key]: { ...p[key], features: next } };
+  });
 
   const handleSave = async () => {
     try {
@@ -1294,6 +1727,26 @@ const PlansTab = () => {
                 </label>
               </div>
 
+              <div>
+                <span className="form-label block mb-1.5">Fonctionnalités incluses</span>
+                <div className="space-y-1.5">
+                  {Object.entries(FEATURE_LABELS).map(([fKey, fLabel]) => {
+                    const checked = Array.isArray(p.features) && p.features.includes(fKey);
+                    return (
+                      <label key={fKey} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleFeature(key, fKey)}
+                          className="form-check"
+                        />
+                        <span>{fLabel}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="rounded-[var(--radiusLarge)] p-2.5 text-center" style={{ background: 'var(--colorNeutralBackground2)' }}>
                 <span className="fui-subtitle1" style={{ color: 'var(--colorBrandForeground1)' }}>{money(p.price)}</span>
                 <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}> /mois</span>
@@ -1304,7 +1757,8 @@ const PlansTab = () => {
       </div>
 
       <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-        Modifier un forfait n'affecte pas automatiquement les boutiques existantes — leurs limites changent au prochain changement de plan, ou manuellement depuis l'onglet Boutiques.
+        Le prix et les limites changent au prochain changement de plan d'une boutique (ou manuellement depuis l'onglet Boutiques).
+        Les <strong>fonctionnalités</strong>, elles, s'appliquent immédiatement à toutes les boutiques du forfait concerné.
       </p>
     </div>
   );

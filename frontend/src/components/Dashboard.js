@@ -82,6 +82,8 @@ import {
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
 import { KPICard, ChartCard, PageHeader, Workspace } from "./business";
+import { useFeature, LockedFeatureButton } from "./FeatureGate";
+import { FEATURE_KEYS } from "../config/features";
 
 const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 const RemindersPanel = lazy(() => import("../components/RemindersPanel"));
@@ -92,6 +94,7 @@ const loadXlsx = () => import("xlsx");
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk stats export — la facture de vente reste accessible à tous
   const currentYear = new Date().getFullYear();
 
   // ===== THEME =====
@@ -189,6 +192,7 @@ const Dashboard = () => {
   const [overdueReminders, setOverdueReminders] = useState([]);
   const [neverPaidReminders, setNeverPaidReminders] = useState([]);
   const [salaryReminders, setSalaryReminders] = useState([]);
+  const [stockReplacementReminders, setStockReplacementReminders] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
@@ -446,6 +450,8 @@ const Dashboard = () => {
       setOverdueReminders(response.data.overdue || []);
       setNeverPaidReminders(response.data.neverPaid || []);
       setSalaryReminders(response.data.salaryReminders || []);
+      const stockResponse = await api.get("/stock-replacement-reminders");
+      setStockReplacementReminders(stockResponse.data.reminders || []);
     } catch (err) {
       console.error("Erreur de rappels:", err);
     }
@@ -463,6 +469,37 @@ const Dashboard = () => {
     if (isAdmin && nonCriticalReady) fetchReminders();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders on mount only
   }, [isAdmin, nonCriticalReady]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+
+    const refreshRemindersAfterSale = () => {
+      fetchReminders();
+    };
+
+    window.addEventListener("saleCreated", refreshRemindersAfterSale);
+    return () => window.removeEventListener("saleCreated", refreshRemindersAfterSale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders intentionally reused for sale-created refresh
+  }, [isAdmin]);
+
+  // The global modals (FAB) create sales/payments/expenses from any page.
+  // Refresh the dashboard data on those events so it's immediate — no reload.
+  useEffect(() => {
+    const refresh = () => {
+      fetchData();
+      fetchDeliveryStats();
+      if (isAdmin) fetchReminders();
+    };
+    window.addEventListener("saleCreated", refresh);
+    window.addEventListener("paymentCreated", refresh);
+    window.addEventListener("expenseCreated", refresh);
+    return () => {
+      window.removeEventListener("saleCreated", refresh);
+      window.removeEventListener("paymentCreated", refresh);
+      window.removeEventListener("expenseCreated", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders is stable enough for this refresh
+  }, [fetchData, fetchDeliveryStats, isAdmin]);
 
   useEffect(() => {
     fetchPrevData();
@@ -1425,6 +1462,7 @@ const Dashboard = () => {
                   Thème
                 </button>
                 {isAdmin && (
+                  canExport ? (
                   <button
                     onClick={() => {
                       setExportStartDate(exportDescriptor.startValue);
@@ -1436,6 +1474,9 @@ const Dashboard = () => {
                     <Download size={18} />
                     Exporter
                   </button>
+                  ) : (
+                    <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT} icon={<Download size={16} />}>Exporter</LockedFeatureButton>
+                  )
                 )}
               </div>
 
@@ -2169,6 +2210,10 @@ const Dashboard = () => {
                 upcoming={upcomingReminders}
                 neverPaid={neverPaidReminders}
                 salaryReminders={salaryReminders}
+                stockReplacementReminders={stockReplacementReminders}
+                onStockReplacementConfirmed={(id) => {
+                  setStockReplacementReminders((prev) => prev.filter((reminder) => reminder._id !== id));
+                }}
                 shopName={auth?.tenant?.name || ""}
                 dialCode={auth?.tenant?.dialCode || ""}
               />
@@ -2258,6 +2303,10 @@ const PERF_METRICS = [
     bg: "var(--ms-blue-soft)", fg: "var(--colorBrandForeground1)" },
   { key: "expenses", label: "Dépenses", noun: "dépense", icon: TrendingDown, goodWhenUp: false,
     bg: "var(--colorStatusDangerBackground1)", fg: "var(--colorStatusDangerForeground1)" },
+  { key: "paidProfit", label: "Bénéfice encaissé", noun: "paiement", icon: BadgePercent, goodWhenUp: true,
+    bg: "rgba(124,58,237,0.12)", fg: "#7C3AED" },
+  { key: "expectedProfit", label: "Bénéfice attendu", noun: "vente", icon: TrendingUp, goodWhenUp: true,
+    bg: "rgba(14,116,144,0.12)", fg: "#0e7490" },
 ];
 
 const PerfTile = ({ meta, entry, total = 0, prevTotal }) => {
@@ -2360,7 +2409,7 @@ const PerformanceByPeriod = ({ ranges }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:p-5">
+      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5 sm:p-5">
         {PERF_METRICS.map((meta) => (
           <PerfTile
             key={meta.key}

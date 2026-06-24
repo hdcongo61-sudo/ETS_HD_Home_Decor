@@ -16,6 +16,8 @@ import { format, endOfDay, startOfDay, startOfYear, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
+import { FEATURE_KEYS } from '../config/features';
 import AppLoader from '../components/AppLoader';
 import { PageHeader, Workspace, KPICard } from '../components/business';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -298,6 +300,7 @@ const UserSalesDashboard = () => {
   const deferredSearch = useDeferredValue(search);
   const deferredHistorySearch = useDeferredValue(historySearch);
   const isAdmin = Boolean(auth?.isAdmin || auth?.user?.isAdmin);
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT);
   const userPermissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
   const canSeeFinancials = isAdmin || userPermissions.includes('view_sensitive_financials');
   const isOwner = Boolean(auth?.user?._id && auth.user._id === userId);
@@ -944,14 +947,18 @@ const UserSalesDashboard = () => {
                 </p>
               </div>
               {isAdmin && (
-                <div className="flex flex-wrap gap-2 ml-auto">
-                  <button type="button" onClick={handleExportPdf} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-secondary ms-button-sm">
-                    {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
-                  </button>
-                  <button type="button" onClick={handleExportExcel} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-primary ms-button-sm">
-                    {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
-                  </button>
-                </div>
+                canExport ? (
+                  <div className="flex flex-wrap gap-2 ml-auto">
+                    <button type="button" onClick={handleExportPdf} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-secondary ms-button-sm">
+                      {exporting === 'pdf' ? 'Export PDF...' : 'Exporter PDF'}
+                    </button>
+                    <button type="button" onClick={handleExportExcel} disabled={!filteredSales.length || exporting.length > 0} className="ms-button ms-button-primary ms-button-sm">
+                      {exporting === 'excel' ? 'Export Excel...' : 'Exporter Excel'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="ml-auto"><LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT}>Exporter</LockedFeatureButton></div>
+                )
               )}
             </div>
 

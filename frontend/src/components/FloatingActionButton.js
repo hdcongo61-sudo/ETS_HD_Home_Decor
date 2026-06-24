@@ -1,10 +1,10 @@
 // components/FloatingActionButton.js
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, CreditCard, Receipt, Users, Package, Plus } from 'lucide-react';
+import { ShoppingCart, CreditCard, Receipt, Coins, Users, Package, Plus } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-const FloatingActionButton = () => {
+const FloatingActionButton = ({ isAdmin = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hidden, setHidden] = useState(false);
   const containerRef = useRef(null);
@@ -24,6 +24,11 @@ const FloatingActionButton = () => {
 
   const handleNewPayment = () => {
     openModal('payment');
+    setIsExpanded(false);
+  };
+
+  const handleNewExpense = () => {
+    openModal('expense');
     setIsExpanded(false);
   };
 
@@ -135,6 +140,19 @@ const FloatingActionButton = () => {
                 <CreditCard className="h-5 w-5" strokeWidth={2} />
               </span>
             </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleNewExpense}
+                className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
+                style={{ background: '#B45309' }}
+              >
+                <span className="text-sm font-semibold">Ajouter dépense</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusMedium)] bg-white/20">
+                  <Coins className="h-5 w-5" strokeWidth={2} />
+                </span>
+              </button>
+            )}
 
             {/* Quick links */}
             <div className="mt-1 w-full border-t border-[var(--ms-border)] pt-2">

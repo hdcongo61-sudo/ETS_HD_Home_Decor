@@ -11,6 +11,8 @@ import {
 } from "chart.js";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
+import { useFeature, LockedFeatureButton } from "../components/FeatureGate";
+import { FEATURE_KEYS } from "../config/features";
 import {
   Button,
   ChartCard,
@@ -37,6 +39,7 @@ const PaymentModal = lazy(() => import("../components/PaymentModal"));
 const PartiallyPaidPurchases = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
+  const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT);
   const shopName = auth?.tenant?.name || "";
   const dialCode = auth?.tenant?.dialCode || "";
 
@@ -83,6 +86,16 @@ const PartiallyPaidPurchases = () => {
 
   useEffect(() => {
     fetchSales();
+  }, [fetchSales]);
+
+  // Refresh immediately when a sale or payment is created from the global modal.
+  useEffect(() => {
+    window.addEventListener('saleCreated', fetchSales);
+    window.addEventListener('paymentCreated', fetchSales);
+    return () => {
+      window.removeEventListener('saleCreated', fetchSales);
+      window.removeEventListener('paymentCreated', fetchSales);
+    };
   }, [fetchSales]);
 
   const partiallyPaid = useMemo(
@@ -187,9 +200,9 @@ const PartiallyPaidPurchases = () => {
           actions={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {isAdmin && (
-                <Button onClick={exportCSV}>
-                  Exporter CSV
-                </Button>
+                canExport
+                  ? <Button onClick={exportCSV}>Exporter CSV</Button>
+                  : <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT}>Exporter CSV</LockedFeatureButton>
               )}
               <Link
                 to="/sales"

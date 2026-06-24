@@ -1,6 +1,7 @@
 const Client = require('../models/clientModel');
 const Sale = require('../models/saleModel');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
+const { CFA_PER_POINT, TIERS, pointsForSpend, tierForPoints, nextTierAfter } = require('../config/loyalty');
 
 const getClients = async (req, res) => {
   try {
@@ -301,6 +302,113 @@ const getFilteredClients = async (req, res) => {
   }
 };
 
+// @desc    Loyalty program overview (members, points, tiers, leaderboard)
+// @route   GET /api/clients/loyalty
+const getLoyaltyOverview = async (req, res) => {
+  try {
+    const [clients, spendAgg] = await Promise.all([
+      Client.find({}).select('name phone email slug loyalty lastPurchaseDate').lean(),
+      Sale.aggregate([
+        { $match: { client: { $ne: null }, status: { $ne: 'cancelled' } } },
+        {
+          $group: {
+            _id: '$client',
+            totalSpent: { $sum: '$totalAmount' },
+            salesCount: { $sum: 1 },
+            lastPurchase: { $max: '$saleDate' },
+          },
+        },
+      ]),
+    ]);
+
+    const spendMap = {};
+    spendAgg.forEach((s) => { spendMap[String(s._id)] = s; });
+
+    const rows = clients
+      .map((c) => {
+        const agg = spendMap[String(c._id)] || {};
+        const totalSpent = Number(agg.totalSpent) || 0;
+        const salesCount = Number(agg.salesCount) || 0;
+        const earned = pointsForSpend(totalSpent);
+        const adjust = Number(c.loyalty?.pointsAdjust) || 0;
+        const history = Array.isArray(c.loyalty?.history) ? c.loyalty.history : [];
+        const redeemed = history.reduce((sum, h) => sum + (h.delta < 0 ? -h.delta : 0), 0);
+        const bonus = history.reduce((sum, h) => sum + (h.delta > 0 ? h.delta : 0), 0);
+        const available = Math.max(0, earned + adjust);
+        const tier = tierForPoints(earned);
+        const next = nextTierAfter(earned);
+        return {
+          _id: c._id,
+          name: c.name,
+          phone: c.phone || '',
+          slug: c.slug || '',
+          totalSpent,
+          salesCount,
+          lastPurchase: agg.lastPurchase || c.lastPurchaseDate || null,
+          earned,
+          adjust,
+          redeemed,
+          bonus,
+          available,
+          tier: tier.key,
+          tierLabel: tier.label,
+          tierColor: tier.color,
+          nextTier: next ? { key: next.key, label: next.label, minPoints: next.minPoints, remaining: Math.max(0, next.minPoints - earned) } : null,
+        };
+      })
+      .filter((r) => r.salesCount > 0 || r.adjust !== 0)
+      .sort((a, b) => b.available - a.available || b.earned - a.earned);
+
+    const tierCounts = TIERS.reduce((acc, t) => { acc[t.key] = 0; return acc; }, {});
+    rows.forEach((r) => { tierCounts[r.tier] = (tierCounts[r.tier] || 0) + 1; });
+
+    const kpis = {
+      members: rows.length,
+      pointsEarned: rows.reduce((s, r) => s + r.earned, 0),
+      pointsAvailable: rows.reduce((s, r) => s + r.available, 0),
+      pointsRedeemed: rows.reduce((s, r) => s + r.redeemed, 0),
+      pointsBonus: rows.reduce((s, r) => s + r.bonus, 0),
+      tierCounts,
+    };
+
+    res.json({ config: { cfaPerPoint: CFA_PER_POINT, tiers: TIERS }, kpis, clients: rows });
+  } catch (error) {
+    console.error('Erreur loyalty overview:', error);
+    res.status(500).json({ message: 'Erreur lors du chargement du programme de fidélité' });
+  }
+};
+
+// @desc    Apply a loyalty adjustment (redeem points or grant bonus)
+// @route   POST /api/clients/:id/loyalty
+const adjustLoyaltyPoints = async (req, res) => {
+  try {
+    const { delta, reason, note } = req.body;
+    const d = Math.trunc(Number(delta));
+    if (!Number.isFinite(d) || d === 0) {
+      return res.status(400).json({ message: 'Nombre de points invalide.' });
+    }
+
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ message: 'Client introuvable.' });
+
+    if (!client.loyalty) client.loyalty = { pointsAdjust: 0, history: [] };
+    client.loyalty.pointsAdjust = (client.loyalty.pointsAdjust || 0) + d;
+    client.loyalty.history.push({
+      delta: d,
+      reason: reason === 'bonus' ? 'bonus' : 'redeem',
+      note: String(note || '').slice(0, 200),
+      at: new Date(),
+      by: req.user?._id || null,
+    });
+    await client.save();
+
+    res.json({ _id: client._id, pointsAdjust: client.loyalty.pointsAdjust });
+  } catch (error) {
+    console.error('Erreur ajustement fidélité:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'ajustement des points.' });
+  }
+};
+
 module.exports = {
   getClients,
   getClientById,
@@ -308,5 +416,7 @@ module.exports = {
   updateClient,
   deleteClient,
   getClientStats,
-  getFilteredClients
+  getFilteredClients,
+  getLoyaltyOverview,
+  adjustLoyaltyPoints,
 };

@@ -189,6 +189,13 @@ const Clients = () => {
     };
   }, [fetchClients, fetchStats, isAdmin, searchTerm]);
 
+  // A sale created from the global modal changes client purchase totals — refresh.
+  useEffect(() => {
+    const refresh = () => { fetchClients(); if (isAdmin) fetchStats(); };
+    window.addEventListener('saleCreated', refresh);
+    return () => window.removeEventListener('saleCreated', refresh);
+  }, [fetchClients, fetchStats, isAdmin]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const mediaQuery = window.matchMedia('(min-width: 768px)');

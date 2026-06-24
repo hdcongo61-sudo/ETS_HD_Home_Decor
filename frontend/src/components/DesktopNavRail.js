@@ -13,7 +13,6 @@ import {
   Activity,
   FileText,
   Settings,
-  UserRound,
   LogOut,
   ChevronRight,
   ClipboardList,
@@ -23,8 +22,6 @@ import {
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
-import { useAppSettings } from '../context/AppSettingsContext';
-import { resolveAppLogo } from '../utils/appBranding';
 
 export const SIDEBAR_COLLAPSED_W = 64;
 export const SIDEBAR_EXPANDED_W  = 240;
@@ -91,10 +88,7 @@ const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0 }) => (
 const DesktopNavRail = () => {
   const [expanded, setExpanded] = useState(false);
   const { auth, setAuth } = useContext(AuthContext);
-  const { appSettings } = useAppSettings();
   const location = useLocation();
-  const branding = appSettings.branding;
-  const logoUrl = resolveAppLogo(branding.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
   const [supportUnread, setSupportUnread] = useState(0);
 
@@ -154,38 +148,6 @@ const DesktopNavRail = () => {
       transition={{ type: 'spring', stiffness: 400, damping: 38 }}
       aria-label="Navigation principale"
     >
-      {/* ── Logo / App name ── */}
-      <div className="fluent-nav-rail__header">
-        <Link to="/" className="fluent-nav-rail__logo-btn" aria-label="Accueil">
-          <img
-            src={logoUrl}
-            alt={branding.shortName || branding.appName}
-            onError={(e) => {
-              const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
-              if (!e.currentTarget.dataset.fallback) {
-                e.currentTarget.dataset.fallback = '1';
-                e.currentTarget.src = fallback;
-              }
-            }}
-            className="fluent-nav-rail__logo-img"
-          />
-          <AnimatePresence>
-            {expanded && (
-              <motion.span
-                key="app-name"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.14 }}
-                className="fluent-nav-rail__logo-label"
-              >
-                {branding.shortName || branding.appName}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </Link>
-      </div>
-
       {/* ── Primary nav ── */}
       <nav className="fluent-nav-rail__nav" aria-label="Navigation principale">
         {primaryNavItems.map(({ to, icon, label, exact }) => (

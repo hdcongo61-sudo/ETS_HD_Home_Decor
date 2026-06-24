@@ -49,7 +49,7 @@ const toMonthValue = (month, year, fallbackDate) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false }) => {
+const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false, formId, hideSubmit = false }) => {
   const { auth } = useContext(AuthContext);
   const manualExpenseDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled);
   const [formData, setFormData] = useState({
@@ -180,7 +180,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   const controlClass = (error) => `form-control ${error ? 'form-control-error' : ''}`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {manualExpenseDateEnabled && (
           <div className="space-y-1">
@@ -356,37 +356,39 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-3 border-t border-[var(--ms-border)] pt-4 sm:flex-row sm:justify-end">
-        {initialData && (
-          <Button
-            type="button"
-            onClick={() => (typeof onCancel === 'function' ? onCancel() : onSubmit(null))}
-          >
-            Annuler
-          </Button>
-        )}
-        <Button
-          type="submit"
-          disabled={submitting}
-          variant="primary"
-        >
-          {submitting ? (
-            <span className="flex items-center gap-2">
-              Enregistrement...
-            </span>
-          ) : initialData ? (
-            <>
-              <Save className="h-4 w-4" />
-              Mettre à jour
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Ajouter dépense
-            </>
+      {!hideSubmit && (
+        <div className="flex flex-col-reverse gap-3 border-t border-[var(--ms-border)] pt-4 sm:flex-row sm:justify-end">
+          {initialData && (
+            <Button
+              type="button"
+              onClick={() => (typeof onCancel === 'function' ? onCancel() : onSubmit(null))}
+            >
+              Annuler
+            </Button>
           )}
-        </Button>
-      </div>
+          <Button
+            type="submit"
+            disabled={submitting}
+            variant="primary"
+          >
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                Enregistrement...
+              </span>
+            ) : initialData ? (
+              <>
+                <Save className="h-4 w-4" />
+                Mettre à jour
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Ajouter dépense
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </form>
   );
 };
@@ -413,7 +415,9 @@ ExpenseForm.propTypes = {
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func,
-  submitting: PropTypes.bool
+  submitting: PropTypes.bool,
+  formId: PropTypes.string,
+  hideSubmit: PropTypes.bool
 };
 
 export default ExpenseForm;
