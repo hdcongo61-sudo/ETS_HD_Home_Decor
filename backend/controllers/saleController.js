@@ -40,6 +40,108 @@ const isAdminUser = (user) => Boolean(user?.isAdmin);
 
 const buildSaleAccessFilter = (_user, baseFilter = {}) => baseFilter;
 
+const getSaleTotalPaid = (sale) =>
+  (sale?.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+
+const isSaleFullyPaid = (sale) => {
+  const totalAmount = Number(sale?.totalAmount) || 0;
+  if (totalAmount <= 0) return false;
+  return getSaleTotalPaid(sale) >= totalAmount;
+};
+
+const buildSaleProductQuantities = (items = []) => {
+  const quantities = new Map();
+  items.forEach((item) => {
+    const productId = normalizeObjectId(item.product);
+    const quantity = Number(item.quantity) || 0;
+    if (!productId || quantity <= 0) return;
+    quantities.set(productId, (quantities.get(productId) || 0) + quantity);
+  });
+  return quantities;
+};
+
+const createStockReplacementRemindersForCompletedSale = async ({
+  req,
+  sale,
+  completedAt,
+  productMap = null,
+  stockWasJustDeducted = false,
+}) => {
+  if (!isSaleFullyPaid(sale)) return;
+
+  const quantities = buildSaleProductQuantities(sale.products || []);
+  if (quantities.size === 0) return;
+
+  const productIds = [...quantities.keys()];
+  let productsById = productMap;
+
+  if (!productsById) {
+    const products = await Product.find({ ...tenantFilter(req), _id: { $in: productIds } })
+      .select('_id name stock warehouse')
+      .lean();
+    productsById = new Map(products.map((product) => [String(product._id), product]));
+  }
+
+  const existingReminderSales = await StockReplacementReminder.find({
+    ...tenantFilter(req),
+    product: { $in: productIds },
+    sales: sale._id,
+  })
+    .select('product')
+    .lean();
+  const alreadyTrackedProductIds = new Set(existingReminderSales.map((reminder) => String(reminder.product)));
+
+  const operations = [...quantities.entries()]
+    .map(([productId, quantity]) => {
+      if (alreadyTrackedProductIds.has(productId)) return null;
+
+      const product = productsById.get(productId);
+      const currentStock = Number(product?.stock) || 0;
+      const stockAfterSale = stockWasJustDeducted ? Math.max(0, currentStock - quantity) : currentStock;
+
+      if (!product || stockAfterSale <= 0) return null;
+
+      return {
+        updateOne: {
+          filter: {
+            tenantId: req.tenantId || null,
+            product: product._id,
+            status: 'pending',
+          },
+          update: {
+            // Operational reminder only. Confirmation never changes stock.
+            $setOnInsert: {
+              tenantId: req.tenantId || null,
+              product: product._id,
+              status: 'pending',
+              createdBy: req.user?._id || null,
+            },
+            $set: {
+              productName: product.name,
+              warehouseName: product.warehouse || '',
+              currentStock: stockAfterSale,
+              lastSale: sale._id,
+              lastSaleAt: completedAt || sale.saleDate || new Date(),
+              updatedBy: req.user?._id || null,
+            },
+            $inc: {
+              quantityToReplace: quantity,
+            },
+            $addToSet: {
+              sales: sale._id,
+            },
+          },
+          upsert: true,
+        },
+      };
+    })
+    .filter(Boolean);
+
+  if (operations.length > 0) {
+    await StockReplacementReminder.bulkWrite(operations);
+  }
+};
+
 const assertSaleAccess = (sale, user, action = 'view') => {
   if (!sale) {
     return { allowed: false, status: 404, message: 'Vente non trouvée' };
@@ -662,54 +764,15 @@ const createSale = asyncHandler(async (req, res) => {
     session.endSession();
     session = null;
 
-    const stockReplacementOperations = [...requestedQuantities.entries()]
-      .map(([productId, quantity]) => {
-        const product = productMap.get(productId);
-        const remainingStock = Math.max(0, (Number(product?.stock) || 0) - quantity);
-
-        if (!product || remainingStock <= 0) return null;
-
-        return {
-          updateOne: {
-            filter: {
-              tenantId: req.tenantId || null,
-              product: product._id,
-              status: 'pending',
-            },
-            update: {
-              // Insert-only fields. productName / warehouseName live in $set
-              // (kept fresh on every update); a field cannot appear in both
-              // $setOnInsert and $set or Mongo raises a path conflict.
-              $setOnInsert: {
-                tenantId: req.tenantId || null,
-                product: product._id,
-                status: 'pending',
-                createdBy: req.user?._id || null,
-              },
-              $set: {
-                productName: product.name,
-                warehouseName: product.warehouse || '',
-                currentStock: remainingStock,
-                lastSale: sale._id,
-                lastSaleAt: effectiveSaleDate,
-                updatedBy: req.user?._id || null,
-              },
-              $inc: {
-                quantityToReplace: quantity,
-              },
-              $addToSet: {
-                sales: sale._id,
-              },
-            },
-            upsert: true,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    if (stockReplacementOperations.length > 0) {
-      StockReplacementReminder.bulkWrite(stockReplacementOperations).catch(() => {});
-    }
+    createStockReplacementRemindersForCompletedSale({
+      req,
+      sale,
+      completedAt: effectiveSaleDate,
+      productMap,
+      stockWasJustDeducted: true,
+    }).catch((error) => {
+      console.error('Stock replacement reminder creation error:', error);
+    });
 
     const clientNameForNotification = updatedClient?.name || '';
 
@@ -767,6 +830,7 @@ const addPayment = asyncHandler(async (req, res) => {
     }
 
     const effectivePaymentDate = parsedPaymentDate.value || new Date();
+    const wasFullyPaid = isSaleFullyPaid(sale);
 
     sale.payments.push({
       amount,
@@ -789,6 +853,17 @@ const addPayment = asyncHandler(async (req, res) => {
     }
 
     await sale.save();
+    const isNowFullyPaid = isSaleFullyPaid(sale);
+
+    if (!wasFullyPaid && isNowFullyPaid) {
+      createStockReplacementRemindersForCompletedSale({
+        req,
+        sale,
+        completedAt: effectivePaymentDate,
+      }).catch((error) => {
+        console.error('Stock replacement reminder creation error:', error);
+      });
+    }
 
     await sale.populate([
       { path: 'client', select: 'name email phone' },

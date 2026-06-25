@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef, lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
+import { ScanLine, X } from 'lucide-react';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -8,6 +10,20 @@ import { generateProformaPdf } from '../utils/proformaPdf';
 import { getSaleTypeText } from '../utils/saleUtils';
 import { useFeature } from './FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
+
+const ProductQrScanner = lazy(() => import('./ProductQrScanner'));
+
+// Extract a product id from a scanned QR value (sell URL, product URL, or raw id).
+const parseScannedProductId = (text) => {
+  if (!text) return '';
+  const byAdd = String(text).match(/[?&]addProduct=([a-f\d]{24})/i);
+  if (byAdd) return byAdd[1];
+  const byPath = String(text).match(/\/products\/([a-f\d]{24})/i);
+  if (byPath) return byPath[1];
+  const raw = String(text).trim().match(/^[a-f\d]{24}$/i);
+  if (raw) return raw[0];
+  return '';
+};
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -26,6 +42,7 @@ const SaleForm = ({
   onProformaCreated,
   formId = 'sale-form',
   hideSubmit = false,
+  initialProductId = '',
 }) => {
   const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
@@ -54,6 +71,7 @@ const SaleForm = ({
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
   const [documentMode, setDocumentMode] = useState('sale');
   const [validUntil, setValidUntil] = useState(() => {
@@ -86,6 +104,18 @@ const SaleForm = ({
     fetchProducts();
     return undefined;
   }, [normalizedInitialProducts]);
+
+  /** Scan-to-sell: preselect the product passed via the QR/URL (once loaded) **/
+  const appliedInitialProductRef = useRef(false);
+  useEffect(() => {
+    if (appliedInitialProductRef.current || !initialProductId) return;
+    const prod = products.find((p) => p._id === initialProductId);
+    if (!prod) return; // wait until the catalog has loaded
+    appliedInitialProductRef.current = true;
+    setSelectedProducts([{ product: prod._id, quantity: 1, price: prod.price || 0 }]);
+    setProductSearchTerms(['']);
+    setErrors([null]);
+  }, [initialProductId, products]);
 
   /** Calculate total **/
   useEffect(() => {
@@ -172,6 +202,36 @@ const SaleForm = ({
     setSelectedProducts([...selectedProducts, { product: '', quantity: '', price: 0 }]);
     setErrors([...errors, null]);
     setProductSearchTerms([...productSearchTerms, '']);
+  };
+
+  // QR scan → add the product to the form (increment if already present).
+  const handleScannedProduct = (text) => {
+    const pid = parseScannedProductId(text);
+    if (!pid) { toast.error('QR produit non reconnu.'); return; }
+    const prod = products.find((p) => p._id === pid);
+    if (!prod) { toast.error('Produit introuvable dans le catalogue.'); return; }
+
+    const idx = selectedProducts.findIndex((l) => l.product === pid);
+    if (idx >= 0) {
+      const next = [...selectedProducts];
+      next[idx] = { ...next[idx], quantity: (Number(next[idx].quantity) || 0) + 1 };
+      setSelectedProducts(next);
+      toast.success(`${prod.name} (+1)`);
+      return;
+    }
+
+    const line = { product: prod._id, quantity: 1, price: prod.price || 0 };
+    const emptyIdx = selectedProducts.findIndex((l) => !l.product);
+    if (emptyIdx >= 0) {
+      const next = [...selectedProducts];
+      next[emptyIdx] = line;
+      setSelectedProducts(next);
+    } else {
+      setSelectedProducts([...selectedProducts, line]);
+      setProductSearchTerms([...productSearchTerms, '']);
+      setErrors([...errors, null]);
+    }
+    toast.success(`${prod.name} ajouté`);
   };
 
   const removeProduct = (index) => {
@@ -378,12 +438,38 @@ const SaleForm = ({
 
         {/* PRODUCTS */}
         <section className="space-y-4" aria-labelledby="sale-form-products">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h4 id="sale-form-products" className={sectionTitleClass}>
               Produits
             </h4>
-            <span className="text-xs text-[var(--ms-text-muted)]">{selectedProducts.length} ligne(s)</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--ms-text-muted)]">{selectedProducts.length} ligne(s)</span>
+              <button
+                type="button"
+                onClick={() => setShowScanner((v) => !v)}
+                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-[var(--radiusMedium)] border px-2.5 text-xs font-semibold transition-colors ${showScanner ? 'border-transparent bg-[var(--ms-blue)] text-white' : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-[var(--ms-surface-muted)]'}`}
+                aria-pressed={showScanner}
+              >
+                <ScanLine className="h-3.5 w-3.5" /> Scanner
+              </button>
+            </div>
           </div>
+
+          {showScanner && (
+            <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-[var(--ms-text)]">Scannez le QR d'un produit pour l'ajouter</span>
+                <button type="button" onClick={() => setShowScanner(false)} className="ms-icon-button" aria-label="Fermer le scanner"><X className="h-4 w-4" /></button>
+              </div>
+              <Suspense fallback={<div className="py-8 text-center text-sm text-[var(--ms-text-muted)]">Activation de la caméra…</div>}>
+                <ProductQrScanner
+                  onDetect={handleScannedProduct}
+                  onError={() => toast.error("Impossible d'accéder à la caméra. Autorisez l'accès et réessayez.")}
+                />
+              </Suspense>
+              <p className="mt-2 text-center text-xs text-[var(--ms-text-muted)]">La caméra reste active — scannez plusieurs produits à la suite.</p>
+            </div>
+          )}
 
           <div className="space-y-4">
             {selectedProducts.map((item, index) => {
@@ -839,6 +925,7 @@ SaleForm.propTypes = {
   onProformaCreated: PropTypes.func,
   formId: PropTypes.string,
   hideSubmit: PropTypes.bool,
+  initialProductId: PropTypes.string,
 };
 
 export default SaleForm;

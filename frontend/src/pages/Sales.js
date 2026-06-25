@@ -973,6 +973,7 @@ const Sales = () => {
   // Mobile only (< lg) : bascule entre le formulaire de vente et l'historique
   // (sur desktop les deux colonnes restent côte à côte).
   const [mobilePanel, setMobilePanel] = useState("form"); // 'form' | 'history'
+  const [prefillProductId, setPrefillProductId] = useState(""); // scan-to-sell (QR ?addProduct=)
   const [timeRange, setTimeRange] = useState("30days");
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -1010,6 +1011,7 @@ const Sales = () => {
       setContainerFilter(params.get("container") || "");
     }
     setSellerFilter(params.get("seller") || "");
+    setPrefillProductId(params.get("addProduct") || "");
   }, [location.search]);
 
   // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
@@ -1941,7 +1943,7 @@ const Sales = () => {
               <GlassCard>
                 <div className="p-5 sm:p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
-                    <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
+                    <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} initialProductId={prefillProductId} />
                   </Suspense>
                 </div>
               </GlassCard>
@@ -2748,7 +2750,7 @@ const Sales = () => {
                 <GlassCard>
                   <div className="p-6">
                     <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
-                      <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} />
+                      <SaleForm clients={clients} products={products} onSubmit={handleSubmitSale} initialProductId={prefillProductId} />
                     </Suspense>
                   </div>
                 </GlassCard>

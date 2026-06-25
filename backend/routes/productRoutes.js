@@ -4,6 +4,7 @@ const {
   getProducts,
   getProductById,
   createProduct,
+  duplicateProduct,
   updateProduct,
   bulkUpdateProducts,
   deleteProduct,
@@ -57,6 +58,9 @@ router.route('/import')
 
 router.route('/bulk')
   .put(protect, admin, requireFeature(FEATURE_KEYS.BULK_EDIT), bulkUpdateProducts);
+
+router.route('/:id/duplicate')
+  .post(protect, admin, requireFeature(FEATURE_KEYS.PRODUCT_DUPLICATE), duplicateProduct);
 
 router.route('/image-library')
   .get(protect, getImageLibrary);

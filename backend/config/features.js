@@ -8,6 +8,7 @@ const FEATURE_KEYS = {
   PROFIT_ANALYSIS: 'profit_analysis',           // "Bénéfices" analytics section in Sales
   PRODUCT_IMPORT: 'product_import',             // Excel product import
   BULK_EDIT: 'bulk_edit',                       // Bulk product modification
+  PRODUCT_DUPLICATE: 'product_duplicate',       // Duplicate product records
   DATA_EXPORT: 'data_export',                   // PDF / Excel exports
   PROFORMA: 'proforma',                         // Proforma documents
   DOCUMENTS: 'documents',                       // Company documents module
@@ -32,6 +33,10 @@ const FEATURE_CATALOG = {
   },
   [FEATURE_KEYS.BULK_EDIT]: {
     label: 'Modification groupée des produits',
+    plans: ['trial', 'enterprise'],
+  },
+  [FEATURE_KEYS.PRODUCT_DUPLICATE]: {
+    label: 'Duplication des produits',
     plans: ['trial', 'enterprise'],
   },
   [FEATURE_KEYS.DATA_EXPORT]: {

@@ -23,6 +23,7 @@ import {
 } from '../components/business';
 import {
   Download,
+  Copy,
   Edit3,
   FileSpreadsheet,
   Package,
@@ -233,6 +234,24 @@ const Products = () => {
     }
   };
 
+  const handleDuplicate = async (product) => {
+    if (!product?._id) return;
+    if (!(await confirmDialog(`Dupliquer le produit « ${product.name} » ?`))) return;
+
+    try {
+      const { data } = await api.post(`/products/${product._id}/duplicate`);
+      if (data) {
+        setProducts((prev) => sortProductsByName([data, ...prev]));
+      } else {
+        fetchProducts({ showLoading: false });
+      }
+      toast.success('Produit dupliqué ✅');
+    } catch (error) {
+      console.error('Error duplicating product:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors de la duplication ❌');
+    }
+  };
+
   const totalStock = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
   const inStockCount = products.filter((product) => Number(product.stock) > 0).length;
   const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
@@ -353,6 +372,7 @@ const Products = () => {
           loading={loading}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onDuplicate={handleDuplicate}
           isAdmin={isAdmin}
           lossMap={lossMap}
           selectedIds={selectedIds}
@@ -671,7 +691,7 @@ const renderLossChip = (lossMap, p) => {
   );
 };
 
-const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
+const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin, lossMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
@@ -1568,14 +1588,30 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
                       <Edit3 className="h-5 w-5" aria-hidden />
                     </button>
                     {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => onDelete(p._id)}
-                        className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
-                        aria-label="Supprimer le produit"
-                      >
-                        <Trash2 className="h-5 w-5" aria-hidden />
-                      </button>
+                      <>
+                        <FeatureGate
+                          feature={FEATURE_KEYS.PRODUCT_DUPLICATE}
+                          locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_DUPLICATE} icon={<Copy className="h-4 w-4" />}>Dupliquer</LockedFeatureButton>}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => onDuplicate(p)}
+                            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                            aria-label="Dupliquer le produit"
+                            title="Dupliquer le produit"
+                          >
+                            <Copy className="h-5 w-5" aria-hidden />
+                          </button>
+                        </FeatureGate>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(p._id)}
+                          className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
+                          aria-label="Supprimer le produit"
+                        >
+                          <Trash2 className="h-5 w-5" aria-hidden />
+                        </button>
+                      </>
                     )}
                   </div>
                 </td>
@@ -1649,13 +1685,27 @@ const ProductList = ({ products, loading, onDelete, onEdit, isAdmin, lossMap = {
                 Modifier
               </button>
               {isAdmin && (
-                <button
-                  onClick={() => onDelete(p._id)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Supprimer
-                </button>
+                <>
+                  <FeatureGate
+                    feature={FEATURE_KEYS.PRODUCT_DUPLICATE}
+                    locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_DUPLICATE} className="w-full justify-center" icon={<Copy className="h-4 w-4" />}>Dupliquer</LockedFeatureButton>}
+                  >
+                    <button
+                      onClick={() => onDuplicate(p)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Dupliquer
+                    </button>
+                  </FeatureGate>
+                  <button
+                    onClick={() => onDelete(p._id)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Supprimer
+                  </button>
+                </>
               )}
             </div>
           </div>

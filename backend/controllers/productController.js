@@ -1,6 +1,7 @@
 const Product = require('../models/productModel');
 const Sale = require('../models/saleModel');
 const StockMovement = require('../models/stockMovementModel');
+const Supplier = require('../models/supplierModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
@@ -16,6 +17,8 @@ const normaliseId = (value) => {
   if (value.toString) return value.toString();
   return null;
 };
+
+const normalizeLookupName = (value) => String(value || '').trim().toLowerCase();
 
 const hasUserPermission = (user, permission) =>
   Boolean(user?.isAdmin || (Array.isArray(user?.permissions) && user.permissions.includes(permission)));
@@ -196,7 +199,9 @@ const getProductStats = async (req, res) => {
     const { id } = req.params;
     const { range = 'month' } = req.query; // day, week, month, year
 
-    const product = await Product.findById(id).lean();
+    const product = await Product.findById(id)
+      .populate({ path: 'activities.user', select: 'name email', options: { skipTenantGuard: true } })
+      .lean();
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -240,7 +245,7 @@ const getProductStats = async (req, res) => {
       saleDate: { $gte: startDate, $lte: endDate }
     }).select(selectFields).lean();
 
-    const lifetimeSales = await Sale.find(matchByProduct)
+    const lifetimeSales = await Sale.find({ ...tenantFilter(req), ...matchByProduct })
       .select(selectFields)
       .lean();
 
@@ -373,7 +378,7 @@ const getProductStats = async (req, res) => {
     const activities = Array.isArray(product.activities)
       ? [...product.activities]
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10)
+        .slice(0, 50)
       : [];
 
     const conversionRate = product.viewsCount > 0
@@ -529,6 +534,33 @@ const buildProductNameWithContainer = (name, container) => {
   return `${trimmedName}${suffix}`;
 };
 
+const buildDuplicateProductName = (product) => {
+  const container = product.container || '';
+  const baseName = stripContainerSuffix(product.name, container);
+  const suffix = ' copie';
+  const containerSuffix = container ? ` - ${container}` : '';
+  const maxBaseLength = Math.max(1, 100 - suffix.length - containerSuffix.length);
+  const clippedBase = baseName.slice(0, maxBaseLength).trim() || 'Produit';
+  const resolvedName = buildProductNameWithContainer(`${clippedBase}${suffix}`, container);
+  return resolvedName.length > 100 ? resolvedName.slice(0, 100).trim() : resolvedName;
+};
+
+const buildSupplierPhoneMap = async (req) => {
+  const suppliers = await Supplier.find(tenantFilter(req)).select('name phone').lean();
+  return new Map(
+    suppliers
+      .filter((supplier) => supplier.name)
+      .map((supplier) => [normalizeLookupName(supplier.name), supplier.phone || ''])
+  );
+};
+
+const resolveSupplierPhone = (supplierName, providedPhone, supplierPhoneMap) => {
+  const cleanedPhone = String(providedPhone || '').trim();
+  const key = normalizeLookupName(supplierName);
+  const lookupPhone = key && supplierPhoneMap ? String(supplierPhoneMap.get(key) || '').trim() : '';
+  return lookupPhone || cleanedPhone;
+};
+
 const uploadImageToCloudinary = (buffer) => new Promise((resolve, reject) => {
   const stream = cloudinary.uploader.upload_stream(
     {
@@ -580,6 +612,9 @@ const createProduct = async (req, res) => {
     const cleanedWarehouse = typeof warehouse === 'string' ? warehouse.trim() : '';
     const cleanedName = typeof name === 'string' ? name.trim() : '';
     const resolvedName = buildProductNameWithContainer(cleanedName, cleanedContainer);
+    const cleanedSupplierName = typeof supplierName === 'string' ? supplierName.trim() : '';
+    const supplierPhoneMap = await buildSupplierPhoneMap(req);
+    const resolvedSupplierPhone = resolveSupplierPhone(cleanedSupplierName, supplierPhone, supplierPhoneMap);
 
     let resolvedImageUrl = image;
     if (req.file?.buffer) {
@@ -597,8 +632,8 @@ const createProduct = async (req, res) => {
       stock: numericStock,
       category,
       image: resolvedImageUrl,
-      supplierName,
-      supplierPhone,
+      supplierName: cleanedSupplierName,
+      supplierPhone: resolvedSupplierPhone,
       container: cleanedContainer,
       warehouse: cleanedWarehouse,
       createdBy: userId,
@@ -616,6 +651,66 @@ const createProduct = async (req, res) => {
     res.status(201).json(createdProduct);
   } catch (error) {
     console.error('❌ Erreur création produit :', error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// @desc    Duplicate a product
+// @route   POST /api/products/:id/duplicate
+// @access  Private/Admin + Enterprise feature
+const duplicateProduct = async (req, res) => {
+  try {
+    if (req.tenantId && req.tenant) {
+      const currentCount = await Product.countDocuments({ tenantId: req.tenantId });
+      const maxProducts = req.tenant.maxProducts || 500;
+      if (currentCount >= maxProducts) {
+        return res.status(403).json({
+          message: `Limite atteinte : votre plan autorise ${maxProducts} produit(s) maximum. Contactez le support pour augmenter la limite.`,
+        });
+      }
+    }
+
+    const source = await Product.findOne({ ...tenantFilter(req), _id: req.params.id }).lean();
+
+    if (!source) {
+      return res.status(404).json({ message: 'Produit non trouvé' });
+    }
+
+    const userId = req.user ? req.user._id : null;
+    const userName = req.user?.name || 'Utilisateur inconnu';
+
+    const duplicate = new Product({
+      tenantId: req.tenantId,
+      name: buildDuplicateProductName(source),
+      description: source.description,
+      price: source.price,
+      costPrice: source.costPrice,
+      stock: source.stock,
+      category: source.category,
+      image: source.image,
+      supplierName: source.supplierName,
+      supplierPhone: source.supplierPhone,
+      container: source.container || '',
+      warehouse: source.warehouse || '',
+      minStockLevel: source.minStockLevel,
+      isActive: source.isActive,
+      createdBy: userId,
+      updatedBy: userId,
+      activities: [
+        {
+          type: 'creation',
+          description: `Produit dupliqué depuis "${source.name}" par ${userName}`,
+          user: userId,
+        },
+      ],
+    });
+
+    const createdProduct = await duplicate.save();
+    const responseProduct = await Product.findById(createdProduct._id).select(PRODUCT_LIST_FIELDS).lean();
+
+    res.status(201).json(stripSensitiveProductFields(responseProduct || createdProduct, req.user));
+  } catch (error) {
+    console.error('❌ Erreur duplication produit :', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -666,6 +761,12 @@ const updateProduct = async (req, res) => {
       ? incomingName
       : stripContainerSuffix(product.name, previousContainer);
     const resolvedName = buildProductNameWithContainer(baseName, containerForName);
+    const incomingSupplierName = typeof supplierName === 'string' ? supplierName.trim() : undefined;
+    const incomingSupplierPhone = typeof supplierPhone === 'string' ? supplierPhone.trim() : undefined;
+    const supplierPhoneMap = incomingSupplierName !== undefined ? await buildSupplierPhoneMap(req) : null;
+    const resolvedSupplierPhone = incomingSupplierName !== undefined
+      ? resolveSupplierPhone(incomingSupplierName, incomingSupplierPhone, supplierPhoneMap)
+      : incomingSupplierPhone;
 
     const changes = [];
     const fieldsToCheck = {
@@ -676,8 +777,8 @@ const updateProduct = async (req, res) => {
       stock: parseNumberField(stock),
       category,
       ...(resolvedImageUrl !== undefined ? { image: resolvedImageUrl } : {}),
-      supplierName,
-      supplierPhone,
+      supplierName: incomingSupplierName,
+      supplierPhone: resolvedSupplierPhone,
       container: incomingContainer,
       warehouse: incomingWarehouse,
     };
@@ -1737,6 +1838,7 @@ const importProducts = async (req, res) => {
     const userId = req.user?._id;
     const userName = req.user?.name || 'Admin';
     const results = { created: 0, skipped: 0, errors: [] };
+    const supplierPhoneMap = await buildSupplierPhoneMap(req);
 
     // ── Plan limit: block imports that would exceed the tenant's product quota ──
     if (req.tenantId && req.tenant) {
@@ -1784,7 +1886,11 @@ const importProducts = async (req, res) => {
       // Optional fields
       const costPrice = parseFloat(row.costPrice || row.costprice || row['Prix de revient'] || row['prix de revient'] || row.cost || 0);
       const supplierName = String(row.supplierName || row.supplier || row.Fournisseur || row.fournisseur || '').trim();
-      const supplierPhone = String(row.supplierPhone || row['Téléphone fournisseur'] || row.telephone || '').trim();
+      const supplierPhone = resolveSupplierPhone(
+        supplierName,
+        row.supplierPhone || row['Téléphone fournisseur'] || row.telephone,
+        supplierPhoneMap
+      );
       const container = String(row.container || row.Conteneur || row.conteneur || '').trim();
       const warehouse = String(row.warehouse || row.Entrepôt || row.entrepot || '').trim();
       const sku = String(row.sku || row.SKU || row.Référence || row.reference || '').trim().toUpperCase() || undefined;
@@ -1914,6 +2020,7 @@ module.exports = {
   getProducts,
   getProductById,
   createProduct,
+  duplicateProduct,
   updateProduct,
   bulkUpdateProducts,
   deleteProduct,

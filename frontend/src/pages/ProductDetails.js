@@ -20,7 +20,6 @@ import {
   Pencil,
   Eye,
   EyeOff,
-  Package,
   TrendingUp,
   DollarSign,
   BarChart2,
@@ -99,14 +98,15 @@ const ProductDetails = () => {
 
   const [product, setProduct] = useState(null);
   const [stats, setStats] = useState(buildStatsSkeleton());
+  const [weekStats, setWeekStats] = useState(buildStatsSkeleton());
   const [loading, setLoading] = useState(true);
   const [gallery, setGallery] = useState([]); // distinct images across same-name duplicates
   const [activeImage, setActiveImage] = useState('');
   const [imageZoom, setImageZoom] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRCode, setShowQRCode] = useState(false);
+  const [qrMode, setQrMode] = useState('sell'); // 'sell' (scan-to-sell) | 'view'
   const [showProfitSections, setShowProfitSections] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(false);
   const [salesHistory, setSalesHistory] = useState([]);
   const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
   const [salesHistoryError, setSalesHistoryError] = useState('');
@@ -145,7 +145,6 @@ const ProductDetails = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      setStatsLoading(true);
       try {
         const res = await api.get(`/products/${id}`);
         setProduct(res.data);
@@ -161,11 +160,12 @@ const ProductDetails = () => {
         }
         const statsRes = await api.get(`/products/${id}/stats?range=month`);
         setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
+        const weekStatsRes = await api.get(`/products/${id}/stats?range=week`);
+        setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
       } catch (err) {
         console.error('Error loading product details:', err);
       } finally {
         setLoading(false);
-        setStatsLoading(false);
       }
     };
     const loadHistory = async () => {
@@ -192,6 +192,8 @@ const ProductDetails = () => {
       setProduct(res.data);
       const statsRes = await api.get(`/products/${id}/stats?range=month`);
       setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
+      const weekStatsRes = await api.get(`/products/${id}/stats?range=week`);
+      setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
     } catch { /* ignore */ }
   }, [id]);
 
@@ -245,6 +247,40 @@ const ProductDetails = () => {
   const absoluteProfit = product?.costPrice && product?.price ? product.price - product.costPrice : 0;
   const showRealizedProfit = canSeeFinancials && showProfitSections;
   const productUrl = `${window.location.origin}${productPath(product || id)}`;
+  // Scan-to-sell: opens the sales page with this product preloaded in the form.
+  const productSaleUrl = `${window.location.origin}/sales?addProduct=${product?._id || id}#sale-form`;
+  const qrValue = qrMode === 'sell' ? productSaleUrl : productUrl;
+
+  // Download the QR as a PNG (printable shelf/product label).
+  const downloadQRCode = () => {
+    const svg = qrCodeRef.current?.querySelector('svg');
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const svgUrl = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    img.onload = () => {
+      const size = 600;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      const pad = 40;
+      ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
+      URL.revokeObjectURL(svgUrl);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const safeName = (product?.name || 'produit').replace(/[^\w\-]+/g, '-').slice(0, 40);
+        a.download = `qr-${safeName}-${qrMode === 'sell' ? 'vente' : 'fiche'}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    };
+    img.src = svgUrl;
+  };
   const returnToProducts = location.state?.returnToProducts || '/products';
 
   const openBuyersModal = async () => {
@@ -316,11 +352,34 @@ const ProductDetails = () => {
     pdf.save(`Fiche_${product.name.replace(/\s+/g, '_')}.pdf`);
   };
 
+  const salesPerformance7Days = (() => {
+    const trendByDate = new Map((weekStats.trend || []).map((entry) => [entry.date, entry]));
+    const days = [];
+    const today = new Date();
+
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const date = new Date(today);
+      date.setHours(0, 0, 0, 0);
+      date.setDate(today.getDate() - offset);
+      const key = date.toISOString().split('T')[0];
+      const entry = trendByDate.get(key) || {};
+      days.push({
+        key,
+        label: date.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' }),
+        unitsSold: Number(entry.unitsSold || 0),
+        revenue: Number(entry.revenue || 0),
+        orders: Number(entry.orders || 0),
+      });
+    }
+
+    return days;
+  })();
+
   const salesTrendData = {
-    labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+    labels: salesPerformance7Days.map((day) => day.label),
     datasets: [{
-      label: 'Ventes',
-      data: [5, 8, 3, 10, 6, 9, 7],
+      label: 'Unités vendues',
+      data: salesPerformance7Days.map((day) => day.unitsSold),
       borderColor: 'var(--colorBrandBackground)',
       backgroundColor: 'rgba(15,108,189,0.08)',
       fill: true,
@@ -329,6 +388,15 @@ const ProductDetails = () => {
       pointBackgroundColor: 'var(--colorBrandBackground)',
     }],
   };
+
+  const sevenDayTotals = salesPerformance7Days.reduce(
+    (acc, day) => ({
+      units: acc.units + day.unitsSold,
+      revenue: acc.revenue + day.revenue,
+      orders: acc.orders + day.orders,
+    }),
+    { units: 0, revenue: 0, orders: 0 }
+  );
 
   const chartOptions = {
     plugins: { legend: { display: false } },
@@ -362,6 +430,7 @@ const ProductDetails = () => {
   /* ─── TABS config ─── */
   const TABS = [
     { id: 'overview',  label: 'Aperçu' },
+    { id: 'journal', label: 'Journal' },
     ...(canSeeFinancials ? [{ id: 'financial', label: 'Analyse financière' }] : []),
     ...(isAdmin ? [{ id: 'losses', label: 'Pertes & cadeaux' }] : []),
   ];
@@ -666,6 +735,11 @@ const ProductDetails = () => {
                   <div style={{ height: 180 }}>
                     <Line data={salesTrendData} options={chartOptions} />
                   </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <MiniStat label="Unités" value={sevenDayTotals.units.toLocaleString('fr-FR')} />
+                    <MiniStat label="Ventes" value={sevenDayTotals.orders.toLocaleString('fr-FR')} />
+                    <MiniStat label="CA" value={fmt(sevenDayTotals.revenue)} />
+                  </div>
                 </div>
 
                 {/* Recent sales */}
@@ -723,6 +797,30 @@ const ProductDetails = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* ── JOURNAL ── */}
+            {activeTab === 'journal' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Journal de mise à jour du produit
+                  </p>
+                  <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Historique des créations, modifications, ajustements de stock et ventes enregistrés sur cette fiche.
+                  </p>
+                </div>
+
+                {Array.isArray(stats.activities) && stats.activities.length > 0 ? (
+                  <ul className="space-y-3">
+                    {stats.activities.map((activity, index) => (
+                      <ActivityJournalItem key={activity._id || `${activity.timestamp || 'activity'}-${index}`} activity={activity} />
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyState title="Aucun journal disponible" description="Aucune activité n'a encore été enregistrée pour ce produit." />
+                )}
               </div>
             )}
 
@@ -896,15 +994,38 @@ const ProductDetails = () => {
       {/* ══ MODAL: QR CODE ══ */}
       <Modal isOpen={showQRCode} onClose={() => setShowQRCode(false)} title="QR Code du produit" size="sm">
         <div className="flex flex-col items-center gap-4 py-2">
+          {/* Mode toggle: scan-to-sell vs view product */}
+          <div className="grid w-full grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-1">
+            {[
+              { key: 'sell', label: 'Vente rapide' },
+              { key: 'view', label: 'Fiche produit' },
+            ].map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setQrMode(m.key)}
+                className={`min-h-[36px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${qrMode === m.key ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'}`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
           <div ref={qrCodeRef} className="p-4 rounded-[var(--radiusXLarge)] bg-white" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
-            <QRCode value={productUrl} size={180} />
+            <QRCode value={qrValue} size={180} />
           </div>
           <p className="fui-caption1 text-center" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            Scannez ce code pour ouvrir la page du produit
+            {qrMode === 'sell'
+              ? 'Scannez pour démarrer une vente avec ce produit déjà ajouté.'
+              : 'Scannez pour ouvrir la fiche du produit.'}
           </p>
-          <button onClick={() => setShowQRCode(false)} className="ms-button ms-button-secondary ms-button-md w-full">
-            Fermer
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
+            <button onClick={downloadQRCode} className="ms-button ms-button-primary ms-button-md flex-1 justify-center">
+              <FileDown size={16} /> Télécharger
+            </button>
+            <button onClick={() => setShowQRCode(false)} className="ms-button ms-button-secondary ms-button-md flex-1 justify-center">
+              Fermer
+            </button>
+          </div>
         </div>
       </Modal>
 
@@ -1043,6 +1164,64 @@ const KPICard = ({ icon, label, value, tone = 'neutral' }) => {
         {icon}
       </div>
     </div>
+  );
+};
+
+const MiniStat = ({ label, value }) => (
+  <div
+    className="rounded-[var(--radiusMedium)] px-3 py-2"
+    style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}
+  >
+    <p className="fui-caption2 uppercase" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+    <p className="fui-caption1-strong mt-0.5" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+  </div>
+);
+
+const formatActivityValue = (value) => {
+  if (value === undefined || value === null || value === '') return '—';
+  if (typeof value === 'number') return value.toLocaleString('fr-FR');
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+  return String(value);
+};
+
+const ActivityJournalItem = ({ activity }) => {
+  const meta = ACTIVITY_META[activity.type] || ACTIVITY_META.default;
+  const Icon = meta.icon;
+  const userLabel = activity.user?.name || activity.user?.email || 'Utilisateur';
+  const hasFieldChange = activity.oldValue !== undefined || activity.newValue !== undefined;
+
+  return (
+    <li
+      className="flex gap-3 rounded-[var(--radiusLarge)] p-3"
+      style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke2)' }}
+    >
+      <span
+        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        style={{ background: meta.bg, color: meta.color }}
+      >
+        <Icon size={16} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            {activity.description || 'Modification du produit'}
+          </p>
+          <span className="fui-caption2 shrink-0" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            {fmtDate(activity.timestamp)}
+          </span>
+        </div>
+        <p className="fui-caption1 mt-1 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <User size={12} /> {userLabel}
+        </p>
+        {hasFieldChange && (
+          <div className="mt-2 rounded-[var(--radiusMedium)] px-3 py-2 fui-caption1" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground2)' }}>
+            <span>{formatActivityValue(activity.oldValue)}</span>
+            <span className="mx-2">→</span>
+            <span className="font-semibold">{formatActivityValue(activity.newValue)}</span>
+          </div>
+        )}
+      </div>
+    </li>
   );
 };
 

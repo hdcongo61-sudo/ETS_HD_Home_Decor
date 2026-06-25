@@ -13,6 +13,7 @@ const STOCK_KEYS = ['stock', 'Stock', 'Quantité', 'quantite', 'qty'];
 const CAT_KEYS = ['category', 'Category', 'Catégorie', 'categorie'];
 const COST_KEYS = ['costPrice', 'costprice', 'Prix de revient', 'prix de revient', 'cost'];
 const SUPPLIER_KEYS = ['supplierName', 'supplier', 'Fournisseur', 'fournisseur'];
+const SUPPLIER_PHONE_KEYS = ['supplierPhone', 'Téléphone fournisseur', 'telephone'];
 const SKU_KEYS = ['sku', 'SKU', 'Référence', 'reference'];
 
 const pick = (row, keys) => {
@@ -23,6 +24,7 @@ const pick = (row, keys) => {
 };
 
 const toNumber = (v) => parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
+const normalizeLookupName = (value) => String(value || '').trim().toLowerCase();
 
 // Returns an array of human-readable reasons a row would be skipped. Empty = valid.
 const getRowIssues = (row) => {
@@ -43,15 +45,22 @@ const getRowIssues = (row) => {
   return issues;
 };
 
-const normalizeForDisplay = (row) => ({
-  name: String(pick(row, NAME_KEYS)).trim(),
-  price: pick(row, PRICE_KEYS),
-  stock: String(pick(row, STOCK_KEYS) || '0'),
-  category: String(pick(row, CAT_KEYS)).trim() || 'Non catégorisé',
-  costPrice: pick(row, COST_KEYS),
-  supplier: String(pick(row, SUPPLIER_KEYS)).trim(),
-  sku: String(pick(row, SKU_KEYS)).trim(),
-});
+const normalizeForDisplay = (row, supplierPhoneByName = new Map()) => {
+  const supplier = String(pick(row, SUPPLIER_KEYS)).trim();
+  const providedSupplierPhone = String(pick(row, SUPPLIER_PHONE_KEYS)).trim();
+  const lookupSupplierPhone = supplierPhoneByName.get(normalizeLookupName(supplier)) || '';
+
+  return {
+    name: String(pick(row, NAME_KEYS)).trim(),
+    price: pick(row, PRICE_KEYS),
+    stock: String(pick(row, STOCK_KEYS) || '0'),
+    category: String(pick(row, CAT_KEYS)).trim() || 'Non catégorisé',
+    costPrice: pick(row, COST_KEYS),
+    supplier,
+    supplierPhone: lookupSupplierPhone || providedSupplierPhone,
+    sku: String(pick(row, SKU_KEYS)).trim(),
+  };
+};
 
 const fmtPrice = (v) => {
   const n = toNumber(v);
@@ -67,6 +76,7 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState(null);
+  const [suppliers, setSuppliers] = useState([]);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -74,18 +84,34 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
     return suppressGlobalModals();
   }, [isOpen, suppressGlobalModals]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    api.get('/lookups/suppliers')
+      .then(({ data }) => setSuppliers(Array.isArray(data) ? data : []))
+      .catch(() => setSuppliers([]));
+  }, [isOpen]);
+
+  const supplierPhoneByName = useMemo(
+    () => new Map(
+      suppliers
+        .filter((supplier) => supplier?.name)
+        .map((supplier) => [normalizeLookupName(supplier.name), supplier.phone || ''])
+    ),
+    [suppliers]
+  );
+
   // Split parsed rows into what will / won't be imported.
   const { validRows, invalidRows } = useMemo(() => {
     const valid = [];
     const invalid = [];
     rows.forEach((row, index) => {
       const issues = getRowIssues(row);
-      const entry = { row, index, rowNum: index + 2, display: normalizeForDisplay(row), issues };
+      const entry = { row, index, rowNum: index + 2, display: normalizeForDisplay(row, supplierPhoneByName), issues };
       if (issues.length === 0) valid.push(entry);
       else invalid.push(entry);
     });
     return { validRows: valid, invalidRows: invalid };
-  }, [rows]);
+  }, [rows, supplierPhoneByName]);
 
   if (!isOpen) return null;
 
@@ -302,7 +328,12 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
                               <div className="mt-0.5 flex flex-wrap gap-x-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                                 <span>Stock&nbsp;{v.display.stock}</span>
                                 <span>· {v.display.category}</span>
-                                {v.display.supplier && <span>· {v.display.supplier}</span>}
+                                {v.display.supplier && (
+                                  <span>
+                                    · {v.display.supplier}
+                                    {v.display.supplierPhone ? ` (${v.display.supplierPhone})` : ''}
+                                  </span>
+                                )}
                                 {v.display.sku && <span>· {v.display.sku}</span>}
                               </div>
                             </li>
