@@ -1605,10 +1605,24 @@ const Sales = () => {
       {
         label: "Chiffre d'affaires (CFA)",
         data: dashboardData.salesTrend.map((i) => i.total),
-        borderColor: "rgb(59,130,246)",
-        backgroundColor: "rgba(59,130,246,.12)",
+        borderColor: "#16A34A",
+        // Vertical gradient fill (modern area look) — falls back before layout.
+        backgroundColor: (ctx) => {
+          const { chart } = ctx;
+          const area = chart?.chartArea;
+          if (!area) return "rgba(22,163,74,0.15)";
+          const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+          g.addColorStop(0, "rgba(22,163,74,0.32)");
+          g.addColorStop(1, "rgba(22,163,74,0)");
+          return g;
+        },
+        borderWidth: 2.5,
         tension: 0.35,
         fill: true,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: "#16A34A",
+        pointHoverBackgroundColor: "#16A34A",
       },
     ],
   };
@@ -2652,7 +2666,7 @@ const Sales = () => {
                         </button>
                       </div>
                       <div className="h-48 sm:h-52 min-h-[180px]">
-                        <Line data={salesTrendChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top", labels: { font: CHART_LABEL_FONT } } }, scales: { y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT } }, x: { grid: { display: false }, ticks: { font: CHART_LABEL_FONT } } } }} />
+                        <Line data={salesTrendChart} options={{ responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${Math.round(c.parsed.y).toLocaleString("fr-FR")} CFA` } } }, scales: { y: { beginAtZero: true, border: { display: false }, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${Math.round(v / 1000)}k` } }, x: { border: { display: false }, grid: { display: false }, ticks: { font: CHART_LABEL_FONT } } } }} />
                       </div>
                     </div>
                   </GlassCard>

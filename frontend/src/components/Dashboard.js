@@ -15,6 +15,7 @@ import {
   ComposedChart,
   Bar,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -47,6 +48,7 @@ import { fr } from "date-fns/locale";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
+import { useAppSettings } from "../context/AppSettingsContext";
 import {
   DollarSign,
   TrendingDown,
@@ -90,9 +92,74 @@ const RemindersPanel = lazy(() => import("../components/RemindersPanel"));
 const ExportModal = lazy(() => import("../components/ExportModal"));
 const BusinessAnalyticsDashboard = lazy(() => import("../components/BusinessAnalyticsDashboard"));
 const loadXlsx = () => import("xlsx");
+const loadPdfTools = async () => {
+  const [jsPDFModule, autoTableModule] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  return {
+    jsPDF: jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default,
+    autoTable: autoTableModule.default || autoTableModule,
+  };
+};
+
+const formatCfa = (value) =>
+  `${Math.round(Number(value) || 0).toLocaleString("fr-FR")} CFA`;
+
+const CFA_EXCEL_FORMAT = '#,##0 "CFA"';
+
+const cleanReportText = (value) => String(value || "").trim();
+
+const getShopReportIdentity = (auth, appSettings) => {
+  const tenant = auth?.tenant || {};
+  const branding = appSettings?.branding || {};
+  const name =
+    cleanReportText(branding.appName) ||
+    cleanReportText(tenant.name) ||
+    "Boutique";
+
+  return {
+    name,
+    tenantName: cleanReportText(tenant.name),
+    code: cleanReportText(tenant.code),
+    ownerName: cleanReportText(tenant.ownerName),
+    ownerPhone: cleanReportText(tenant.ownerPhone),
+    address: cleanReportText(branding.address),
+    phone: cleanReportText(branding.supportPhone) || cleanReportText(tenant.ownerPhone),
+    email: cleanReportText(branding.supportEmail) || cleanReportText(tenant.ownerEmail),
+    plan: cleanReportText(tenant.plan),
+  };
+};
+
+const applyCfaNumberFormat = (XLSX, worksheet, columns = []) => {
+  if (!worksheet?.["!ref"] || !columns.length) return;
+  const range = XLSX?.utils?.decode_range?.(worksheet["!ref"]);
+  if (!range) return;
+
+  for (let rowIndex = range.s.r + 1; rowIndex <= range.e.r; rowIndex += 1) {
+    columns.forEach((columnIndex) => {
+      const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+      if (worksheet[cellAddress]) worksheet[cellAddress].z = CFA_EXCEL_FORMAT;
+    });
+  }
+};
+
+const formatReportDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return format(date, "dd/MM/yyyy", { locale: fr });
+};
+
+const getClientName = (row) => {
+  if (!row?.client) return "Client inconnu";
+  if (typeof row.client === "string") return row.client;
+  return row.client.name || "Client inconnu";
+};
 
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
+  const { appSettings } = useAppSettings();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk stats export — la facture de vente reste accessible à tous
   const currentYear = new Date().getFullYear();
@@ -725,9 +792,17 @@ const Dashboard = () => {
       const exportTotalExpenses = exportCombinedData.reduce((sum, row) => sum + (row.expenses || 0), 0);
       // Cash-basis: realized margin collected − expenses (matches the dashboard).
       const exportProfit = exportTotalPaidProfit - exportTotalExpenses;
+      const shopInfo = getShopReportIdentity(auth, appSettings);
 
       const summaryRows = [
         {
+          Boutique: shopInfo.name,
+          "Nom tenant": shopInfo.tenantName || shopInfo.name,
+          "Code boutique": shopInfo.code || "",
+          Propriétaire: shopInfo.ownerName || "",
+          Téléphone: shopInfo.phone || "",
+          Email: shopInfo.email || "",
+          Adresse: shopInfo.address || "",
           Filtre: "Période personnalisée",
           "Date début": startValue,
           "Date fin": endValue,
@@ -750,6 +825,34 @@ const Dashboard = () => {
       const wb = XLSX.utils.book_new();
       const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
       const ws = XLSX.utils.json_to_sheet(rows);
+      applyCfaNumberFormat(XLSX, summarySheet, [10, 11, 12, 13, 14]);
+      applyCfaNumberFormat(XLSX, ws, [1, 2, 3, 4, 5]);
+      summarySheet["!cols"] = [
+        { wch: 24 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 28 },
+        { wch: 32 },
+        { wch: 22 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 16 },
+      ];
+      ws["!cols"] = [
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 18 },
+      ];
       XLSX.utils.book_append_sheet(wb, summarySheet, "Filtre");
       XLSX.utils.book_append_sheet(wb, ws, "Données");
       XLSX.writeFile(wb, `dashboard-${startValue}_to_${endValue}.xlsx`);
@@ -757,6 +860,188 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Export dashboard échoué:", error);
       alert("Impossible de générer l'export du dashboard.");
+    } finally {
+      setIsExportingDashboard(false);
+    }
+  };
+
+  const exportDailyReportPdf = async () => {
+    const startValue = exportStartDate || exportDescriptor.startValue;
+    const endValue = exportEndDate || exportDescriptor.endValue;
+    const start = startOfDay(new Date(`${startValue}T00:00:00`));
+    const end = endOfDay(new Date(`${endValue}T00:00:00`));
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      alert("Choisissez une date de début et une date de fin valides.");
+      return;
+    }
+
+    if (start > end) {
+      alert("La date de début doit être avant la date de fin.");
+      return;
+    }
+
+    setIsExportingDashboard(true);
+    try {
+      const [{ jsPDF, autoTable }, salesRes, expensesRes, paymentsRes] = await Promise.all([
+        loadPdfTools(),
+        api.get(`/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`),
+        api.get(`/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`),
+        api.get(`/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`),
+      ]);
+
+      const reportSales = salesRes.data || [];
+      const reportExpenses = expensesRes.data || [];
+      const reportPayments = paymentsRes.data || [];
+      const reportCombinedData = processCombinedData(reportSales, reportExpenses, reportPayments);
+
+      const totalSalesAmount = reportCombinedData.reduce((sum, row) => sum + (Number(row.sales) || 0), 0);
+      const totalPaidAmount = reportCombinedData.reduce((sum, row) => sum + (Number(row.paid) || 0), 0);
+      const totalPaidProfit = reportCombinedData.reduce((sum, row) => sum + (Number(row.paidProfit) || 0), 0);
+      const totalExpenseAmount = reportCombinedData.reduce((sum, row) => sum + (Number(row.expenses) || 0), 0);
+      const netProfit = totalPaidProfit - totalExpenseAmount;
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 36;
+      const shopInfo = getShopReportIdentity(auth, appSettings);
+      const periodText = `${format(start, "dd/MM/yyyy", { locale: fr })} au ${format(end, "dd/MM/yyyy", { locale: fr })}`;
+      const generatedAt = format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr });
+      const contactLine = [
+        shopInfo.phone && `Tél : ${shopInfo.phone}`,
+        shopInfo.email,
+        shopInfo.address,
+      ].filter(Boolean).join("   |   ");
+      const metaLine = [
+        shopInfo.code && `Code : ${shopInfo.code}`,
+        shopInfo.ownerName && `Propriétaire : ${shopInfo.ownerName}`,
+        shopInfo.plan && `Forfait : ${shopInfo.plan}`,
+      ].filter(Boolean).join("   |   ");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Rapport d'activité", margin, 42);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(shopInfo.name, margin, 62);
+      let headerY = 78;
+      if (contactLine) {
+        const contactLines = doc.splitTextToSize(contactLine, pageWidth - (margin * 2));
+        doc.text(contactLines, margin, headerY);
+        headerY += contactLines.length * 12 + 4;
+      }
+      if (metaLine) {
+        const metaLines = doc.splitTextToSize(metaLine, pageWidth - (margin * 2));
+        doc.text(metaLines, margin, headerY);
+        headerY += metaLines.length * 12 + 4;
+      }
+      doc.text(`Période : ${periodText}`, margin, headerY);
+      doc.text(`Généré le : ${generatedAt}`, pageWidth - margin, 42, { align: "right" });
+
+      autoTable(doc, {
+        startY: headerY + 20,
+        theme: "grid",
+        head: [["Ventes", "Encaissements", "Bénéfice encaissé", "Dépenses", "Profit net", "Ventes créées", "Paiements", "Dépenses"]],
+        body: [[
+          formatCfa(totalSalesAmount),
+          formatCfa(totalPaidAmount),
+          formatCfa(totalPaidProfit),
+          formatCfa(totalExpenseAmount),
+          formatCfa(netProfit),
+          reportSales.length,
+          reportPayments.length,
+          reportExpenses.length,
+        ]],
+        styles: { fontSize: 9, cellPadding: 6 },
+        headStyles: { fillColor: [15, 108, 189] },
+      });
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 18,
+        head: [["Date", "Ventes", "Encaissements", "Bénéfice encaissé", "Dépenses", "Profit net"]],
+        body: reportCombinedData.map((row) => [
+          formatReportDate(row.date),
+          formatCfa(row.sales),
+          formatCfa(row.paid),
+          formatCfa(row.paidProfit),
+          formatCfa(row.expenses),
+          formatCfa((row.paidProfit || 0) - (row.expenses || 0)),
+        ]),
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [32, 31, 30] },
+        columnStyles: { 0: { cellWidth: 70 } },
+      });
+
+      const salesRows = reportSales.slice(0, 80).map((sale) => [
+        formatReportDate(sale.saleDate || sale.createdAt),
+        getClientName(sale),
+        formatCfa(sale.totalAmount),
+        sale.saleType || "normal",
+        (sale.products || []).slice(0, 3).map((item) => {
+          const productName = item.product?.name || "Produit";
+          return `${productName} x${item.quantity || 0}`;
+        }).join(", "),
+      ]);
+
+      if (salesRows.length > 0) {
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 18,
+          head: [["Ventes créées", "Client", "Montant", "Type", "Produits"]],
+          body: salesRows,
+          styles: { fontSize: 7.5, cellPadding: 3 },
+          headStyles: { fillColor: [16, 124, 16] },
+        });
+      }
+
+      const paymentRows = reportPayments.slice(0, 80).map((payment) => [
+        formatReportDate(payment.paymentDate || payment.createdAt),
+        getClientName(payment),
+        payment.method || "—",
+        formatCfa(payment.amount),
+        formatCfa(payment.profit),
+        payment.saleNumber || String(payment.saleId || "").slice(-6),
+      ]);
+
+      if (paymentRows.length > 0) {
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 18,
+          head: [["Encaissements", "Client", "Méthode", "Montant", "Bénéfice", "Vente"]],
+          body: paymentRows,
+          styles: { fontSize: 7.5, cellPadding: 3 },
+          headStyles: { fillColor: [133, 92, 0] },
+        });
+      }
+
+      const expenseRows = reportExpenses.slice(0, 80).map((expense) => [
+        formatReportDate(expense.date || expense.createdAt),
+        expense.category || "—",
+        expense.description || expense.supplier || "Dépense",
+        formatCfa(expense.amount),
+      ]);
+
+      if (expenseRows.length > 0) {
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 18,
+          head: [["Dépenses", "Catégorie", "Description", "Montant"]],
+          body: expenseRows,
+          styles: { fontSize: 7.5, cellPadding: 3 },
+          headStyles: { fillColor: [196, 43, 28] },
+        });
+      }
+
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setFontSize(8);
+        doc.setTextColor(110);
+        doc.text(`Page ${page}/${pageCount}`, pageWidth - margin, doc.internal.pageSize.getHeight() - 18, { align: "right" });
+      }
+
+      doc.save(`rapport-activite-${startValue}_to_${endValue}.pdf`);
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error("Export PDF dashboard échoué:", error);
+      alert("Impossible de générer le rapport PDF.");
     } finally {
       setIsExportingDashboard(false);
     }
@@ -1644,6 +1929,7 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedForChart}
+                margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
                 onClick={(state) => {
                   if (state && state.activeLabel) {
                     const clickedDate = new Date(state.activeLabel);
@@ -1651,49 +1937,74 @@ const Dashboard = () => {
                   }
                 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <defs>
+                  <linearGradient id="finSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#16A34A" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="#16A34A" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="finPaid" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#EEF1F5"} vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={(d) =>
-                    format(new Date(d), "dd MMM", { locale: fr })
-                  }
+                  tickFormatter={(d) => format(new Date(d), "dd MMM", { locale: fr })}
+                  tick={{ fontSize: 11, fill: darkMode ? "#9CA3AF" : "#6B7280" }}
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                <YAxis
+                  tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                  tick={{ fontSize: 11, fill: darkMode ? "#9CA3AF" : "#6B7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                />
                 <Tooltip
-                  formatter={(v, n) => [
-                    `${Number(v).toLocaleString("fr-FR")} CFA`,
-                    n,
-                  ]}
+                  formatter={(v, n) => [`${Number(v).toLocaleString("fr-FR")} CFA`, n]}
+                  cursor={{ stroke: darkMode ? "#4B5563" : "#CBD5E1", strokeWidth: 1 }}
                   contentStyle={{
                     borderRadius: 12,
                     border: "none",
                     boxShadow: "0 10px 30px rgba(0,0,0,.12)",
                     backgroundColor: darkMode ? "#111827" : "#fff",
                     color: darkMode ? "#F9FAFB" : "#111827",
+                    fontSize: 12,
                   }}
                 />
-                <Legend />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />
 
-                {/* Barres — période actuelle */}
-                <Bar
+                {/* Période actuelle : aires dégradées + ligne dépenses */}
+                <Area
+                  type="monotone"
                   dataKey="sales"
                   name="Ventes (actuel)"
-                  fill="#22C55E"
-                  radius={[6, 6, 0, 0]}
+                  stroke="#16A34A"
+                  strokeWidth={2.5}
+                  fill="url(#finSales)"
+                  activeDot={{ r: 4, cursor: "pointer" }}
                   cursor="pointer"
                 />
-                <Bar
+                <Area
+                  type="monotone"
                   dataKey="paid"
                   name="Encaissements (actuel)"
-                  fill="#3B82F6"
-                  radius={[6, 6, 0, 0]}
+                  stroke="#2563EB"
+                  strokeWidth={2.5}
+                  fill="url(#finPaid)"
+                  activeDot={{ r: 4, cursor: "pointer" }}
                   cursor="pointer"
                 />
-                <Bar
+                <Line
+                  type="monotone"
                   dataKey="expenses"
                   name="Dépenses (actuel)"
-                  fill="#EF4444"
-                  radius={[6, 6, 0, 0]}
+                  stroke="#EF4444"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4 }}
                   cursor="pointer"
                 />
 
@@ -1726,8 +2037,9 @@ const Dashboard = () => {
                           : "Profit net (année préc.)"
                       }
                       stroke="#8B5CF6"
+                      strokeDasharray="5 5"
                       dot={false}
-                      strokeWidth={3}
+                      strokeWidth={2.5}
                     />
                   </>
                 )}
@@ -2227,6 +2539,7 @@ const Dashboard = () => {
             show={showExportMenu}
             onClose={() => setShowExportMenu(false)}
             onExport={exportToExcel}
+            onPdfExport={exportDailyReportPdf}
             filterLabel={exportDescriptor.label}
             startDate={exportStartDate || exportDescriptor.startValue}
             endDate={exportEndDate || exportDescriptor.endValue}

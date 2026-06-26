@@ -6,6 +6,7 @@ const ExportModal = ({
   show,
   onClose,
   onExport,
+  onPdfExport,
   filterLabel,
   startDate,
   endDate,
@@ -20,15 +21,28 @@ const ExportModal = ({
       title="Exporter les données"
       size="sm"
       footer={
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={exporting}
-          className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white flex items-center justify-center gap-2 touch-manipulation"
-        >
-          <FileDown size={18} />
-          {exporting ? "Export..." : "Exporter Excel"}
-        </button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={exporting}
+            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white flex items-center justify-center gap-2 touch-manipulation disabled:opacity-60"
+          >
+            <FileDown size={18} />
+            {exporting ? "Export..." : "Exporter Excel"}
+          </button>
+          {onPdfExport && (
+            <button
+              type="button"
+              onClick={onPdfExport}
+              disabled={exporting}
+              className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-[var(--ms-border)] bg-white text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] flex items-center justify-center gap-2 touch-manipulation disabled:opacity-60"
+            >
+              <FileDown size={18} />
+              {exporting ? "Export..." : "Rapport PDF"}
+            </button>
+          )}
+        </div>
       }
     >
       <div className="space-y-4">
@@ -67,7 +81,7 @@ const ExportModal = ({
           </label>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-          Le fichier contient les ventes, encaissements, dépenses et profit pour les dates choisies.
+          Le fichier contient les ventes, encaissements, dépenses et profit pour les dates choisies. Le PDF ajoute un résumé lisible pour impression.
         </div>
       </div>
     </Modal>

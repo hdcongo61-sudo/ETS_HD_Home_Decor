@@ -16,6 +16,8 @@ import {
   MessageCircle,
   Phone,
   Copy,
+  Warehouse,
+  Store,
 } from "lucide-react";
 import api from "../services/api";
 import { employeePayrollNewPath } from "../utils/paths";
@@ -204,46 +206,50 @@ const StockReplacementCard = ({ reminder, onConfirmed }) => {
     }
   };
 
+  const qty = Number(reminder.quantityToReplace || 0);
+  const lastSale = reminder.lastSaleAt
+    ? new Date(reminder.lastSaleAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+    : "—";
+
   return (
     <motion.article
       whileHover={{ y: -2 }}
-      className="rounded-[22px] border border-emerald-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-emerald-500/20 dark:bg-gray-900"
+      className="flex h-full flex-col rounded-[22px] border border-emerald-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-emerald-500/20 dark:bg-gray-900"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h4 className="truncate font-semibold text-gray-950 dark:text-white">{productName}</h4>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            À remettre en boutique :{" "}
-            <span className="font-semibold text-gray-950 dark:text-white">
-              {Number(reminder.quantityToReplace || 0).toLocaleString("fr-FR")}
-            </span>
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Source : {warehouseName}
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Stock actuel indicatif : {Number(currentStock || 0).toLocaleString("fr-FR")}
-          </p>
-          {reminder.lastSaleAt && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Dernière vente : {new Date(reminder.lastSaleAt).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
-          )}
-        </div>
-        <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-          Dépôt → boutique
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="min-w-0 truncate font-semibold text-gray-950 dark:text-white">{productName}</h4>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <Warehouse size={11} /> → <Store size={11} />
         </span>
       </div>
+
+      {/* 3-column stat layout */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-emerald-50/70 p-2 text-center dark:bg-emerald-500/10">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/70 dark:text-emerald-300/70">À remettre</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums leading-none text-emerald-700 dark:text-emerald-300">{qty.toLocaleString("fr-FR")}</p>
+        </div>
+        <div className="rounded-xl bg-gray-50 p-2 text-center dark:bg-gray-800">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums leading-none text-gray-900 dark:text-white">{Number(currentStock || 0).toLocaleString("fr-FR")}</p>
+        </div>
+        <div className="rounded-xl bg-gray-50 p-2 text-center dark:bg-gray-800">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Dern. vente</p>
+          <p className="mt-0.5 text-sm font-bold leading-none text-gray-900 dark:text-white" style={{ paddingTop: 2 }}>{lastSale}</p>
+        </div>
+      </div>
+
+      <p className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <Warehouse size={12} className="shrink-0" />
+        <span className="shrink-0">Source :</span>
+        <span className="truncate font-medium text-gray-700 dark:text-gray-300">{warehouseName}</span>
+      </p>
 
       <button
         type="button"
         onClick={confirmReplacement}
         disabled={confirming}
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <CheckCircle2 size={16} />
         {confirming ? "Confirmation..." : "Confirmer mis en boutique"}
@@ -574,13 +580,15 @@ const RemindersPanel = ({
             )
           ) : activeTab === "stock" ? (
             stockReplacementReminders.length > 0 ? (
-              stockReplacementReminders.map((reminder) => (
-                <StockReplacementCard
-                  key={reminder._id}
-                  reminder={reminder}
-                  onConfirmed={onStockReplacementConfirmed}
-                />
-              ))
+              <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {stockReplacementReminders.map((reminder) => (
+                  <StockReplacementCard
+                    key={reminder._id}
+                    reminder={reminder}
+                    onConfirmed={onStockReplacementConfirmed}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="col-span-full flex flex-col items-center rounded-[22px] border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-400">
                 <PackageCheck className="w-10 h-10 mb-2 opacity-60" />

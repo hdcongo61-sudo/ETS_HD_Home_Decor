@@ -273,7 +273,7 @@ const ProductDetails = () => {
         if (!blob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        const safeName = (product?.name || 'produit').replace(/[^\w\-]+/g, '-').slice(0, 40);
+        const safeName = (product?.name || 'produit').replace(/[^\w-]+/g, '-').slice(0, 40);
         a.download = `qr-${safeName}-${qrMode === 'sell' ? 'vente' : 'fiche'}.png`;
         a.click();
         URL.revokeObjectURL(a.href);
