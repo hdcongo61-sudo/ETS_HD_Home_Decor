@@ -1,15 +1,23 @@
 import { confirmDialog } from './ConfirmProvider';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Edit3, FileText, Mail, Phone, Plus, UserRound, UserX } from 'lucide-react';
+import { ArrowLeft, Banknote, Coins, Edit3, FileText, Mail, Phone, Plus, Scale, UserRound, UserX, Wallet } from 'lucide-react';
 import api from '../services/api';
 import AppLoader from './AppLoader';
+import AuthContext from '../context/AuthContext';
+import { KPICard } from './business';
 import {
   employeeEditPath,
   employeePayrollNewPath,
   employeePayrollPath,
   employeePayrollPayslipEditPath,
 } from '../utils/paths';
+
+// Salary advances are recorded as expenses of the "salaire" category linked to the employee.
+const isSalaryCategory = (category) => {
+  const normalized = String(category || '').trim().toLowerCase();
+  return normalized.includes('salair') || normalized.includes('salar');
+};
 
 const statusStyles = {
   pending: { label: 'En attente', classes: 'bg-[var(--ms-warning)]/15 text-amber-800' },
@@ -23,6 +31,8 @@ const formatPeriod = (month, year) =>
 const EmployeeDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,8 +44,38 @@ const EmployeeDetail = () => {
   });
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  // Advances (salary expenses) — loaded lazily when the tab is first opened.
+  const [advances, setAdvances] = useState([]);
+  const [advancesLoading, setAdvancesLoading] = useState(false);
+  const [advancesError, setAdvancesError] = useState('');
+  const [advancesLoaded, setAdvancesLoaded] = useState(false);
   const employeeReference = employee || { _id: id };
   const employeeActive = employee?.isActive !== false;
+
+  const fetchAdvances = useCallback(async () => {
+    setAdvancesLoading(true);
+    setAdvancesError('');
+    try {
+      const { data } = await api.get('/expenses', { params: { employee: id } });
+      const list = (Array.isArray(data) ? data : [])
+        .filter((expense) => isSalaryCategory(expense.category))
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      setAdvances(list);
+      setAdvancesLoaded(true);
+    } catch (err) {
+      setAdvancesError(err.response?.data?.message || 'Impossible de charger les avances');
+    } finally {
+      setAdvancesLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'advances' && !advancesLoaded && !advancesLoading) {
+      fetchAdvances();
+    }
+  }, [isAdmin, activeTab, advancesLoaded, advancesLoading, fetchAdvances]);
+
+  const advancesTotal = advances.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -156,16 +196,16 @@ const EmployeeDetail = () => {
       )}
 
       {/* Header Section */}
-      <div className="flex items-center mb-6">
+      <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/employees')}
-          className="p-2 rounded-full hover:bg-[var(--ms-bg-subtle)] mr-2 transition-colors"
+          className="ms-button ms-button-secondary ms-button-md"
+          aria-label="Retour à la liste"
         >
-          <svg className="w-5 h-5 text-[var(--ms-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Employés</span>
         </button>
-        <h1 className="text-2xl font-semibold text-[var(--ms-text-strong)]">Détails de l'employé</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-[var(--ms-text-strong)]">Profil employé</h1>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-white/80 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
@@ -238,7 +278,7 @@ const EmployeeDetail = () => {
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
             <Link
               to={employeePayrollNewPath(employeeReference)}
-              className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold ${employeeActive ? 'bg-gray-950 text-white hover:bg-black' : 'pointer-events-none bg-[var(--ms-bg-subtle)] text-[var(--ms-text-muted)]'}`}
+              className={`ms-button ms-button-primary ms-button-md justify-center ${employeeActive ? '' : 'pointer-events-none opacity-50'}`}
               aria-disabled={!employeeActive}
             >
               <Plus className="w-4 h-4" />
@@ -246,14 +286,14 @@ const EmployeeDetail = () => {
             </Link>
             <Link
               to={employeePayrollPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] hover:bg-gray-200"
+              className="ms-button ms-button-secondary ms-button-md justify-center"
             >
               <FileText className="w-4 h-4" />
-              Paie
+              Historique paie
             </Link>
             <Link
               to={employeeEditPath(employeeReference)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--ms-bg-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--ms-text)] hover:bg-gray-200"
+              className="ms-button ms-button-secondary ms-button-md justify-center"
             >
               <Edit3 className="w-4 h-4" />
               Modifier
@@ -262,88 +302,63 @@ const EmployeeDetail = () => {
         </div>
 
         {/* Financial Summary */}
-        <div className="p-6 sm:p-8 bg-[var(--ms-bg-subtle)]/80 border-b border-[var(--ms-border)]">
-          <h3 className="text-lg font-semibold text-[var(--ms-text-strong)] mb-4">Résumé financier</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[var(--ms-white)] p-5 rounded-lg border border-[var(--ms-border)] flex items-center gap-4">
-              <div className="bg-[var(--ms-blue-soft)] p-3 rounded-md">
-                <svg className="w-6 h-6 text-[var(--ms-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-[var(--ms-text-muted)]">Salaire mensuel</div>
-                <div className="text-lg font-semibold text-[var(--ms-text-strong)]">
-                  {new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[var(--ms-white)] p-5 rounded-lg border border-[var(--ms-border)] flex items-center gap-4">
-              <div className="bg-[var(--ms-success)]/10 p-3 rounded-md">
-                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-[var(--ms-text-muted)]">Total payé</div>
-                <div className="text-lg font-semibold text-[var(--ms-text-strong)]">
-                  {new Intl.NumberFormat('fr-FR').format(stats.totalPaid)} CFA
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[var(--ms-white)] p-5 rounded-lg border border-[var(--ms-border)] flex items-center gap-4">
-              <div className={`p-3 rounded-md ${stats.balance >= 0 ? 'bg-[var(--ms-success)]/10' : 'bg-[var(--ms-danger)]/10'}`}>
-                <svg
-                  className={`w-6 h-6 ${stats.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={stats.balance >= 0
-                    ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    : "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"} />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm text-[var(--ms-text-muted)]">Solde</div>
-                <div className={`text-lg font-semibold ${stats.balance >= 0 ? 'text-[var(--ms-success)]' : 'text-[var(--ms-danger)]'}`}>
-                  {new Intl.NumberFormat('fr-FR').format(stats.balance)} CFA
-                </div>
-              </div>
-            </div>
+        <div className="p-6 sm:p-8 bg-[var(--ms-bg-subtle)]/60 border-b border-[var(--ms-border)]">
+          <h3 className="text-base font-semibold text-[var(--ms-text-strong)] mb-4">Résumé financier</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KPICard
+              title="Salaire mensuel"
+              value={`${new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA`}
+              context="Brut contractuel"
+              tone="brand"
+              icon={<Banknote className="h-4 w-4" />}
+            />
+            <KPICard
+              title="Total payé"
+              value={`${new Intl.NumberFormat('fr-FR').format(stats.totalPaid)} CFA`}
+              context="Fiches de paie cumulées"
+              tone="success"
+              icon={<Wallet className="h-4 w-4" />}
+            />
+            <KPICard
+              title="Solde"
+              value={`${new Intl.NumberFormat('fr-FR').format(stats.balance)} CFA`}
+              context={stats.balance >= 0 ? 'À jour' : 'Reste à régulariser'}
+              tone={stats.balance >= 0 ? 'success' : 'danger'}
+              icon={<Scale className="h-4 w-4" />}
+            />
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="border-b border-[var(--ms-border)] px-8">
-          <nav className="flex -mb-px overflow-x-auto">
+        <div className="px-4 sm:px-8 border-b border-[var(--ms-border)]">
+          <div className="fui-pivot">
             <button
+              type="button"
               onClick={() => setActiveTab('details')}
-              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'details'
-                ? 'text-[var(--ms-text-strong)] border-b-2 border-gray-950'
-                : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'
-                }`}
+              className={`fui-pivot__tab flex items-center gap-2 ${activeTab === 'details' ? 'fui-pivot__tab--active' : ''}`}
             >
-              <UserRound className="w-5 h-5" />
+              <UserRound className="w-4 h-4" />
               Détails
             </button>
-
             <button
+              type="button"
               onClick={() => setActiveTab('payslips')}
-              className={`py-4 px-6 flex shrink-0 items-center gap-2 font-medium text-sm ${activeTab === 'payslips'
-                ? 'text-[var(--ms-text-strong)] border-b-2 border-gray-950'
-                : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'
-                }`}
+              className={`fui-pivot__tab flex items-center gap-2 ${activeTab === 'payslips' ? 'fui-pivot__tab--active' : ''}`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
-              </svg>
+              <FileText className="w-4 h-4" />
               Fiches de paie ({paySlips.length})
             </button>
-
-          </nav>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('advances')}
+                className={`fui-pivot__tab flex items-center gap-2 ${activeTab === 'advances' ? 'fui-pivot__tab--active' : ''}`}
+              >
+                <Coins className="w-4 h-4" />
+                Avances{advancesLoaded ? ` (${advances.length})` : ''}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -611,14 +626,67 @@ const EmployeeDetail = () => {
                   <p className="text-[var(--ms-text-muted)] mt-2 mb-4">Aucune fiche de paie trouvée pour cet employé</p>
                   <Link
                     to={employeePayrollNewPath(employeeReference)}
-                    className={`inline-flex items-center rounded-lg px-4 py-2 text-sm transition-colors ${employeeActive ? 'bg-gray-950 text-white hover:bg-black' : 'pointer-events-none bg-[var(--ms-bg-subtle)] text-[var(--ms-text-muted)]'}`}
+                    className={`ms-button ms-button-primary ms-button-md ${employeeActive ? '' : 'pointer-events-none opacity-50'}`}
                     aria-disabled={!employeeActive}
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <Plus className="w-4 h-4" />
                     Créer une fiche de paie
                   </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Advances Tab */}
+          {activeTab === 'advances' && isAdmin && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--ms-text-strong)]">Avances sur salaire</h3>
+                  <p className="text-sm text-[var(--ms-text-muted)]">Paiements de catégorie « salaire » liés à cet employé.</p>
+                </div>
+                {advancesLoaded && advances.length > 0 && (
+                  <div className="rounded-[var(--radiusLarge)] bg-[var(--ms-bg-subtle)] px-4 py-2 sm:text-right">
+                    <div className="text-xs uppercase tracking-wide text-[var(--ms-text-muted)]">Cumul des avances</div>
+                    <div className="text-lg font-semibold text-[var(--ms-text-strong)]">
+                      {new Intl.NumberFormat('fr-FR').format(advancesTotal)} CFA
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {advancesLoading ? (
+                <div className="flex justify-center py-12">
+                  <AppLoader fullScreen={false} text="Chargement des avances…" />
+                </div>
+              ) : advancesError ? (
+                <div className="flex items-center justify-between gap-3 rounded-[var(--radiusLarge)] border border-[var(--colorStatusDangerStroke1)] bg-[var(--colorStatusDangerBackground1)] p-4 text-sm text-[var(--ms-danger)]">
+                  <span>{advancesError}</span>
+                  <button onClick={fetchAdvances} className="ms-button ms-button-secondary ms-button-sm shrink-0">Réessayer</button>
+                </div>
+              ) : advances.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--ms-border-strong)] py-12 text-center">
+                  <Coins className="mx-auto h-12 w-12 text-[var(--ms-text-muted)] opacity-50" />
+                  <h4 className="mt-3 font-medium text-[var(--ms-text)]">Aucune avance enregistrée</h4>
+                  <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Les avances sont saisies comme dépenses de catégorie « salaire ».</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {advances.map((item) => (
+                    <div key={item._id} className="flex items-center justify-between gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-[var(--ms-text-strong)]">{item.description || 'Avance sur salaire'}</p>
+                        <p className="text-xs text-[var(--ms-text-muted)]">
+                          {item.date ? new Date(item.date).toLocaleDateString('fr-FR') : '—'}
+                          {item.salaryMonth && item.salaryYear ? ` · Période ${formatPeriod(item.salaryMonth, item.salaryYear)}` : ''}
+                          {item.paymentMethod ? ` · ${item.paymentMethod}` : ''}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-semibold text-[var(--ms-danger)]">
+                        - {new Intl.NumberFormat('fr-FR').format(item.amount)} CFA
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -627,24 +695,20 @@ const EmployeeDetail = () => {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 bg-[var(--ms-bg-subtle)] border-t border-[var(--ms-border)] flex flex-col sm:flex-row gap-3 justify-between">
+        <div className="p-5 sm:p-6 bg-[var(--ms-bg-subtle)] border-t border-[var(--ms-border)] flex flex-col sm:flex-row gap-3 justify-between">
           <Link
             to="/employees"
-            className="form-button-secondary flex items-center gap-2 justify-center"
+            className="ms-button ms-button-secondary ms-button-md justify-center"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft className="w-4 h-4" />
             Retour à la liste
           </Link>
           <div className="flex gap-3">
             <Link
-            to={employeeEditPath(employeeReference)}
-              className="form-button-primary flex items-center gap-2 justify-center"
+              to={employeeEditPath(employeeReference)}
+              className="ms-button ms-button-primary ms-button-md justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+              <Edit3 className="w-4 h-4" />
               Modifier l'employé
             </Link>
           </div>

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import { FormActionsSticky } from './FormLayout';
+import { Button, PageHeader, Workspace } from './business';
 
 const EmployeeForm = () => {
   const { id } = useParams();
@@ -198,29 +200,23 @@ const EmployeeForm = () => {
   };
 
   if (loading) return (
-    <div className="flex justify-center items-center h-64">
+    <Workspace className="flex items-center justify-center min-h-[60vh]">
       <AppLoader fullScreen={false} text="Chargement…" />
-    </div>
+    </Workspace>
   );
 
   return (
-    <div className="p-6">
-      <div className="flex items-center mb-6">
-        <button
-          onClick={() => navigate('/employees')}
-          className="p-2 rounded-full hover:bg-[var(--ms-bg-subtle)] mr-2 transition-colors"
-        >
-          <svg className="w-5 h-5 text-[var(--ms-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--ms-text-strong)]">{isEditMode ? 'Modifier' : 'Nouvel'} employé</h1>
-          <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
-            Informations RH, statut de présence et données de paie.
-          </p>
-        </div>
-      </div>
+    <Workspace className="space-y-5">
+      <PageHeader
+        eyebrow="Ressources humaines"
+        title={`${isEditMode ? 'Modifier' : 'Nouvel'} employé`}
+        description="Informations RH, statut de présence et données de paie."
+        actions={
+          <Button variant="secondary" size="md" onClick={() => navigate('/employees')}>
+            <ArrowLeft className="h-4 w-4" /> Employés
+          </Button>
+        }
+      />
 
       <div className="form-shell p-5 sm:p-8">
         {errors.general && (
@@ -490,7 +486,7 @@ const EmployeeForm = () => {
           </FormActionsSticky>
         </form>
       </div>
-    </div>
+    </Workspace>
   );
 };
 

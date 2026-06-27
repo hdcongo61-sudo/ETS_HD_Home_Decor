@@ -104,7 +104,7 @@ const loadPdfTools = async () => {
 };
 
 const formatCfa = (value) =>
-  `${Math.round(Number(value) || 0).toLocaleString("fr-FR")} CFA`;
+  `${Math.round(Number(value) || 0).toLocaleString("en-US")} CFA`;
 
 const CFA_EXCEL_FORMAT = '#,##0 "CFA"';
 
