@@ -33,6 +33,13 @@ const parseOptionalExpenseDate = (value) => {
   return { value: parsed };
 };
 
+// A full ISO timestamp (e.g. "2026-06-28T23:00:00.000Z") already carries a
+// precise instant — typically a client-side period boundary like startOfWeek().
+// A date-only string (e.g. "2026-06-28", from an <input type="date">) needs to
+// be expanded to cover the whole day. Re-flooring an ISO instant with setHours()
+// would shift it by the server/UTC offset, leaking a neighbouring day's data.
+const hasTimeComponent = (value) => typeof value === 'string' && /T\d/.test(value);
+
 const buildDateRangeFilter = (startDate, endDate) => {
   const dateFilter = {};
 
@@ -41,7 +48,9 @@ const buildDateRangeFilter = (startDate, endDate) => {
     if (Number.isNaN(start.getTime())) {
       return { error: 'Date de début invalide' };
     }
-    start.setHours(0, 0, 0, 0);
+    if (!hasTimeComponent(startDate)) {
+      start.setHours(0, 0, 0, 0);
+    }
     dateFilter.$gte = start;
   }
 
@@ -50,7 +59,9 @@ const buildDateRangeFilter = (startDate, endDate) => {
     if (Number.isNaN(end.getTime())) {
       return { error: 'Date de fin invalide' };
     }
-    end.setHours(23, 59, 59, 999);
+    if (!hasTimeComponent(endDate)) {
+      end.setHours(23, 59, 59, 999);
+    }
     dateFilter.$lte = end;
   }
 

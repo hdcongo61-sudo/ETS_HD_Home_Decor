@@ -69,6 +69,13 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
     return () => window.removeEventListener('proformaCreated', refresh);
   }, [loadProformas]);
 
+  // Une proforma convertie en vente vit désormais dans l'historique des ventes —
+  // on ne la garde plus dans la liste des proformas.
+  const visibleProformas = useMemo(
+    () => proformas.filter((item) => item.status !== 'converted'),
+    [proformas]
+  );
+
   const summary = useMemo(
     () => ({
       active: proformas.filter((item) => ['draft', 'sent'].includes(item.status)).length,
@@ -189,13 +196,13 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
       <div className="p-5">
         {loading ? (
           <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Chargement…</p>
-        ) : proformas.length === 0 ? (
+        ) : visibleProformas.length === 0 ? (
           <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
             Aucune proforma enregistrée. Utilisez le mode « Proforma » dans le formulaire de vente.
           </p>
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
-            {proformas.map((proforma) => {
+            {visibleProformas.map((proforma) => {
               const meta = STATUS_META[proforma.status] || STATUS_META.draft;
               const disabled = workingId === proforma._id;
               const editable = proforma.status !== 'converted';
@@ -246,7 +253,7 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
                     </ul>
                   )}
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <button
                       type="button"
                       disabled={disabled}
