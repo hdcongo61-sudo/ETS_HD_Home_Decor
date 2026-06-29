@@ -14,6 +14,7 @@ export const FEATURE_KEYS = {
   BANK: 'bank',
   SUPPLIER_RESTOCK: 'supplier_restock',
   LOYALTY: 'loyalty',
+  COMPTABILITE: 'comptabilite',
 };
 
 export const FEATURE_LABELS = {
@@ -29,6 +30,7 @@ export const FEATURE_LABELS = {
   [FEATURE_KEYS.BANK]: 'Caisse / banque',
   [FEATURE_KEYS.SUPPLIER_RESTOCK]: 'Ravitaillement fournisseur',
   [FEATURE_KEYS.LOYALTY]: 'Programme de fidélité',
+  [FEATURE_KEYS.COMPTABILITE]: 'Comptabilité',
 };
 
 // Lowest paid plan that unlocks each feature (Trial always has everything).
@@ -45,6 +47,7 @@ export const FEATURE_REQUIRED_PLAN_LABEL = {
   [FEATURE_KEYS.BANK]: 'Entreprise',
   [FEATURE_KEYS.SUPPLIER_RESTOCK]: 'Entreprise',
   [FEATURE_KEYS.LOYALTY]: 'Entreprise',
+  [FEATURE_KEYS.COMPTABILITE]: 'Entreprise',
 };
 
 // Plan key (for the upgrade request payload) matching the label above.
@@ -61,6 +64,7 @@ export const FEATURE_REQUIRED_PLAN = {
   [FEATURE_KEYS.BANK]: 'enterprise',
   [FEATURE_KEYS.SUPPLIER_RESTOCK]: 'enterprise',
   [FEATURE_KEYS.LOYALTY]: 'enterprise',
+  [FEATURE_KEYS.COMPTABILITE]: 'enterprise',
 };
 
 export const featureLabel = (key) => FEATURE_LABELS[key] || key;

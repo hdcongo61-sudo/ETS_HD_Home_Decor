@@ -17,6 +17,7 @@ const FEATURE_KEYS = {
   BANK: 'bank',                                 // Caisse / bank module
   SUPPLIER_RESTOCK: 'supplier_restock',         // Supplier restock (deferred)
   LOYALTY: 'loyalty',                           // Client loyalty program
+  COMPTABILITE: 'comptabilite',                 // Accounting cockpit (P&L, trésorerie, bilan)
 };
 
 // Which plans include each gated feature by default. Trial gets everything so
@@ -69,6 +70,10 @@ const FEATURE_CATALOG = {
   },
   [FEATURE_KEYS.LOYALTY]: {
     label: 'Programme de fidélité',
+    plans: ['trial', 'enterprise'],
+  },
+  [FEATURE_KEYS.COMPTABILITE]: {
+    label: 'Comptabilité',
     plans: ['trial', 'enterprise'],
   },
 };

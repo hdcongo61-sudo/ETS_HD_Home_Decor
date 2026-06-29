@@ -42,6 +42,7 @@ const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
 const ClientLoyalty = lazy(() => import('./pages/ClientLoyalty'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 const Bank = lazy(() => import('./pages/Bank'));
+const Comptabilite = lazy(() => import('./pages/Comptabilite'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -282,6 +283,14 @@ function App() {
                   element={
                     <ProtectedRoute feature={FEATURE_KEYS.BANK}>
                       <Bank />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/comptabilite"
+                  element={
+                    <ProtectedRoute adminOnly feature={FEATURE_KEYS.COMPTABILITE}>
+                      <Comptabilite />
                     </ProtectedRoute>
                   }
                 />

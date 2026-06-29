@@ -218,6 +218,34 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
                       </p>
                     </div>
                   </div>
+
+                  {/* Itemized product list — like a sale's line items */}
+                  {(proforma.products || []).length > 0 && (
+                    <ul className="mt-3 max-h-44 space-y-1 overflow-y-auto rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-2">
+                      {(proforma.products || []).map((line, index) => {
+                        const name = line.productName || line.product?.name || 'Produit';
+                        const quantity = Number(line.quantity) || 0;
+                        const price = Number(line.price) || 0;
+                        return (
+                          <li
+                            key={`${line.product?._id || line.product || 'line'}-${index}`}
+                            className="flex items-baseline justify-between gap-2 text-sm"
+                          >
+                            <span className="min-w-0 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                              <span className="font-medium">{name}</span>
+                              <span className="ml-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                {quantity} × {formatAmount(price)}
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-semibold tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                              {formatAmount(quantity * price)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"

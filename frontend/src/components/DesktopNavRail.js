@@ -11,6 +11,7 @@ import {
   BriefcaseBusiness,
   BarChart2,
   Activity,
+  Calculator,
   FileText,
   Settings,
   LogOut,
@@ -36,6 +37,7 @@ const PRIMARY_NAV = [
 ];
 
 const ADMIN_NAV = [
+  { to: '/comptabilite',     icon: Calculator,      label: 'Comptabilité' },
   { to: '/expenses',         icon: Receipt,         label: 'Dépenses' },
   { to: '/employees',        icon: BriefcaseBusiness,label: 'Employés' },
   { to: '/product-dashboard',icon: BarChart2,        label: 'Analytics' },
