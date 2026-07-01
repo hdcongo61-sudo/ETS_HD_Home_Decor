@@ -1413,6 +1413,22 @@ button:focus {
     align-items: stretch;
     flex-direction: column-reverse;
   }
+
+  /* KPI cards: currency values (e.g. "1 234 567 CFA") overflow the narrow
+     multi-column grid on phones — shrink the type and let it wrap. */
+  .ms-kpi-value {
+    font-size: 19px;
+  }
+  .ms-kpi-card {
+    padding: 12px;
+  }
+  .ms-kpi-card > div:first-child {
+    min-width: 0;
+  }
+  .ms-kpi-title,
+  .ms-kpi-value {
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════

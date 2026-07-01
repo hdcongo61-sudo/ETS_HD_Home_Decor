@@ -1885,7 +1885,7 @@ const getSaleById = asyncHandler(async (req, res) => {
       .populate('client', 'name email phone')
       .populate({
         path: 'products.product',
-        select: 'name price costPrice slug',
+        select: 'name price costPrice slug image',
         model: 'Product'
       })
       .populate({
@@ -1899,6 +1899,11 @@ const getSaleById = asyncHandler(async (req, res) => {
         select: 'name email isAdmin role',
         model: 'User',
         options: { skipTenantGuard: true }
+      })
+      .populate({
+        path: 'modificationHistory.changes.products.product',
+        select: 'name slug image',
+        model: 'Product'
       })
       .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
       .lean();
@@ -2343,6 +2348,10 @@ const updateSale = asyncHandler(async (req, res) => {
           path: 'modificationHistory.user',
           select: 'name email isAdmin role',
           options: { skipTenantGuard: true }
+        })
+        .populate({
+          path: 'modificationHistory.changes.products.product',
+          select: 'name slug image'
         });
 
       const saleObject = populatedSale.toObject();

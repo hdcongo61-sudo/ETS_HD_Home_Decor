@@ -1331,20 +1331,30 @@ const SaleDetailPage = () => {
                                     return (
                                         <div key={`mobile-product-${index}`} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
                                             <div className="flex justify-between items-start gap-4">
-                                                <div>
-                                                    {product?._id ? (
-                                                        <Link
-                                                            to={productPath(product)}
-                                                            className="text-sm font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] hover:underline"
-                                                        >
-                                                            {product.name || 'Produit'}
-                                                        </Link>
-                                                    ) : (
-                                                        <p className="text-sm font-semibold text-gray-900">Produit supprimé</p>
+                                                <div className="flex items-start gap-3 min-w-0">
+                                                    {product?.image && (
+                                                        <img
+                                                            src={product.image}
+                                                            alt=""
+                                                            loading="lazy"
+                                                            className="h-12 w-12 shrink-0 rounded-lg border border-gray-200 object-cover"
+                                                        />
                                                     )}
-                                                    <p className="text-xs text-gray-500">
-                                                        Prix unitaire : <span className="font-medium text-gray-900">{item.priceAtSale?.toFixed(0)} CFA</span>
-                                                    </p>
+                                                    <div className="min-w-0">
+                                                        {product?._id ? (
+                                                            <Link
+                                                                to={productPath(product)}
+                                                                className="text-sm font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] hover:underline"
+                                                            >
+                                                                {product.name || 'Produit'}
+                                                            </Link>
+                                                        ) : (
+                                                            <p className="text-sm font-semibold text-gray-900">Produit supprimé</p>
+                                                        )}
+                                                        <p className="text-xs text-gray-500">
+                                                            Prix unitaire : <span className="font-medium text-gray-900">{item.priceAtSale?.toFixed(0)} CFA</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
                                                 <span className="text-sm text-gray-600">{item.quantity}×</span>
                                             </div>
@@ -1415,18 +1425,28 @@ const SaleDetailPage = () => {
                                                 return (
                                                     <tr key={index}>
                                                         <td className="px-4 py-4 whitespace-nowrap">
-                                                            {product?._id ? (
-                                                                <Link
-                                                                    to={productPath(product)}
-                                                                    className="text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] hover:underline"
-                                                                >
-                                                                    {product.name || 'Produit'}
-                                                                </Link>
-                                                            ) : (
-                                                                <div className="text-sm font-medium text-gray-900">
-                                                                    Produit supprimé
-                                                                </div>
-                                                            )}
+                                                            <div className="flex items-center gap-3">
+                                                                {product?.image && (
+                                                                    <img
+                                                                        src={product.image}
+                                                                        alt=""
+                                                                        loading="lazy"
+                                                                        className="h-10 w-10 shrink-0 rounded-lg border border-gray-200 object-cover"
+                                                                    />
+                                                                )}
+                                                                {product?._id ? (
+                                                                    <Link
+                                                                        to={productPath(product)}
+                                                                        className="text-sm font-medium text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] hover:underline"
+                                                                    >
+                                                                        {product.name || 'Produit'}
+                                                                    </Link>
+                                                                ) : (
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        Produit supprimé
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                             {item.priceAtSale?.toFixed(0)} CFA

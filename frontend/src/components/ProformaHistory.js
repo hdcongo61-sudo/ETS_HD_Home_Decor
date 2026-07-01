@@ -233,15 +233,26 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
                         const name = line.productName || line.product?.name || 'Produit';
                         const quantity = Number(line.quantity) || 0;
                         const price = Number(line.price) || 0;
+                        const image = line.product?.image;
                         return (
                           <li
                             key={`${line.product?._id || line.product || 'line'}-${index}`}
-                            className="flex items-baseline justify-between gap-2 text-sm"
+                            className="flex items-center justify-between gap-2 text-sm"
                           >
-                            <span className="min-w-0 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                              <span className="font-medium">{name}</span>
-                              <span className="ml-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                                {quantity} × {formatAmount(price)}
+                            <span className="flex min-w-0 items-center gap-2">
+                              {image && (
+                                <img
+                                  src={image}
+                                  alt=""
+                                  loading="lazy"
+                                  className="h-9 w-9 shrink-0 rounded-[var(--radiusSmall)] border border-[var(--ms-border)] object-cover"
+                                />
+                              )}
+                              <span className="min-w-0 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                                <span className="font-medium">{name}</span>
+                                <span className="ml-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                  {quantity} × {formatAmount(price)}
+                                </span>
                               </span>
                             </span>
                             <span className="shrink-0 font-semibold tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
