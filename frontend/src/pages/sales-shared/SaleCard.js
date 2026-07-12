@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getSaleTypeText } from "../../utils/saleUtils";
 import { StatusBadge } from "../../components/business";
+import PaymentProgress, { paymentRatio } from "./PaymentProgress";
 
 const getSaleStatusTone = (status) => {
   if (status === "completed") return "success";
@@ -19,7 +20,8 @@ const getDeliveryTone = (deliveryStatus) => {
 
 /**
  * Reusable sale card for list views (Sales.js non-admin & admin, SalesArchive).
- * Mobile-first: stacked layout, touch-friendly. Desktop: compact header row, clear totals.
+ * Hierarchy: client first, sale ref secondary; payment progress bar; token-based
+ * colors (light/dark safe). Mobile-first, actions pinned at the bottom.
  */
 const SaleCard = ({
   sale,
@@ -41,103 +43,134 @@ const SaleCard = ({
   const returnSearch = returnTo ? `?returnToSales=${encodeURIComponent(returnTo)}` : "";
   const linkTo = `/sales/${sale._id}${returnSearch}`;
   const hasProducts = Array.isArray(sale.products) && sale.products.length > 0;
+  const totalAmount = Number(sale.totalAmount) || 0;
+  const paidRatio = paymentRatio(totalPaid, totalAmount);
+  const isSettled = balance <= 0;
 
   return (
     <motion.article
       key={sale._id}
       whileHover={{ y: -1 }}
       transition={{ duration: 0.15 }}
-      className={`ms-surface w-full h-full flex flex-col md:min-h-[360px] overflow-hidden transition-shadow ${className}`}
+      className={`ms-surface w-full h-full flex flex-col overflow-hidden transition-shadow ${className}`}
     >
-      <div className="p-4 sm:p-5 lg:p-5 flex-1 flex flex-col min-h-0">
-        {/* Header: sale id + date + badges — mobile: stack; desktop: row */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col min-h-0">
+        {/* Header : client (primaire) + réf/date, badges à droite */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <Link
               to={linkTo}
               state={linkState}
-              className="inline-flex touch-manipulation items-center gap-1 text-base font-semibold text-[var(--ms-blue)] transition-colors hover:text-[var(--ms-blue-dark)]"
+              className="block touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] rounded-sm"
               {...desktopLinkProps}
             >
-              Vente #{sale._id.slice(-6)}
+              <span className="fui-body1-strong block truncate" style={{ color: "var(--colorNeutralForeground1)" }}>
+                {sale.client?.name || "Client non spécifié"}
+              </span>
+              <span className="fui-caption1 mt-0.5 block" style={{ color: "var(--colorBrandForeground1)" }}>
+                Vente #{sale._id.slice(-6)}
+                <span style={{ color: "var(--colorNeutralForeground3)" }}> · {formatDate(sale.saleDate)}</span>
+              </span>
             </Link>
-            <p className="mt-0.5 text-sm text-[var(--ms-text-muted)] sm:mt-1">
-              {formatDate(sale.saleDate)}
-            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             <StatusBadge tone={getSaleStatusTone(sale.status)}>
               {getStatusText(sale.status)}
             </StatusBadge>
-            <StatusBadge tone={sale.saleType === "wholesale" ? "warning" : "neutral"}>
-              {getSaleTypeText(sale.saleType)}
-            </StatusBadge>
-            {isModified && (
-              <StatusBadge tone="warning">
-                Modifiée
-              </StatusBadge>
+            {sale.saleType === "wholesale" && (
+              <StatusBadge tone="warning">{getSaleTypeText(sale.saleType)}</StatusBadge>
             )}
+            {isModified && <StatusBadge tone="warning">Modifiée</StatusBadge>}
             {sale.status === "completed" && (
               <StatusBadge tone={getDeliveryTone(sale.deliveryStatus)}>
-                {sale.deliveryStatus === "delivered" ? "Livré" : sale.deliveryStatus === "not_delivered" ? "Non livré" : "En attente"}
+                {sale.deliveryStatus === "delivered" ? "Livré" : sale.deliveryStatus === "not_delivered" ? "Non livré" : "Livraison en attente"}
               </StatusBadge>
             )}
             {showProfitBadge && profitCategory && getProfitCategoryClass && getProfitCategoryText && (
-              <StatusBadge tone="neutral">
-                {getProfitCategoryText(profitCategory)}
-              </StatusBadge>
+              <StatusBadge tone="neutral">{getProfitCategoryText(profitCategory)}</StatusBadge>
             )}
           </div>
         </div>
 
-        {/* Client name — prominent */}
-        <p className="mt-3 text-base font-semibold text-[var(--ms-text-strong)] sm:mt-2">
-          {sale.client?.name || "Client non spécifié"}
-        </p>
-
-        {/* Totals — 3 cols mobile & desktop, clear labels */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4">
-          <div className="rounded-md border border-[var(--ms-border)] bg-[var(--ms-bg)] p-3">
-            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Total</p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--ms-text-strong)] sm:text-base">
-              {(sale.totalAmount || 0).toLocaleString("fr-FR")} CFA
+        {/* Encaissement : barre de progression payé / total */}
+        <div className="mt-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
+              Encaissé <span className="fui-caption1-strong tabular-nums" style={{ color: "var(--colorNeutralForeground1)" }}>{paidRatio}%</span>
+            </p>
+            <p className="fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>
+              {totalPaid.toLocaleString("fr-FR")} / {totalAmount.toLocaleString("fr-FR")} CFA
             </p>
           </div>
-          <div className="rounded-md border border-[rgba(16,124,16,0.22)] bg-[#F1FAF1] p-3">
-            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Payé</p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--ms-success)] sm:text-base">
+          <PaymentProgress
+            className="mt-1.5"
+            ratio={paidRatio}
+            color={isSettled ? "var(--colorStatusSuccessForeground1)" : "var(--colorBrandBackground)"}
+          />
+        </div>
+
+        {/* Totaux */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3">
+          <div className="rounded-[var(--radiusMedium)] border p-2.5" style={{ borderColor: "var(--ms-border)", background: "var(--colorNeutralBackground2)" }}>
+            <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Total</p>
+            <p className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm" style={{ color: "var(--colorNeutralForeground1)" }}>
+              {totalAmount.toLocaleString("fr-FR")} CFA
+            </p>
+          </div>
+          <div className="rounded-[var(--radiusMedium)] border p-2.5" style={{ borderColor: "var(--colorStatusSuccessStroke1)", background: "var(--colorStatusSuccessBackground1)" }}>
+            <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Payé</p>
+            <p className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm" style={{ color: "var(--colorStatusSuccessForeground1)" }}>
               {totalPaid.toLocaleString("fr-FR")} CFA
             </p>
           </div>
-          <div className={`rounded-md border p-3 ${balance > 0 ? "border-[rgba(209,52,56,0.22)] bg-[#FDF3F4]" : "border-[var(--ms-border)] bg-[var(--ms-bg)]"}`}>
-            <p className="text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Solde</p>
-            <p className={`mt-0.5 text-sm font-semibold tabular-nums sm:text-base ${balance > 0 ? "text-[var(--ms-danger)]" : "text-[var(--ms-text-strong)]"}`}>
+          <div
+            className="rounded-[var(--radiusMedium)] border p-2.5"
+            style={
+              balance > 0
+                ? { borderColor: "var(--colorStatusDangerStroke1)", background: "var(--colorStatusDangerBackground1)" }
+                : { borderColor: "var(--ms-border)", background: "var(--colorNeutralBackground2)" }
+            }
+          >
+            <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Solde</p>
+            <p
+              className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm"
+              style={{ color: balance > 0 ? "var(--colorStatusDangerForeground1)" : "var(--colorNeutralForeground1)" }}
+            >
               {balance.toLocaleString("fr-FR")} CFA
             </p>
           </div>
         </div>
 
-        {/* Products — compact list */}
+        {/* Produits — compact */}
         {hasProducts && (
-          <div className="mt-4 border-t border-[var(--ms-border)] pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase text-[var(--ms-text-muted)]">Produits</p>
-            <ul className="space-y-1.5 text-sm text-[var(--ms-text)]">
-              {sale.products.slice(0, 5).map((item, idx) => (
+          <div className="mt-3.5 border-t pt-3" style={{ borderColor: "var(--ms-border)" }}>
+            <ul className="space-y-1 fui-caption1" style={{ color: "var(--colorNeutralForeground2)" }}>
+              {sale.products.slice(0, 3).map((item, idx) => (
                 <li key={idx} className="flex justify-between gap-2">
                   <span className="truncate">{item.product?.name || "Produit"}</span>
-                  <span className="shrink-0 text-[var(--ms-text-muted)]">x{item.quantity || 0}</span>
+                  <span className="shrink-0 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>×{item.quantity || 0}</span>
                 </li>
               ))}
-              {sale.products.length > 5 && (
-                <li className="text-xs text-[var(--ms-text-muted)]">+{sale.products.length - 5} autre(s)</li>
+              {sale.products.length > 3 && (
+                <li>
+                  <Link
+                    to={linkTo}
+                    state={linkState}
+                    className="fui-caption1-strong hover:underline"
+                    style={{ color: "var(--colorBrandForeground1)" }}
+                    {...desktopLinkProps}
+                  >
+                    +{sale.products.length - 3} autre(s) produit(s)
+                  </Link>
+                </li>
               )}
             </ul>
           </div>
         )}
 
-        {/* Actions — full width on mobile, row on desktop; pushed to bottom on desktop */}
+        {/* Actions — pleine largeur mobile, alignées en bas */}
         {actions && (
-          <div className="mt-4 flex flex-col gap-2 border-t border-[var(--ms-border)] pt-4 sm:flex-row sm:flex-wrap sm:gap-2 md:mt-auto md:pt-4">
+          <div className="mt-3.5 flex flex-col gap-2 border-t pt-3.5 sm:flex-row sm:flex-wrap sm:gap-2 md:mt-auto" style={{ borderColor: "var(--ms-border)" }}>
             {actions}
           </div>
         )}

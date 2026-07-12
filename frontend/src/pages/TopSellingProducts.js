@@ -55,6 +55,34 @@ const TopSellingProducts = () => {
         onBack={() => navigate('/product-dashboard')}
       />
 
+      {/* Statistiques globales — synthèse avant le détail */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <ProductMetricCard
+          title="Revenu Total"
+          value={`${data.reduce((sum, p) => sum + (p.revenue || 0), 0).toLocaleString()} CFA`}
+          tone="sky"
+          icon={Wallet}
+        />
+        <ProductMetricCard
+          title="Profit Total"
+          value={`${data.reduce((sum, p) => sum + (p.profit || 0), 0).toLocaleString()} CFA`}
+          tone="emerald"
+          icon={TrendingUp}
+        />
+        <ProductMetricCard
+          title="Marge Moyenne"
+          value={
+            data.length
+              ? (
+                  data.reduce((sum, p) => sum + (p.margin || 0), 0) / data.length
+                ).toFixed(1) + '%'
+              : '0%'
+          }
+          tone="amber"
+          icon={Trophy}
+        />
+      </div>
+
       {/* Tableau principal */}
       <ProductSection title="Classement détaillé" description="Produits ordonnés par volume et performance financière.">
       <div className="hidden overflow-x-auto md:block">
@@ -62,6 +90,7 @@ const TopSellingProducts = () => {
           <thead className="bg-[var(--colorNeutralBackground2)]">
             <tr>
               {[
+                '#',
                 'Produit',
                 'Catégorie',
                 'Fournisseur',
@@ -87,6 +116,7 @@ const TopSellingProducts = () => {
                 className="cursor-pointer transition hover:bg-[var(--colorNeutralBackground2)]"
                 onClick={() => navigate(productPath(p))}
               >
+                <td className="px-6 py-4 tabular-nums text-[var(--colorNeutralForeground3)]">{index + 1}</td>
                 <td className="px-6 py-4 font-semibold text-[var(--colorNeutralForeground1)]">{p.name}</td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground3)]">{p.category || '—'}</td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground3)]">{p.supplierName || '—'}</td>
@@ -149,34 +179,6 @@ const TopSellingProducts = () => {
         ))}
       </div>
       </ProductSection>
-
-      {/* Statistiques globales */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <ProductMetricCard
-          title="Revenu Total"
-          value={`${data.reduce((sum, p) => sum + (p.revenue || 0), 0).toLocaleString()} CFA`}
-          tone="sky"
-          icon={Wallet}
-        />
-        <ProductMetricCard
-          title="Profit Total"
-          value={`${data.reduce((sum, p) => sum + (p.profit || 0), 0).toLocaleString()} CFA`}
-          tone="emerald"
-          icon={TrendingUp}
-        />
-        <ProductMetricCard
-          title="Marge Moyenne"
-          value={
-            data.length
-              ? (
-                  data.reduce((sum, p) => sum + (p.margin || 0), 0) / data.length
-                ).toFixed(1) + '%'
-              : '0%'
-          }
-          tone="amber"
-          icon={Trophy}
-        />
-      </div>
     </ProductPageShell>
   </Workspace>
   );

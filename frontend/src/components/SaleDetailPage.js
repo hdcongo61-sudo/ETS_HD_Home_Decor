@@ -718,7 +718,7 @@ const SaleDetailPage = () => {
         <div className="ms-workspace text-[var(--ms-text)]">
             <div className="space-y-4 sm:space-y-6">
                 {/* Back + Page title */}
-                <header className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:p-5">
+                <header className="ms-surface p-4 sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <button
                         type="button"
@@ -793,7 +793,7 @@ const SaleDetailPage = () => {
                 )}
 
                 {/* Sale header card */}
-                <section id="resume-vente" className="scroll-mt-24 overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_16px_50px_rgba(15,23,42,0.06)] dark:border-gray-800 dark:bg-gray-900/95">
+                <section id="resume-vente" className="ms-surface scroll-mt-24 overflow-hidden">
                     <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col gap-4 sm:gap-0 sm:flex-row sm:justify-between sm:items-start">
                             <div className="min-w-0">

@@ -40,6 +40,9 @@ import {
   eachWeekOfInterval,
   max as maxDate,
   min as minDate,
+  addDays,
+  differenceInCalendarDays,
+  subDays,
   subWeeks,
   subMonths,
   subYears,
@@ -175,7 +178,11 @@ const Dashboard = () => {
 
   // ===== RANGE + COMPARE (graphique financier) =====
   const [timeRange, setTimeRange] = useState("week"); // day|week|month|year
-  const [compareMode, setCompareMode] = useState("none"); // none|prev-week|prev-month|prev-year
+  const [compareMode, setCompareMode] = useState("none"); // none|previous|year
+  const hasCompare = compareMode !== "none";
+  // Base de référence des tendances : la période comparée choisie, sinon la
+  // période équivalente précédente (toujours chargée, même sans overlay).
+  const baselineMode = compareMode === "year" ? "year" : "previous";
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
@@ -368,20 +375,18 @@ const Dashboard = () => {
     }
   };
 
+  // Période de référence dérivée de la vue affichée : soit la même période un
+  // an plus tôt, soit la période équivalente immédiatement précédente. En vue
+  // annuelle, la granularité suit le détail sélectionné (semaine/mois/année).
   const getPrevPeriod = (range, mode) => {
-    if (mode === "prev-week") {
-      const { start, end } = getDateRange("week");
-      return { start: subWeeks(start, 1), end: subWeeks(end, 1) };
-    }
-    if (mode === "prev-month") {
-      const { start, end } = getDateRange("month");
-      return { start: subMonths(start, 1), end: subMonths(end, 1) };
-    }
-    if (mode === "prev-year") {
-      const { start, end } = getDateRange("year");
-      return { start: subYears(start, 1), end: subYears(end, 1) };
-    }
-    return null;
+    const { start, end } = getDateRange(range);
+    const shift =
+      mode === "year" ? subYears
+      : range === "day" ? subDays
+      : range === "week" || selectedWeek ? subWeeks
+      : range === "month" || activeMonth !== null ? subMonths
+      : subYears;
+    return { start: shift(start, 1), end: shift(end, 1) };
   };
 
   // Construit série (par jour) à partir de tableaux bruts
@@ -456,21 +461,14 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange is stable
   }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
 
-  // ===== FETCH: période comparée (manuelle) =====
+  // ===== FETCH: période de référence (toujours chargée — tendances des cartes,
+  // overlay du graphique seulement si la comparaison est activée) =====
   const fetchPrevData = useCallback(async () => {
-    if (compareMode === "none") {
-      setPrevCombinedData([]);
-      return;
-    }
     try {
       if (dashboardDataLoadedRef.current) {
         setChartLoading(true);
       }
-      const prev = getPrevPeriod(timeRange, compareMode);
-      if (!prev) {
-        setPrevCombinedData([]);
-        return;
-      }
+      const prev = getPrevPeriod(timeRange, baselineMode);
       const [salesRes, expensesRes, paymentsRes] = await Promise.all([
         api.get(
           `/sales/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
@@ -497,7 +495,7 @@ const Dashboard = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- getPrevPeriod is stable
-  }, [compareMode, timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
+  }, [baselineMode, timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
 
   const fetchDeliveryStats = useCallback(async () => {
     try {
@@ -573,31 +571,47 @@ const Dashboard = () => {
   }, [fetchPrevData]);
 
   // ===== Aligne séries (courante vs comparée) pour le graphique financier =====
+  // Axe complet jour par jour (les jours sans activité valent 0, les jours
+  // futurs restent vides) ; la période comparée est alignée par décalage
+  // calendaire — jour 1 sur jour 1 — et non par interpolation d'index.
   const mergedForChart = useMemo(() => {
-    if (!combinedData.length) return [];
-    if (!prevCombinedData.length)
-      return combinedData.map((d) => ({
-        ...d,
-        prevSales: null,
-        prevProfit: null,
-      }));
+    const { start, end } = getDateRange(timeRange);
+    const prevRange = getPrevPeriod(timeRange, baselineMode);
+    const prevStart = startOfDay(prevRange.start);
+    const prevDayCount = differenceInCalendarDays(startOfDay(prevRange.end), prevStart);
+    const todayKey = format(new Date(), "yyyy-MM-dd");
 
-    const len = combinedData.length;
-    const prevLen = prevCombinedData.length;
-    return combinedData.map((d, i) => {
-      const j = Math.min(
-        Math.round((i / Math.max(1, len - 1)) * Math.max(0, prevLen - 1)),
-        prevLen - 1
-      );
-      const prev = prevCombinedData[j] || {};
-      const prevProfit = (prev.paidProfit || 0) - (prev.expenses || 0);
+    const curByDate = {};
+    combinedData.forEach((d) => {
+      curByDate[d.date] = d;
+    });
+    const prevByOffset = {};
+    prevCombinedData.forEach((d) => {
+      const offset = differenceInCalendarDays(new Date(`${d.date}T00:00:00`), prevStart);
+      prevByOffset[offset] = d;
+    });
+
+    return eachDayOfInterval({ start, end }).map((day, i) => {
+      const key = format(day, "yyyy-MM-dd");
+      const isFuture = key > todayKey;
+      const cur = curByDate[key];
+      // Au-delà de la longueur de la période comparée (ex: mois de 31 vs 30
+      // jours), pas de point plutôt qu'un faux zéro.
+      const hasPrevDay = hasCompare && i <= prevDayCount;
+      const prev = hasPrevDay ? prevByOffset[i] : undefined;
       return {
-        ...d,
-        prevSales: prev.sales ?? null,
-        prevProfit: prevProfit ?? null,
+        date: key,
+        sales: isFuture ? null : cur?.sales || 0,
+        paid: isFuture ? null : cur?.paid || 0,
+        paidProfit: isFuture ? null : cur?.paidProfit || 0,
+        expenses: isFuture ? null : cur?.expenses || 0,
+        prevSales: hasPrevDay ? prev?.sales || 0 : null,
+        prevPaid: hasPrevDay ? prev?.paid || 0 : null,
+        prevDate: hasPrevDay ? format(addDays(prevStart, i), "yyyy-MM-dd") : null,
       };
     });
-  }, [combinedData, prevCombinedData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange/getPrevPeriod are stable
+  }, [combinedData, prevCombinedData, timeRange, baselineMode, hasCompare, activeYear, activeMonth, selectedWeek]);
 
   // ===== METRICS =====
   const totalSales = useMemo(
@@ -620,7 +634,7 @@ const Dashboard = () => {
   // Net profit = realized gross profit − expenses (cash-basis).
   const profit = totalPaidProfit - totalExpenses;
 
-  // Totaux période comparée (pour cartes + tendance selon compareMode)
+  // Totaux de la période comparée, sur toute sa durée
   const prevPeriodTotals = useMemo(() => {
     const s = prevCombinedData.reduce((sum, d) => sum + (d.sales || 0), 0);
     const p = prevCombinedData.reduce((sum, d) => sum + (d.paid || 0), 0);
@@ -629,35 +643,33 @@ const Dashboard = () => {
     return { sales: s, paid: p, paidProfit: pp, expenses: e, profit: pp - e };
   }, [prevCombinedData]);
 
-  // Tendances: vs période comparée si active, sinon vs semaine précédente
-  const prevWeek = getPrevPeriod("week", "prev-week");
-  const prevWeekStats = useMemo(() => {
-    if (!prevWeek) return { s: 0, p: 0, e: 0, pr: 0 };
-    const prevSales = salesData
-      .filter(
-          (s) =>
-          new Date(s.saleDate || s.createdAt) >= prevWeek.start &&
-          new Date(s.saleDate || s.createdAt) <= prevWeek.end
-      )
-      .reduce((a, b) => a + (b.totalAmount || 0), 0);
-    const prevWeekPayments = paymentsData.filter((p) => {
-      const dt = p.paymentDate || p.createdAt;
-      return new Date(dt) >= prevWeek.start && new Date(dt) <= prevWeek.end;
-    });
-    const prevPaid = prevWeekPayments.reduce((a, b) => a + (b.amount || 0), 0);
-    const prevPaidProfit = prevWeekPayments.reduce((a, b) => a + (b.profit || 0), 0);
-    const prevExp = expensesData
-      .filter(
-          (e) =>
-          new Date(e.date || e.createdAt) >= prevWeek.start &&
-          new Date(e.date || e.createdAt) <= prevWeek.end
-      )
-      .reduce((a, b) => a + (b.amount || 0), 0);
-    return { s: prevSales, p: prevPaid, e: prevExp, pr: prevPaidProfit - prevExp };
-  }, [prevWeek, salesData, paymentsData, expensesData]);
+  // Base de tendance : si la période courante est encore en cours, la période
+  // comparée est tronquée au même nombre de jours écoulés (« à date ») — on ne
+  // compare pas un mois entamé à un mois complet.
+  const trendBase = useMemo(() => {
+    const { start, end } = getDateRange(timeRange);
+    const today = startOfDay(new Date());
+    if (startOfDay(end) <= today) return { ...prevPeriodTotals, toDate: false };
 
+    const prevStart = startOfDay(getPrevPeriod(timeRange, baselineMode).start);
+    const elapsed = differenceInCalendarDays(today, startOfDay(start));
+    const totals = { sales: 0, paid: 0, paidProfit: 0, expenses: 0 };
+    prevCombinedData.forEach((d) => {
+      const offset = differenceInCalendarDays(new Date(`${d.date}T00:00:00`), prevStart);
+      if (offset <= elapsed) {
+        totals.sales += d.sales || 0;
+        totals.paid += d.paid || 0;
+        totals.paidProfit += d.paidProfit || 0;
+        totals.expenses += d.expenses || 0;
+      }
+    });
+    return { ...totals, profit: totals.paidProfit - totals.expenses, toDate: true };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange/getPrevPeriod are stable
+  }, [prevCombinedData, prevPeriodTotals, timeRange, baselineMode, activeYear, activeMonth, selectedWeek]);
+
+  // Tendance en % vs la base de comparaison ; null (badge masqué) sans base.
   const pct = (cur, prev) => {
-    if (!prev || prev === 0) return "+0%";
+    if (!prev) return null;
     const d = ((cur - prev) / prev) * 100;
     const sym = d >= 0 ? "+" : "−";
     return `${sym}${Math.abs(d).toFixed(1)}%`;
@@ -743,9 +755,8 @@ const Dashboard = () => {
     });
   }, []);
 
-  const hasCompare = compareMode !== "none";
-  const trendBase = hasCompare ? prevPeriodTotals : { sales: prevWeekStats.s, paid: prevWeekStats.p, expenses: prevWeekStats.e, profit: prevWeekStats.pr };
   const salesTrend = pct(totalSales, trendBase.sales);
+  const paidTrend = pct(totalPaid, trendBase.paid);
   const expenseTrend = pct(totalExpenses, trendBase.expenses);
   const profitTrend = pct(profit, trendBase.profit);
 
@@ -1482,15 +1493,31 @@ const Dashboard = () => {
     { value: "month", label: "Mois" },
     { value: "year", label: "Année" },
   ];
+  // « Période précédente » s'adapte à la vue : hier, semaine préc., mois préc.…
+  const previousPeriodMeta =
+    timeRange === "day"
+      ? { label: "Hier", shortLabel: "J-1" }
+      : timeRange === "week"
+      ? { label: "Semaine précédente", shortLabel: "S-1" }
+      : timeRange === "month"
+      ? { label: "Mois précédent", shortLabel: "M-1" }
+      : selectedWeek
+      ? { label: "Semaine précédente", shortLabel: "S-1" }
+      : activeMonth !== null
+      ? { label: "Mois précédent", shortLabel: "M-1" }
+      : { label: "Année précédente", shortLabel: "A-1" };
   const comparisonOptions = [
     { value: "none", label: "Sans comparaison", shortLabel: "Aucune" },
-    { value: "prev-week", label: "Semaine précédente", shortLabel: "S-1" },
-    { value: "prev-month", label: "Mois précédent", shortLabel: "M-1" },
-    { value: "prev-year", label: "Année précédente", shortLabel: "A-1" },
+    { value: "previous", ...previousPeriodMeta },
+    { value: "year", label: "Année préc. (même période)", shortLabel: "N-1" },
   ];
-  const comparisonLabel =
-    comparisonOptions.find((option) => option.value === compareMode)?.label ||
-    "Sans comparaison";
+  const activeComparison = comparisonOptions.find((option) => option.value === compareMode);
+  const comparisonLabel = activeComparison?.label || "Sans comparaison";
+  const comparisonShortLabel = activeComparison?.shortLabel || "";
+  // Libellé de la base des tendances sur les cartes KPI
+  const trendBaseLabel = `${
+    compareMode === "year" ? "année préc." : previousPeriodMeta.label.toLowerCase()
+  }${trendBase.toDate ? " (à date)" : ""}`;
   const homeShortcuts = [
     {
       to: "/sales",
@@ -1661,7 +1688,7 @@ const Dashboard = () => {
               {
                 title: "Ventes totales",
                 value: totalSales,
-                prevValue: hasCompare ? prevPeriodTotals.sales : null,
+                prevValue: trendBase.sales,
                 icon: <DollarSign size={22} />,
                 trend: salesTrend,
                 style: CARD_STYLES[0],
@@ -1669,28 +1696,33 @@ const Dashboard = () => {
               {
                 title: "Encaissements",
                 value: totalPaid,
-                prevValue: hasCompare ? prevPeriodTotals.paid : null,
+                prevValue: trendBase.paid,
                 icon: <Coins size={22} />,
-                trend: pct(totalPaid, totalSales),
+                trend: paidTrend,
                 style: CARD_STYLES[1],
               },
               {
                 title: "Dépenses",
                 value: totalExpenses,
-                prevValue: hasCompare ? prevPeriodTotals.expenses : null,
+                prevValue: trendBase.expenses,
                 icon: <TrendingDown size={22} />,
                 trend: expenseTrend,
+                // Des dépenses en hausse sont un signal négatif
+                invertTrendColor: true,
                 style: CARD_STYLES[2],
               },
               {
                 title: "Profit net",
                 value: profit,
-                prevValue: hasCompare ? prevPeriodTotals.profit : null,
+                prevValue: trendBase.profit,
                 icon: <PieIcon size={22} />,
                 trend: profitTrend,
                 style: CARD_STYLES[3],
               },
-            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => (
+            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => {
+              const trendIsUp = String(stat.trend).startsWith('+');
+              const trendIsGood = stat.invertTrendColor ? !trendIsUp : trendIsUp;
+              return (
               <article key={i} className="fluent-card-filled p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div
@@ -1699,12 +1731,14 @@ const Dashboard = () => {
                   >
                     {stat.icon}
                   </div>
-                  <span
-                    className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
-                    style={{ color: String(stat.trend).startsWith('+') ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
-                  >
-                    {String(stat.trend).startsWith('+') ? '↑' : '↓'} {stat.trend}
-                  </span>
+                  {stat.trend != null && (
+                    <span
+                      className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
+                      style={{ color: trendIsGood ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
+                    >
+                      {trendIsUp ? '↑' : '↓'} {stat.trend}
+                    </span>
+                  )}
                 </div>
                 <h2 className="fui-caption1 mt-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {stat.title}
@@ -1712,13 +1746,14 @@ const Dashboard = () => {
                 <p className="mt-1 fui-title2 tabular-nums" style={{ color: stat.style.color }}>
                   {stat.value.toLocaleString('fr-FR')} <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>CFA</span>
                 </p>
-                {stat.prevValue != null && (
+                {stat.trend != null && (
                   <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    Vs période préc. : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
+                    Vs {trendBaseLabel} : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
                   </p>
                 )}
               </article>
-            ))}
+              );
+            })}
           </motion.section>
 
             <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 shadow-inner shadow-white/70 dark:border-gray-700 dark:bg-gray-800/80 dark:shadow-black/10">
@@ -1909,7 +1944,7 @@ const Dashboard = () => {
             aria-label="Analyse financière"
           >
             <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-[var(--ms-blue)] text-white font-medium">
-              Comparaison {compareMode !== "none" ? "activée" : "désactivée"}
+              {hasCompare ? `Vs ${comparisonLabel.toLowerCase()}` : "Comparaison désactivée"}
             </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 pr-24 sm:pr-28">
@@ -1963,7 +1998,21 @@ const Dashboard = () => {
                   width={44}
                 />
                 <Tooltip
-                  formatter={(v, n) => [`${Number(v).toLocaleString("fr-FR")} CFA`, n]}
+                  formatter={(v, n, props) => {
+                    const val = `${Number(v).toLocaleString("fr-FR")} CFA`;
+                    // Sur les séries comparées, rappelle la date réelle du point
+                    const isPrev = typeof props?.dataKey === "string" && props.dataKey.startsWith("prev");
+                    const prevDate = props?.payload?.prevDate;
+                    return [
+                      isPrev && prevDate
+                        ? `${val} (${format(new Date(`${prevDate}T00:00:00`), "dd MMM yyyy", { locale: fr })})`
+                        : val,
+                      n,
+                    ];
+                  }}
+                  labelFormatter={(d) =>
+                    format(new Date(`${d}T00:00:00`), "EEEE dd MMMM yyyy", { locale: fr })
+                  }
                   cursor={{ stroke: darkMode ? "#4B5563" : "#CBD5E1", strokeWidth: 1 }}
                   contentStyle={{
                     borderRadius: 12,
@@ -2008,38 +2057,29 @@ const Dashboard = () => {
                   cursor="pointer"
                 />
 
-                {/* Lignes — période comparée */}
-                {compareMode !== "none" && (
+                {/* Période comparée : mêmes métriques, même teinte, en pointillé
+                    atténué — la couleur identifie la métrique, le trait la période */}
+                {hasCompare && (
                   <>
                     <Line
                       type="monotone"
                       dataKey="prevSales"
-                      name={
-                        compareMode === "prev-week"
-                          ? "Ventes (semaine préc.)"
-                          : compareMode === "prev-month"
-                          ? "Ventes (mois préc.)"
-                          : "Ventes (année préc.)"
-                      }
-                      stroke="#64748B"
-                      strokeDasharray="5 5"
+                      name={`Ventes (${comparisonShortLabel})`}
+                      stroke="#16A34A"
+                      strokeOpacity={0.45}
+                      strokeDasharray="6 4"
                       dot={false}
                       strokeWidth={2}
                     />
                     <Line
                       type="monotone"
-                      dataKey={(d) => d.prevProfit ?? null}
-                      name={
-                        compareMode === "prev-week"
-                          ? "Profit net (semaine préc.)"
-                          : compareMode === "prev-month"
-                          ? "Profit net (mois préc.)"
-                          : "Profit net (année préc.)"
-                      }
-                      stroke="#8B5CF6"
-                      strokeDasharray="5 5"
+                      dataKey="prevPaid"
+                      name={`Encaissements (${comparisonShortLabel})`}
+                      stroke="#2563EB"
+                      strokeOpacity={0.45}
+                      strokeDasharray="6 4"
                       dot={false}
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                     />
                   </>
                 )}

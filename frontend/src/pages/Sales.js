@@ -9,10 +9,8 @@ import React, {
   useRef,
 } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   AlertTriangle,
-  ArrowLeft,
   Award,
   BarChart3,
   Banknote,
@@ -28,7 +26,7 @@ import {
   ReceiptText,
   Repeat2,
   TrendingUp,
-  TrendingDown,
+  Truck,
   Percent,
   Coins,
   Package,
@@ -964,8 +962,9 @@ const Sales = () => {
   const [deliveryNote, setDeliveryNote] = useState("");
   const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
 
-  // Vues
-  const [viewMode, setViewMode] = useState("dashboard"); // 'dashboard' | 'analytics' | 'profits' | 'clients'
+  // Vues — l'onglet opérationnel (vendre / encaisser / suivre) est prioritaire,
+  // les indicateurs détaillés vivent dans l'onglet « Aperçu ».
+  const [viewMode, setViewMode] = useState("operations"); // 'operations' | 'dashboard' | 'analytics' | 'profits' | 'clients'
   const canViewProfit = useFeature(FEATURE_KEYS.PROFIT_ANALYSIS); // "Bénéfices" — forfait Entreprise
   const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
   const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk exports — la facture reste accessible à tous
@@ -2251,10 +2250,11 @@ const Sales = () => {
           <div className="fluent-card-filled overflow-hidden">
             <div className="fui-pivot px-2">
               {[
-                { value: "dashboard", label: "Vue Standard",    icon: ReceiptText },
-                { value: "analytics", label: "Analytics",       icon: BarChart3 },
-                { value: "profits",   label: "Bénéfices",       icon: Banknote },
-                { value: "clients",   label: "Clients",         icon: Users },
+                { value: "operations", label: "Ventes",       icon: ReceiptText },
+                { value: "dashboard",  label: "Aperçu",       icon: TrendingUp },
+                { value: "analytics",  label: "Analytics",    icon: BarChart3 },
+                { value: "profits",    label: "Bénéfices",    icon: Banknote },
+                { value: "clients",    label: "Clients",      icon: Users },
               ].map(({ value, label, icon: Icon }) => {
                 const locked = value === "profits" && !canViewProfit;
                 return (
@@ -2460,12 +2460,45 @@ const Sales = () => {
           </div>
         )}
 
-        {/* Vue Standard (Dashboard) */}
+        {/* ===== Onglet Ventes — le pouls du jour ===== */}
+        {viewMode === "operations" && (
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Activité du jour">
+            <KPICard
+              title="CA du jour"
+              value={`${(dashboardData.dailySummary.totalAmount || 0).toLocaleString("fr-FR")} CFA`}
+              context={`${dashboardData.dailySummary.salesCount || 0} vente(s) aujourd'hui`}
+              icon={<Wallet className="h-4 w-4" />}
+              tone="brand"
+            />
+            <KPICard
+              title="Encaissé aujourd'hui"
+              value={`${(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA`}
+              context={`${dashboardData.dailySummary.paymentsCount || 0} paiement(s)`}
+              icon={<CheckCircle2 className="h-4 w-4" />}
+              tone="success"
+            />
+            <Link to="/sales/partially-paid" className="block fluent-card-interactive" aria-label="Voir les ventes à solder">
+              <KPICard
+                title="À solder"
+                value={(dashboardData.statusStats?.partially_paid?.count || 0) + (dashboardData.statusStats?.pending?.count || 0)}
+                context="Ventes avec solde restant →"
+                icon={<Clock3 className="h-4 w-4" />}
+                tone="warning"
+              />
+            </Link>
+            <KPICard
+              title="Livraisons en attente"
+              value={(deliveryStats.pending || 0) + (deliveryStats.not_delivered || 0)}
+              context={`Taux de livraison ${deliveryStats.deliveryRate || 0}%`}
+              icon={<Truck className="h-4 w-4" />}
+              tone="neutral"
+            />
+          </section>
+        )}
+
+        {/* ===== Onglet Aperçu — indicateurs & graphiques ===== */}
         {viewMode === "dashboard" && (
           <>
-            {/* Filtres rapides */}
-            {isAdmin && <QuickFilterBar />}
-
             {/* Range selector */}
             <div className="ms-command-bar flex-wrap gap-y-2">
               <h2 className="fui-subtitle1 flex items-center gap-2 min-w-0" style={{ color: 'var(--colorNeutralForeground1)' }}>
@@ -2755,6 +2788,14 @@ const Sales = () => {
                 </div>
               </>
             )}
+          </>
+        )}
+
+        {/* ===== Onglet Ventes — formulaire & historique ===== */}
+        {viewMode === "operations" && (
+          <>
+            {/* Filtres rapides (appliqués à l'historique) */}
+            {isAdmin && <QuickFilterBar />}
 
             {/* Formulaire & Historique */}
             <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
@@ -2952,7 +2993,10 @@ const Sales = () => {
                 </section>
               </GlassCard>
             </div>
+          </>
+        )}
 
+        {/* ===== Modals — disponibles depuis tous les onglets ===== */}
             {/* Modal Export */}
             {isAdmin && showExportModal && (
               <div
@@ -3276,8 +3320,6 @@ const Sales = () => {
                 </div>
               </div>
             )}
-          </>
-        )}
       </Workspace>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { MessageCircle, Phone, Copy } from "lucide-react";
+import { MessageCircle, Phone, Copy, ArrowUpDown, AlertTriangle, CalendarDays } from "lucide-react";
 import { Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,6 +21,7 @@ import {
   LoadingSkeleton,
   PageHeader,
   SearchBox,
+  StatusBadge,
   Surface,
   Workspace,
 } from "../components/business";
@@ -31,10 +32,84 @@ import {
   canWhatsApp,
   recordReminder,
 } from "../utils/clientReminder";
+import { formatCfa as cfa } from "../utils/format";
+import PaymentProgress, { paymentRatio } from "./sales-shared/PaymentProgress";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const PaymentModal = lazy(() => import("../components/PaymentModal"));
+
+// Ancienneté depuis le dernier paiement (ou la vente si jamais payé)
+const AGING_BUCKETS = [
+  { key: "recent", label: "≤ 7 jours", min: 0, max: 7, tone: "success" },
+  { key: "medium", label: "8 – 30 jours", min: 8, max: 30, tone: "warning" },
+  { key: "old", label: "+30 jours", min: 31, max: Infinity, tone: "danger" },
+];
+
+const SORT_OPTIONS = [
+  { value: "balance", label: "Solde le plus élevé" },
+  { value: "oldest", label: "Relance la plus urgente" },
+  { value: "recent", label: "Vente la plus récente" },
+];
+
+// Filtre sur la date de vente
+const DATE_FILTER_OPTIONS = [
+  { value: "", label: "Toutes les dates" },
+  { value: "today", label: "Aujourd'hui" },
+  { value: "7days", label: "7 derniers jours" },
+  { value: "30days", label: "30 derniers jours" },
+  { value: "month", label: "Ce mois" },
+  { value: "custom", label: "Période personnalisée" },
+];
+
+const getDateBounds = (preset, startStr, endStr) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  if (preset === "today") return { start: startOfToday, end: endOfToday };
+  if (preset === "7days") {
+    const start = new Date(startOfToday);
+    start.setDate(start.getDate() - 6);
+    return { start, end: endOfToday };
+  }
+  if (preset === "30days") {
+    const start = new Date(startOfToday);
+    start.setDate(start.getDate() - 29);
+    return { start, end: endOfToday };
+  }
+  if (preset === "month") {
+    const start = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+    return { start, end: endOfToday };
+  }
+  if (preset === "custom") {
+    const start = startStr ? new Date(`${startStr}T00:00:00`) : null;
+    const end = endStr ? new Date(`${endStr}T23:59:59.999`) : null;
+    if (!start && !end) return null;
+    return {
+      start: start && !Number.isNaN(start.getTime()) ? start : null,
+      end: end && !Number.isNaN(end.getTime()) ? end : null,
+    };
+  }
+  return null;
+};
+
+const matchesDateBounds = (sale, bounds) => {
+  if (!bounds) return true;
+  const d = new Date(sale.saleDate || sale.createdAt || 0);
+  if (Number.isNaN(d.getTime())) return false;
+  if (bounds.start && d < bounds.start) return false;
+  if (bounds.end && d > bounds.end) return false;
+  return true;
+};
+
+// Le badge d'urgence reprend le ton du bucket d'ancienneté — une seule
+// source de vérité pour les seuils (AGING_BUCKETS).
+const bucketTone = (sale) =>
+  sale.daysSince == null
+    ? "neutral"
+    : AGING_BUCKETS.find((b) => b.key === sale.bucket)?.tone || "neutral";
 
 const PartiallyPaidPurchases = () => {
   const { auth } = useContext(AuthContext);
@@ -63,6 +138,11 @@ const PartiallyPaidPurchases = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [remindedSales, setRemindedSales] = useState({});
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("oldest");
+  const [agingFilter, setAgingFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -98,35 +178,82 @@ const PartiallyPaidPurchases = () => {
     };
   }, [fetchSales]);
 
-  const partiallyPaid = useMemo(
+  // Enrichit chaque vente : payé, solde, jours depuis dernier paiement, bucket
+  const enriched = useMemo(
     () =>
-      (sales || [])
-        .filter((s) => {
-          if (!search.trim()) return true;
-          const hay =
-            (s.client?.name || "") +
-            " " +
-            (s.client?.email || "") +
-            " " +
-            (s._id || "");
-          return hay.toLowerCase().includes(search.toLowerCase());
-        }),
-    [sales, search]
+      (sales || []).map((s) => {
+        const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+        const balance = (s.totalAmount || 0) - paid;
+        const lastPay = (s.payments || []).slice(-1)[0]?.paymentDate || s.saleDate || s.createdAt;
+        const daysSince = lastPay
+          ? Math.max(0, Math.floor((Date.now() - new Date(lastPay).getTime()) / 86400000))
+          : null;
+        const bucket = AGING_BUCKETS.find(
+          (b) => daysSince != null && daysSince >= b.min && daysSince <= b.max
+        )?.key || "old";
+        return { ...s, paid, balance, lastPay, daysSince, bucket };
+      }),
+    [sales]
   );
+
+  const dateBounds = useMemo(
+    () => getDateBounds(dateFilter, dateStart, dateEnd),
+    [dateFilter, dateStart, dateEnd]
+  );
+
+  // Base commune : recherche + date de vente (l'ancienneté se filtre ensuite)
+  const searchedAndDated = useMemo(() => {
+    let list = enriched;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((s) => {
+        const hay = `${s.client?.name || ""} ${s.client?.email || ""} ${s._id || ""}`;
+        return hay.toLowerCase().includes(q);
+      });
+    }
+    if (dateBounds) {
+      list = list.filter((s) => matchesDateBounds(s, dateBounds));
+    }
+    return list;
+  }, [enriched, search, dateBounds]);
+
+  const partiallyPaid = useMemo(() => {
+    let list = searchedAndDated;
+    if (agingFilter) {
+      list = list.filter((s) => s.bucket === agingFilter);
+    }
+    const sorted = [...list];
+    if (sortBy === "balance") sorted.sort((a, b) => b.balance - a.balance);
+    else if (sortBy === "oldest") sorted.sort((a, b) => (b.daysSince ?? 0) - (a.daysSince ?? 0));
+    else sorted.sort((a, b) => new Date(b.saleDate || 0) - new Date(a.saleDate || 0));
+    return sorted;
+  }, [searchedAndDated, agingFilter, sortBy]);
 
   const totals = useMemo(() => {
     const t = partiallyPaid.reduce(
       (acc, s) => {
-        const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
         acc.total += s.totalAmount || 0;
-        acc.paid += paid;
-        acc.due += (s.totalAmount || 0) - paid;
+        acc.paid += s.paid;
+        acc.due += s.balance;
         return acc;
       },
       { total: 0, paid: 0, due: 0 }
     );
     return t;
   }, [partiallyPaid]);
+
+  // Répartition par ancienneté (respecte recherche + date, pas le filtre bucket)
+  const agingSummary = useMemo(() => {
+    const acc = Object.fromEntries(AGING_BUCKETS.map((b) => [b.key, { count: 0, due: 0 }]));
+    searchedAndDated.forEach((s) => {
+      const slot = acc[s.bucket];
+      if (slot) {
+        slot.count += 1;
+        slot.due += s.balance;
+      }
+    });
+    return AGING_BUCKETS.map((b) => ({ ...b, ...acc[b.key] }));
+  }, [searchedAndDated]);
 
   const donutData = {
     labels: ["Payé", "Restant dû"],
@@ -140,19 +267,16 @@ const PartiallyPaidPurchases = () => {
 
   const exportCSV = () => {
     const rows = [
-      ["Vente", "Client", "Total", "Payé", "Solde", "Dernier paiement"],
-      ...partiallyPaid.map((s) => {
-        const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-        const last = (s.payments || []).slice(-1)[0]?.paymentDate || s.updatedAt || s.createdAt;
-        return [
-          s._id,
-          s.client?.name || "N/A",
-          String(s.totalAmount || 0).replace(".", ","),
-          String(paid).replace(".", ","),
-          String((s.totalAmount || 0) - paid).replace(".", ","),
-          last ? new Date(last).toLocaleDateString("fr-FR") : "",
-        ];
-      }),
+      ["Vente", "Client", "Total", "Payé", "Solde", "Dernier paiement", "Jours sans paiement"],
+      ...partiallyPaid.map((s) => [
+        s._id,
+        s.client?.name || "N/A",
+        String(s.totalAmount || 0).replace(".", ","),
+        String(s.paid).replace(".", ","),
+        String(s.balance).replace(".", ","),
+        s.lastPay ? new Date(s.lastPay).toLocaleDateString("fr-FR") : "",
+        s.daysSince == null ? "" : String(s.daysSince),
+      ]),
     ]
       .map((row) => row.join(";"))
       .join("\n");
@@ -195,8 +319,8 @@ const PartiallyPaidPurchases = () => {
     <Workspace>
         <PageHeader
           eyebrow="Paiements"
-          title="Ventes partiellement payées"
-          description="Suivi précis des encaissements et relances ciblées."
+          title="Recouvrement des soldes"
+          description="Ventes partiellement payées : relances ciblées, priorisées par urgence."
           actions={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {isAdmin && (
@@ -208,131 +332,236 @@ const PartiallyPaidPurchases = () => {
                 to="/sales"
                 className="ms-button ms-button-primary ms-button-md"
               >
-                Retour
+                Retour aux ventes
               </Link>
             </div>
           }
         />
 
-        <Surface className="p-3">
-          <SearchBox
-              label="Rechercher dans les ventes partiellement payées"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher client, email ou #vente…"
-            />
-        </Surface>
-
-        {/* KPIs & Donut */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KPICard title="Nombre" value={loading ? "—" : partiallyPaid.length} context="Ventes filtrées" />
-          <KPICard title="Total" value={loading ? "—" : `${totals.total.toLocaleString("fr-FR")} CFA`} context="Montant facturé" />
-          <KPICard title="Payé" value={loading ? "—" : `${totals.paid.toLocaleString("fr-FR")} CFA`} context="Déjà encaissé" tone="success" />
-          <KPICard title="Solde" value={loading ? "—" : `${totals.due.toLocaleString("fr-FR")} CFA`} context="Reste à encaisser" tone="danger" />
+        {/* KPIs */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KPICard title="Ventes à solder" value={loading ? "—" : partiallyPaid.length} context="Après filtres" />
+          <KPICard title="Total facturé" value={loading ? "—" : cfa(totals.total)} context="Montant des ventes" />
+          <KPICard title="Déjà encaissé" value={loading ? "—" : cfa(totals.paid)} context={totals.total ? `${Math.round((totals.paid / totals.total) * 100)}% du total` : ""} tone="success" />
+          <KPICard title="Reste à encaisser" value={loading ? "—" : cfa(totals.due)} context="Solde cumulé" tone="danger" />
         </div>
 
-        <ChartCard title="Répartition" description="Payé contre restant dû">
-            <div className="h-56">
-              <Doughnut
-                data={donutData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: "bottom" } },
-                }}
+        {/* Ancienneté — cliquable pour filtrer */}
+        <Surface className="p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="fui-caption1-strong uppercase" style={{ color: "var(--colorNeutralForeground3)", letterSpacing: "0.06em" }}>
+              Ancienneté du dernier paiement
+            </p>
+            {agingFilter && (
+              <button type="button" onClick={() => setAgingFilter("")} className="fui-caption1-strong hover:underline" style={{ color: "var(--colorBrandForeground1)" }}>
+                Tout afficher
+              </button>
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {agingSummary.map((b) => {
+              const active = agingFilter === b.key;
+              // "success" → "Success" : le ton est le nom du token de statut
+              const statusName = b.tone[0].toUpperCase() + b.tone.slice(1);
+              return (
+                <button
+                  key={b.key}
+                  type="button"
+                  onClick={() => setAgingFilter(active ? "" : b.key)}
+                  aria-pressed={active}
+                  className="rounded-[var(--radiusLarge)] border p-3 text-left transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
+                  style={{
+                    borderColor: active ? "var(--colorBrandBackground)" : `var(--colorStatus${statusName}Stroke1)`,
+                    background: `var(--colorStatus${statusName}Background1)`,
+                    boxShadow: active ? "0 0 0 1px var(--colorBrandBackground)" : undefined,
+                  }}
+                >
+                  <p className="fui-caption1-strong" style={{ color: `var(--colorStatus${statusName}Foreground1)` }}>
+                    {b.label}
+                  </p>
+                  <p className="mt-1 fui-subtitle1 tabular-nums" style={{ color: "var(--colorNeutralForeground1)" }}>
+                    {b.count} <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>vente(s)</span>
+                  </p>
+                  <p className="fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>
+                    {cfa(b.due)} dus
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </Surface>
+
+        {/* Recherche + date + tri */}
+        <Surface className="p-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="flex-1">
+              <SearchBox
+                label="Rechercher dans les ventes partiellement payées"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher client, email ou #vente…"
               />
             </div>
-        </ChartCard>
+            <label className="flex items-center gap-2 shrink-0">
+              <CalendarDays className="h-4 w-4" style={{ color: "var(--colorNeutralForeground3)" }} aria-hidden />
+              <span className="sr-only">Filtrer par date de vente</span>
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="form-control text-sm"
+                aria-label="Filtrer par date de vente"
+              >
+                {DATE_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 shrink-0">
+              <ArrowUpDown className="h-4 w-4" style={{ color: "var(--colorNeutralForeground3)" }} aria-hidden />
+              <span className="sr-only">Trier par</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="form-control text-sm"
+                aria-label="Trier les ventes"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
+          {dateFilter === "custom" && (
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+              <label className="flex-1 space-y-1">
+                <span className="fui-caption1-strong block" style={{ color: "var(--colorNeutralForeground3)" }}>Du</span>
+                <input
+                  type="date"
+                  value={dateStart}
+                  max={dateEnd || undefined}
+                  onChange={(e) => setDateStart(e.target.value)}
+                  className="form-control text-sm w-full"
+                  aria-label="Date de début"
+                />
+              </label>
+              <label className="flex-1 space-y-1">
+                <span className="fui-caption1-strong block" style={{ color: "var(--colorNeutralForeground3)" }}>Au</span>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  min={dateStart || undefined}
+                  onChange={(e) => setDateEnd(e.target.value)}
+                  className="form-control text-sm w-full"
+                  aria-label="Date de fin"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => { setDateFilter(""); setDateStart(""); setDateEnd(""); }}
+                className="ms-button ms-button-secondary ms-button-sm shrink-0"
+              >
+                Effacer les dates
+              </button>
+            </div>
+          )}
+        </Surface>
+
+        {/* Liste des ventes */}
         <Surface>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Détail des ventes</h3>
+          <div className="p-5 sm:p-6">
+            <h3 className="fui-subtitle1 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>
+              Détail des ventes
+            </h3>
             {loading ? (
               <LoadingSkeleton rows={6} />
             ) : error ? (
               <EmptyState title="Erreur de chargement" description={error} action={<Button onClick={fetchSales}>Réessayer</Button>} />
             ) : partiallyPaid.length === 0 ? (
-              <EmptyState title="Aucune vente partiellement payée" description="Les ventes avec solde restant apparaîtront ici." />
+              <EmptyState title="Aucune vente à solder" description={agingFilter || search || dateFilter ? "Ajustez la recherche, la période ou le filtre d'ancienneté." : "Les ventes avec solde restant apparaîtront ici."} />
             ) : (
               <div className="space-y-4">
                 {partiallyPaid.map((s) => {
-                  const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-                  const balance = (s.totalAmount || 0) - paid;
-                  const lastPay = (s.payments || []).slice(-1)[0]?.paymentDate || s.updatedAt;
-                  const daysSince = lastPay
-                    ? Math.max(0, Math.floor((Date.now() - new Date(lastPay).getTime()) / 86400000))
-                    : null;
+                  const paidRatio = paymentRatio(s.paid, s.totalAmount);
                   const reminderMsg = buildReminderMessage({
                     clientName: s.client?.name,
                     shopName,
-                    balance,
-                    lastPaymentLabel: lastPay ? new Date(lastPay).toLocaleDateString("fr-FR") : "",
-                    daysSince,
+                    balance: s.balance,
+                    lastPaymentLabel: s.lastPay ? new Date(s.lastPay).toLocaleDateString("fr-FR") : "",
+                    daysSince: s.daysSince,
                   });
                   const wa = canWhatsApp(s.client?.phone) ? whatsAppLink(s.client?.phone, dialCode, reminderMsg) : "";
                   const tel = telLink(s.client?.phone);
+                  const tone = bucketTone(s);
                   return (
                     <div
                       key={s._id}
-                      className="flex flex-col gap-4 rounded-md border border-[var(--ms-border)] bg-white p-4 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-4 rounded-[var(--radiusLarge)] border p-4 lg:flex-row lg:items-start lg:justify-between"
+                      style={{ borderColor: "var(--ms-border)", background: "var(--ms-white)" }}
                     >
-                      <div className="space-y-1">
-                        <Link
-                          to={`/sales/${s._id}`}
-                          className="font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)]"
-                        >
-                          Vente #{s._id.slice(-6)}
-                        </Link>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {s.client?.name || "Client"} — {new Date(s.saleDate).toLocaleDateString("fr-FR")}
+                      <div className="min-w-0 flex-1 space-y-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/sales/${s._id}`}
+                            className="fui-body1-strong hover:underline"
+                            style={{ color: "var(--colorNeutralForeground1)" }}
+                          >
+                            {s.client?.name || "Client"}
+                          </Link>
+                          <StatusBadge tone={tone}>
+                            {s.daysSince == null ? "Jamais payé" : s.daysSince === 0 ? "Payé aujourd'hui" : `${s.daysSince} j sans paiement`}
+                          </StatusBadge>
+                          {s.daysSince != null && s.daysSince > 30 && (
+                            <AlertTriangle className="h-4 w-4" style={{ color: "var(--colorStatusDangerForeground1)" }} aria-label="Relance urgente" />
+                          )}
+                        </div>
+                        <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
+                          Vente #{s._id.slice(-6)} · {new Date(s.saleDate).toLocaleDateString("fr-FR")}
+                          {s.lastPay ? ` · dernier paiement le ${new Date(s.lastPay).toLocaleDateString("fr-FR")}` : ""}
+                        </p>
+
+                        {/* Progression encaissement */}
+                        <div className="max-w-md">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="fui-caption1 tabular-nums" style={{ color: "var(--colorStatusSuccessForeground1)" }}>
+                              {cfa(s.paid)} payé ({paidRatio}%)
+                            </span>
+                            <span className="fui-caption1-strong tabular-nums" style={{ color: "var(--colorStatusDangerForeground1)" }}>
+                              {cfa(s.balance)} restant
+                            </span>
+                          </div>
+                          <PaymentProgress className="mt-1" ratio={paidRatio} color="var(--colorStatusSuccessForeground1)" />
+                          <p className="mt-1 fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>
+                            Total facturé : {cfa(s.totalAmount)}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="w-full md:w-auto flex flex-col gap-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-                          <div>
-                            <div className="text-xs text-gray-500">Total</div>
-                            <div className="font-semibold">
-                              {(s.totalAmount || 0).toLocaleString("fr-FR")} CFA
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500">Payé</div>
-                            <div className="font-semibold text-green-700">
-                              {paid.toLocaleString("fr-FR")} CFA
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500">Solde</div>
-                            <div className="font-semibold text-red-600">
-                              {balance.toLocaleString("fr-FR")} CFA
-                            </div>
-                          </div>
-                        </div>
+                      <div className="flex shrink-0 flex-col gap-2.5 lg:items-end">
                         <div className="flex flex-wrap items-center gap-2">
                           {wa ? (
                             <button
                               type="button"
                               onClick={() => handleWhatsAppReminder(s, wa)}
-                              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+                              className="inline-flex items-center gap-1.5 rounded-[var(--radiusMedium)] px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95"
                               style={{ background: remindedSales[s._id] ? "#128C7E" : "#25D366" }}
                             >
                               <MessageCircle size={15} /> {remindedSales[s._id] ? 'Relancé ✓' : 'WhatsApp'}
                             </button>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400" title="Numéro de téléphone manquant">
+                            <span className="inline-flex items-center gap-1.5 rounded-[var(--radiusMedium)] px-3 py-2 text-sm font-semibold" style={{ background: "var(--colorNeutralBackground3)", color: "var(--colorNeutralForeground3)" }} title="Numéro de téléphone manquant">
                               <MessageCircle size={15} /> WhatsApp
                             </span>
                           )}
                           {tel && (
-                            <a href={tel} className="inline-flex items-center gap-1.5 rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                            <a href={tel} className="ms-button ms-button-secondary ms-button-sm">
                               <Phone size={15} /> Appeler
                             </a>
                           )}
                           <button
                             type="button"
                             onClick={() => copyMessage(reminderMsg)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                            className="ms-button ms-button-secondary ms-button-sm"
                           >
                             <Copy size={15} /> Copier
                           </button>
@@ -343,7 +572,7 @@ const PartiallyPaidPurchases = () => {
                             setShowPaymentModal(true);
                           }}
                           variant="primary"
-                          className="w-full md:w-auto"
+                          className="w-full lg:w-auto"
                         >
                           Ajouter un paiement
                         </Button>
@@ -355,6 +584,20 @@ const PartiallyPaidPurchases = () => {
             )}
           </div>
         </Surface>
+
+        {/* Répartition globale payé / dû */}
+        <ChartCard title="Répartition" description="Payé contre restant dû (ventes affichées)">
+            <div className="h-56">
+              <Doughnut
+                data={donutData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { position: "bottom" } },
+                }}
+              />
+            </div>
+        </ChartCard>
 
         <Suspense fallback={null}>
           <PaymentModal

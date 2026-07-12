@@ -1,11 +1,13 @@
 import { confirmDialog } from './ConfirmProvider';
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Banknote, Coins, Edit3, FileText, Mail, Phone, Plus, Scale, UserRound, UserX, Wallet } from 'lucide-react';
+import { ArrowLeft, Banknote, CheckCircle2, Coins, Edit3, FileText, HandCoins, Mail, Phone, Plus, RotateCcw, UserRound, UserX, Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import AuthContext from '../context/AuthContext';
-import { KPICard } from './business';
+import { formatCfa } from '../utils/format';
+import { KPICard, StatusBadge } from './business';
 import {
   employeeEditPath,
   employeePayrollNewPath,
@@ -19,10 +21,11 @@ const isSalaryCategory = (category) => {
   return normalized.includes('salair') || normalized.includes('salar');
 };
 
-const statusStyles = {
-  pending: { label: 'En attente', classes: 'bg-[var(--ms-warning)]/15 text-amber-800' },
-  paid: { label: 'Payé', classes: 'bg-[var(--ms-success)]/15 text-green-800' },
-  cancelled: { label: 'Annulé', classes: 'bg-[var(--ms-danger)]/15 text-red-800' }
+// « pending » = fiche créée mais salaire pas encore versé → « À payer »
+const STATUS_META = {
+  pending: { label: 'À payer', tone: 'warning' },
+  paid: { label: 'Payée', tone: 'success' },
+  cancelled: { label: 'Annulée', tone: 'danger' },
 };
 
 const formatPeriod = (month, year) =>
@@ -38,10 +41,7 @@ const EmployeeDetail = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('details');
   const [paySlips, setPaySlips] = useState([]);
-  const [stats, setStats] = useState({
-    totalPaid: 0,
-    balance: 0
-  });
+  const [updatingSlipId, setUpdatingSlipId] = useState('');
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   // Advances (salary expenses) — loaded lazily when the tab is first opened.
@@ -90,14 +90,6 @@ const EmployeeDetail = () => {
         const { data: paySlipsData } = await api.get(`/employees/${id}/payroll`);
         setPaySlips(paySlipsData);
 
-        // Calculate stats
-        const totalPaid = paySlipsData.reduce((sum, slip) => sum + slip.netSalary, 0);
-
-        setStats({
-          totalPaid,
-          balance: totalPaid
-        });
-
         setError('');
       } catch (err) {
         setError(err.response?.data?.message || 'Erreur de chargement des données');
@@ -114,21 +106,49 @@ const EmployeeDetail = () => {
       try {
         await api.delete(`/employees/${id}/payroll/${payslipId}`);
         setPaySlips(paySlips.filter(slip => slip._id !== payslipId));
-
-        // Update stats
-        const slip = paySlips.find(s => s._id === payslipId);
-        if (slip) {
-          setStats(prev => ({
-            ...prev,
-            totalPaid: prev.totalPaid - slip.netSalary,
-            balance: prev.balance - slip.netSalary
-          }));
-        }
       } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors de la suppression');
+        toast.error(err.response?.data?.message || 'Erreur lors de la suppression');
       }
     }
   };
+
+  // Bascule le statut d'une fiche (marquer payée / repasser à payer).
+  const handleSetSlipStatus = async (slip, status) => {
+    if (status === 'pending' && !(await confirmDialog('Repasser cette fiche en « À payer » ?'))) return;
+    setUpdatingSlipId(slip._id);
+    try {
+      const { data } = await api.put(`/employees/${id}/payroll/${slip._id}`, { status });
+      setPaySlips((prev) => prev.map((s) => (s._id === slip._id ? { ...s, ...data } : s)));
+      toast.success(status === 'paid' ? `Salaire de ${formatPeriod(slip.month, slip.year)} marqué payé ✓` : 'Fiche repassée en attente de paiement');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de mettre à jour la fiche');
+    } finally {
+      setUpdatingSlipId('');
+    }
+  };
+
+  // Fiches triées (récentes d'abord) + totaux honnêtes : versé vs à payer.
+  const sortedPaySlips = useMemo(
+    () => [...paySlips].sort((a, b) => (b.year - a.year) || (b.month - a.month)),
+    [paySlips]
+  );
+  const payStats = useMemo(() => {
+    const paid = paySlips.filter((s) => s.status === 'paid');
+    const pending = paySlips.filter((s) => s.status === 'pending' || !s.status);
+    return {
+      paidTotal: paid.reduce((sum, s) => sum + (Number(s.netSalary) || 0), 0),
+      paidCount: paid.length,
+      pendingTotal: pending.reduce((sum, s) => sum + (Number(s.netSalary) || 0), 0),
+      pendingCount: pending.length,
+    };
+  }, [paySlips]);
+
+  // État de la paie du mois en cours (fiche annulée = pas de fiche).
+  const now = new Date();
+  const currentSlip = paySlips.find(
+    (s) => s.month === now.getMonth() + 1 && s.year === now.getFullYear() && s.status !== 'cancelled'
+  );
+  const currentMonthLabel = formatPeriod(now.getMonth() + 1, now.getFullYear());
 
   if (loading) {
     return (
@@ -304,27 +324,40 @@ const EmployeeDetail = () => {
         {/* Financial Summary */}
         <div className="p-6 sm:p-8 bg-[var(--ms-bg-subtle)]/60 border-b border-[var(--ms-border)]">
           <h3 className="text-base font-semibold text-[var(--ms-text-strong)] mb-4">Résumé financier</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <KPICard
               title="Salaire mensuel"
-              value={`${new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA`}
+              value={formatCfa(employee.salary)}
               context="Brut contractuel"
               tone="brand"
               icon={<Banknote className="h-4 w-4" />}
             />
             <KPICard
-              title="Total payé"
-              value={`${new Intl.NumberFormat('fr-FR').format(stats.totalPaid)} CFA`}
-              context="Fiches de paie cumulées"
+              title="Total versé"
+              value={formatCfa(payStats.paidTotal)}
+              context={`${payStats.paidCount} fiche(s) payée(s)`}
               tone="success"
               icon={<Wallet className="h-4 w-4" />}
             />
             <KPICard
-              title="Solde"
-              value={`${new Intl.NumberFormat('fr-FR').format(stats.balance)} CFA`}
-              context={stats.balance >= 0 ? 'À jour' : 'Reste à régulariser'}
-              tone={stats.balance >= 0 ? 'success' : 'danger'}
-              icon={<Scale className="h-4 w-4" />}
+              title="À payer"
+              value={formatCfa(payStats.pendingTotal)}
+              context={`${payStats.pendingCount} fiche(s) en attente`}
+              tone={payStats.pendingCount > 0 ? 'danger' : 'success'}
+              icon={<HandCoins className="h-4 w-4" />}
+            />
+            <KPICard
+              title="Paie du mois"
+              value={!currentSlip ? 'À créer' : currentSlip.status === 'paid' ? 'Payée' : 'À payer'}
+              context={
+                !currentSlip
+                  ? currentMonthLabel
+                  : currentSlip.status === 'paid'
+                    ? `Versée le ${currentSlip.paymentDate ? new Date(currentSlip.paymentDate).toLocaleDateString('fr-FR') : '—'}`
+                    : formatCfa(currentSlip.netSalary)
+              }
+              tone={!currentSlip ? 'warning' : currentSlip.status === 'paid' ? 'success' : 'danger'}
+              icon={<FileText className="h-4 w-4" />}
             />
           </div>
         </div>
@@ -469,11 +502,52 @@ const EmployeeDetail = () => {
                 </Link>
               </div>
 
+              {/* Paie du mois en cours — état + action directe */}
+              {employeeActive && (
+                <div
+                  className="mb-5 flex flex-col gap-3 rounded-[var(--radiusLarge)] border p-4 sm:flex-row sm:items-center sm:justify-between"
+                  style={
+                    !currentSlip
+                      ? { borderColor: 'var(--colorStatusWarningStroke1)', background: 'var(--colorStatusWarningBackground1)' }
+                      : currentSlip.status === 'paid'
+                        ? { borderColor: 'var(--colorStatusSuccessStroke1)', background: 'var(--colorStatusSuccessBackground1)' }
+                        : { borderColor: 'var(--colorStatusDangerStroke1)', background: 'var(--colorStatusDangerBackground1)' }
+                  }
+                >
+                  <div className="flex items-center gap-3">
+                    {currentSlip?.status === 'paid'
+                      ? <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                      : <HandCoins className="h-5 w-5 shrink-0" style={{ color: !currentSlip ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusDangerForeground1)' }} />}
+                    <p className="text-sm font-semibold capitalize" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      {!currentSlip
+                        ? `Paie de ${currentMonthLabel} : fiche à créer`
+                        : currentSlip.status === 'paid'
+                          ? `Paie de ${currentMonthLabel} payée${currentSlip.paymentDate ? ` le ${new Date(currentSlip.paymentDate).toLocaleDateString('fr-FR')}` : ''} ✓`
+                          : `Paie de ${currentMonthLabel} : ${formatCfa(currentSlip.netSalary)} à verser`}
+                    </p>
+                  </div>
+                  {!currentSlip ? (
+                    <Link to={employeePayrollNewPath(employeeReference)} className="ms-button ms-button-primary ms-button-sm shrink-0">
+                      <Plus className="h-3.5 w-3.5" /> Créer la fiche
+                    </Link>
+                  ) : currentSlip.status === 'pending' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSetSlipStatus(currentSlip, 'paid')}
+                      disabled={updatingSlipId === currentSlip._id}
+                      className="ms-button ms-button-primary ms-button-sm shrink-0 disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Marquer payé
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
               {paySlips.length > 0 ? (
                 <>
                   <div className="space-y-4 md:hidden">
-                    {paySlips.map((slip) => {
-                      const status = statusStyles[slip.status] || statusStyles.pending;
+                    {sortedPaySlips.map((slip) => {
+                      const status = STATUS_META[slip.status] || STATUS_META.pending;
                       return (
                         <div key={slip._id} className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]/70 p-4 shadow-[var(--ms-shadow-sm)]">
                           <div className="flex items-start justify-between gap-2">
@@ -484,13 +558,16 @@ const EmployeeDetail = () => {
                               <p className="text-xs text-[var(--ms-text-muted)]">
                                 Salaire net :
                                 <span className="ml-1 font-semibold text-[var(--ms-blue)]">
-                                  {new Intl.NumberFormat('fr-FR').format(slip.netSalary)} CFA
+                                  {formatCfa(slip.netSalary)}
                                 </span>
                               </p>
+                              {slip.status === 'paid' && slip.paymentDate && (
+                                <p className="text-xs text-[var(--ms-text-muted)] mt-0.5">
+                                  Versée le {new Date(slip.paymentDate).toLocaleDateString('fr-FR')}
+                                </p>
+                              )}
                             </div>
-                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
-                              {status.label}
-                            </span>
+                            <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                           </div>
 
                           <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--ms-text)]">
@@ -521,15 +598,27 @@ const EmployeeDetail = () => {
                           </div>
 
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                            <Link
-                              to={employeePayrollPath(employeeReference)}
-                              className="flex-1 rounded-md border border-[var(--ms-blue-soft)] bg-[var(--ms-white)] px-3 py-2 text-xs font-semibold text-[var(--ms-blue)] shadow-[var(--ms-shadow-sm)] transition-colors hover:bg-[var(--ms-blue-soft)]"
-                            >
-                              Voir la liste
-                            </Link>
+                            {slip.status === 'pending' && (
+                              <button
+                                onClick={() => handleSetSlipStatus(slip, 'paid')}
+                                disabled={updatingSlipId === slip._id}
+                                className="flex-1 ms-button ms-button-primary ms-button-sm justify-center disabled:opacity-60"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Marquer payé
+                              </button>
+                            )}
+                            {slip.status === 'paid' && (
+                              <button
+                                onClick={() => handleSetSlipStatus(slip, 'pending')}
+                                disabled={updatingSlipId === slip._id}
+                                className="flex-1 rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition-colors hover:bg-[var(--ms-bg-subtle)] disabled:opacity-60"
+                              >
+                                Repasser à payer
+                              </button>
+                            )}
                             <Link
                               to={employeePayrollPayslipEditPath(employeeReference, slip._id)}
-                              className="flex-1 rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition-colors hover:bg-[var(--ms-bg-subtle)]"
+                              className="flex-1 rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 text-xs font-semibold text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition-colors hover:bg-[var(--ms-bg-subtle)] text-center"
                             >
                               Modifier
                             </Link>
@@ -553,12 +642,13 @@ const EmployeeDetail = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Période</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Salaire net</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Statut</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Actions</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Payée le</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-[var(--ms-text-muted)] uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-[var(--ms-white)] divide-y divide-gray-200">
-                          {paySlips.map((slip) => {
-                            const status = statusStyles[slip.status] || statusStyles.pending;
+                          {sortedPaySlips.map((slip) => {
+                            const status = STATUS_META[slip.status] || STATUS_META.pending;
                             return (
                               <tr key={slip._id} className="hover:bg-[var(--ms-bg-subtle)] transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -566,41 +656,49 @@ const EmployeeDetail = () => {
                                     {formatPeriod(slip.month, slip.year)}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--ms-text-muted)]">
-                                  {new Intl.NumberFormat('fr-FR').format(slip.netSalary)} CFA
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--ms-text-strong)]">
+                                  {formatCfa(slip.netSalary)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>
-                                    {status.label}
-                                  </span>
+                                  <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--ms-text-muted)]">
+                                  {slip.status === 'paid' && slip.paymentDate
+                                    ? new Date(slip.paymentDate).toLocaleDateString('fr-FR')
+                                    : '—'}
                                 </td>
 
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <div className="flex gap-3">
-                                    <Link
-                                      to={employeePayrollPath(employeeReference)}
-                                      className="text-[var(--ms-blue)] hover:text-[var(--ms-blue)] p-1.5 rounded-md hover:bg-[var(--ms-blue-soft)] transition-colors"
-                                      title="Voir la liste"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                      </svg>
-                                    </Link>
-
+                                  <div className="flex items-center justify-end gap-2">
+                                    {slip.status === 'pending' && (
+                                      <button
+                                        onClick={() => handleSetSlipStatus(slip, 'paid')}
+                                        disabled={updatingSlipId === slip._id}
+                                        className="ms-button ms-button-primary ms-button-sm disabled:opacity-60"
+                                      >
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> Marquer payé
+                                      </button>
+                                    )}
+                                    {slip.status === 'paid' && (
+                                      <button
+                                        onClick={() => handleSetSlipStatus(slip, 'pending')}
+                                        disabled={updatingSlipId === slip._id}
+                                        className="ms-icon-button disabled:opacity-60"
+                                        title="Repasser en « À payer »"
+                                      >
+                                        <RotateCcw className="h-4 w-4" />
+                                      </button>
+                                    )}
                                     <Link
                                       to={employeePayrollPayslipEditPath(employeeReference, slip._id)}
-                                      className="text-[var(--ms-text-muted)] hover:text-[var(--ms-text)] p-1.5 rounded-md hover:bg-[var(--ms-bg-subtle)] transition-colors"
+                                      className="ms-icon-button"
                                       title="Modifier"
                                     >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                      </svg>
+                                      <Edit3 className="h-4 w-4" />
                                     </Link>
-
                                     <button
                                       onClick={() => handleDeletePaySlip(slip._id)}
-                                      className="text-red-500 hover:text-[var(--ms-danger)] p-1.5 rounded-md hover:bg-[var(--ms-danger)]/10 transition-colors"
+                                      className="ms-icon-button text-[var(--ms-danger)] hover:bg-[var(--ms-danger)]/10"
                                       title="Supprimer"
                                     >
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

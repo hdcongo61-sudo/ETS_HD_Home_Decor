@@ -15,16 +15,20 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend
+  Legend,
+  CartesianGrid,
 } from 'recharts';
 import {
   AlertTriangle,
   Boxes,
+  ChevronRight,
   Download,
   Package,
-  PackageCheck,
+  PackageMinus,
   PackageX,
+  Snail,
   TrendingUp,
+  Trophy,
   Wallet,
 } from 'lucide-react';
 import {
@@ -36,16 +40,22 @@ import {
   formatProductCurrency,
   formatProductNumber,
 } from '../components/ProductAnalyticsUI';
-import { Workspace } from '../components/business';
+import { EmptyState, StatusBadge, Workspace } from '../components/business';
+import { SERIE_REVENUE, SERIE_PROFIT } from '../utils/chartColors';
+
+const GROUP_TABS = [
+  { key: 'suppliers', label: 'Fournisseurs', nameKey: 'supplierName', detailPath: '/products/by-supplier', csv: 'Fournisseurs' },
+  { key: 'containers', label: 'Conteneurs', nameKey: 'containerName', detailPath: '/products/by-container', csv: 'Conteneurs' },
+  { key: 'warehouses', label: 'Entrepôts', nameKey: 'warehouseName', detailPath: '/products/by-warehouse', csv: 'Entrepots' },
+];
 
 const ProductDashboard = () => {
   const navigate = useNavigate();
   const topSellingTableRef = useRef(null);
-  const supplierTableRef = useRef(null);
-  const containerTableRef = useRef(null);
-  const warehouseTableRef = useRef(null);
+  const groupTableRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [groupTab, setGroupTab] = useState('suppliers');
 
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -80,21 +90,6 @@ const ProductDashboard = () => {
         containerStats: res.data.containerStats || [],
         warehouseStats: res.data.warehouseStats || []
       });
-
-      if (!silent && res.data.outOfStockProducts?.length > 0) {
-        toast.error(
-          `🚨 ${res.data.outOfStockProducts.length} produit(s) en rupture de stock !`,
-          { duration: 6000, position: 'top-right' }
-        );
-      }
-
-      if (!silent && res.data.lowStockProducts?.length > 0) {
-        toast(
-          `⚠️ ${res.data.lowStockProducts.length} produit(s) en stock critique.`,
-          { icon: '⚠️', duration: 5000, position: 'top-right' }
-        );
-      }
-
     } catch (err) {
       console.error(err);
       setError("Erreur lors du chargement du tableau de bord produits.");
@@ -115,40 +110,54 @@ const ProductDashboard = () => {
     return () => window.removeEventListener('saleCreated', refresh);
   }, [fetchData]);
 
-  // 📦 Export supplier stats to Excel
-  const exportSuppliersToExcel = () => {
-    if (!stats.supplierStats || stats.supplierStats.length === 0) {
-      toast.error('Aucune donnée fournisseur à exporter.');
+  useResponsiveTable(topSellingTableRef, [stats.topSellingProducts]);
+  useResponsiveTable(groupTableRef, [groupTab, stats.supplierStats, stats.containerStats, stats.warehouseStats]);
+
+  const groupDataByTab = {
+    suppliers: stats.supplierStats,
+    containers: stats.containerStats,
+    warehouses: stats.warehouseStats,
+  };
+  const activeTab = GROUP_TABS.find((t) => t.key === groupTab) || GROUP_TABS[0];
+  const activeGroupData = (groupDataByTab[groupTab] || []).map((g) => ({
+    ...g,
+    groupName: g[activeTab.nameKey] || 'Inconnu',
+    totalRevenue: Number(g.totalRevenue || 0),
+    totalProfit: Number(g.totalProfit || 0),
+    totalStockValue: Number(g.totalStockValue || 0),
+    lowStockCount: Number(g.lowStockCount || 0),
+    outOfStockCount: Number(g.outOfStockCount || 0),
+  }));
+
+  // 📦 Export du groupement affiché vers Excel
+  const exportGroupToExcel = () => {
+    if (!activeGroupData.length) {
+      toast.error('Aucune donnée à exporter.');
       return;
     }
 
-    const data = stats.supplierStats.map((s) => ({
-      Fournisseur: s.supplierName,
-      Téléphone: s.supplierPhone || '',
-      'Produits Totaux': s.totalProducts,
-      'Stock Total (CFA)': s.totalStockValue.toLocaleString(),
-      'Revenu Total (CFA)': s.totalRevenue.toLocaleString(),
-      'Profit Total (CFA)': s.totalProfit.toLocaleString(),
-      'Stock Critique': s.lowStockCount,
-      'Ruptures': s.outOfStockCount
+    const data = activeGroupData.map((g) => ({
+      [activeTab.label.slice(0, -1)]: g.groupName,
+      ...(groupTab === 'suppliers' ? { Téléphone: g.supplierPhone || '' } : {}),
+      'Produits Totaux': g.totalProducts,
+      'Stock Total (CFA)': g.totalStockValue.toLocaleString(),
+      'Revenu Total (CFA)': g.totalRevenue.toLocaleString(),
+      'Profit Total (CFA)': g.totalProfit.toLocaleString(),
+      'Stock Critique': g.lowStockCount,
+      'Ruptures': g.outOfStockCount,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Fournisseurs');
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.csv);
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([excelBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    saveAs(blob, `Statistiques_Fournisseurs_${new Date().toISOString().split('T')[0]}.xlsx`);
+    saveAs(blob, `Statistiques_${activeTab.csv}_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Export Excel généré avec succès 📊');
   };
-
-  useResponsiveTable(topSellingTableRef, [stats.topSellingProducts]);
-  useResponsiveTable(supplierTableRef, [stats.supplierStats]);
-  useResponsiveTable(containerTableRef, [stats.containerStats]);
-  useResponsiveTable(warehouseTableRef, [stats.warehouseStats]);
 
   if (loading)
     return (
@@ -160,27 +169,11 @@ const ProductDashboard = () => {
   if (error)
     return <p className="mt-8 text-center text-red-600">{error}</p>;
 
-  const supplierChartData = stats.supplierStats.slice(0, 5).map((s) => ({
-    ...s,
-    totalRevenue: Number(s.totalRevenue || 0),
-    totalProfit: Number(s.totalProfit || 0),
-    lowStockCount: Number(s.lowStockCount || 0),
-    outOfStockCount: Number(s.outOfStockCount || 0),
-  }));
-  const containerChartData = stats.containerStats.slice(0, 5).map((c) => ({
-    ...c,
-    totalRevenue: Number(c.totalRevenue || 0),
-    totalProfit: Number(c.totalProfit || 0),
-    lowStockCount: Number(c.lowStockCount || 0),
-    outOfStockCount: Number(c.outOfStockCount || 0),
-  }));
-  const warehouseChartData = stats.warehouseStats.slice(0, 5).map((w) => ({
-    ...w,
-    totalRevenue: Number(w.totalRevenue || 0),
-    totalProfit: Number(w.totalProfit || 0),
-    lowStockCount: Number(w.lowStockCount || 0),
-    outOfStockCount: Number(w.outOfStockCount || 0),
-  }));
+  const outCount = stats.outOfStockProducts.length;
+  const lowCount = stats.lowStockProducts.length;
+  const groupChartData = activeGroupData.slice(0, 6);
+  const groupCritical = activeGroupData.reduce((sum, g) => sum + g.lowStockCount, 0);
+  const groupOut = activeGroupData.reduce((sum, g) => sum + g.outOfStockCount, 0);
 
   return (
   <Workspace>
@@ -189,7 +182,49 @@ const ProductDashboard = () => {
         eyebrow="Inventaire"
         title="Tableau de bord produits"
         description="Stock, ventes, marges et regroupements par fournisseur, conteneur et entrepôt."
+        actions={
+          <Link to="/products" className="ms-button ms-button-secondary ms-button-md">
+            <Boxes className="h-4 w-4" />
+            Gérer les produits
+          </Link>
+        }
       />
+
+      {/* 🔔 Alertes stock — bandeau inline (remplace les toasts répétitifs) */}
+      {(outCount > 0 || lowCount > 0) && (
+        <div
+          className="flex flex-col gap-2 rounded-[var(--radiusLarge)] border p-4 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            borderColor: outCount > 0 ? 'var(--colorStatusDangerStroke1)' : 'var(--colorStatusWarningStroke1)',
+            background: outCount > 0 ? 'var(--colorStatusDangerBackground1)' : 'var(--colorStatusWarningBackground1)',
+          }}
+          role="alert"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle
+              className="h-5 w-5 shrink-0"
+              style={{ color: outCount > 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorStatusWarningForeground1)' }}
+            />
+            <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+              {outCount > 0 && `${outCount} produit(s) en rupture`}
+              {outCount > 0 && lowCount > 0 && ' · '}
+              {lowCount > 0 && `${lowCount} produit(s) en stock critique`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {outCount > 0 && (
+              <Link to="/products/out-of-stock" className="ms-button ms-button-danger ms-button-sm">
+                Voir les ruptures <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+            {lowCount > 0 && (
+              <Link to="/products/critical" className="ms-button ms-button-secondary ms-button-sm">
+                Stock critique <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1️⃣ Synthèse Globale */}
       <ProductSection
@@ -199,353 +234,209 @@ const ProductDashboard = () => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <ProductMetricCard title="Total produits" value={formatProductNumber(stats.totalProducts)} icon={Package} tone="slate" />
           <ProductMetricCard title="Produits vendus" value={formatProductNumber(stats.soldProducts)} icon={TrendingUp} tone="emerald" />
-          <ProductMetricCard title="Stock critique" value={formatProductNumber(stats.lowStockProducts.length)} icon={AlertTriangle} tone="amber" />
-          <ProductMetricCard title="Rupture de stock" value={formatProductNumber(stats.outOfStockProducts.length)} icon={PackageX} tone="rose" />
+          <ProductMetricCard title="Stock critique" value={formatProductNumber(lowCount)} icon={AlertTriangle} tone="amber" />
+          <ProductMetricCard title="Rupture de stock" value={formatProductNumber(outCount)} icon={PackageX} tone="rose" />
           <ProductMetricCard title="Valeur totale du stock" value={formatProductCurrency(stats.totalStockValue)} icon={Wallet} tone="sky" />
           <ProductMetricCard title="Valeur des invendus" value={formatProductCurrency(stats.neverSoldStockValue)} icon={Boxes} tone="violet" />
         </div>
 
         {/* Graphique tendance ventes */}
-        <div className="mt-5 h-48 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-3">
+        <div className="mt-5 h-52 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-3">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={stats.salesTrend}>
+            <AreaChart data={stats.salesTrend} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0f172a" stopOpacity={0.18}/>
-                  <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={SERIE_PROFIT} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={SERIE_PROFIT} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(v) => `${v.toLocaleString()} CFA`} />
-              <Area type="monotone" dataKey="value" stroke="#0f172a" fillOpacity={1} fill="url(#colorSales)" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip formatter={(v) => [formatProductCurrency(v), 'Ventes']} />
+              <Area type="monotone" dataKey="value" stroke={SERIE_PROFIT} strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </ProductSection>
 
-      {/* 2️⃣ Liens Rapides */}
+      {/* 2️⃣ Liens Rapides — toutes les vues produits */}
       <motion.div
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <QuickLinkCard title="Top Ventes" subtitle="Produits performants" icon={TrendingUp} tone="emerald" path="/products/top-sellers" count={stats.topSellingProducts.length} />
-        <QuickLinkCard title="Stock Critique" subtitle="Moins de 5 unités" icon={AlertTriangle} tone="amber" path="/products/critical" count={stats.lowStockProducts.length} />
-        <QuickLinkCard title="Rupture de Stock" subtitle="Stock épuisé" icon={PackageX} tone="rose" path="/products/out-of-stock" count={stats.outOfStockProducts.length} />
-        <QuickLinkCard title="Jamais Vendus" subtitle="Aucune vente enregistrée" icon={PackageCheck} tone="violet" path="/products/never-sold" count={stats.neverSoldCount} />
+        <QuickLinkCard title="Top ventes" subtitle="Produits performants" icon={Trophy} tone="emerald" path="/products/top-sellers" count={stats.topSellingProducts.length} />
+        <QuickLinkCard title="Stock critique" subtitle="Sous le seuil d'alerte" icon={AlertTriangle} tone="amber" path="/products/critical" count={lowCount} />
+        <QuickLinkCard title="Rupture de stock" subtitle="Stock épuisé" icon={PackageX} tone="rose" path="/products/out-of-stock" count={outCount} />
+        <QuickLinkCard title="Jamais vendus" subtitle="Aucune vente enregistrée" icon={Boxes} tone="violet" path="/products/never-sold" count={stats.neverSoldCount} />
+        <QuickLinkCard title="Produits lents" subtitle="Suggestions pour écouler" icon={Snail} tone="sky" path="/products/slow-movers" />
+        <QuickLinkCard title="Pertes & cadeaux" subtitle="Sorties de stock hors vente" icon={PackageMinus} tone="slate" path="/products/losses" />
       </motion.div>
 
-      {/* 3️⃣ Graphique Revenu vs Profit */}
+      {/* 3️⃣ Top produits — chiffres + graphique + classement */}
       <ProductSection
-        title="Comparatif revenu / profit"
-        description="Les produits qui génèrent le plus de chiffre d’affaires et de marge."
+        title="Top produits vendus"
+        description="Revenu et marge des produits les plus performants."
+        action={<ProductActionButton onClick={() => navigate('/products/top-sellers')}>Classement complet</ProductActionButton>}
       >
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={stats.topSellingProducts.slice(0, 10)}>
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis />
-            <Tooltip formatter={(v) => `${v.toLocaleString()} CFA`} />
-            <Legend />
-            <Bar dataKey="revenue" fill="#6366F1" name="Revenu" />
-            <Bar dataKey="profit" fill="#10B981" name="Profit" />
-          </BarChart>
-        </ResponsiveContainer>
+        {stats.topSellingProducts.length === 0 ? (
+          <EmptyState title="Pas encore de ventes" description="Le classement apparaîtra dès les premières ventes." />
+        ) : (
+          <>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.topSellingProducts.slice(0, 8)} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--colorNeutralStroke2)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickFormatter={(n) => (n && n.length > 12 ? `${n.slice(0, 12)}…` : n)} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip formatter={(v) => formatProductCurrency(v)} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="revenue" fill={SERIE_REVENUE} name="Revenu" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="profit" fill={SERIE_PROFIT} name="Profit" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
+                <thead className="bg-[var(--colorNeutralBackground2)] text-xs uppercase text-[var(--colorNeutralForeground3)]">
+                  <tr>
+                    <th className="py-2 px-3">Produit</th>
+                    <th className="py-2 px-3">Catégorie</th>
+                    <th className="py-2 px-3">Quantité</th>
+                    <th className="py-2 px-3">Revenu</th>
+                    <th className="py-2 px-3">Marge (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.topSellingProducts.slice(0, 5).map((p) => (
+                    <tr key={p._id} className="border-b border-[var(--colorNeutralStroke2)] transition hover:bg-[var(--colorNeutralBackground2)]">
+                      <td className="py-2 px-3 font-medium text-[var(--colorNeutralForeground1)]">{p.name}</td>
+                      <td className="py-2 px-3 text-[var(--colorNeutralForeground3)]">{p.category}</td>
+                      <td className="py-2 px-3 tabular-nums">{p.sold}</td>
+                      <td className="py-2 px-3 tabular-nums">{formatProductCurrency(p.revenue)}</td>
+                      <td className="py-2 px-3 tabular-nums">{p.margin}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </ProductSection>
 
-      {/* 4️⃣ Top Produits Vendus */}
-      <ProductSection title="Top produits vendus" description="Les cinq produits les plus performants.">
-        <div className="overflow-x-auto">
-          <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-[var(--colorNeutralBackground2)] text-xs uppercase text-[var(--colorNeutralForeground3)]">
-              <tr>
-                <th className="py-2 px-3">Produit</th>
-                <th className="py-2 px-3">Catégorie</th>
-                <th className="py-2 px-3">Quantité</th>
-                <th className="py-2 px-3">Revenu</th>
-                <th className="py-2 px-3">Marge (%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.topSellingProducts.slice(0, 5).map((p) => (
-                <tr key={p._id} className="border-b border-gray-100 transition hover:bg-[var(--colorNeutralBackground2)]">
-                  <td className="py-2 px-3">{p.name}</td>
-                  <td className="py-2 px-3">{p.category}</td>
-                  <td className="py-2 px-3">{p.sold}</td>
-                  <td className="py-2 px-3">{p.revenue.toLocaleString()} CFA</td>
-                  <td className="py-2 px-3">{p.margin}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </ProductSection>
-
-      {/* 5️⃣ Statistiques Fournisseurs */}
+      {/* 4️⃣ Regroupements — un seul bloc à onglets */}
       <ProductSection
-        title="Statistiques fournisseurs"
-        description="Revenu, profit, risques de stock et performance par fournisseur."
+        title="Analyse par regroupement"
+        description="Performance et risques de stock par fournisseur, conteneur ou entrepôt."
         action={
           <div className="flex flex-col gap-2 sm:flex-row">
-            <ProductActionButton onClick={() => navigate('/products/by-supplier')}>Vue détaillée</ProductActionButton>
-            <ProductActionButton onClick={exportSuppliersToExcel} variant="primary" icon={Download}>Export Excel</ProductActionButton>
+            <ProductActionButton onClick={() => navigate(activeTab.detailPath)}>Vue détaillée</ProductActionButton>
+            <ProductActionButton onClick={exportGroupToExcel} variant="primary" icon={Download}>Export Excel</ProductActionButton>
           </div>
         }
       >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+        {/* Onglets */}
+        <div className="mb-4 inline-flex rounded-[var(--radiusMedium)] border p-0.5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }} role="tablist" aria-label="Type de regroupement">
+          {GROUP_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={groupTab === tab.key}
+              onClick={() => setGroupTab(tab.key)}
+              className={`ms-button ms-button-sm ${groupTab === tab.key ? 'ms-button-primary' : 'bg-transparent border-transparent text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="mb-6 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={supplierChartData}>
-              <XAxis dataKey="supplierName" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
-              <Tooltip
-                formatter={(value, name) => {
-                  const numeric = Number(value || 0);
-                  if (name === 'Stock critique' || name === 'Ruptures') {
-                    return numeric.toLocaleString('fr-FR');
-                  }
-                  return `${numeric.toLocaleString('fr-FR')} CFA`;
-                }}
-              />
-              <Legend />
-              <Bar yAxisId="left" dataKey="totalRevenue" fill="#6366F1" name="Revenu" />
-              <Bar yAxisId="left" dataKey="totalProfit" fill="#10B981" name="Profit" />
-              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
-              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {activeGroupData.length === 0 ? (
+          <EmptyState title="Aucune donnée" description={`Aucun ${activeTab.label.toLowerCase().slice(0, -1)} enregistré pour le moment.`} />
+        ) : (
+          <>
+            {/* Résumé risques du groupement */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <StatusBadge tone="neutral">{activeGroupData.length} {activeTab.label.toLowerCase()}</StatusBadge>
+              <StatusBadge tone={groupCritical > 0 ? 'warning' : 'success'}>
+                {groupCritical} produit(s) en stock critique
+              </StatusBadge>
+              <StatusBadge tone={groupOut > 0 ? 'danger' : 'success'}>
+                {groupOut} rupture(s)
+              </StatusBadge>
+            </div>
 
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-purple-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
-            <p className="text-lg font-semibold text-yellow-600">
-              {stats.supplierStats.reduce((sum, s) => sum + (s.lowStockCount || 0), 0)}
-            </p>
-          </div>
-          <div className="bg-purple-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
-            <p className="text-lg font-semibold text-red-600">
-              {stats.supplierStats.reduce((sum, s) => sum + (s.outOfStockCount || 0), 0)}
-            </p>
-          </div>
-        </div>
+            {/* Graphique — un seul axe (CFA) : revenu & profit */}
+            <div className="mb-6 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={groupChartData} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--colorNeutralStroke2)" />
+                  <XAxis dataKey="groupName" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickFormatter={(n) => (n && n.length > 12 ? `${n.slice(0, 12)}…` : n)} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip formatter={(v) => formatProductCurrency(v)} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="totalRevenue" fill={SERIE_REVENUE} name="Revenu" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="totalProfit" fill={SERIE_PROFIT} name="Profit" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-        <div className="overflow-x-auto">
-          <table ref={supplierTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
-              <tr>
-                <th className="py-2 px-3">Fournisseur</th>
-                <th className="py-2 px-3">Téléphone</th>
-                <th className="py-2 px-3">Produits</th>
-                <th className="py-2 px-3">Stock Total (CFA)</th>
-                <th className="py-2 px-3">Revenu Total (CFA)</th>
-                <th className="py-2 px-3">Profit Total (CFA)</th>
-                <th className="py-2 px-3">Stock Critique</th>
-                <th className="py-2 px-3">Ruptures</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.supplierStats.slice(0, 10).map((s, index) => (
-                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
-                  <td className="py-2 px-3 font-medium">
-                    <Link
-                      to={`/suppliers/${encodeURIComponent(
-                        s.supplierName || 'Inconnu'
-                      )}`}
-                      className="text-[var(--ms-blue-dark)] hover:text-[var(--ms-blue-dark)] hover:underline"
-                    >
-                      {s.supplierName}
-                    </Link>
-                  </td>
-                  <td className="py-2 px-3 text-[var(--colorNeutralForeground3)]">{s.supplierPhone || '—'}</td>
-                  <td className="py-2 px-3">{s.totalProducts}</td>
-                  <td className="py-2 px-3">{s.totalStockValue.toLocaleString()} CFA</td>
-                  <td className="py-2 px-3 text-green-600 font-semibold">
-                    {Number(s.totalRevenue || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-[var(--ms-blue)] font-semibold">
-                    {Number(s.totalProfit || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-yellow-600">
-                    {Number(s.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                  <td className="py-2 px-3 text-red-600">
-                    {Number(s.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </ProductSection>
-
-      {/* 6️⃣ Statistiques Conteneurs */}
-      <ProductSection
-        title="Statistiques conteneurs"
-        description="Lecture de la performance par arrivage ou conteneur."
-        action={<ProductActionButton onClick={() => navigate('/products/by-container')}>Vue détaillée</ProductActionButton>}
-      >
-
-        <div className="mb-6 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={containerChartData}>
-              <XAxis dataKey="containerName" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
-              <Tooltip formatter={(v) => `${Number(v || 0).toLocaleString()} CFA`} />
-              <Legend />
-              <Bar yAxisId="left" dataKey="totalRevenue" fill="#0EA5E9" name="Revenu" />
-              <Bar yAxisId="left" dataKey="totalProfit" fill="#10B981" name="Profit" />
-              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
-              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-emerald-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
-            <p className="text-lg font-semibold text-yellow-600">
-              {stats.containerStats.reduce((sum, c) => sum + (c.lowStockCount || 0), 0)}
-            </p>
-          </div>
-          <div className="bg-emerald-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
-            <p className="text-lg font-semibold text-red-600">
-              {stats.containerStats.reduce((sum, c) => sum + (c.outOfStockCount || 0), 0)}
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table ref={containerTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
-              <tr>
-                <th className="py-2 px-3">Conteneur</th>
-                <th className="py-2 px-3">Produits</th>
-                <th className="py-2 px-3">Stock Total (CFA)</th>
-                <th className="py-2 px-3">Revenu Total (CFA)</th>
-                <th className="py-2 px-3">Profit Total (CFA)</th>
-                <th className="py-2 px-3">Stock Critique</th>
-                <th className="py-2 px-3">Ruptures</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.containerStats.slice(0, 10).map((c, index) => (
-                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
-                  <td className="py-2 px-3 font-medium text-[var(--colorNeutralForeground1)]">
-                    {c.containerName}
-                  </td>
-                  <td className="py-2 px-3">{c.totalProducts}</td>
-                  <td className="py-2 px-3">{Number(c.totalStockValue || 0).toLocaleString()} CFA</td>
-                  <td className="py-2 px-3 text-emerald-700 font-semibold">
-                    {Number(c.totalRevenue || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-[var(--ms-blue)] font-semibold">
-                    {Number(c.totalProfit || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-yellow-600">
-                    {Number(c.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                  <td className="py-2 px-3 text-red-600">
-                    {Number(c.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </ProductSection>
-
-      {/* 7️⃣ Statistiques Entrepots */}
-      <ProductSection
-        title="Statistiques entrepôts"
-        description="Suivi des emplacements de stockage et des risques de rupture."
-        action={<ProductActionButton onClick={() => navigate('/products/by-warehouse')}>Vue détaillée</ProductActionButton>}
-      >
-
-        <div className="mb-6 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={warehouseChartData}>
-              <XAxis dataKey="warehouseName" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" allowDecimals={false} />
-              <Tooltip
-                formatter={(value, name) => {
-                  const numeric = Number(value || 0);
-                  if (name === 'Stock critique' || name === 'Ruptures') {
-                    return numeric.toLocaleString('fr-FR');
-                  }
-                  return `${numeric.toLocaleString('fr-FR')} CFA`;
-                }}
-              />
-              <Legend />
-              <Bar yAxisId="left" dataKey="totalRevenue" fill="#38BDF8" name="Revenu" />
-              <Bar yAxisId="left" dataKey="totalProfit" fill="#22C55E" name="Profit" />
-              <Bar yAxisId="right" dataKey="lowStockCount" fill="#F59E0B" name="Stock critique" />
-              <Bar yAxisId="right" dataKey="outOfStockCount" fill="#EF4444" name="Ruptures" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-sky-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Stock critique</p>
-            <p className="text-lg font-semibold text-yellow-600">
-              {stats.warehouseStats.reduce((sum, w) => sum + (w.lowStockCount || 0), 0)}
-            </p>
-          </div>
-          <div className="bg-sky-50 rounded-[var(--radiusLarge)] p-4">
-            <p className="text-[var(--colorNeutralForeground3)]">Ruptures</p>
-            <p className="text-lg font-semibold text-red-600">
-              {stats.warehouseStats.reduce((sum, w) => sum + (w.outOfStockCount || 0), 0)}
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table ref={warehouseTableRef} className="responsive-table min-w-full text-left text-sm">
-            <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
-              <tr>
-                <th className="py-2 px-3">Entrepot</th>
-                <th className="py-2 px-3">Produits</th>
-                <th className="py-2 px-3">Stock Total (CFA)</th>
-                <th className="py-2 px-3">Revenu Total (CFA)</th>
-                <th className="py-2 px-3">Profit Total (CFA)</th>
-                <th className="py-2 px-3">Stock Critique</th>
-                <th className="py-2 px-3">Ruptures</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.warehouseStats.slice(0, 10).map((w, index) => (
-                <tr key={index} className="border-b hover:bg-[var(--colorNeutralBackground2)]">
-                  <td className="py-2 px-3 font-medium text-[var(--colorNeutralForeground1)]">
-                    {w.warehouseName}
-                  </td>
-                  <td className="py-2 px-3">{w.totalProducts}</td>
-                  <td className="py-2 px-3">{Number(w.totalStockValue || 0).toLocaleString()} CFA</td>
-                  <td className="py-2 px-3 text-sky-700 font-semibold">
-                    {Number(w.totalRevenue || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-emerald-700 font-semibold">
-                    {Number(w.totalProfit || 0).toLocaleString()} CFA
-                  </td>
-                  <td className="py-2 px-3 text-yellow-600">
-                    {Number(w.lowStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                  <td className="py-2 px-3 text-red-600">
-                    {Number(w.outOfStockCount || 0).toLocaleString('fr-FR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            {/* Tableau */}
+            <div className="overflow-x-auto">
+              <table ref={groupTableRef} className="responsive-table min-w-full text-left text-sm">
+                <thead className="bg-[var(--colorNeutralBackground2)] text-[var(--colorNeutralForeground3)] uppercase text-xs">
+                  <tr>
+                    <th className="py-2 px-3">{activeTab.label.slice(0, -1)}</th>
+                    {groupTab === 'suppliers' && <th className="py-2 px-3">Téléphone</th>}
+                    <th className="py-2 px-3">Produits</th>
+                    <th className="py-2 px-3">Stock Total (CFA)</th>
+                    <th className="py-2 px-3">Revenu Total (CFA)</th>
+                    <th className="py-2 px-3">Profit Total (CFA)</th>
+                    <th className="py-2 px-3">Stock Critique</th>
+                    <th className="py-2 px-3">Ruptures</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeGroupData.slice(0, 10).map((g, index) => (
+                    <tr key={index} className="border-b border-[var(--colorNeutralStroke2)] hover:bg-[var(--colorNeutralBackground2)]">
+                      <td className="py-2 px-3 font-medium">
+                        {groupTab === 'suppliers' ? (
+                          <Link
+                            to={`/suppliers/${encodeURIComponent(g.groupName)}`}
+                            className="text-[var(--ms-blue-dark)] hover:underline"
+                          >
+                            {g.groupName}
+                          </Link>
+                        ) : (
+                          <span className="text-[var(--colorNeutralForeground1)]">{g.groupName}</span>
+                        )}
+                      </td>
+                      {groupTab === 'suppliers' && (
+                        <td className="py-2 px-3 text-[var(--colorNeutralForeground3)]">{g.supplierPhone || '—'}</td>
+                      )}
+                      <td className="py-2 px-3 tabular-nums">{g.totalProducts}</td>
+                      <td className="py-2 px-3 tabular-nums">{formatProductCurrency(g.totalStockValue)}</td>
+                      <td className="py-2 px-3 tabular-nums font-semibold" style={{ color: SERIE_REVENUE }}>
+                        {formatProductCurrency(g.totalRevenue)}
+                      </td>
+                      <td className="py-2 px-3 tabular-nums font-semibold" style={{ color: SERIE_PROFIT }}>
+                        {formatProductCurrency(g.totalProfit)}
+                      </td>
+                      <td className="py-2 px-3 tabular-nums" style={{ color: g.lowStockCount > 0 ? 'var(--colorStatusWarningForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                        {g.lowStockCount.toLocaleString('fr-FR')}
+                      </td>
+                      <td className="py-2 px-3 tabular-nums" style={{ color: g.outOfStockCount > 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                        {g.outOfStockCount.toLocaleString('fr-FR')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </ProductSection>
     </ProductPageShell>
   </Workspace>
@@ -565,26 +456,30 @@ const toneClasses = {
 const QuickLinkCard = ({ title, subtitle, icon: Icon, tone = 'slate', path, count }) => {
   const navigate = useNavigate();
   return (
-    <motion.div
+    <motion.button
+      type="button"
       whileHover={{ y: -2 }}
       onClick={() => navigate(path)}
-      className="cursor-pointer rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-white p-5 shadow-sm transition hover:border-slate-300"
+      className="ms-surface cursor-pointer p-5 text-left transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
     >
       <div className="flex items-center justify-between">
         <div className={`rounded-[var(--radiusLarge)] border p-3 ${toneClasses[tone] || toneClasses.slate}`}>
           <Icon className="h-5 w-5" />
         </div>
         {count > 0 && (
-          <div className="rounded-full bg-[var(--colorNeutralBackground3)] px-2 py-0.5 text-xs font-semibold text-[var(--colorNeutralForeground2)]">
+          <div className="rounded-full bg-[var(--colorNeutralBackground3)] px-2 py-0.5 text-xs font-semibold text-[var(--colorNeutralForeground2)] tabular-nums">
             {count}
           </div>
         )}
       </div>
       <div className="mt-3">
-        <h3 className="text-lg font-semibold text-[var(--colorNeutralForeground1)]">{title}</h3>
-        <p className="text-sm text-[var(--colorNeutralForeground3)]">{subtitle}</p>
+        <h3 className="fui-subtitle2 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+          {title}
+          <ChevronRight className="h-4 w-4" style={{ color: 'var(--colorNeutralForeground3)' }} />
+        </h3>
+        <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>{subtitle}</p>
       </div>
-    </motion.div>
+    </motion.button>
   );
 };
 

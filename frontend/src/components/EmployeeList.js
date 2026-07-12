@@ -3,18 +3,18 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Banknote,
-  BriefcaseBusiness,
   CalendarClock,
+  CheckCircle2,
   Edit3,
   FileText,
   Filter,
+  HandCoins,
   Mail,
   Plus,
   Search,
   Trash2,
   UserCheck,
   UserRound,
-  UserX,
   UsersRound,
 } from 'lucide-react';
 import api from '../services/api';
@@ -25,31 +25,46 @@ import {
   employeePayrollNewPath,
 } from '../utils/paths';
 import AppLoader from './AppLoader';
+import { formatCfa } from '../utils/format';
 import {
   Button,
   CommandBar,
   DataTable,
   EmptyState,
   KPICard,
-  LoadingSkeleton,
   PageHeader,
   StatusBadge,
   Workspace,
 } from './business';
 
-const formatCurrency = (value) =>
-  `${new Intl.NumberFormat('fr-FR').format(Number(value || 0))} CFA`;
-
 const normalizeText = (value) => String(value || '').toLowerCase().trim();
 
-const hasPaySlipForCurrentMonth = (employee) => {
+const isEmployeeActive = (employee) => employee.isActive !== false;
+
+// Fiche de paie du mois en cours (les fiches annulées ne comptent pas).
+const getCurrentMonthSlip = (employee) => {
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
-  return (employee.paySlips || []).some((slip) => slip.month === month && slip.year === year);
+  return (employee.paySlips || []).find(
+    (slip) => slip.month === month && slip.year === year && slip.status !== 'cancelled'
+  );
 };
 
-const isEmployeeActive = (employee) => employee.isActive !== false;
+// État de paie du mois : payé / à payer (fiche créée, salaire non versé) / à créer.
+const PAY_STATES = {
+  paid: { key: 'paid', label: 'Payée', tone: 'success' },
+  due: { key: 'due', label: 'À payer', tone: 'danger' },
+  todo: { key: 'todo', label: 'Fiche à créer', tone: 'warning' },
+};
+
+const getPayState = (employee) => {
+  const slip = getCurrentMonthSlip(employee);
+  if (!slip) return { ...PAY_STATES.todo, amount: Number(employee.salary) || 0, slip: null };
+  const amount = Number(slip.netSalary) || 0;
+  if (slip.status === 'paid') return { ...PAY_STATES.paid, amount, slip };
+  return { ...PAY_STATES.due, amount, slip };
+};
 
 const EmployeeList = () => {
   const [employees, setEmployees] = useState([]);
@@ -93,23 +108,35 @@ const EmployeeList = () => {
     [employees]
   );
 
-  const dashboardStats = useMemo(() => {
-    const activeEmployees = employees.filter(isEmployeeActive);
-    const inactiveEmployees = employees.length - activeEmployees.length;
-    const totalSalary = activeEmployees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
-    const payrollReady = activeEmployees.filter(hasPaySlipForCurrentMonth).length;
-    const missingPayroll = Math.max(activeEmployees.length - payrollReady, 0);
+  // ----- Paie du mois : qui doit être payé ? -----
+  const payroll = useMemo(() => {
+    const active = employees.filter(isEmployeeActive);
+    const withState = active.map((employee) => ({ employee, state: getPayState(employee) }));
+    const due = withState.filter(({ state }) => state.key === 'due');
+    const todo = withState.filter(({ state }) => state.key === 'todo');
+    const paid = withState.filter(({ state }) => state.key === 'paid');
+    const sum = (list) => list.reduce((total, { state }) => total + state.amount, 0);
 
     return {
-      totalEmployees: employees.length,
-      activeEmployees: activeEmployees.length,
-      inactiveEmployees,
-      totalSalary,
-      averageSalary: activeEmployees.length ? totalSalary / activeEmployees.length : 0,
-      payrollReady,
-      missingPayroll,
+      active,
+      due: [...due].sort((a, b) => b.state.amount - a.state.amount),
+      todo: [...todo].sort((a, b) => b.state.amount - a.state.amount),
+      paid,
+      dueTotal: sum(due),
+      todoTotal: sum(todo),
+      paidTotal: sum(paid),
     };
   }, [employees]);
+
+  const dashboardStats = useMemo(() => {
+    const inactiveEmployees = employees.length - payroll.active.length;
+    const totalSalary = payroll.active.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
+    return {
+      inactiveEmployees,
+      totalSalary,
+      averageSalary: payroll.active.length ? totalSalary / payroll.active.length : 0,
+    };
+  }, [employees, payroll]);
 
   const filteredEmployees = useMemo(() => {
     const search = normalizeText(searchTerm);
@@ -129,11 +156,8 @@ const EmployeeList = () => {
           statusFilter === 'all' ||
           (statusFilter === 'active' && active) ||
           (statusFilter === 'inactive' && !active);
-        const payrollDone = hasPaySlipForCurrentMonth(employee);
         const matchesPayroll =
-          payrollFilter === 'all' ||
-          (payrollFilter === 'ready' && payrollDone) ||
-          (payrollFilter === 'missing' && !payrollDone);
+          payrollFilter === 'all' || getPayState(employee).key === payrollFilter;
 
         return matchesSearch && matchesDepartment && matchesStatus && matchesPayroll;
       })
@@ -155,6 +179,9 @@ const EmployeeList = () => {
     setSortBy('name');
   };
 
+  const monthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const toPayCount = payroll.due.length + payroll.todo.length;
+
   if (loading) return (
     <Workspace className="flex justify-center items-center" style={{ minHeight: '60vh' }}>
       <AppLoader fullScreen={false} text="Chargement..." />
@@ -173,7 +200,7 @@ const EmployeeList = () => {
     <Workspace className="space-y-5">
       <PageHeader
         title="Gestion des employés"
-        description="Vue claire des employés, salaires, paie du mois et actions rapides."
+        description="Employés, salaires, et suivi de la paie du mois."
         actions={
           <Button variant="primary" onClick={() => window.location.href = '/employees/new'}>
             <Plus className="h-4 w-4" /> Nouvel Employé
@@ -181,14 +208,86 @@ const EmployeeList = () => {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
-        <KPICard title="Actifs" value={dashboardStats.activeEmployees} tone="success" icon={<UserCheck className="h-4 w-4" />} />
-        <KPICard title="Inactifs" value={dashboardStats.inactiveEmployees} tone="neutral" icon={<UserX className="h-4 w-4" />} />
-        <KPICard title="Masse active" value={formatCurrency(dashboardStats.totalSalary)} tone="neutral" icon={<Banknote className="h-4 w-4" />} />
-        <KPICard title="Salaire moyen" value={formatCurrency(dashboardStats.averageSalary)} tone="neutral" icon={<BriefcaseBusiness className="h-4 w-4" />} />
-        <KPICard title="Paie créée" value={`${dashboardStats.payrollReady}/${dashboardStats.activeEmployees}`} tone="success" icon={<FileText className="h-4 w-4" />} />
-        <KPICard title="Paie à préparer" value={dashboardStats.missingPayroll} tone={dashboardStats.missingPayroll > 0 ? 'warning' : 'success'} icon={<CalendarClock className="h-4 w-4" />} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+        <KPICard title="Actifs" value={payroll.active.length} context={`${dashboardStats.inactiveEmployees} inactif(s)`} tone="success" icon={<UserCheck className="h-4 w-4" />} />
+        <KPICard title="Masse salariale" value={formatCfa(dashboardStats.totalSalary)} context={`Moyenne : ${formatCfa(dashboardStats.averageSalary)}`} tone="neutral" icon={<Banknote className="h-4 w-4" />} />
+        <KPICard title="Salaires payés" value={`${payroll.paid.length}/${payroll.active.length}`} context={formatCfa(payroll.paidTotal)} tone="success" icon={<CheckCircle2 className="h-4 w-4" />} />
+        <KPICard title="À payer" value={formatCfa(payroll.dueTotal)} context={`${payroll.due.length} fiche(s) en attente`} tone={payroll.due.length > 0 ? 'danger' : 'success'} icon={<HandCoins className="h-4 w-4" />} />
+        <KPICard title="Fiches à créer" value={payroll.todo.length} context={`≈ ${formatCfa(payroll.todoTotal)}`} tone={payroll.todo.length > 0 ? 'warning' : 'success'} icon={<CalendarClock className="h-4 w-4" />} />
       </div>
+
+      {/* ===== Paie du mois — qui doit être payé ===== */}
+      <section className="ms-surface p-5" aria-label="Paie du mois">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="fui-subtitle1 flex items-center gap-2 capitalize" style={{ color: 'var(--colorNeutralForeground1)' }}>
+              <UsersRound size={16} /> Paie de {monthLabel}
+            </h2>
+            <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              {toPayCount > 0
+                ? `${toPayCount} salaire(s) à traiter — ${formatCfa(payroll.dueTotal + payroll.todoTotal)} au total`
+                : 'Tous les salaires du mois sont réglés.'}
+            </p>
+          </div>
+          {toPayCount > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {payroll.due.length > 0 && (
+                <StatusBadge tone="danger">{payroll.due.length} à payer · {formatCfa(payroll.dueTotal)}</StatusBadge>
+              )}
+              {payroll.todo.length > 0 && (
+                <StatusBadge tone="warning">{payroll.todo.length} fiche(s) à créer</StatusBadge>
+              )}
+            </div>
+          )}
+        </div>
+
+        {toPayCount === 0 ? (
+          <div
+            className="mt-4 flex items-center gap-3 rounded-[var(--radiusLarge)] p-4"
+            style={{ background: 'var(--colorStatusSuccessBackground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+            <p className="fui-caption1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+              {payroll.active.length > 0
+                ? `Les ${payroll.paid.length} salaire(s) de ${monthLabel} sont payés.`
+                : 'Aucun employé actif.'}
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 divide-y" style={{ borderColor: 'var(--colorNeutralStroke3)' }}>
+            {[...payroll.due, ...payroll.todo].map(({ employee, state }) => (
+              <li key={employee._id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <Link to={employeeBasePath(employee)} className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                    {employee.photo
+                      ? <img src={employee.photo} alt={employee.name} className="h-full w-full object-cover" />
+                      : <UserRound className="h-4 w-4" style={{ color: 'var(--colorNeutralForeground3)' }} />}
+                  </div>
+                  <span className="min-w-0">
+                    <span className="fui-body1-strong block truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{employee.name}</span>
+                    <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      {employee.position || '—'}{employee.department ? ` · ${employee.department}` : ''}
+                    </span>
+                  </span>
+                </Link>
+                <span className="fui-body1-strong tabular-nums shrink-0" style={{ color: state.key === 'due' ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground1)' }}>
+                  {state.key === 'todo' ? '≈ ' : ''}{formatCfa(state.amount)}
+                </span>
+                <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                {state.key === 'due' ? (
+                  <Link to={employeePayrollPath(employee)} className="ms-button ms-button-primary ms-button-sm shrink-0">
+                    <HandCoins className="h-3.5 w-3.5" /> Payer
+                  </Link>
+                ) : (
+                  <Link to={employeePayrollNewPath(employee)} className="ms-button ms-button-secondary ms-button-sm shrink-0">
+                    <FileText className="h-3.5 w-3.5" /> Créer la fiche
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <CommandBar>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end w-full">
@@ -218,8 +317,9 @@ const EmployeeList = () => {
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Paie du mois</span>
             <select value={payrollFilter} onChange={(e) => setPayrollFilter(e.target.value)} className="form-control mt-1 text-sm">
               <option value="all">Tous</option>
-              <option value="missing">A preparer</option>
-              <option value="ready">Creee</option>
+              <option value="due">À payer</option>
+              <option value="todo">Fiche à créer</option>
+              <option value="paid">Payée</option>
             </select>
           </label>
           <label className="min-w-[190px]">
@@ -250,14 +350,14 @@ const EmployeeList = () => {
                 <th>Departement</th>
                 <th>Statut</th>
                 <th>Salaire</th>
-                <th>Paie</th>
+                <th>Paie du mois</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredEmployees.length > 0 ? (
                 filteredEmployees.map(employee => {
-                  const payrollReady = hasPaySlipForCurrentMonth(employee);
+                  const payState = getPayState(employee);
                   const active = isEmployeeActive(employee);
                   return (
                   <tr key={employee._id} className={active ? '' : 'opacity-60'}>
@@ -276,8 +376,8 @@ const EmployeeList = () => {
                     <td className="text-[var(--ms-text)]">{employee.position || 'N/A'}</td>
                     <td className="text-[var(--ms-text-muted)]">{employee.department || 'N/A'}</td>
                     <td><StatusBadge tone={active ? 'success' : 'neutral'}>{active ? 'Actif' : 'Ne travaille plus'}</StatusBadge></td>
-                    <td className="font-semibold text-[var(--ms-text)]">{formatCurrency(employee.salary)}</td>
-                    <td><StatusBadge tone={payrollReady ? 'success' : 'warning'}>{payrollReady ? 'Creee' : 'A preparer'}</StatusBadge></td>
+                    <td className="font-semibold text-[var(--ms-text)]">{formatCfa(employee.salary)}</td>
+                    <td>{active ? <StatusBadge tone={payState.tone}>{payState.label}</StatusBadge> : <span className="text-[var(--ms-text-muted)]">—</span>}</td>
                     <td>
                       <div className="flex justify-end gap-1">
                         <Link to={employeeBasePath(employee)} className="ms-icon-button" title="Profil"><UserRound className="h-4 w-4" /></Link>
@@ -301,7 +401,7 @@ const EmployeeList = () => {
       <div className="md:hidden space-y-3">
         {filteredEmployees.length > 0 ? (
           filteredEmployees.map(employee => {
-            const payrollReady = hasPaySlipForCurrentMonth(employee);
+            const payState = getPayState(employee);
             const active = isEmployeeActive(employee);
             return (
             <div key={employee._id} className={`ms-surface p-4 ${!active ? 'opacity-70' : ''}`}>
@@ -313,14 +413,14 @@ const EmployeeList = () => {
                   </div>
                   <div>
                     <Link to={employeeBasePath(employee)} className="text-base font-semibold text-[var(--ms-text)]">{employee.name}</Link>
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-1">
                       <StatusBadge tone={active ? 'success' : 'neutral'}>{active ? 'Actif' : 'Ne travaille plus'}</StatusBadge>
-                      {active && <StatusBadge tone={payrollReady ? 'success' : 'warning'}>Paie: {payrollReady ? 'creee' : 'a preparer'}</StatusBadge>}
+                      {active && <StatusBadge tone={payState.tone}>{payState.label}</StatusBadge>}
                     </div>
                     <div className="text-sm text-[var(--ms-text-muted)] mt-1">{employee.position}</div>
                     <div className="text-sm text-[var(--ms-text-muted)]">{employee.email}</div>
                     <div className="text-sm text-[var(--ms-text-muted)]">{employee.department || 'N/A'}</div>
-                    <div className="mt-2 text-sm font-semibold text-[var(--ms-text)]">{formatCurrency(employee.salary)}</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--ms-text)]">{formatCfa(employee.salary)}</div>
                   </div>
                 </div>
                 <div className="flex space-x-1">

@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import { formatCfa as cfa } from '../utils/format';
 import {
   KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from './business';
 import {
   ArrowLeft, Search, ChevronDown, Download, Phone, ExternalLink,
-  Boxes, Wallet, TrendingUp, Coins, AlertTriangle, PackageX, RefreshCw,
+  Boxes, Wallet, TrendingUp, Coins, AlertTriangle, PackageX, RefreshCw, Star,
 } from 'lucide-react';
 
 const RANGE_OPTIONS = [
@@ -27,7 +28,13 @@ const SORT_OPTIONS = [
   { value: 'products', label: 'Nb produits' },
 ];
 
-const cfa = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
+// Filtres de risque appliqués aux groupes (même langage que le profil fournisseur)
+const RISK_FILTERS = [
+  { key: 'out', label: 'Rupture', matches: (g) => (g.outOfStockCount || 0) > 0 },
+  { key: 'low', label: 'Stock bas', matches: (g) => (g.lowStockCount || 0) > 0 },
+  { key: 'dead', label: 'Stock mort', matches: (g) => (g.deadStockCount || 0) > 0 },
+];
+
 const num = (v) => Number(v || 0).toLocaleString('fr-FR');
 const pct = (v) => `${Number(v || 0).toFixed(1)} %`;
 
@@ -107,7 +114,7 @@ const GroupedInventoryView = ({
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('revenue');
   const [expanded, setExpanded] = useState({});   // groupName -> bool
-  const [deadOnly, setDeadOnly] = useState(false);
+  const [riskFilter, setRiskFilter] = useState(''); // '' | 'out' | 'low' | 'dead'
 
   const fetchData = async () => {
     setLoading(true);
@@ -126,10 +133,20 @@ const GroupedInventoryView = ({
     }
   };
 
-  useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [range, endpoint]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchData reads range/endpoint, listed below
+  useEffect(() => { fetchData(); }, [range, endpoint]);
 
   const maxRevenue = useMemo(
     () => groups.reduce((m, g) => Math.max(m, g.totalRevenue || 0), 0) || 1,
+    [groups]
+  );
+  const totalRevenue = useMemo(
+    () => groups.reduce((sum, g) => sum + (g.totalRevenue || 0), 0),
+    [groups]
+  );
+  // Nombre de groupes concernés par chaque filtre de risque (affiché sur les chips)
+  const riskCounts = useMemo(
+    () => Object.fromEntries(RISK_FILTERS.map((f) => [f.key, groups.filter(f.matches).length])),
     [groups]
   );
 
@@ -142,9 +159,10 @@ const GroupedInventoryView = ({
         (g.products || []).some((p) => p.name.toLowerCase().includes(q))
       );
     }
-    if (deadOnly) list = list.filter((g) => g.deadStockCount > 0);
+    const risk = RISK_FILTERS.find((f) => f.key === riskFilter);
+    if (risk) list = list.filter(risk.matches);
     return sortGroups(list, sortKey);
-  }, [groups, search, sortKey, deadOnly]);
+  }, [groups, search, sortKey, riskFilter]);
 
   const toggle = (name) => setExpanded((p) => ({ ...p, [name]: !p[name] }));
   const allExpanded = visibleGroups.length > 0 && visibleGroups.every((g) => expanded[g.name]);
@@ -229,9 +247,23 @@ const GroupedInventoryView = ({
             <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>Trier: {o.label}</option>)}
             </select>
-            <button onClick={() => setDeadOnly((v) => !v)} className={`ms-button ms-button-sm flex items-center gap-1.5 ${deadOnly ? 'ms-button-primary' : 'ms-button-secondary'}`}>
-              <PackageX size={14} /> Stock mort
-            </button>
+            {RISK_FILTERS.map((f) => {
+              const active = riskFilter === f.key;
+              const count = riskCounts[f.key] || 0;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setRiskFilter(active ? '' : f.key)}
+                  disabled={count === 0 && !active}
+                  aria-pressed={active}
+                  className={`ms-button ms-button-sm flex items-center gap-1.5 disabled:opacity-45 ${active ? 'ms-button-primary' : 'ms-button-secondary'}`}
+                >
+                  {f.key === 'out' ? <PackageX size={14} /> : f.key === 'low' ? <AlertTriangle size={14} /> : <Boxes size={14} />}
+                  {f.label}
+                  {count > 0 && <span className="tabular-nums">({num(count)})</span>}
+                </button>
+              );
+            })}
             <button onClick={toggleAll} className="ms-button ms-button-secondary ms-button-sm">
               {allExpanded ? 'Tout réduire' : 'Tout déplier'}
             </button>
@@ -242,9 +274,10 @@ const GroupedInventoryView = ({
             <EmptyState title="Aucun résultat" description="Ajustez la recherche, le filtre ou la période." />
           ) : (
             <div className="space-y-3">
-              {visibleGroups.map((g) => {
+              {visibleGroups.map((g, index) => {
                 const isOpen = Boolean(expanded[g.name]);
                 const sharePct = Math.round((g.totalRevenue / maxRevenue) * 100);
+                const revenueShare = totalRevenue > 0 ? ((g.totalRevenue || 0) / totalRevenue) * 100 : 0;
                 return (
                   <div key={g.name} className="fluent-card-filled overflow-hidden">
                     {/* Group header (click to expand) */}
@@ -252,17 +285,35 @@ const GroupedInventoryView = ({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full fui-caption1-strong tabular-nums"
+                              style={{
+                                background: index === 0 ? 'var(--colorStatusWarningBackground1)' : 'var(--colorNeutralBackground3)',
+                                color: index === 0 ? 'var(--colorStatusWarningForeground1)' : 'var(--colorNeutralForeground2)',
+                              }}
+                              aria-label={`Rang ${index + 1}`}
+                            >
+                              {index + 1}
+                            </span>
                             <span className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{g.name}</span>
                             <span className="ms-status-badge ms-status-neutral">{num(g.totalProducts)} produits</span>
                             {g.categoryCount > 0 && <span className="ms-status-badge ms-status-neutral">{num(g.categoryCount)} catég.</span>}
-                            {g.deadStockCount > 0 && <span className="ms-status-badge ms-status-warning">{num(g.deadStockCount)} stock mort</span>}
                             {g.outOfStockCount > 0 && <span className="ms-status-badge ms-status-danger">{num(g.outOfStockCount)} rupture</span>}
+                            {g.lowStockCount > 0 && <span className="ms-status-badge ms-status-warning">{num(g.lowStockCount)} stock bas</span>}
+                            {g.deadStockCount > 0 && <span className="ms-status-badge ms-status-warning">{num(g.deadStockCount)} stock mort</span>}
                           </div>
-                          {showPhone && g.supplierPhone && (
-                            <p className="fui-caption1 mt-1 flex items-center gap-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                              <Phone size={11} /> {g.supplierPhone}
+                          {(showPhone && g.supplierPhone) || g.topProduct?.name ? (
+                            <p className="fui-caption1 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                              {showPhone && g.supplierPhone && (
+                                <span className="flex items-center gap-1"><Phone size={11} /> {g.supplierPhone}</span>
+                              )}
+                              {g.topProduct?.name && (
+                                <span className="flex items-center gap-1 min-w-0">
+                                  <Star size={11} className="shrink-0" /> Top : <span className="truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>{g.topProduct.name}</span>
+                                </span>
+                              )}
                             </p>
-                          )}
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           {linkToProfile && (
@@ -291,9 +342,16 @@ const GroupedInventoryView = ({
                         ))}
                       </div>
 
-                      {/* Revenue share bar */}
-                      <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--colorNeutralBackground3)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${sharePct}%`, background: 'var(--colorBrandBackground)' }} />
+                      {/* Revenue share bar (largeur relative au meilleur groupe, % du revenu total) */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: 'var(--colorNeutralBackground3)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${sharePct}%`, background: 'var(--colorBrandBackground)' }} />
+                        </div>
+                        {totalRevenue > 0 && (
+                          <span className="fui-caption2 shrink-0 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                            {revenueShare.toFixed(0)} % du revenu
+                          </span>
+                        )}
                       </div>
                     </button>
 
