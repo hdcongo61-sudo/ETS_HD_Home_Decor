@@ -36,6 +36,7 @@ import AuthContext from "../context/AuthContext";
 import { KPICard, LoadingSkeleton } from "./business";
 import { formatCfa as cfa } from "../utils/format";
 import { SERIE_PROFIT } from "../utils/chartColors";
+import { useModal } from "../context/ModalContext";
 
 const num = (value) => (Number(value) || 0).toLocaleString("fr-FR");
 const isFiniteNumber = (value) => Number.isFinite(Number(value));
@@ -201,6 +202,7 @@ const FinanceRow = ({ label, value, badge, badgeTone, strong, color }) => (
 
 const Overview = () => {
   const { auth } = useContext(AuthContext);
+  const { openModal } = useModal();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const userId = auth?.user?._id;
   const userName = auth?.user?.name || "";
@@ -329,13 +331,13 @@ const Overview = () => {
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link to="/sales#sale-form" className="ms-button ms-button-primary ms-button-md">
+        <button type="button" onClick={() => openModal("sale")} className="ms-button ms-button-primary ms-button-md">
           <Plus className="h-4 w-4" /> Nouvelle vente
-        </Link>
+        </button>
         {isAdmin && (
-          <a href="#tableau-de-bord" className="ms-button ms-button-secondary ms-button-md">
+          <Link to="/dashboard" className="ms-button ms-button-secondary ms-button-md">
             <BarChart3 className="h-4 w-4" /> Analyse détaillée
-          </a>
+          </Link>
         )}
       </div>
     </header>
@@ -515,14 +517,14 @@ const Overview = () => {
             title="Chiffre d'affaires — 30 derniers jours"
             description={`${cfa(trend30Total)} cumulés · moyenne ${cfa(trend30Total / 30)} / jour`}
             action={
-              <a
-                href="#tableau-de-bord"
+              <Link
+                to="/dashboard"
                 className="inline-flex shrink-0 items-center gap-1 fui-caption1-strong hover:underline"
                 style={{ color: "var(--colorBrandForeground1)" }}
               >
                 Analyse complète
                 <ChevronRight className="h-3.5 w-3.5" />
-              </a>
+              </Link>
             }
           >
             <div className="h-44 sm:h-52">

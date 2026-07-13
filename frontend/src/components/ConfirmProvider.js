@@ -48,6 +48,7 @@ const ConfirmProvider = () => {
       onClose={() => close(false)}
       title={state.title || 'Confirmation'}
       size="sm"
+      suppressGlobal={false}
       footer={
         <>
           <button

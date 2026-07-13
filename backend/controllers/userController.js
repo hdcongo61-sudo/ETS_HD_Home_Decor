@@ -1,4 +1,6 @@
 const User = require('../models/userModel');
+const Employee = require('../models/employeeModel');
+const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
 const LoginHistory = require('../models/loginHistoryModel');
@@ -59,6 +61,14 @@ const sanitizeUser = (userDoc) => {
     ...rest,
     _id: normalizedId,
     phone: rest.phone || '',
+    employee: rest.employee ? {
+      _id: rest.employee._id?.toString ? rest.employee._id.toString() : rest.employee.toString?.() || rest.employee,
+      name: rest.employee.name || null,
+      email: rest.employee.email || null,
+      phone: rest.employee.phone || null,
+      position: rest.employee.position || null,
+      isActive: rest.employee.isActive !== false,
+    } : null,
     permissions: Array.isArray(rest.permissions) ? rest.permissions : [],
     lastLogin: rest.lastLogin || null,
     lastActivity: rest.lastActivity || null,
@@ -145,6 +155,33 @@ const normalizePermissions = (value) => {
   )];
 };
 
+const resolveEmployeeLink = async ({ employeeId, tenantId, userId = null }) => {
+  if (employeeId === undefined) return undefined;
+  if (!employeeId) return null;
+  if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+    const error = new Error('Employé invalide.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const employee = await Employee.findOne({ _id: employeeId, tenantId });
+  if (!employee) {
+    const error = new Error("Cet employé n'existe pas dans cette boutique.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const alreadyLinked = await User.findOne({
+    tenantId,
+    employee: employee._id,
+    ...(userId ? { _id: { $ne: userId } } : {}),
+  }).select('_id name');
+  if (alreadyLinked) {
+    const error = new Error(`Cet employé est déjà associé au compte ${alreadyLinked.name}.`);
+    error.statusCode = 409;
+    throw error;
+  }
+  return employee._id;
+};
+
 // @desc    Get all users (tenant-scoped)
 // @route   GET /api/users
 // @access  Private/Admin
@@ -154,6 +191,7 @@ const getUsers = asyncHandler(async (req, res) => {
     .select('-password -loginAttempts')
     .populate('lastModifiedBy', 'name email')
     .populate('passwordModifiedBy', 'name email')
+    .populate('employee', 'name email phone position isActive')
     .lean();
 
   res.json(users.map(sanitizeUser));
@@ -674,7 +712,9 @@ const createUserByAdmin = async (req, res) => {
     photoUrl = await uploadUserPhoto(req.file.buffer);
   }
 
+  const employee = await resolveEmployeeLink({ employeeId: req.body.employee, tenantId: req.tenantId });
   const user = await User.create({
+    tenantId: req.tenantId || null,
     name,
     email,
     password, // Le mot de passe sera hashé par le middleware pre-save du modèle User
@@ -686,12 +726,14 @@ const createUserByAdmin = async (req, res) => {
     accessStart: parseDateOrNull(accessStart),
     accessEnd: parseDateOrNull(accessEnd),
     photo: photoUrl || '',
+    employee: employee || null,
   });
 
   const populatedUser = await User.findById(user._id)
     .select('-password -loginAttempts -lockUntil')
     .populate('lastModifiedBy', 'name email')
     .populate('passwordModifiedBy', 'name email');
+  await populatedUser.populate('employee', 'name email phone position isActive');
 
   res.status(201).json(sanitizeUser(populatedUser));
 };
@@ -735,6 +777,13 @@ const updateUser = async (req, res) => {
     }
     if (typeof req.body.phone !== 'undefined') {
       user.phone = req.body.phone ? req.body.phone.trim() : '';
+    }
+    if (typeof req.body.employee !== 'undefined') {
+      user.employee = await resolveEmployeeLink({
+        employeeId: req.body.employee,
+        tenantId: user.tenantId || req.tenantId,
+        userId: user._id,
+      });
     }
     if (typeof req.body.isAdmin !== 'undefined') {
       user.isAdmin = Boolean(req.body.isAdmin);
@@ -833,6 +882,7 @@ const updateUser = async (req, res) => {
       'name',
       'email',
       'phone',
+      'employee',
       'isAdmin',
       'permissions',
       'accessControlEnabled',
@@ -861,6 +911,7 @@ const updateUser = async (req, res) => {
       .select('-password -loginAttempts -lockUntil')
       .populate('lastModifiedBy', 'name email')
       .populate('passwordModifiedBy', 'name email');
+    await populatedUser.populate('employee', 'name email phone position isActive');
 
     res.json(sanitizeUser(populatedUser));
   } else {
@@ -869,7 +920,9 @@ const updateUser = async (req, res) => {
   }
 }
 const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+  const user = await User.findById(req.params.id)
+    .select('-password')
+    .populate('employee', 'name email phone position isActive');
 
   if (user) {
     // Vérifier que l'utilisateur est admin ou accède à son propre profil

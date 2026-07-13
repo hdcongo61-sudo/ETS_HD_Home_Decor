@@ -11,6 +11,7 @@ import {
   LogIn,
   RefreshCw,
   Save,
+  Search,
   Shield,
   Target,
   TrendingUp,
@@ -32,7 +33,6 @@ import AuthContext from '../context/AuthContext';
 import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
 import AppLoader from '../components/AppLoader';
-import { PageHeader, KPICard } from '../components/business';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 
@@ -162,6 +162,8 @@ const DashboardAdmin = () => {
   const company = getCompanyIdentity(appSettings.branding);
   const [activeTab, setActiveTab] = useState('overview');
   const [salesRange, setSalesRange] = useState('30days');
+  const [sellerSearch, setSellerSearch] = useState('');
+  const [sellerSort, setSellerSort] = useState('revenue');
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -279,6 +281,21 @@ const DashboardAdmin = () => {
     () => buildSalesSummary(salesStats, stats.totalUsers),
     [salesStats, stats.totalUsers]
   );
+
+  const displayedSellers = useMemo(() => {
+    const term = sellerSearch.trim().toLowerCase();
+    const matched = salesSummary.ranking.filter((entry) => {
+      if (!term) return true;
+      return `${entry.userName || ''} ${entry.userEmail || ''}`.toLowerCase().includes(term);
+    });
+    const sorters = {
+      revenue: (a, b) => b.totalAmount - a.totalAmount,
+      collection: (a, b) => b.collectionRate - a.collectionRate || b.totalPaid - a.totalPaid,
+      balance: (a, b) => b.balance - a.balance,
+      sales: (a, b) => b.salesCount - a.salesCount || b.totalAmount - a.totalAmount,
+    };
+    return [...matched].sort(sorters[sellerSort] || sorters.revenue);
+  }, [salesSummary.ranking, sellerSearch, sellerSort]);
 
   const sellerUsers = useMemo(
     () => usersCatalog.filter((user) => !user.isAdmin),
@@ -637,7 +654,7 @@ const DashboardAdmin = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#f6f7f9] px-3 py-4 text-[var(--ms-text)] sm:px-6 lg:px-8">
+    <div className="min-h-full bg-[var(--ms-bg)] px-3 py-4 text-[var(--ms-text)] sm:px-6 lg:px-8">
       <motion.div {...pageMotion} className="space-y-4 sm:space-y-5">
         <section className="overflow-hidden rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-sm)]">
           <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1.25fr_0.75fr] lg:p-7">
@@ -656,11 +673,10 @@ const DashboardAdmin = () => {
               </div>
 
               <h1 className="mt-5 text-2xl font-semibold text-[var(--ms-text-strong)] sm:text-3xl">
-                Pilotage utilisateurs
+                Équipe & utilisateurs
               </h1>
               <p className="mt-2 text-sm leading-6 text-[var(--ms-text)] sm:text-base">
-                Suivi des accès, activité de l’équipe et performance commerciale. Les données secondaires se chargent
-                séparément pour garder l’écran réactif.
+                Supervisez les accès, l’activité et la contribution commerciale de votre équipe.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -708,6 +724,7 @@ const DashboardAdmin = () => {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
+                aria-pressed={activeTab === id}
                 className={`inline-flex min-h-[42px] shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition ${
                   activeTab === id
                     ? 'bg-[var(--ms-text-strong)] text-white'
@@ -1297,6 +1314,34 @@ const DashboardAdmin = () => {
               </div>
             ) : (
               <>
+                <div className="flex flex-col gap-3 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3 shadow-[var(--ms-shadow-sm)] sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                  <div className="relative min-w-0 flex-1 sm:max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ms-text-muted)]" />
+                    <input
+                      type="search"
+                      value={sellerSearch}
+                      onChange={(event) => setSellerSearch(event.target.value)}
+                      placeholder="Rechercher un vendeur…"
+                      className="form-control min-h-[42px] w-full pl-10"
+                      aria-label="Rechercher un vendeur"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="seller-ranking-sort" className="shrink-0 text-sm font-medium text-[var(--ms-text-muted)]">Classer par</label>
+                    <select
+                      id="seller-ranking-sort"
+                      value={sellerSort}
+                      onChange={(event) => setSellerSort(event.target.value)}
+                      className="form-control min-h-[42px] min-w-0 flex-1 text-sm sm:w-auto"
+                    >
+                      <option value="revenue">Chiffre d’affaires</option>
+                      <option value="collection">Taux d’encaissement</option>
+                      <option value="balance">Solde à recouvrer</option>
+                      <option value="sales">Nombre de ventes</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
                     <h2 className="text-xl font-semibold text-[var(--ms-text)]">Classement vendeurs</h2>
@@ -1345,9 +1390,15 @@ const DashboardAdmin = () => {
                 </div>
 
                 <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-                  <h2 className="text-xl font-semibold text-[var(--ms-text)]">Détail équipe</h2>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-semibold text-[var(--ms-text)]">Détail équipe</h2>
+                      <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{displayedSellers.length} vendeur(s) affiché(s) sur {salesSummary.ranking.length}</p>
+                    </div>
+                    {sellerSearch && <button type="button" onClick={() => setSellerSearch('')} className="ms-button ms-button-secondary ms-button-sm">Effacer</button>}
+                  </div>
                   <div className="mt-4 space-y-3 lg:hidden">
-                    {salesSummary.ranking.map((entry) => (
+                    {displayedSellers.map((entry) => (
                       <Link
                         key={entry.userId}
                         to={`/sales/user/${entry.userId}`}
@@ -1386,7 +1437,7 @@ const DashboardAdmin = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {salesSummary.ranking.map((entry) => (
+                        {displayedSellers.map((entry) => (
                           <tr key={entry.userId} className="hover:bg-[var(--ms-bg-subtle)]">
                             <td className="px-4 py-4">
                               <Link to={`/sales/user/${entry.userId}`} className="font-medium text-[var(--ms-text)] hover:text-sky-700">
@@ -1405,6 +1456,7 @@ const DashboardAdmin = () => {
                       </tbody>
                     </table>
                   </div>
+                  {displayedSellers.length === 0 && <EmptyPanel text="Aucun vendeur ne correspond à cette recherche." />}
                 </div>
               </>
             )}

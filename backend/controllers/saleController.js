@@ -424,7 +424,8 @@ const getUserSales = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findById(userId)
-    .select('name email phone photo isAdmin createdAt lastLogin')
+    .select('name email phone photo isAdmin createdAt lastLogin employee')
+    .populate('employee', 'name email phone position department isActive')
     .lean();
 
   if (!user) {

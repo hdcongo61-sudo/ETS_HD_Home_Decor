@@ -1,6 +1,6 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
@@ -34,6 +34,9 @@ const Modal = ({
   'aria-label': ariaLabel,
 }) => {
   const open = isOpen ?? show;
+  const panelRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  const reduceMotion = useReducedMotion();
   const { suppressGlobalModals } = useModal();
   const titleId = useId();
   const subtitleId = useId();
@@ -47,14 +50,43 @@ const Modal = ({
 
   useEffect(() => {
     if (!open) return;
+    previouslyFocusedRef.current = document.activeElement;
     // Page-level modals suppress the global FAB/modals. The global sale/payment
     // modals themselves must opt out, otherwise opening one suppresses (and
     // closes) itself via GlobalModals.
     const releaseSuppression = suppressGlobal ? suppressGlobalModals() : null;
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose?.();
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (panelRef.current && !panelRef.current.contains(document.activeElement)) return;
+        e.preventDefault();
+        onClose?.();
+        return;
+      }
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const focusable = Array.from(panelRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter((element) => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
+      if (focusable.length === 0) {
+        e.preventDefault();
+        panelRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleKeyDown);
+    const focusFrame = window.requestAnimationFrame(() => {
+      const preferred = panelRef.current?.querySelector('[autofocus], [data-autofocus]');
+      const first = panelRef.current?.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href]');
+      (preferred || first || panelRef.current)?.focus();
+    });
     if (openModalCount === 0) {
       previousBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -63,11 +95,13 @@ const Modal = ({
 
     return () => {
       releaseSuppression?.();
-      document.removeEventListener('keydown', handleEscape);
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', handleKeyDown);
       openModalCount = Math.max(0, openModalCount - 1);
       if (openModalCount === 0) {
         document.body.style.overflow = previousBodyOverflow;
       }
+      if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
     };
   }, [open, onClose, suppressGlobalModals, suppressGlobal]);
 
@@ -87,17 +121,19 @@ const Modal = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+        transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.2, 0.8, 0.2, 1] }}
         onClick={closeOnBackdrop ? onClose : undefined}
         aria-hidden
       />
 
       <div className="pointer-events-none relative flex h-full min-h-full items-end justify-center px-0 pt-[env(safe-area-inset-top)] sm:items-center sm:p-4">
         <motion.div
+          ref={panelRef}
+          tabIndex={-1}
           initial={{ opacity: 0, y: 28, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 18, scale: 0.985 }}
-          transition={{ type: 'spring', stiffness: 360, damping: 34, mass: 0.9 }}
+          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 }}
           className={`
             pointer-events-auto relative flex w-full ${sizeClasses[size] || sizeClasses.md} flex-col overflow-hidden
             bg-[var(--ms-white)] text-[var(--ms-text)]

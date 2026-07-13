@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 
 const toLocalDateTimeInput = (value) => {
     if (!value) return '';
@@ -36,11 +37,12 @@ const PERMISSION_OPTIONS = [
     }
 ];
 
-const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
+const UserForm = ({ user, onSubmit, onCancel, embedded = false, linkedEmployeeIds = [] }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
+        employee: '',
         password: '',
         confirmPassword: '',
         isAdmin: false,
@@ -53,6 +55,17 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
     });
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState('');
+    const [employees, setEmployees] = useState([]);
+    const [employeesLoading, setEmployeesLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        api.get('/employees')
+            .then(({ data }) => { if (!cancelled) setEmployees(Array.isArray(data) ? data : []); })
+            .catch(() => { if (!cancelled) setEmployees([]); })
+            .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     // Pre-fill form in edit mode
     useEffect(() => {
@@ -61,6 +74,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone || '',
+                employee: user.employee?._id || '',
                 password: '',
                 confirmPassword: '',
                 isAdmin: user.isAdmin,
@@ -77,6 +91,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
                 name: '',
                 email: '',
                 phone: '',
+                employee: '',
                 password: '',
                 confirmPassword: '',
                 isAdmin: false,
@@ -201,6 +216,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             name: formData.name,
             email: formData.email,
             phone: trimmedPhone,
+            employee: formData.employee || '',
             isAdmin: formData.isAdmin,
             isActive: formData.isActive,
             accessControlEnabled: formData.accessControlEnabled,
@@ -274,6 +290,29 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false }) => {
             <div className="space-y-2">
                 <label className="form-label">Téléphone</label>
                 <input type="tel" inputMode="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="+242 06 000 0000" />
+            </div>
+            <div className="form-panel space-y-2 p-4">
+                <label htmlFor="employee" className="form-label">Employé associé</label>
+                <select id="employee" name="employee" value={formData.employee} onChange={handleChange} className={inputClass} disabled={employeesLoading}>
+                    <option value="">Aucun employé associé</option>
+                    {employees
+                        .filter((employee) => {
+                            const isCurrent = String(employee._id) === String(formData.employee);
+                            const linkedElsewhere = linkedEmployeeIds.some((id) => String(id) === String(employee._id));
+                            return isCurrent || (employee.isActive !== false && !linkedElsewhere);
+                        })
+                        .map((employee) => (
+                            <option key={employee._id} value={employee._id}>
+                                {employee.name} — {employee.position || 'Poste non défini'}
+                            </option>
+                        ))}
+                </select>
+                <p className="text-xs text-[var(--ms-text-muted)]">
+                    Relie ce compte de connexion à la fiche RH et à la paie de l'employé. Un employé ne peut être associé qu'à un seul compte.
+                </p>
+                {!employeesLoading && employees.length === 0 && (
+                    <p className="text-xs text-[var(--colorStatusWarningForeground1)]">Aucun employé disponible. Créez d'abord une fiche dans Employés.</p>
+                )}
             </div>
             <div className="space-y-2">
                 <label className="form-label">{user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'}</label>

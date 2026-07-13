@@ -6,6 +6,7 @@ import api from '../services/api';
 import { useModal } from '../context/ModalContext';
 import Modal from './Modal';
 import SaleForm from './SaleForm';
+import { confirmDialog } from './ConfirmProvider';
 
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
@@ -62,6 +63,21 @@ const GlobalSaleModal = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const requestClose = useCallback(async () => {
+    if (isSubmitting) return;
+    if (isDirty) {
+      const discard = await confirmDialog('Les informations saisies seront perdues.', {
+        title: 'Abandonner cette vente ?',
+        confirmLabel: 'Abandonner',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    setIsDirty(false);
+    closeModal();
+  }, [closeModal, isDirty, isSubmitting]);
 
   const fetchSaleFormData = useCallback(async () => {
     setLoading(true);
@@ -98,6 +114,7 @@ const GlobalSaleModal = () => {
 
     try {
       await api.post('/sales', payload);
+      setIsDirty(false);
       closeModal();
       window.dispatchEvent(new CustomEvent('saleCreated'));
       toast.success('Vente enregistrée — données à jour.');
@@ -114,7 +131,7 @@ const GlobalSaleModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeModal}
+      onClose={requestClose}
       title="Nouvelle vente"
       subtitle="Créer une vente complète sans quitter votre page actuelle."
       size="xl"
@@ -125,7 +142,7 @@ const GlobalSaleModal = () => {
         <>
           <button
             type="button"
-            onClick={closeModal}
+            onClick={requestClose}
             disabled={isSubmitting}
             className="ms-button ms-button-secondary ms-button-md w-full disabled:opacity-60 sm:w-auto"
           >
@@ -172,20 +189,20 @@ const GlobalSaleModal = () => {
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3">
             <MetricPill icon={<Users size={16} />} label="Clients" value={clients.length} tone="brand" />
             <MetricPill icon={<Boxes size={16} />} label="Produits" value={products.length} tone="success" />
-            <MetricPill icon={<ReceiptText size={16} />} label="Mode" value="Complet" />
-            <MetricPill icon={<Check size={16} />} label="Stock" value="Automatique" />
           </div>
 
-          <SaleForm
-            clients={clients}
-            products={products}
-            onSubmit={handleSubmit}
-            formId="global-sale-form"
-            hideSubmit
-          />
+          <div onInputCapture={() => setIsDirty(true)} onChangeCapture={() => setIsDirty(true)}>
+            <SaleForm
+              clients={clients}
+              products={products}
+              onSubmit={handleSubmit}
+              formId="global-sale-form"
+              hideSubmit
+            />
+          </div>
         </div>
       )}
     </Modal>

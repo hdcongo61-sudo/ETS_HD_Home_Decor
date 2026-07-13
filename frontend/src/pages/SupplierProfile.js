@@ -11,6 +11,7 @@ import {
 import {
   ArrowLeft, Phone, MessageCircle, Building2, Search, Copy,
   TrendingUp, Wallet, Coins, PackageX, Star, Boxes, AlertTriangle, ClipboardList, Crown,
+  LayoutDashboard,
 } from 'lucide-react';
 
 const RANGE_OPTIONS = [
@@ -42,6 +43,27 @@ const matchesStockFilter = (p, filter) => {
   return true;
 };
 
+const SupplierViewButton = ({ active, onClick, icon, label, badge }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={`inline-flex min-h-[44px] min-w-0 items-center justify-center gap-2 rounded-[var(--radiusMedium)] px-2 text-sm font-semibold transition sm:px-4 ${
+      active
+        ? 'bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]'
+        : 'text-[var(--ms-text-muted)] hover:bg-white hover:text-[var(--ms-text)]'
+    }`}
+  >
+    {icon}
+    <span className="truncate">{label}</span>
+    {badge !== undefined && (
+      <span className={`hidden min-w-5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums sm:inline ${active ? 'bg-white/20 text-white' : 'bg-white text-[var(--ms-text-muted)]'}`}>
+        {num(badge)}
+      </span>
+    )}
+  </button>
+);
+
 const SupplierProfile = () => {
   const { name } = useParams();
   const navigate = useNavigate();
@@ -56,6 +78,7 @@ const SupplierProfile = () => {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('revenue');
   const [stockFilter, setStockFilter] = useState('');
+  const [activeView, setActiveView] = useState('overview');
   // Commande fournisseur : sélection + quantités saisies
   const [orderSelection, setOrderSelection] = useState({}); // { productId: true }
   const [orderQty, setOrderQty] = useState({}); // { productId: "12" }
@@ -193,7 +216,11 @@ const SupplierProfile = () => {
     return (
       <button
         type="button"
-        onClick={() => setStockFilter(active ? '' : filterKey)}
+        onClick={() => {
+          setStockFilter(active ? '' : filterKey);
+          setSearch('');
+          setActiveView('products');
+        }}
         aria-pressed={active}
         className="fluent-card-filled p-4 flex items-center gap-3 text-left transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
         style={active ? { boxShadow: '0 0 0 1.5px var(--colorBrandBackground)' } : undefined}
@@ -202,18 +229,18 @@ const SupplierProfile = () => {
         <div>
           <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
           <p className="fui-subtitle1 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
-          <p className="fui-caption1" style={{ color: 'var(--colorBrandForeground1)' }}>{active ? 'Filtre actif — tout afficher' : 'Filtrer la liste'}</p>
+          <p className="fui-caption1" style={{ color: 'var(--colorBrandForeground1)' }}>{active ? 'Voir tous les produits' : 'Voir ces produits'}</p>
         </div>
       </button>
     );
   };
 
   return (
-    <Workspace>
+    <Workspace className="space-y-6 pb-10">
       <PageHeader
-        eyebrow="Profil fournisseur"
+        eyebrow="Partenaires & approvisionnement"
         title={supplier?.name || supplier?.supplierName || supplierName}
-        description="Performance, rentabilité, état du stock et commande de réassort."
+        description="Pilotez la performance, les stocks et les commandes de ce fournisseur."
         meta={metaLabel}
         actions={
           <button onClick={() => navigate('/products/by-supplier')} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
@@ -223,10 +250,11 @@ const SupplierProfile = () => {
       />
 
       {/* Identity + period */}
-      <div className="fluent-card-filled p-5">
+      <section className="fluent-card-filled overflow-hidden">
+        <div className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] fui-subtitle1"
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] fui-title3"
               style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
               {initials(supplier?.name || supplierName)}
             </div>
@@ -242,31 +270,70 @@ const SupplierProfile = () => {
             </div>
           </div>
           {supplier?.supplierPhone && (
-            <div className="flex items-center gap-2">
-              <a href={`tel:${supplier.supplierPhone}`} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"><Phone size={14} /> Appeler</a>
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <a href={`tel:${supplier.supplierPhone}`} className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"><Phone size={16} /> Appeler</a>
               {phoneDigits && (
-                <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5"><MessageCircle size={14} /> WhatsApp</a>
+                <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-primary ms-button-md flex-1 sm:flex-none"><MessageCircle size={16} /> WhatsApp</a>
               )}
             </div>
           )}
         </div>
 
-        {/* Period chips */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Période</span>
-          {RANGE_OPTIONS.map((o) => (
-            <button key={o.value} onClick={() => setRange(o.value)} className={`ms-button ms-button-sm ${range === o.value ? 'ms-button-primary' : 'ms-button-secondary'}`}>{o.label}</button>
-          ))}
+        {(outCount > 0 || lowCount > 0) && (
+          <button
+            type="button"
+            onClick={() => setActiveView('restock')}
+            className="mt-5 flex w-full items-center justify-between gap-3 rounded-[var(--radiusLarge)] border p-3.5 text-left transition hover:shadow-[var(--ms-shadow-sm)]"
+            style={{ background: 'var(--colorStatusWarningBackground1)', borderColor: 'var(--colorStatusWarningStroke1)' }}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 text-[var(--colorStatusWarningForeground1)]"><AlertTriangle size={18} /></span>
+              <span>
+                <span className="fui-body1-strong block text-[var(--ms-text-strong)]">Réassort recommandé</span>
+                <span className="fui-caption1 text-[var(--ms-text-muted)]">{num(outCount)} rupture(s) et {num(lowCount)} stock(s) bas à traiter.</span>
+              </span>
+            </span>
+            <span className="fui-caption1-strong shrink-0 text-[var(--colorStatusWarningForeground1)]">Préparer →</span>
+          </button>
+        )}
         </div>
-      </div>
+
+        {/* Period chips */}
+        <div className="flex flex-col gap-3 border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Période</span>
+          <div className="grid grid-cols-5 gap-1 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white p-1" role="group" aria-label="Période d'analyse">
+            {RANGE_OPTIONS.map((o) => (
+              <button key={o.value} onClick={() => setRange(o.value)} aria-pressed={range === o.value} className={`min-h-[36px] rounded-[var(--radiusSmall,4px)] px-2 text-xs font-semibold transition sm:px-3 ${range === o.value ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]'}`}>{o.label}</button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <nav className="grid grid-cols-3 gap-2 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-1.5" aria-label="Sections du fournisseur">
+        <SupplierViewButton active={activeView === 'overview'} onClick={() => setActiveView('overview')} icon={<LayoutDashboard size={16} />} label="Aperçu" />
+        <SupplierViewButton active={activeView === 'restock'} onClick={() => setActiveView('restock')} icon={<ClipboardList size={16} />} label="Réassort" badge={restockCandidates.length} />
+        <SupplierViewButton
+          active={activeView === 'products'}
+          onClick={() => {
+            setActiveView('products');
+            setStockFilter('');
+            setSearch('');
+          }}
+          icon={<Boxes size={16} />}
+          label="Produits"
+          badge={allProducts.length}
+        />
+      </nav>
 
       {/* KPI strip */}
+      {activeView === 'overview' && (<>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard title="Revenu (période)" value={cfa(supplier?.totalRevenue)} context={`Bénéfice: ${cfa(supplier?.totalProfit)}`} icon={<TrendingUp className="h-4 w-4" />} tone="success" />
         <KPICard title="Valeur du stock" value={cfa(supplier?.stockValue)} context={`Coût: ${cfa(supplier?.stockCostValue)}`} icon={<Wallet className="h-4 w-4" />} />
         <KPICard title="Marge moyenne" value={pct(supplier?.averageMargin)} context={`Écoulement: ${pct(supplier?.sellThroughRate)}`} icon={<Coins className="h-4 w-4" />} tone="success" />
         <KPICard title="Profit potentiel" value={cfa(supplier?.potentialProfit)} context={`${num(supplier?.totalUnitsSold)} unités vendues`} icon={<Star className="h-4 w-4" />} tone="neutral" />
       </div>
+      </>)}
 
       {/* Santé du stock — tuiles cliquables (filtrent le tableau) + top produit */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -304,7 +371,7 @@ const SupplierProfile = () => {
       </div>
 
       {/* ===== Commande de réassort ===== */}
-      {restockCandidates.length > 0 && (
+      {activeView === 'restock' && restockCandidates.length > 0 && (
         <div className="fluent-card-filled p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -381,8 +448,14 @@ const SupplierProfile = () => {
         </div>
       )}
 
+      {activeView === 'restock' && restockCandidates.length === 0 && (
+        <div className="fluent-card-filled p-6">
+          <EmptyState title="Aucun réassort nécessaire" description={`Tous les produits disposent d'au moins ${LOW_STOCK_THRESHOLD} unités en stock.`} />
+        </div>
+      )}
+
       {/* ===== Top produits — part du revenu ===== */}
-      {topByRevenue.length > 0 && (supplier?.totalRevenue || 0) > 0 && (
+      {activeView === 'overview' && topByRevenue.length > 0 && (supplier?.totalRevenue || 0) > 0 && (
         <div className="fluent-card-filled p-5">
           <p className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Top produits — revenu</p>
           <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
@@ -424,10 +497,10 @@ const SupplierProfile = () => {
       )}
 
       {/* ===== Tableau des produits ===== */}
-      <div className="fluent-card-filled overflow-hidden">
+      {activeView === 'products' && <div className="fluent-card-filled overflow-hidden">
         <div className="ms-command-bar flex-wrap gap-y-2" style={{ borderRadius: 0, border: 'none', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
           <p className="fui-subtitle2 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
-            <Boxes size={15} /> Produits ({num(products.length)})
+            <Boxes size={15} /> Produits ({num(products.length)} sur {num(allProducts.length)})
           </p>
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <div className="inline-flex rounded-[var(--radiusMedium)] border p-0.5" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }} role="group" aria-label="Filtrer par état du stock">
@@ -456,6 +529,21 @@ const SupplierProfile = () => {
             </select>
           </div>
         </div>
+
+        {(stockFilter || search) && (
+          <div className="flex flex-col gap-2 border-b border-[var(--ms-border)] bg-[var(--ms-blue-soft)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="fui-body1 text-[var(--ms-text)]">
+              Un filtre est actif : <strong>{num(products.length)}</strong> produit(s) affiché(s) sur <strong>{num(allProducts.length)}</strong>.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setStockFilter(''); setSearch(''); }}
+              className="ms-button ms-button-secondary ms-button-sm shrink-0"
+            >
+              Afficher tous les produits
+            </button>
+          </div>
+        )}
 
         {products.length === 0 ? (
           <EmptyState
@@ -493,7 +581,7 @@ const SupplierProfile = () => {
             </table>
           </div>
         )}
-      </div>
+      </div>}
     </Workspace>
   );
 };

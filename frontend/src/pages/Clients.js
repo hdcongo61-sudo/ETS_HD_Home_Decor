@@ -274,8 +274,18 @@ const Clients = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!await confirmDialog('Supprimer ce client ?')) return;
+  const handleDelete = async (client) => {
+    const id = typeof client === 'object' ? client?._id : client;
+    const clientName = typeof client === 'object' ? client?.name : '';
+    if (!await confirmDialog(
+      `Le profil client${clientName ? ` « ${clientName} »` : ''} et ses coordonnées seront supprimés. Cette action est irréversible.`,
+      {
+        title: 'Supprimer définitivement ce client ?',
+        confirmLabel: 'Supprimer le client',
+        cancelLabel: 'Conserver le client',
+        danger: true,
+      }
+    )) return;
     try {
       await api.delete(`/clients/${id}`);
       setClients((prev) => prev.filter((client) => client._id !== id));
@@ -349,7 +359,7 @@ const Clients = () => {
                     <Button
                       type="button"
                       variant="danger"
-                      onClick={() => handleDelete(c._id)}
+                      onClick={() => handleDelete(c)}
                       className="flex-1"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -414,7 +424,7 @@ const Clients = () => {
                             type="button"
                             size="sm"
                             variant="danger"
-                            onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
                           >
                             <Trash2 className="h-4 w-4" />
                             Supprimer

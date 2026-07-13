@@ -427,7 +427,13 @@ const SaleDetailPage = () => {
         }
 
         const confirmed = await confirmDialog(
-            'Voulez-vous vraiment supprimer cette vente ? Cette action est irréversible.'
+            'La vente sera supprimée définitivement et les quantités vendues seront réintégrées au stock. Cette action est irréversible.',
+            {
+                title: 'Supprimer définitivement cette vente ?',
+                confirmLabel: 'Supprimer la vente',
+                cancelLabel: 'Conserver la vente',
+                danger: true,
+            }
         );
         if (!confirmed) return;
 

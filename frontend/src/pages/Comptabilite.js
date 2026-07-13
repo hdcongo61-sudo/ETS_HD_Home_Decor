@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
+import { useModal } from '../context/ModalContext';
 import {
   DataTable,
   EmptyState,
@@ -12,11 +13,17 @@ import {
 import {
   ArrowDownRight,
   ArrowUpRight,
+  AlertTriangle,
   Banknote,
+  CalendarDays,
   Calculator,
+  CheckCircle2,
+  CreditCard,
   FileText,
   Landmark,
+  Plus,
   Printer,
+  RefreshCw,
   Scale,
   TrendingDown,
   TrendingUp,
@@ -53,6 +60,7 @@ const PRESETS = [
 
 const Comptabilite = () => {
   const journalRef = useRef(null);
+  const { openModal } = useModal();
   const [preset, setPreset] = useState('month');
   const [summary, setSummary] = useState(null);
   const [journal, setJournal] = useState(null);
@@ -99,26 +107,75 @@ const Comptabilite = () => {
   }, [range]);
 
   const positive = (cr?.resultatNet ?? 0) >= 0;
+  const hasReceivables = (summary?.creances?.clients ?? 0) > 0;
 
   return (
-    <Workspace className="space-y-5">
+    <Workspace className="space-y-6 pb-10">
       <PageHeader
-        eyebrow="Cockpit financier"
+        eyebrow="Finance & pilotage"
         title="Comptabilité"
-        description="Compte de résultat, trésorerie et bilan générés automatiquement à partir de vos ventes et dépenses."
+        description="Suivez ce que l'entreprise gagne, dépense et doit encore encaisser."
         actions={
-          <div className="flex items-center gap-2">
-            <Segmented value={preset} onChange={setPreset} options={PRESETS} />
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="ms-button ms-button-secondary ms-button-md inline-flex items-center gap-1.5"
+              onClick={() => openModal('payment')}
+              className="ms-button ms-button-secondary ms-button-md"
             >
-              <Printer className="h-4 w-4" /> Imprimer
+              <CreditCard className="h-4 w-4" /> Encaisser
+            </button>
+            <button
+              type="button"
+              onClick={() => openModal('expense')}
+              className="ms-button ms-button-primary ms-button-md"
+            >
+              <Plus className="h-4 w-4" /> Dépense
             </button>
           </div>
         }
       />
+
+      <section className="ms-surface p-3 sm:p-4" aria-label="Période et actions du rapport">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusMedium)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue)]">
+              <CalendarDays className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="fui-caption1 font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Période analysée</p>
+              <p className="truncate fui-body1-strong text-[var(--ms-text-strong)]">{periodLabel}</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Segmented value={preset} onChange={setPreset} options={PRESETS} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={fetchData}
+                disabled={loading}
+                className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
+                aria-label="Actualiser les données"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualiser
+              </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+                className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
+            >
+              <Printer className="h-4 w-4" /> Imprimer
+            </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav className="no-print -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Sections comptables">
+        <SectionLink href="#synthese" icon={<TrendingUp className="h-4 w-4" />} label="Synthèse" />
+        <SectionLink href="#resultats" icon={<Calculator className="h-4 w-4" />} label="Résultats" />
+        <SectionLink href="#depenses" icon={<Banknote className="h-4 w-4" />} label="Dépenses" />
+        <SectionLink href="#journal" icon={<FileText className="h-4 w-4" />} label="Journal" />
+      </nav>
 
       {error && (
         <div
@@ -141,6 +198,7 @@ const Comptabilite = () => {
         <>
           {/* ── Result hero ─────────────────────────────────────────── */}
           <section
+            id="synthese"
             className="ms-surface overflow-hidden"
             style={{
               borderColor: positive ? 'var(--colorStatusSuccessStroke1)' : 'var(--colorStatusDangerStroke1)',
@@ -242,8 +300,43 @@ const Comptabilite = () => {
             />
           </div>
 
+          <section
+            className="rounded-[var(--radiusLarge)] border p-4 sm:p-5"
+            style={{
+              background: positive ? 'var(--colorStatusSuccessBackground1)' : 'var(--colorStatusWarningBackground1)',
+              borderColor: positive ? 'var(--colorStatusSuccessStroke1)' : 'var(--colorStatusWarningStroke1)',
+            }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/70"
+                  style={{ color: positive ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusWarningForeground1)' }}
+                >
+                  {positive ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                </span>
+                <div>
+                  <h2 className="fui-subtitle2 text-[var(--ms-text-strong)]">
+                    {positive ? 'La période est bénéficiaire' : 'La période demande votre attention'}
+                  </h2>
+                  <p className="mt-1 fui-body1 text-[var(--ms-text)]">
+                    {positive
+                      ? `Chaque 100 CFA encaissés génère environ ${Math.max(0, Number(cr.resultatNetPct || 0))} CFA de résultat net.`
+                      : 'Les coûts et charges dépassent les encaissements sur la période sélectionnée.'}
+                    {hasReceivables ? ` ${fmt(summary.creances.clients)} restent à encaisser auprès des clients.` : ' Aucun impayé client à signaler.'}
+                  </p>
+                </div>
+              </div>
+              {hasReceivables && (
+                <button type="button" onClick={() => openModal('payment')} className="ms-button ms-button-secondary ms-button-md shrink-0">
+                  <CreditCard className="h-4 w-4" /> Enregistrer un paiement
+                </button>
+              )}
+            </div>
+          </section>
+
           {/* ── Statements ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div id="resultats" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
             {/* Compte de résultat */}
             <section className="ms-surface p-5">
               <SectionTitle icon={<Calculator className="h-4 w-4" />}>Compte de résultat</SectionTitle>
@@ -308,7 +401,7 @@ const Comptabilite = () => {
           </div>
 
           {/* ── Dépenses par catégorie ──────────────────────────────── */}
-          <section className="ms-surface p-5">
+          <section id="depenses" className="ms-surface scroll-mt-24 p-5">
             <SectionTitle icon={<Banknote className="h-4 w-4" />}>
               Dépenses par catégorie
               <span className="ml-2 fui-caption1 font-normal" style={{ color: 'var(--ms-text-muted)' }}>
@@ -350,7 +443,7 @@ const Comptabilite = () => {
           </section>
 
           {/* ── Journal comptable ───────────────────────────────────── */}
-          <section className="ms-surface">
+          <section id="journal" className="ms-surface scroll-mt-24">
             <div className="ms-command-bar">
               <SectionTitle icon={<FileText className="h-4 w-4" />}>Journal comptable</SectionTitle>
               {journal && (
@@ -416,12 +509,23 @@ const Comptabilite = () => {
 
 // ── Building blocks ─────────────────────────────────────────────────
 
+const SectionLink = ({ href, icon, label }) => (
+  <a
+    href={href}
+    className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-3.5 py-2 fui-body1-strong text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:bg-[var(--ms-bg-subtle)]"
+  >
+    <span className="text-[var(--ms-blue)]">{icon}</span>
+    {label}
+  </a>
+);
+
 // Segmented control for the period presets.
 const Segmented = ({ value, onChange, options }) => (
   <div
-    className="inline-flex rounded-[var(--radiusMedium)] p-0.5"
+    className="grid grid-cols-3 rounded-[var(--radiusMedium)] p-0.5"
     style={{ background: 'var(--ms-surface-muted)', border: '1px solid var(--ms-border)' }}
-    role="tablist"
+    role="group"
+    aria-label="Choisir la période"
   >
     {options.map((o) => {
       const active = value === o.key;
@@ -429,10 +533,9 @@ const Segmented = ({ value, onChange, options }) => (
         <button
           key={o.key}
           type="button"
-          role="tab"
-          aria-selected={active}
+          aria-pressed={active}
           onClick={() => onChange(o.key)}
-          className="rounded-[var(--radiusSmall,4px)] px-3 py-1.5 text-sm font-medium transition-colors duration-200 cursor-pointer"
+          className="min-h-[38px] whitespace-nowrap rounded-[var(--radiusSmall,4px)] px-3 py-1.5 text-sm font-medium transition-colors duration-200 cursor-pointer"
           style={{
             background: active ? 'var(--ms-white)' : 'transparent',
             color: active ? 'var(--ms-text-strong)' : 'var(--ms-text-muted)',

@@ -22,8 +22,10 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
+  Grid3X3,
   Image as ImageIcon,
   Layers,
+  List,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -63,6 +65,8 @@ const Documents = () => {
   const [yearFilter, setYearFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState('grid');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -158,8 +162,18 @@ const Documents = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!await confirmDialog('Supprimer ce document ?')) return;
+  const handleDelete = async (document) => {
+    const id = document?._id || document;
+    const fileName = document?.fileName || '';
+    if (!await confirmDialog(
+      `Le document${fileName ? ` « ${fileName} »` : ''} sera supprimé définitivement. Cette action est irréversible.`,
+      {
+        title: 'Supprimer définitivement ce document ?',
+        confirmLabel: 'Supprimer le document',
+        cancelLabel: 'Conserver le document',
+        danger: true,
+      }
+    )) return;
     try {
       await api.delete(`/documents/${id}`);
       toast.success('Document supprimé.');
@@ -196,22 +210,27 @@ const Documents = () => {
 
   const filteredDocuments = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return documents.filter((d) => {
+    const matched = documents.filter((d) => {
       const typeOk = !typeFilter || d.type === typeFilter;
       const text = `${d.fileName || ''} ${d.note || ''}`.toLowerCase();
       const searchOk = !term || text.includes(term);
       return typeOk && searchOk;
     });
-  }, [documents, typeFilter, search]);
+    return [...matched].sort((a, b) => {
+      if (sortBy === 'oldest') return new Date(a.date || 0) - new Date(b.date || 0);
+      if (sortBy === 'name') return String(a.fileName || '').localeCompare(String(b.fileName || ''), 'fr', { sensitivity: 'base' });
+      return new Date(b.date || 0) - new Date(a.date || 0);
+    });
+  }, [documents, typeFilter, search, sortBy]);
 
   const isFiltered = Boolean(typeFilter || search.trim());
 
   return (
-    <Workspace className="space-y-5">
+    <Workspace className="space-y-6 pb-10">
       <PageHeader
-        eyebrow="Entreprise"
+        eyebrow="Entreprise & conformité"
         title="Documents"
-        description="Pièces fiscales, loyers, assurances, contrats et autres documents."
+        description="Centralisez, classez et retrouvez rapidement les pièces importantes de l'entreprise."
         actions={<Button variant="primary" onClick={() => setShowUpload(true)}><Plus className="h-4 w-4" /> Ajouter un document</Button>}
       />
 
@@ -231,7 +250,7 @@ const Documents = () => {
 
       {/* Toolbar */}
       <Surface className="space-y-3 p-3 sm:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <SearchBox
             label="Rechercher un document"
             value={search}
@@ -239,7 +258,7 @@ const Documents = () => {
             placeholder="Rechercher par nom de fichier ou note…"
             className="flex-1"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:self-start lg:self-auto">
             <label htmlFor="doc-year" className="text-sm font-semibold text-[var(--ms-text-muted)]">Année</label>
             <select id="doc-year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="form-control w-auto min-w-[140px]">
               <option value="">Toutes</option>
@@ -290,18 +309,36 @@ const Documents = () => {
         />
       ) : (
         <>
-          <p className="text-sm text-[var(--ms-text-muted)]">
-            <span className="font-semibold text-[var(--ms-text)]">{filteredDocuments.length}</span>
-            {filteredDocuments.length > 1 ? ' documents' : ' document'}
-            {isFiltered ? ' (filtrés)' : ''}
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="fui-subtitle2 text-[var(--ms-text-strong)]">Bibliothèque</h2>
+              <p className="mt-0.5 text-sm text-[var(--ms-text-muted)]">
+                <span className="font-semibold text-[var(--ms-text)]">{filteredDocuments.length}</span>
+                {filteredDocuments.length > 1 ? ' documents' : ' document'}{isFiltered ? ` sur ${documents.length}` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="min-w-0 flex-1 sm:flex-none">
+                <span className="sr-only">Trier les documents</span>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="form-control min-h-[40px] w-full text-sm sm:w-auto">
+                  <option value="newest">Plus récents</option>
+                  <option value="oldest">Plus anciens</option>
+                  <option value="name">Nom A–Z</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-0.5" role="group" aria-label="Mode d'affichage">
+                <button type="button" onClick={() => setViewMode('grid')} aria-pressed={viewMode === 'grid'} className={`flex h-9 w-10 items-center justify-center rounded-[var(--radiusSmall,4px)] ${viewMode === 'grid' ? 'bg-white text-[var(--ms-blue)] shadow-sm' : 'text-[var(--ms-text-muted)]'}`} aria-label="Affichage en grille"><Grid3X3 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setViewMode('list')} aria-pressed={viewMode === 'list'} className={`flex h-9 w-10 items-center justify-center rounded-[var(--radiusSmall,4px)] ${viewMode === 'list' ? 'bg-white text-[var(--ms-blue)] shadow-sm' : 'text-[var(--ms-text-muted)]'}`} aria-label="Affichage en liste"><List className="h-4 w-4" /></button>
+              </div>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'grid grid-cols-1 gap-2'}>
             {filteredDocuments.map((doc) => {
               const meta = getFileMeta(doc.fileName);
               const { Icon } = meta;
               return (
-                <article key={doc._id} className="ms-surface flex h-full flex-col p-4">
+                <article key={doc._id} className={`ms-surface flex h-full p-4 ${viewMode === 'grid' ? 'flex-col' : 'flex-col gap-3 sm:flex-row sm:items-center'}`}>
                   <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: meta.bg, color: meta.fg }}>
                       <Icon className="h-5 w-5" />
@@ -316,9 +353,9 @@ const Documents = () => {
                     </div>
                   </div>
 
-                  {doc.note && <p className="mt-3 line-clamp-2 text-sm text-[var(--ms-text-muted)]">{doc.note}</p>}
+                  {doc.note && <p className={`${viewMode === 'grid' ? 'mt-3' : 'sm:flex-1'} line-clamp-2 text-sm text-[var(--ms-text-muted)]`}>{doc.note}</p>}
 
-                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--ms-border)] pt-3">
+                  <div className={`${viewMode === 'grid' ? 'mt-auto border-t pt-3' : 'sm:ml-auto sm:shrink-0'} flex items-center gap-2 border-[var(--ms-border)]`}>
                     <a
                       href={doc.fileUrl}
                       target="_blank"
@@ -327,7 +364,7 @@ const Documents = () => {
                     >
                       <ExternalLink className="h-4 w-4" /> Ouvrir
                     </a>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(doc._id)} aria-label="Supprimer le document">
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(doc)} aria-label={`Supprimer ${doc.fileName}`}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -370,11 +407,22 @@ const Documents = () => {
               <span className="text-sm font-medium text-[var(--ms-text)]">
                 {file ? file.name : 'Cliquez pour choisir un fichier'}
               </span>
-              <span className="text-xs text-[var(--ms-text-muted)]">PDF, Word, Excel ou images · Max 5 Mo</span>
+              <span className="text-xs text-[var(--ms-text-muted)]">
+                {file ? `${(file.size / (1024 * 1024)).toFixed(2)} Mo` : 'PDF, Word, Excel ou images · Max 5 Mo'}
+              </span>
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,image/*"
+                onChange={(e) => {
+                  const selected = e.target.files?.[0] || null;
+                  if (selected && selected.size > 5 * 1024 * 1024) {
+                    toast.error('Le fichier dépasse la limite de 5 Mo.');
+                    e.target.value = '';
+                    setFile(null);
+                    return;
+                  }
+                  setFile(selected);
+                }}
                 className="sr-only"
                 required
               />

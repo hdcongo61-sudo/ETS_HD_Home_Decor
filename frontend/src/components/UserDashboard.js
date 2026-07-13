@@ -375,6 +375,9 @@ const UserDashboard = () => {
             >
                 <UserForm
                     user={selectedUser}
+                    linkedEmployeeIds={users
+                        .filter((candidate) => candidate._id !== selectedUser?._id && candidate.employee?._id)
+                        .map((candidate) => candidate.employee._id)}
                     embedded
                     onCancel={() => { setShowForm(false); setSelectedUser(null); }}
                     onSubmit={handleFormSubmit}
@@ -427,6 +430,11 @@ const UserDashboard = () => {
                                                     <div>
                                                         <div className="text-sm font-semibold text-[var(--ms-text-strong)]">{user.name}</div>
                                                         <div className="text-sm text-[var(--ms-text-muted)]">{user.email}</div>
+                                                        {user.employee && (
+                                                            <div className="mt-1 inline-flex rounded-full bg-[var(--colorStatusSuccessBackground1)] px-2 py-0.5 text-[11px] font-medium text-[var(--colorStatusSuccessForeground1)]">
+                                                                Employé · {user.employee.name}{user.employee.position ? ` — ${user.employee.position}` : ''}
+                                                            </div>
+                                                        )}
                                                         {user.phone && (
                                                             <div className="text-sm text-[var(--ms-text-muted)] flex items-center gap-1 mt-1">
                                                                 <svg className="w-3.5 h-3.5 text-[var(--ms-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -607,6 +615,7 @@ const UserDashboard = () => {
                                     <div>
                                       <p className="text-base font-semibold text-[var(--ms-text-strong)]">{user.name}</p>
                                       <p className="text-sm text-[var(--ms-text-muted)]">{user.email}</p>
+                                      {user.employee && <p className="mt-1 text-xs font-medium text-[var(--colorStatusSuccessForeground1)]">Employé · {user.employee.name}{user.employee.position ? ` — ${user.employee.position}` : ''}</p>}
                                       {user.phone && <p className="text-sm text-[var(--ms-text-muted)]">📞 {user.phone}</p>}
                                     </div>
                                   </div>

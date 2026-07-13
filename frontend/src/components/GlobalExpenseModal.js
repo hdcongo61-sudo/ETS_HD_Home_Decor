@@ -1,21 +1,38 @@
 // components/GlobalExpenseModal.js
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Check, Loader2, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
 import Modal from './Modal';
 import ExpenseForm from './ExpenseForm';
+import { confirmDialog } from './ConfirmProvider';
 
 const GlobalExpenseModal = () => {
   const { activeModal, closeModal } = useModal();
   const isOpen = activeModal === 'expense';
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const requestClose = useCallback(async () => {
+    if (isSubmitting) return;
+    if (isDirty) {
+      const discard = await confirmDialog('Les informations saisies seront perdues.', {
+        title: 'Abandonner cette dépense ?',
+        confirmLabel: 'Abandonner',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    setIsDirty(false);
+    closeModal();
+  }, [closeModal, isDirty, isSubmitting]);
 
   const handleSubmit = async (payload) => {
     setIsSubmitting(true);
     try {
       await api.post('/expenses', payload);
+      setIsDirty(false);
       closeModal();
       toast.success('Dépense enregistrée — données à jour.');
       window.dispatchEvent(new CustomEvent('expenseCreated'));
@@ -32,7 +49,7 @@ const GlobalExpenseModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeModal}
+      onClose={requestClose}
       title="Nouvelle dépense"
       subtitle="Enregistrez une sortie sans quitter votre page actuelle."
       size="lg"
@@ -43,7 +60,7 @@ const GlobalExpenseModal = () => {
         <>
           <button
             type="button"
-            onClick={closeModal}
+            onClick={requestClose}
             disabled={isSubmitting}
             className="ms-button ms-button-secondary ms-button-md w-full disabled:opacity-60 sm:w-auto"
           >
@@ -70,12 +87,14 @@ const GlobalExpenseModal = () => {
         </>
       }
     >
-      <ExpenseForm
-        onSubmit={handleSubmit}
-        submitting={isSubmitting}
-        formId="global-expense-form"
-        hideSubmit
-      />
+      <div onInputCapture={() => setIsDirty(true)} onChangeCapture={() => setIsDirty(true)}>
+        <ExpenseForm
+          onSubmit={handleSubmit}
+          submitting={isSubmitting}
+          formId="global-expense-form"
+          hideSubmit
+        />
+      </div>
     </Modal>
   );
 };

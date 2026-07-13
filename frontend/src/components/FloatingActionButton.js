@@ -8,6 +8,8 @@ const FloatingActionButton = ({ isAdmin = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hidden, setHidden] = useState(false);
   const containerRef = useRef(null);
+  const toggleRef = useRef(null);
+  const firstActionRef = useRef(null);
   const { openModal, activeModal } = useModal();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,6 +67,19 @@ const FloatingActionButton = ({ isAdmin = false }) => {
     }
   }, [isExpanded]);
 
+  useEffect(() => {
+    if (!isExpanded) return undefined;
+    firstActionRef.current?.focus();
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsExpanded(false);
+        toggleRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isExpanded]);
+
   // Hide the floating button on scroll-down (mobile only); reveal on scroll-up,
   // near the top, or while the speed-dial is open.
   useEffect(() => {
@@ -117,9 +132,11 @@ const FloatingActionButton = ({ isAdmin = false }) => {
       >
         {/* Expandable speed-dial */}
         {isExpanded && (
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2" role="menu" aria-label="Actions rapides">
             {/* Primary actions */}
             <button
+              ref={firstActionRef}
+              role="menuitem"
               type="button"
               onClick={handleNewSale}
               className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] bg-[var(--ms-blue)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:bg-[var(--ms-blue-dark)] hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
@@ -130,6 +147,7 @@ const FloatingActionButton = ({ isAdmin = false }) => {
               </span>
             </button>
             <button
+              role="menuitem"
               type="button"
               onClick={handleNewPayment}
               className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
@@ -142,6 +160,7 @@ const FloatingActionButton = ({ isAdmin = false }) => {
             </button>
             {isAdmin && (
               <button
+                role="menuitem"
                 type="button"
                 onClick={handleNewExpense}
                 className="flex min-w-[200px] items-center justify-end gap-3 rounded-[var(--radiusLarge)] px-4 py-3 text-white shadow-[var(--ms-shadow)] transition-all hover:shadow-[var(--ms-shadow-lg)] active:scale-[0.98]"
@@ -162,6 +181,7 @@ const FloatingActionButton = ({ isAdmin = false }) => {
               const Icon = item.icon;
               return (
                 <button
+                  role="menuitem"
                   key={item.label}
                   type="button"
                   onClick={item.onClick}
@@ -181,9 +201,10 @@ const FloatingActionButton = ({ isAdmin = false }) => {
         <div className="flex flex-col items-center gap-2">
           {/* More-actions toggle */}
           <button
+            ref={toggleRef}
             type="button"
             onClick={() => setIsExpanded((v) => !v)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text-muted)] shadow-[var(--ms-shadow-sm)] transition-all hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text-muted)] shadow-[var(--ms-shadow-sm)] transition-all hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]"
             aria-label={isExpanded ? 'Fermer le menu' : "Plus d'actions"}
             aria-expanded={isExpanded}
           >

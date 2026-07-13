@@ -33,6 +33,12 @@ const userSchema = mongoose.Schema(
       trim: true,
       default: '',
     },
+    employee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Employee',
+      default: null,
+      index: true,
+    },
     password: {
       type: String,
       required: true,
@@ -232,6 +238,10 @@ userSchema.pre('save', function (next) {
 
 // Compound index: email unique per tenant (null tenantId = super-admin / legacy)
 userSchema.index({ tenantId: 1, email: 1 }, { unique: true });
+userSchema.index(
+  { tenantId: 1, employee: 1 },
+  { unique: true, partialFilterExpression: { employee: { $type: 'objectId' } } }
+);
 
 const User = mongoose.model('User', userSchema);
 

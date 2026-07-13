@@ -31,6 +31,8 @@ import {
   Coins,
   Package,
   PackageMinus,
+  Plus,
+  Search,
   UserPlus,
   Users,
   Wallet,
@@ -68,6 +70,7 @@ import {
 } from "../components/business";
 import { useFeature, UpgradeModal, LockedFeatureButton } from "../components/FeatureGate";
 import { FEATURE_KEYS } from "../config/features";
+import { useModal } from "../context/ModalContext";
 
 // Lazy components
 const SaleForm = lazy(() => import("../components/SaleForm"));
@@ -131,35 +134,38 @@ const GlassCard = ({ children, className = "" }) => (
   <div className={`fluent-card-filled ${className}`}>{children}</div>
 );
 
-// Mobile-only segmented control (< lg) to switch between the sale form and the
-// history list, so sellers don't have to scroll past the long form on a phone.
-const MobilePanelToggle = ({ value, onChange, className = "" }) => {
+// One focused task at a time: creating and reviewing sales both need the full
+// available width, especially once filters and payment details are visible.
+const SalesWorkspaceToggle = ({ value, onChange, className = "" }) => {
   const tabs = [
-    { key: "form", label: "Nouvelle vente" },
-    { key: "history", label: "Historique" },
+    { key: "form", label: "Créer une vente", icon: Plus },
+    { key: "history", label: "Suivre les ventes", icon: Search },
   ];
   return (
     <div
-      role="tablist"
-      aria-label="Affichage des ventes"
-      className={`lg:hidden grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1 ${className}`}
+      role="group"
+      aria-label="Espace de travail des ventes"
+      className={`grid w-full grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1 sm:w-auto sm:min-w-[390px] ${className}`}
     >
-      {tabs.map((t) => (
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        return (
         <button
           key={t.key}
           type="button"
-          role="tab"
-          aria-selected={value === t.key}
+          aria-pressed={value === t.key}
           onClick={() => onChange(t.key)}
-          className={`min-h-[40px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radiusMedium)] px-3 text-sm font-semibold transition-colors ${
             value === t.key
               ? "bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]"
               : "text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]"
           }`}
         >
+          <Icon className="h-4 w-4" aria-hidden />
           {t.label}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -901,6 +907,7 @@ const calculateAdvancedKPIs = (salesData, clientsData) => {
 const Sales = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { openModal } = useModal();
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
 
@@ -1478,20 +1485,6 @@ const Sales = () => {
   const salesReturnPath = `/sales${salesReturnSearch}`;
   const saleLinkState = useMemo(() => ({ returnToSales: salesReturnPath }), [salesReturnPath]);
 
-  const historyLinkSearch = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set("history", "1");
-    if (statusFilter) params.set("status", statusFilter);
-    if (clientFilter) params.set("client", clientFilter);
-    if (sellerFilter) params.set("seller", sellerFilter);
-    if (saleTypeFilter) params.set("saleType", saleTypeFilter);
-    if (paymentStructureFilter) params.set("paymentStructure", paymentStructureFilter);
-    if (dateFilter) params.set("date", dateFilter);
-    if (deliveryFilter) params.set("delivery", deliveryFilter);
-    if (containerFilter) params.set("container", containerFilter);
-    return `?${params.toString()}`;
-  }, [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]);
-
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
   /* ========= Manipulations ========= */
@@ -1932,14 +1925,19 @@ const Sales = () => {
           title="Gestion des ventes"
           description="Enregistrez une vente, suivez les paiements et les livraisons du jour."
           actions={
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setShowHistoryModal(true)}
+                onClick={() => setMobilePanel("history")}
                 className="ms-button ms-button-secondary ms-button-md"
               >
                 <ReceiptText className="h-4 w-4" />
-                {historyLinkLabel}
+                Suivre les ventes
               </button>
+              <button type="button" onClick={() => openModal("payment")} className="ms-button ms-button-primary ms-button-md">
+                <CreditCard className="h-4 w-4" /> Encaisser
+              </button>
+            </div>
           }
         />
 
@@ -1949,10 +1947,10 @@ const Sales = () => {
             </Suspense>
           )}
 
-          <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
+          <SalesWorkspaceToggle value={mobilePanel} onChange={setMobilePanel} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"} lg:block`}>
+          <div>
+            <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"}`}>
               <GlassCard>
                 <div className="p-5 sm:p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -1962,7 +1960,7 @@ const Sales = () => {
               </GlassCard>
             </div>
 
-            <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"} lg:block`}>
+            <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"}`}>
               <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
                 <div className="ms-command-bar mb-5 flex-wrap gap-y-2">
                   <h2 id="history-heading-main" className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
@@ -2222,20 +2220,25 @@ const Sales = () => {
         {/* En-tête */}
         <PageHeader
           eyebrow="Ventes"
-          title="Tableau de bord commercial"
-          description="Suivi des ventes, encaissements, marges et livraisons."
+          title="Ventes"
+          description="Créez une vente, encaissez les soldes et suivez les livraisons depuis un seul espace."
           meta={isAdmin ? "Admin" : null}
           actions={
-            isAdmin && (
-              canExport ? (
-                <Button onClick={() => setShowExportModal(true)} size="sm">
-                  <Download className="h-4 w-4" aria-hidden />
-                  <span>Exporter</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => { setViewMode("operations"); setMobilePanel("form"); }} size="sm">
+                <Plus className="h-4 w-4" aria-hidden /> Nouvelle vente
+              </Button>
+              <button type="button" onClick={() => openModal("payment")} className="ms-button ms-button-secondary ms-button-md">
+                <CreditCard className="h-4 w-4" /> Encaisser
+              </button>
+              {canExport ? (
+                <Button onClick={() => setShowExportModal(true)} size="sm" variant="secondary">
+                  <Download className="h-4 w-4" aria-hidden /> Exporter
                 </Button>
               ) : (
                 <LockedFeatureButton feature={FEATURE_KEYS.DATA_EXPORT} icon={<Download className="h-4 w-4" />}>Exporter</LockedFeatureButton>
-              )
-            )
+              )}
+            </div>
           }
         />
 
@@ -2795,13 +2798,21 @@ const Sales = () => {
         {viewMode === "operations" && (
           <>
             {/* Filtres rapides (appliqués à l'historique) */}
-            {isAdmin && <QuickFilterBar />}
+            {isAdmin && mobilePanel === "history" && <QuickFilterBar />}
 
             {/* Formulaire & Historique */}
-            <MobilePanelToggle value={mobilePanel} onChange={setMobilePanel} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="fui-title3 text-[var(--ms-text-strong)]">Espace de travail</h2>
+                <p className="mt-1 fui-caption1 text-[var(--ms-text-muted)]">
+                  {mobilePanel === "form" ? "Enregistrez une nouvelle commande." : "Recherchez, encaissez et gérez les ventes existantes."}
+                </p>
+              </div>
+              <SalesWorkspaceToggle value={mobilePanel} onChange={setMobilePanel} />
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"} lg:block`}>
+            <div>
+              <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"}`}>
                 <GlassCard>
                   <div className="p-6">
                     <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -2811,7 +2822,7 @@ const Sales = () => {
                 </GlassCard>
               </div>
 
-              <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"} lg:block`}>
+              <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"}`}>
                 <section className="p-5 sm:p-6" aria-labelledby="history-heading-admin">
                   <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-5">
                     <h2 id="history-heading-admin" className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2.5">

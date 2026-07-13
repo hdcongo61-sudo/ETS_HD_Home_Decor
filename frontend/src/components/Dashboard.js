@@ -81,7 +81,8 @@ import {
   Settings,
   UserCog,
   BriefcaseBusiness,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowLeft,
 } from "lucide-react";
 
 import AccordionSection from "../components/AccordionSection";
@@ -1609,6 +1610,14 @@ const Dashboard = () => {
   return (
     <div className="min-h-full bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
       <div className="space-y-6 sm:space-y-8">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className="ms-button ms-button-secondary ms-button-md">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Retour à l'accueil
+          </Link>
+          <span className="hidden fui-caption1 text-[var(--ms-text-muted)] sm:block">Analyse détaillée</span>
+        </div>
+
         {/* ===== ACTIONS RAPIDES (mobile uniquement) ===== */}
         <div className="grid grid-cols-2 gap-3 md:hidden">
           {[

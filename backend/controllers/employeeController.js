@@ -1,4 +1,5 @@
 const Employee = require('../models/employeeModel');
+const User = require('../models/userModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
@@ -139,6 +140,12 @@ const deleteEmployee = async (req, res) => {
   try {
     const employee = await Employee.findById(req.params.id);
     if (employee) {
+      const linkedUser = await User.findOne({ employee: employee._id }).select('name');
+      if (linkedUser) {
+        return res.status(409).json({
+          message: `Cet employé est associé au compte ${linkedUser.name}. Dissociez-le avant de supprimer sa fiche.`,
+        });
+      }
       await employee.deleteOne();
       res.json({ message: 'Employee removed' });
     } else {

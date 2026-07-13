@@ -18,8 +18,6 @@ import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
-import AppLoader from '../components/AppLoader';
-import { PageHeader, Workspace, KPICard } from '../components/business';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import {
@@ -296,6 +294,7 @@ const UserSalesDashboard = () => {
   const [historyView, setHistoryView] = useState('all');
   const [historySort, setHistorySort] = useState('recent');
   const [exporting, setExporting] = useState('');
+  const [activeSection, setActiveSection] = useState('performance');
 
   const deferredSearch = useDeferredValue(search);
   const deferredHistorySearch = useDeferredValue(historySearch);
@@ -908,10 +907,10 @@ const UserSalesDashboard = () => {
                   Statistiques, insights et historique de ventes selon les filtres actifs.
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  {[
-                    { label: 'Email', value: user.email || 'Non renseigné' },
-                    { label: 'Dernière connexion', value: formatDateTimeLabel(user.lastLogin) },
-                    { label: 'Inscrit le', value: formatDateLabel(user.createdAt) },
+	                  {[
+	                    { label: 'Email', value: user.email || 'Non renseigné' },
+	                    { label: 'Employé associé', value: user.employee ? `${user.employee.name}${user.employee.position ? ` · ${user.employee.position}` : ''}` : 'Aucun' },
+	                    { label: 'Inscrit le', value: formatDateLabel(user.createdAt) },
                   ].map(({ label, value }) => (
                     <div key={label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'rgba(255,255,255,0.12)' }}>
                       <p className="fui-caption1" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</p>
@@ -1055,6 +1054,29 @@ const UserSalesDashboard = () => {
           />
         </section>
 
+        <nav className="grid grid-cols-3 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-1.5" aria-label="Sections de performance utilisateur">
+          {[
+            { id: 'performance', label: 'Performance' },
+            { id: 'insights', label: 'Insights' },
+            { id: 'history', label: `Historique (${historySales.length})` },
+          ].map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              aria-pressed={activeSection === section.id}
+              className={`min-h-[44px] rounded-[var(--radiusMedium)] px-2 text-sm font-semibold transition sm:px-4 ${
+                activeSection === section.id
+                  ? 'bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]'
+                  : 'text-[var(--ms-text-muted)] hover:bg-white hover:text-[var(--ms-text)]'
+              }`}
+            >
+              {section.label}
+            </button>
+          ))}
+        </nav>
+
+        {activeSection === 'performance' && (<>
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="fluent-card-filled p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
@@ -1182,7 +1204,9 @@ const UserSalesDashboard = () => {
             accent="text-sky-700"
           />
         </section>
+        </>)}
 
+        {activeSection === 'insights' && (
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="fluent-card-filled p-4 sm:p-5">
             <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Synthèse intelligente</h2>
@@ -1276,7 +1300,9 @@ const UserSalesDashboard = () => {
             </div>
           </div>
         </section>
+        )}
 
+        {activeSection === 'history' && (
         <section className="fluent-card-filled p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -1435,6 +1461,7 @@ const UserSalesDashboard = () => {
             </div>
           )}
         </section>
+        )}
     </div>
   );
 };

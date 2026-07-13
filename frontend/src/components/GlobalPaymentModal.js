@@ -21,6 +21,7 @@ import Modal from './Modal';
 import { PaymentForm } from './PaymentModal';
 import { StatusBadge } from './business';
 import { getSaleTypeText, getStatusText } from '../utils/saleUtils';
+import { confirmDialog } from './ConfirmProvider';
 
 const formatAmount = (value) =>
   `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
@@ -196,6 +197,21 @@ const GlobalPaymentModal = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const requestClose = useCallback(async () => {
+    if (isSubmitting) return;
+    if (isDirty) {
+      const discard = await confirmDialog('Les informations saisies seront perdues.', {
+        title: 'Abandonner ce paiement ?',
+        confirmLabel: 'Abandonner',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    setIsDirty(false);
+    closeModal();
+  }, [closeModal, isDirty, isSubmitting]);
 
   const fetchOpenSales = useCallback(async () => {
     setLoading(true);
@@ -258,6 +274,7 @@ const GlobalPaymentModal = () => {
     }
 
     await api.post(`/sales/${selectedSaleData._id}/payments`, payload);
+    setIsDirty(false);
     closeModal();
     window.dispatchEvent(new CustomEvent('paymentCreated'));
     toast.success('Paiement enregistré — données à jour.');
@@ -268,7 +285,7 @@ const GlobalPaymentModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeModal}
+      onClose={requestClose}
       title="Ajouter un paiement"
       subtitle="Choisissez une vente ouverte, dépliez-la pour voir les produits, puis encaissez."
       size="xl"
@@ -279,7 +296,7 @@ const GlobalPaymentModal = () => {
         <>
           <button
             type="button"
-            onClick={closeModal}
+            onClick={requestClose}
             disabled={isSubmitting}
             className="ms-button ms-button-secondary ms-button-md w-full disabled:opacity-60 sm:w-auto"
           >
@@ -419,12 +436,14 @@ const GlobalPaymentModal = () => {
                   </div>
                 )}
 
-                <PaymentForm
-                  sale={selectedSaleData}
-                  onAddPayment={handleAddPayment}
-                  formId="global-payment-form"
-                  onSubmittingChange={setIsSubmitting}
-                />
+                <div onInputCapture={() => setIsDirty(true)} onChangeCapture={() => setIsDirty(true)}>
+                  <PaymentForm
+                    sale={selectedSaleData}
+                    onAddPayment={handleAddPayment}
+                    formId="global-payment-form"
+                    onSubmittingChange={setIsSubmitting}
+                  />
+                </div>
               </div>
             ) : (
               <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border-strong)] bg-[var(--ms-bg-subtle)] px-6 text-center">

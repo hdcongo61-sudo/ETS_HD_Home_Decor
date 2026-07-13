@@ -32,6 +32,9 @@ import {
   Boxes,
   Wallet,
   AlertTriangle,
+  BarChart3,
+  ChevronRight,
+  Layers3,
   Plus,
   RotateCcw,
   Search,
@@ -221,8 +224,18 @@ const Products = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = async (productId) => {
-    if (await confirmDialog('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+  const handleDelete = async (product) => {
+    const productId = typeof product === 'object' ? product?._id : product;
+    const productName = typeof product === 'object' ? product?.name : '';
+    if (await confirmDialog(
+      `Le produit${productName ? ` « ${productName} »` : ''} sera supprimé du catalogue. Cette action est irréversible.`,
+      {
+        title: 'Supprimer définitivement ce produit ?',
+        confirmLabel: 'Supprimer le produit',
+        cancelLabel: 'Conserver le produit',
+        danger: true,
+      }
+    )) {
       try {
         await api.delete(`/products/${productId}`);
         setProducts((prev) => prev.filter((product) => product._id !== productId));
@@ -260,7 +273,7 @@ const Products = () => {
   const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
   return (
-    <Workspace>
+    <Workspace className="space-y-6 pb-10">
 
       <LoaderOverlay
         show={formSubmitting}
@@ -268,45 +281,58 @@ const Products = () => {
       />
 
       <PageHeader
-        eyebrow="Catalogue"
+        eyebrow="Catalogue & inventaire"
         title="Produits"
-        description="Gérez le catalogue, les stocks, les prix et les fournisseurs."
+        description="Trouvez un produit, surveillez le stock et gérez votre catalogue depuis un seul espace."
         meta={!loading && products.length > 0 ? `${products.length} produit${products.length > 1 ? 's' : ''} au catalogue` : null}
         actions={isAdmin && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditingProduct(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 shrink-0" />
-            Nouveau produit
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <FeatureGate
+              feature={FEATURE_KEYS.PRODUCT_IMPORT}
+              locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_IMPORT} icon={<FileSpreadsheet className="h-4 w-4" />}>Importer</LockedFeatureButton>}
+            >
+              <Button variant="secondary" onClick={() => setShowImportModal(true)}>
+                <FileSpreadsheet className="h-4 w-4" /> Importer
+              </Button>
+            </FeatureGate>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditingProduct(null);
+                setIsFormOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 shrink-0" /> Nouveau produit
+            </Button>
+          </div>
         )}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KPICard
-          title="Articles en stock"
-          value={loading ? '...' : inStockCount.toLocaleString('fr-FR')}
-          context={`${products.length.toLocaleString('fr-FR')} au catalogue`}
-          icon={<PackageCheck className="h-4 w-4" />}
-          tone="success"
-        />
+        <button type="button" onClick={() => navigate({ pathname: '/products', search: '?stockOperator=gte&stock=1' })} className="text-left fluent-card-interactive">
+          <KPICard
+            title="Articles en stock"
+            value={loading ? '...' : inStockCount.toLocaleString('fr-FR')}
+            context={`${products.length.toLocaleString('fr-FR')} au catalogue · Voir →`}
+            icon={<PackageCheck className="h-4 w-4" />}
+            tone="success"
+          />
+        </button>
         <KPICard
           title="Stock total"
           value={loading ? '...' : totalStock.toLocaleString('fr-FR')}
           context="Unités disponibles"
           icon={<Boxes className="h-4 w-4" />}
         />
-        <KPICard
-          title="À surveiller"
-          value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')}
-          context={`${lowStockCount} bas · ${outOfStockCount} rupture`}
-          icon={<AlertTriangle className="h-4 w-4" />}
-          tone="warning"
-        />
+        <button type="button" onClick={() => navigate('/products/critical')} className="text-left fluent-card-interactive">
+          <KPICard
+            title="À surveiller"
+            value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')}
+            context={`${lowStockCount} bas · ${outOfStockCount} rupture · Traiter →`}
+            icon={<AlertTriangle className="h-4 w-4" />}
+            tone="warning"
+          />
+        </button>
         <KPICard
           title="Valeur du stock"
           value={loading ? '...' : formatCfa(stockValue)}
@@ -317,23 +343,32 @@ const Products = () => {
       </div>
 
       {isAdmin && (
-        <CommandBar>
+        <nav className="grid gap-2 sm:grid-cols-3" aria-label="Outils du catalogue">
+          <Link to="/product-dashboard" className="group flex min-h-[58px] items-center gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-white px-4 py-3 shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow)]">
+            <span className="ms-kpi-icon shrink-0"><BarChart3 className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><span className="fui-body1-strong block text-[var(--ms-text-strong)]">Analyse produits</span><span className="fui-caption1 block truncate text-[var(--ms-text-muted)]">Performance et tendances</span></span>
+            <ChevronRight className="h-4 w-4 text-[var(--ms-text-muted)] transition group-hover:translate-x-0.5" />
+          </Link>
+          <Link to="/products/by-supplier" className="group flex min-h-[58px] items-center gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-white px-4 py-3 shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow)]">
+            <span className="ms-kpi-icon shrink-0"><Layers3 className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><span className="fui-body1-strong block text-[var(--ms-text-strong)]">Par fournisseur</span><span className="fui-caption1 block truncate text-[var(--ms-text-muted)]">Stocks et réassort</span></span>
+            <ChevronRight className="h-4 w-4 text-[var(--ms-text-muted)] transition group-hover:translate-x-0.5" />
+          </Link>
+          <Link to="/products/losses" className="group flex min-h-[58px] items-center gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-white px-4 py-3 shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:shadow-[var(--ms-shadow)]">
+            <span className="ms-kpi-icon shrink-0"><PackageMinus className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><span className="fui-body1-strong block text-[var(--ms-text-strong)]">Pertes de stock</span><span className="fui-caption1 block truncate text-[var(--ms-text-muted)]">Casses et ajustements</span></span>
+            <ChevronRight className="h-4 w-4 text-[var(--ms-text-muted)] transition group-hover:translate-x-0.5" />
+          </Link>
+        </nav>
+      )}
+
+      {isAdmin && selectedIds.length > 0 && (
+        <CommandBar className="sticky top-[var(--app-nav-offset,0px)] z-20">
           <div className="flex min-w-0 flex-col gap-1">
             <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-              Actions catalogue
+              Sélection active
             </p>
             <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setEditingProduct(null);
-                setIsFormOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </Button>
             <FeatureGate
               feature={FEATURE_KEYS.BULK_EDIT}
               locked={<LockedFeatureButton feature={FEATURE_KEYS.BULK_EDIT} icon={<Edit3 className="h-4 w-4" />}>Modifier</LockedFeatureButton>}
@@ -343,25 +378,11 @@ const Products = () => {
                 Modifier{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
               </Button>
             </FeatureGate>
-            <FeatureGate
-              feature={FEATURE_KEYS.PRODUCT_IMPORT}
-              locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_IMPORT} icon={<FileSpreadsheet className="h-4 w-4" />}>Importer Excel</LockedFeatureButton>}
-            >
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowImportModal(true)}
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Importer Excel
-              </Button>
-            </FeatureGate>
+            <Button variant="secondary" size="sm" onClick={() => setSelectedIds([])}><X className="h-4 w-4" /> Annuler</Button>
             </div>
           </div>
           <div className="rounded-[var(--radiusMedium)] px-3 py-2 text-sm" style={{ background: selectedIds.length ? 'var(--ms-blue-soft)' : 'var(--colorNeutralBackground2)', color: selectedIds.length ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground3)' }}>
-            {selectedIds.length > 0
-              ? `${selectedIds.length} produit(s) sélectionné(s) — cliquez « Modifier » pour les éditer en lot.`
-              : 'Cochez des produits pour les modifier en lot.'}
+            {`${selectedIds.length} produit(s) sélectionné(s)`}
           </div>
         </CommandBar>
       )}
@@ -1605,7 +1626,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                         </FeatureGate>
                         <button
                           type="button"
-                          onClick={() => onDelete(p._id)}
+                          onClick={() => onDelete(p)}
                           className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
                           aria-label="Supprimer le produit"
                         >
@@ -1699,7 +1720,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                     </button>
                   </FeatureGate>
                   <button
-                    onClick={() => onDelete(p._id)}
+                    onClick={() => onDelete(p)}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
                   >
                     <Trash2 className="h-4 w-4" />
