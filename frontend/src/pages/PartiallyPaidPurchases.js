@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { MessageCircle, Phone, Copy, ArrowUpDown, AlertTriangle, CalendarDays } from "lucide-react";
+import { MessageCircle, Phone, Copy, ArrowUpDown, AlertTriangle, CalendarDays, HandCoins } from "lucide-react";
 import { Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -60,6 +60,12 @@ const DATE_FILTER_OPTIONS = [
   { value: "30days", label: "30 derniers jours" },
   { value: "month", label: "Ce mois" },
   { value: "custom", label: "Période personnalisée" },
+];
+
+const PAYMENT_FILTER_OPTIONS = [
+  { value: "", label: "Tous les encaissements" },
+  { value: "never_paid", label: "Jamais encaissées" },
+  { value: "partially_paid", label: "Avec acompte" },
 ];
 
 const getDateBounds = (preset, startStr, endStr) => {
@@ -140,6 +146,7 @@ const PartiallyPaidPurchases = () => {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("oldest");
   const [agingFilter, setAgingFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
@@ -150,15 +157,20 @@ const PartiallyPaidPurchases = () => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.get("/sales", {
-        params: {
-          status: "partially_paid",
-          summary: "compact",
-        },
-      });
-      setSales(data || []);
+      const [partiallyPaidResponse, pendingResponse] = await Promise.all([
+        api.get("/sales", {
+          params: { status: "partially_paid", summary: "compact" },
+        }),
+        api.get("/sales", {
+          params: { status: "pending", summary: "compact" },
+        }),
+      ]);
+      setSales([
+        ...(partiallyPaidResponse.data || []),
+        ...(pendingResponse.data || []),
+      ]);
     } catch {
-      setError("Impossible de charger les ventes partiellement payées.");
+      setError("Impossible de charger les ventes à solder.");
     } finally {
       setLoading(false);
     }
@@ -182,16 +194,20 @@ const PartiallyPaidPurchases = () => {
   const enriched = useMemo(
     () =>
       (sales || []).map((s) => {
-        const paid = (s.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+        const payments = Array.isArray(s.payments) ? s.payments : [];
+        const paid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
         const balance = (s.totalAmount || 0) - paid;
-        const lastPay = (s.payments || []).slice(-1)[0]?.paymentDate || s.saleDate || s.createdAt;
-        const daysSince = lastPay
-          ? Math.max(0, Math.floor((Date.now() - new Date(lastPay).getTime()) / 86400000))
+        const actualPayments = payments.filter((p) => (Number(p.amount) || 0) > 0);
+        const hasPayment = actualPayments.length > 0;
+        const lastPay = actualPayments.slice(-1)[0]?.paymentDate || null;
+        const agingDate = lastPay || s.saleDate || s.createdAt;
+        const daysSince = agingDate
+          ? Math.max(0, Math.floor((Date.now() - new Date(agingDate).getTime()) / 86400000))
           : null;
         const bucket = AGING_BUCKETS.find(
           (b) => daysSince != null && daysSince >= b.min && daysSince <= b.max
         )?.key || "old";
-        return { ...s, paid, balance, lastPay, daysSince, bucket };
+        return { ...s, paid, balance, hasPayment, lastPay, daysSince, bucket };
       }),
     [sales]
   );
@@ -201,7 +217,7 @@ const PartiallyPaidPurchases = () => {
     [dateFilter, dateStart, dateEnd]
   );
 
-  // Base commune : recherche + date de vente (l'ancienneté se filtre ensuite)
+  // Base commune : recherche + date de vente + encaissement
   const searchedAndDated = useMemo(() => {
     let list = enriched;
     if (search.trim()) {
@@ -214,8 +230,13 @@ const PartiallyPaidPurchases = () => {
     if (dateBounds) {
       list = list.filter((s) => matchesDateBounds(s, dateBounds));
     }
+    if (paymentFilter === "never_paid") {
+      list = list.filter((s) => !s.hasPayment);
+    } else if (paymentFilter === "partially_paid") {
+      list = list.filter((s) => s.hasPayment);
+    }
     return list;
-  }, [enriched, search, dateBounds]);
+  }, [enriched, search, dateBounds, paymentFilter]);
 
   const partiallyPaid = useMemo(() => {
     let list = searchedAndDated;
@@ -320,7 +341,7 @@ const PartiallyPaidPurchases = () => {
         <PageHeader
           eyebrow="Paiements"
           title="Recouvrement des soldes"
-          description="Ventes partiellement payées : relances ciblées, priorisées par urgence."
+          description="Ventes avec un solde restant : relances ciblées, priorisées par urgence."
           actions={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {isAdmin && (
@@ -391,17 +412,31 @@ const PartiallyPaidPurchases = () => {
           </div>
         </Surface>
 
-        {/* Recherche + date + tri */}
+        {/* Recherche + encaissement + date + tri */}
         <Surface className="p-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
             <div className="flex-1">
               <SearchBox
-                label="Rechercher dans les ventes partiellement payées"
+                label="Rechercher dans les ventes à solder"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher client, email ou #vente…"
               />
             </div>
+            <label className="flex items-center gap-2 shrink-0">
+              <HandCoins className="h-4 w-4" style={{ color: "var(--colorNeutralForeground3)" }} aria-hidden />
+              <span className="sr-only">Filtrer par encaissement</span>
+              <select
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className="form-control text-sm"
+                aria-label="Filtrer les ventes par encaissement"
+              >
+                {PAYMENT_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 shrink-0">
               <CalendarDays className="h-4 w-4" style={{ color: "var(--colorNeutralForeground3)" }} aria-hidden />
               <span className="sr-only">Filtrer par date de vente</span>
@@ -478,7 +513,7 @@ const PartiallyPaidPurchases = () => {
             ) : error ? (
               <EmptyState title="Erreur de chargement" description={error} action={<Button onClick={fetchSales}>Réessayer</Button>} />
             ) : partiallyPaid.length === 0 ? (
-              <EmptyState title="Aucune vente à solder" description={agingFilter || search || dateFilter ? "Ajustez la recherche, la période ou le filtre d'ancienneté." : "Les ventes avec solde restant apparaîtront ici."} />
+              <EmptyState title="Aucune vente à solder" description={agingFilter || paymentFilter || search || dateFilter ? "Ajustez la recherche, la période ou les filtres." : "Les ventes avec solde restant apparaîtront ici."} />
             ) : (
               <div className="space-y-4">
                 {partiallyPaid.map((s) => {
@@ -509,7 +544,7 @@ const PartiallyPaidPurchases = () => {
                             {s.client?.name || "Client"}
                           </Link>
                           <StatusBadge tone={tone}>
-                            {s.daysSince == null ? "Jamais payé" : s.daysSince === 0 ? "Payé aujourd'hui" : `${s.daysSince} j sans paiement`}
+                            {!s.hasPayment ? "Jamais encaissée" : s.daysSince === 0 ? "Payé aujourd'hui" : `${s.daysSince} j sans paiement`}
                           </StatusBadge>
                           {s.daysSince != null && s.daysSince > 30 && (
                             <AlertTriangle className="h-4 w-4" style={{ color: "var(--colorStatusDangerForeground1)" }} aria-label="Relance urgente" />
