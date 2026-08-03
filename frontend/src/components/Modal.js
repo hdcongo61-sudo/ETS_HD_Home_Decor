@@ -36,6 +36,8 @@ const Modal = ({
   const open = isOpen ?? show;
   const panelRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const reduceMotion = useReducedMotion();
   const { suppressGlobalModals } = useModal();
   const titleId = useId();
@@ -59,7 +61,7 @@ const Modal = ({
       if (e.key === 'Escape') {
         if (panelRef.current && !panelRef.current.contains(document.activeElement)) return;
         e.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== 'Tab' || !panelRef.current) return;
@@ -103,7 +105,7 @@ const Modal = ({
       }
       if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
     };
-  }, [open, onClose, suppressGlobalModals, suppressGlobal]);
+  }, [open, suppressGlobalModals, suppressGlobal]);
 
   if (!open) return null;
 
@@ -117,16 +119,16 @@ const Modal = ({
       aria-describedby={subtitle ? subtitleId : undefined}
     >
       <motion.div
-        className="fixed inset-x-0 bottom-0 top-0 md:top-[var(--app-nav-offset,0px)] bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
+        className="fixed inset-x-0 bottom-0 top-0 z-0 md:top-[var(--app-nav-offset,0px)] bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.2, 0.8, 0.2, 1] }}
-        onClick={closeOnBackdrop ? onClose : undefined}
+        onClick={closeOnBackdrop ? () => onCloseRef.current?.() : undefined}
         aria-hidden
       />
 
-      <div className="pointer-events-none relative flex h-full min-h-full items-end justify-center px-0 pt-[env(safe-area-inset-top)] sm:items-center sm:p-4">
+      <div className="pointer-events-none relative z-10 flex h-full min-h-full items-end justify-center px-0 pt-[env(safe-area-inset-top)] sm:items-center sm:p-4">
         <motion.div
           ref={panelRef}
           tabIndex={-1}
@@ -175,7 +177,7 @@ const Modal = ({
                 {!hideCloseButton && (
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={() => onCloseRef.current?.()}
                     className="ms-icon-button"
                     aria-label="Fermer"
                   >

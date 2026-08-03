@@ -105,6 +105,7 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
@@ -141,10 +142,12 @@ const Products = () => {
     const { showLoading = true } = options;
     try {
       if (showLoading) setLoading(true);
+      setLoadError('');
       const response = await api.get('/products?summary=list');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setLoadError(error.response?.data?.message || 'Impossible de charger le catalogue pour le moment.');
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -272,6 +275,27 @@ const Products = () => {
   const stockValue = products.reduce((sum, product) => sum + ((Number(product.stock) || 0) * (Number(product.price) || 0)), 0);
   const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
+  if (!loading && loadError && products.length === 0) {
+    return (
+      <Workspace className="space-y-6 pb-10">
+        <PageHeader
+          eyebrow="Catalogue & inventaire"
+          title="Produits"
+          description="Trouvez un produit, surveillez le stock et gérez votre catalogue depuis un seul espace."
+        />
+        <EmptyState
+          title="Catalogue indisponible"
+          description={loadError}
+          action={(
+            <Button variant="primary" onClick={() => fetchProducts()}>
+              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Réessayer
+            </Button>
+          )}
+        />
+      </Workspace>
+    );
+  }
+
   return (
     <Workspace className="space-y-6 pb-10">
 
@@ -279,6 +303,17 @@ const Products = () => {
         show={formSubmitting}
         text={editingProduct ? 'Modification produit...' : 'Création du produit...'}
       />
+
+      {loadError && (
+        <div role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--colorStatusWarningStroke1)] bg-[var(--colorStatusWarningBackground1)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-[var(--colorStatusWarningForeground1)]">
+            Les données affichées peuvent être anciennes. {loadError}
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => fetchProducts({ showLoading: false })}>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" /> Actualiser
+          </Button>
+        </div>
+      )}
 
       <PageHeader
         eyebrow="Catalogue & inventaire"

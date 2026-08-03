@@ -1,7 +1,7 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
+import AuthContext, { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmProvider from './components/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -74,29 +74,58 @@ const AdminRequests = lazy(() => import('./pages/AdminRequests'));
 const TenantRegister = lazy(() => import('./pages/TenantRegister'));
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 const ImpersonationBanner = lazy(() => import('./components/ImpersonationBanner'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
-function App() {
+const PUBLIC_ROUTES = new Set(['/login', '/access-restricted']);
+
+function ApplicationShell() {
+  const location = useLocation();
+  const { auth } = useContext(AuthContext);
+  const isPublicRoute = PUBLIC_ROUTES.has(location.pathname);
+  const showAuthenticatedShell = !isPublicRoute && auth.isAuthenticated && !auth.isLoading;
+  const useBareLayout = !showAuthenticatedShell;
+
   return (
-    <ErrorBoundary>
-    <ModalProvider>
-      <AppSettingsProvider>
-        <AuthProvider>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <ScrollToTop />
-            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-            <ConfirmProvider />
-            <div className="app-root-shell min-h-screen flex flex-col">
-              <ServerWakeup />
-              <TrialBanner />
-              <Suspense fallback={null}><ImpersonationBanner /></Suspense>
-              <Navigation />
-              <OfflineIndicator />
-              <DesktopNavRail />
-              <div className="flex-1 flex flex-col min-h-0 app-main-with-sidebar">
-              <Suspense fallback={<AppLoader />}>
-                <main className="flex-1 min-h-0 main-with-tab-bar">
-                  <AppLayout>
-                    <Routes>
+    <div className="app-root-shell min-h-screen flex flex-col">
+      <ServerWakeup />
+      {showAuthenticatedShell && (
+        <>
+          <TrialBanner />
+          <Suspense fallback={null}><ImpersonationBanner /></Suspense>
+          <Navigation />
+          <OfflineIndicator />
+          <DesktopNavRail />
+        </>
+      )}
+      <div className={`flex-1 flex flex-col min-h-0 ${showAuthenticatedShell ? 'app-main-with-sidebar' : ''}`}>
+        <Suspense fallback={<AppLoader />}>
+          <main className={`flex-1 min-h-0 ${showAuthenticatedShell ? 'main-with-tab-bar' : ''}`}>
+            {useBareLayout ? (
+              <ApplicationRoutes />
+            ) : (
+              <AppLayout>
+                <ApplicationRoutes />
+              </AppLayout>
+            )}
+          </main>
+        </Suspense>
+        {showAuthenticatedShell && <SiteFooter />}
+      </div>
+      {showAuthenticatedShell && (
+        <>
+          <GlobalModals />
+          <PushNotificationManager />
+          <PwaInstallPrompt />
+          <BottomTabBar />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ApplicationRoutes() {
+  return (
+    <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<TenantRegister />} />
                 <Route path="/super-admin" element={<SuperAdmin />} />
@@ -478,21 +507,26 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                    </Routes>
-                  </AppLayout>
-                </main>
-              </Suspense>
-              <SiteFooter />
-              </div>
-              <GlobalModals />
-              <PushNotificationManager />
-              <PwaInstallPrompt />
-              <BottomTabBar />
-            </div>
+                <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ModalProvider>
+        <AppSettingsProvider>
+          <AuthProvider>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <ScrollToTop />
+              <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              <ConfirmProvider />
+              <ApplicationShell />
           </Router>
         </AuthProvider>
       </AppSettingsProvider>
-    </ModalProvider>
+      </ModalProvider>
     </ErrorBoundary>
   );
 }

@@ -525,29 +525,16 @@ form input[type="radio"],
   animation: app-loader-logo 1.4s ease-in-out infinite;
 }
 
-/* Apple HIG: Focus for accessibility (deference: subtle ring) */
-input:focus,
-select:focus,
-textarea:focus,
-button:focus {
+/* Keyboard focus remains visible on touch devices and hybrid laptops. */
+:where(a[href], button, input, select, textarea, [role="button"]):focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35);
-  transition: box-shadow 0.2s var(--apple-transition);
 }
 
-/* Disable visible focus on mobile/touch (no focus ring after tap) */
-@media (pointer: coarse) {
-  form input:focus,
-  form select:focus,
-  form textarea:focus,
-  form button:focus,
-  input:focus,
-  select:focus,
-  textarea:focus,
-  button:focus {
-    outline: none;
-    box-shadow: none;
-  }
+:where(a[href], button, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid rgba(0, 120, 212, 0.9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35);
+  transition: box-shadow 0.2s var(--apple-transition);
 }
 
 /* Apple HIG: Reduced motion */

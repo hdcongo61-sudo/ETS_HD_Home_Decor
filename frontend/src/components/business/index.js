@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
 
@@ -117,10 +117,59 @@ export const RightDetailPanel = React.memo(({
   labelledBy = 'right-detail-panel-title',
 }) => {
   const { suppressGlobalModals } = useModal();
+  const panelRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
-    return suppressGlobalModals();
+    const releaseSuppression = suppressGlobalModals();
+    previouslyFocusedRef.current = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      const first = panelRef.current?.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href]');
+      (first || panelRef.current)?.focus();
+    });
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current?.();
+        return;
+      }
+      if (event.key !== 'Tab' || !panelRef.current) return;
+      const focusable = Array.from(panelRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panelRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      releaseSuppression?.();
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
+    };
   }, [isOpen, suppressGlobalModals]);
 
   if (!isOpen) return null;
@@ -128,7 +177,7 @@ export const RightDetailPanel = React.memo(({
   return (
     <div className="ms-panel-layer" role="presentation">
       <button type="button" className="ms-panel-scrim" aria-label="Fermer le panneau" onClick={onClose} />
-      <aside className="ms-right-panel" role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
+      <aside ref={panelRef} tabIndex={-1} className="ms-right-panel" role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
         <div className="ms-panel-header">
           <div className="min-w-0">
             <h2 id={labelledBy} className="ms-panel-title">{title}</h2>

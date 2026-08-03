@@ -37,7 +37,7 @@ import {
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useModal } from "../context/ModalContext";
-import { mixHexColors, resolveAppLogo } from "../utils/appBranding";
+import { resolveAppLogo } from "../utils/appBranding";
 
 const Navigation = () => {
   const { auth } = useContext(AuthContext);
@@ -57,7 +57,6 @@ const Navigation = () => {
   });
   const branding = appSettings.branding;
   const logoUrl = resolveAppLogo(branding.logoUrl);
-  const brandTint = mixHexColors(branding.primaryColor, 0.88);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
   const location = useLocation();
@@ -157,11 +156,7 @@ const Navigation = () => {
   }, [query]);
 
   const openPath = (path) => {
-    if (isDesktop && typeof window !== "undefined") {
-      window.open(path, "_blank", "noopener,noreferrer");
-    } else {
-      navigate(path);
-    }
+    navigate(path);
   };
 
   const handleSelectResult = (item) => {
@@ -189,6 +184,8 @@ const Navigation = () => {
   };
 
   const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
+
+  if (!auth.isAuthenticated) return null;
 
   return (
     <>
@@ -353,6 +350,10 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
     : "h-[16px] w-[16px] shrink-0 text-[var(--ms-text-muted)] transition-colors group-hover/nav:text-[var(--ms-text-strong)]";
 
   const showPrimaryTabs = !(isMobile && hidePrimaryTabsOnMobile);
+
+  if (auth.isAuthenticated && isMobile && hidePrimaryTabsOnMobile) {
+    return <CompactMobileNavigation auth={auth} onClose={closeMenu} onLogout={handleLogout} linkClass={linkClass} iconClass={iconClass} />;
+  }
 
   return auth.isAuthenticated ? (
     <>
@@ -798,6 +799,79 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
         <span className="absolute bottom-1.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-white/85" />
       )}
     </Link>
+  );
+};
+
+const CompactMobileNavigation = ({ auth, onClose, onLogout, linkClass, iconClass }) => {
+  const item = (to, Icon, label) => (
+    <NavIcon
+      key={to}
+      to={to}
+      icon={<Icon className={iconClass} aria-hidden="true" />}
+      label={label}
+      className={linkClass}
+      onClick={onClose}
+      isMobile
+    />
+  );
+
+  return (
+    <div className="space-y-1">
+      <MobileMenuSection title="Compte">
+        {item('/profile', UserRound, 'Mon profil')}
+        {item('/admin-requests', ClipboardList, auth.isAdmin ? 'Demandes admin' : 'Mes demandes')}
+        {item('/support', LifeBuoy, 'Assistance')}
+      </MobileMenuSection>
+
+      <MobileMenuSection title="Ventes">
+        {item('/sales/all', Archive, 'Archives')}
+        {item('/sales/partially-paid', CreditCard, 'Paiements partiels')}
+      </MobileMenuSection>
+
+      <MobileMenuSection title="Gestion">
+        {item('/bank', Landmark, 'Caisse')}
+        {item('/clients', Users, 'Clients')}
+        {auth.isAdmin && item('/expenses', Receipt, 'Dépenses')}
+        {auth.isAdmin && item('/employees', BriefcaseBusiness, 'Employés')}
+      </MobileMenuSection>
+
+      {auth.isAdmin && (
+        <MobileMenuSection title="Stock & analyses">
+          {item('/product-dashboard', BarChart2, 'Analyse produits')}
+          {item('/products/critical', AlertTriangle, 'Stock critique')}
+          {item('/products/out-of-stock', Package, 'Ruptures de stock')}
+          {item('/products/by-supplier', Building2, 'Par fournisseur')}
+        </MobileMenuSection>
+      )}
+
+      {auth.isAdmin && (
+        <MobileMenuSection title="Administration">
+          {item('/settings', Settings, 'Paramètres')}
+          {item('/admin/users', UserCheck, 'Utilisateurs')}
+          {item('/documents', FileStack, 'Documents')}
+        </MobileMenuSection>
+      )}
+
+      {auth.isSuperAdmin && (
+        <MobileMenuSection title="Super Admin">
+          {item('/super-admin', ShieldCheck, 'Gestion des boutiques')}
+          {item('/register', Building2, 'Nouvelle boutique')}
+        </MobileMenuSection>
+      )}
+
+      <button
+        type="button"
+        onClick={onLogout}
+        className="mt-3 flex min-h-[52px] w-full items-center gap-3 rounded-lg border border-red-100 bg-red-50 px-3.5 py-3 text-[15px] font-semibold text-red-700 transition-colors hover:bg-red-100"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-red-600">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+          </svg>
+        </span>
+        Déconnexion
+      </button>
+    </div>
   );
 };
 

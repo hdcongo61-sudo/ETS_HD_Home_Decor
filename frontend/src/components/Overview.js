@@ -30,6 +30,7 @@ import {
   Calculator,
   FileText,
   Crown,
+  RefreshCw,
 } from "lucide-react";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
@@ -217,12 +218,15 @@ const Overview = () => {
   const [reminders, setReminders] = useState(null);
   const [delivery, setDelivery] = useState(null);
   const [userSales, setUserSales] = useState(null);
+  const [loadIssues, setLoadIssues] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
+      setLoadIssues(0);
       if (isAdmin) {
         const todayKey = new Date().toLocaleDateString("fr-CA"); // YYYY-MM-DD
         const [s, p, c, b, k, r, d] = await Promise.allSettled([
@@ -235,6 +239,7 @@ const Overview = () => {
           api.get("/sales/stats/delivery"),
         ]);
         if (cancelled) return;
+        setLoadIssues([s, p, c, b, k, r, d].filter((result) => result.status === 'rejected').length);
         setSales(pick(s));
         setProducts(pick(p));
         setClients(pick(c));
@@ -245,6 +250,7 @@ const Overview = () => {
       } else if (userId) {
         const [u] = await Promise.allSettled([api.get(`/sales/user/${userId}`)]);
         if (cancelled) return;
+        setLoadIssues(u.status === 'rejected' ? 1 : 0);
         setUserSales(pick(u));
       }
       if (!cancelled) setLoading(false);
@@ -252,7 +258,7 @@ const Overview = () => {
 
     load();
     return () => { cancelled = true; };
-  }, [isAdmin, userId]);
+  }, [isAdmin, userId, reloadKey]);
 
   // Recharge silencieuse quand une vente/paiement/dépense est créée via le FAB.
   useEffect(() => {
@@ -347,6 +353,16 @@ const Overview = () => {
     return (
       <>
         {greeting}
+        {loadIssues > 0 && (
+          <div role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--colorStatusWarningStroke1)] bg-[var(--colorStatusWarningBackground1)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-[var(--colorStatusWarningForeground1)]">
+              Vos ventes n’ont pas pu être chargées. Les chiffres ne sont pas disponibles.
+            </p>
+            <button type="button" className="ms-button ms-button-secondary ms-button-sm" onClick={() => setReloadKey((value) => value + 1)}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Réessayer
+            </button>
+          </div>
+        )}
         <div className="ms-surface p-5"><LoadingSkeleton rows={6} /></div>
       </>
     );
@@ -466,6 +482,17 @@ const Overview = () => {
     <>
       {greeting}
 
+      {loadIssues > 0 && (
+        <div role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--colorStatusWarningStroke1)] bg-[var(--colorStatusWarningBackground1)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-[var(--colorStatusWarningForeground1)]">
+            {loadIssues} source{loadIssues > 1 ? 's' : ''} de données {loadIssues > 1 ? 'sont indisponibles' : 'est indisponible'}. Les indicateurs incomplets affichent « — ».
+          </p>
+          <button type="button" className="ms-button ms-button-secondary ms-button-sm" onClick={() => setReloadKey((value) => value + 1)}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" /> Actualiser
+          </button>
+        </div>
+      )}
+
       {/* Bandeau KPI — situation instantanée */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {kpis.map((k) => (
@@ -496,6 +523,16 @@ const Overview = () => {
             {actionItems.map((item) => (
               <ActionItem key={item.key} {...item} />
             ))}
+          </div>
+        ) : loadIssues > 0 ? (
+          <div
+            className="mt-4 flex items-center gap-3 rounded-[var(--radiusLarge)] p-4"
+            style={{ background: "var(--colorStatusWarningBackground1)", border: "1px solid var(--colorStatusWarningStroke1)" }}
+          >
+            <AlertTriangle className="h-5 w-5 shrink-0" style={{ color: "var(--colorStatusWarningForeground1)" }} />
+            <p className="fui-caption1-strong" style={{ color: "var(--colorStatusWarningForeground1)" }}>
+              Impossible de confirmer que tout est à jour tant que certaines données sont indisponibles.
+            </p>
           </div>
         ) : (
           <div

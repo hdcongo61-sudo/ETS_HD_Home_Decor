@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import api from '../services/api';
 
 /**
@@ -16,9 +17,11 @@ const RETRY_DELAY_MS = 2500;
 const ServerWakeup = () => {
   // 'checking' | 'slow' | 'ready' | 'error'
   const [state, setState] = useState('checking');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setState('checking');
     const slowTimer = setTimeout(() => {
       setState((s) => (s === 'checking' ? 'slow' : s));
     }, SLOW_AFTER_MS);
@@ -46,25 +49,36 @@ const ServerWakeup = () => {
       cancelled = true;
       clearTimeout(slowTimer);
     };
-  }, []);
+  }, [retryKey]);
 
-  if (state !== 'slow') return null;
+  if (state !== 'slow' && state !== 'error') return null;
+
+  const failed = state === 'error';
 
   return (
     <div
-      role="status"
-      aria-live="polite"
-      className="fixed left-1/2 z-[300] flex max-w-[92vw] -translate-x-1/2 items-center gap-2.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 shadow-[var(--ms-shadow-lg)]"
+      role={failed ? 'alert' : 'status'}
+      aria-live={failed ? 'assertive' : 'polite'}
+      className="fixed left-1/2 z-[300] flex w-max max-w-[92vw] -translate-x-1/2 items-center gap-2.5 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 shadow-[var(--ms-shadow-lg)] sm:rounded-full"
       style={{ top: 'calc(var(--app-nav-offset, 0px) + max(0.75rem, env(safe-area-inset-top, 0px)) + 0.5rem)' }}
     >
-      <span
-        className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--ms-border)]"
-        style={{ borderTopColor: 'var(--ms-blue)' }}
-        aria-hidden
-      />
-      <p className="truncate text-sm font-medium text-[var(--ms-text)]">
-        Réveil du serveur… cela peut prendre jusqu'à une minute.
+      {failed ? (
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--ms-danger)]" aria-hidden="true" />
+      ) : (
+        <span
+          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--ms-border)]"
+          style={{ borderTopColor: 'var(--ms-blue)' }}
+          aria-hidden="true"
+        />
+      )}
+      <p className="min-w-0 text-sm font-medium text-[var(--ms-text)]">
+        {failed ? 'Connexion au service impossible.' : 'Connexion au service… cela peut prendre jusqu’à une minute.'}
       </p>
+      {failed && (
+        <button type="button" className="ms-button ms-button-secondary ms-button-sm shrink-0" onClick={() => setRetryKey((value) => value + 1)}>
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Réessayer
+        </button>
+      )}
     </div>
   );
 };

@@ -88,7 +88,13 @@ const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0 }) => (
 );
 
 const DesktopNavRail = () => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      return localStorage.getItem('desktopNavExpanded') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const { auth, setAuth } = useContext(AuthContext);
   const location = useLocation();
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
@@ -111,11 +117,11 @@ const DesktopNavRail = () => {
   useEffect(() => {
     const w = expanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W;
     document.documentElement.style.setProperty('--sidebar-w', `${w}px`);
+    try { localStorage.setItem('desktopNavExpanded', String(expanded)); } catch {}
   }, [expanded]);
 
-  // Set initial width on mount, clean up on unmount
+  // Clean up the shared layout variable on unmount.
   useEffect(() => {
-    document.documentElement.style.setProperty('--sidebar-w', `${SIDEBAR_COLLAPSED_W}px`);
     return () => {
       document.documentElement.style.removeProperty('--sidebar-w');
     };

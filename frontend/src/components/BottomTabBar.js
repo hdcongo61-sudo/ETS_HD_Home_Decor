@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, ShoppingCart, Package, Plus, Menu as MenuIcon, X } from "lucide-react";
@@ -24,6 +24,8 @@ const BottomTabBar = () => {
   const location = useLocation();
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuPanelRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
 
@@ -47,12 +49,43 @@ const BottomTabBar = () => {
     return () => { document.body.style.overflow = ""; document.body.style.touchAction = ""; };
   }, [menuOpen]);
 
-  // Close the sheet with the Escape key.
+  // Keep keyboard focus inside the menu and restore it on close.
   useEffect(() => {
     if (!menuOpen) return undefined;
-    const onEscape = (e) => { if (e.key === "Escape") setMenuOpen(false); };
-    document.addEventListener("keydown", onEscape);
-    return () => document.removeEventListener("keydown", onEscape);
+    previouslyFocusedRef.current = document.activeElement;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const first = menuPanelRef.current?.querySelector('[data-menu-close], a[href], button:not([disabled])');
+      (first || menuPanelRef.current)?.focus();
+    });
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !menuPanelRef.current) return;
+      const focusable = Array.from(menuPanelRef.current.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        menuPanelRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKeyDown);
+      if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
+    };
   }, [menuOpen]);
 
   // Hide on scroll-down (mobile only); reveal on scroll-up or near the top.
@@ -196,6 +229,8 @@ const BottomTabBar = () => {
               transition={{ duration: 0.2 }}
             />
             <motion.div
+              ref={menuPanelRef}
+              tabIndex={-1}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -220,6 +255,7 @@ const BottomTabBar = () => {
                     </div>
                     <button
                       type="button"
+                      data-menu-close
                       onClick={closeMenu}
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--ms-white)] text-[var(--ms-text)] shadow-sm"
                       aria-label="Fermer le menu"
