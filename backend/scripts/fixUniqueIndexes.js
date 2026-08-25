@@ -30,6 +30,7 @@ const MODELS = [
   { file: '../models/expenseCategoryModel', name: 'ExpenseCategory', legacy: ['name_1'] },
   { file: '../models/productModel', name: 'Product', legacy: ['sku_1'] },
   { file: '../models/userModel', name: 'User', legacy: ['email_1'] },
+  { file: '../models/appSettingsModel', name: 'AppSettings', legacy: ['key_1'] },
 ];
 
 async function run() {

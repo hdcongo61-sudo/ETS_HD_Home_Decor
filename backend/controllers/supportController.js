@@ -167,8 +167,9 @@ exports.replyTicketAdmin = async (req, res) => {
     if (!message || !String(message).trim()) return res.status(400).json({ message: 'Le message est requis.' });
     const ticket = await SupportTicket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ message: 'Message introuvable.' });
+    const actor = req.user || req.platformUser || null;
     ticket.messages.push({
-      sender: 'support', user: req.user._id, authorName: req.user.name || 'Support',
+      sender: 'support', user: actor ? actor._id : null, authorName: (actor && actor.name) || 'Support',
       body: String(message).trim().slice(0, 5000),
     });
     ticket.unreadForShop += 1;

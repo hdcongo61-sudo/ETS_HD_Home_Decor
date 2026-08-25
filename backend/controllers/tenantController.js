@@ -6,6 +6,7 @@ const { PLAN_CATALOG } = require('../models/tenantModel');
 const User = require('../models/userModel');
 const PlatformAudit = require('../models/platformAuditModel');
 const PlatformConfig = require('../models/platformConfigModel');
+const { TENANT_SCOPED_MODELS } = require('../utils/tenantCollections');
 
 // Modèles référencés par la cascade de suppression (garantit leur enregistrement).
 require('../models/loginHistoryModel');
@@ -127,7 +128,7 @@ const registerTenant = asyncHandler(async (req, res) => {
   // Update tenant stats
   await Tenant.findByIdAndUpdate(tenant._id, { 'stats.userCount': 1 });
 
-  const token = generateToken(adminUser._id, tenant._id);
+  const token = generateToken(adminUser._id, tenant._id, { tokenVersion: adminUser.tokenVersion ?? 0 });
 
   res.status(201).json({
     token,
@@ -281,22 +282,16 @@ const deleteTenant = asyncHandler(async (req, res) => {
 
   const tid = tenant._id;
 
-  // Cascade delete across all tenant-scoped collections
-  const mongoose = require('mongoose');
-  const modelNames = [
-    'User', 'Product', 'Sale', 'Client', 'Employee',
-    'Expense', 'BankTransaction', 'AdminRequest', 'Document',
-    'AppSettings', 'Category', 'Container', 'Warehouse',
-    'Supplier', 'ExpenseCategory', 'DeletedSale', 'LoginHistory',
-    'Proforma', 'StockMovement', 'StockReplacementReminder',
-    'SupportTicket', 'SubscriptionPayment',
-  ];
+  // Cascade delete across all tenant-scoped collections (registre central).
+  const modelNames = TENANT_SCOPED_MODELS;
+  const deleted = {};
   await Promise.all(
-    modelNames.map((name) => {
+    modelNames.map(async (name) => {
       try {
-        return mongoose.model(name).deleteMany({ tenantId: tid });
+        const result = await mongoose.model(name).deleteMany({ tenantId: tid });
+        deleted[name] = result.deletedCount || 0;
       } catch {
-        return Promise.resolve();
+        deleted[name] = 'skipped';
       }
     })
   );
@@ -305,7 +300,7 @@ const deleteTenant = asyncHandler(async (req, res) => {
 
   await Tenant.findByIdAndDelete(tid);
 
-  res.json({ message: 'Boutique et toutes ses données supprimées.' });
+  res.json({ message: 'Boutique et toutes ses données supprimées.', deleted });
 });
 
 // ── Authenticated: get own tenant info ──
@@ -346,21 +341,31 @@ const impersonateTenant = asyncHandler(async (req, res) => {
     throw new Error('Aucun administrateur actif trouvé pour cette boutique.');
   }
 
-  // Issue a token valid 2 hours — shorter than normal 30d
+  // Motif de supervision — obligatoire à terme ; enregistré dans l'audit.
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 300) : 'Non renseignée';
+
+  // Issue a token valid 1 hour — shorter than normal 30d
   const jwt = require('jsonwebtoken');
   const token = jwt.sign(
-    { id: adminUser._id, tenantId: tenant._id.toString(), impersonatedBy: req.user._id.toString() },
+    {
+      id: adminUser._id,
+      tenantId: tenant._id.toString(),
+      impersonatedBy: req.user._id.toString(),
+      impersonationReason: reason,
+      ver: adminUser.tokenVersion ?? 0,
+    },
     process.env.JWT_SECRET,
-    { expiresIn: '2h' }
+    { expiresIn: '1h' }
   );
 
-  PlatformAudit.record({ req, action: 'tenant.impersonate', tenant, meta: { asUser: adminUser.email } });
+  PlatformAudit.record({ req, action: 'tenant.impersonate', tenant, meta: { asUser: adminUser.email, reason } });
 
   res.json({
     token,
     tenant: { _id: tenant._id, name: tenant.name, code: tenant.code },
     user:   { _id: adminUser._id, name: adminUser.name, email: adminUser.email, isAdmin: true },
-    expiresIn: '2h',
+    expiresIn: '1h',
+    impersonating: true,
   });
 });
 

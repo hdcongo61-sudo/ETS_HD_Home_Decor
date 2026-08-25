@@ -1,5 +1,5 @@
 const PlatformUser = require('../models/platformUserModel');
-const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
 // Create email transporter (configure with your SMTP settings)
@@ -13,6 +13,54 @@ const createTransporter = () => {
       pass: process.env.EMAIL_PASS,
     },
   });
+};
+
+// @desc    Authenticate a platform operator
+// @route   POST /api/platform-users/login
+// @access  Public
+exports.loginPlatformUser = async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email et mot de passe requis' });
+    }
+
+    const user = await PlatformUser.findOne({ email });
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Email ou mot de passe invalide' });
+    }
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message: 'Votre compte a été désactivé. Veuillez contacter le super administrateur.',
+        code: 'ACCOUNT_INACTIVE',
+      });
+    }
+
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    const token = jwt.sign(
+      { platformUserId: String(user._id) },
+      process.env.JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+
+    return res.json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        permissions: Array.isArray(user.permissions) ? user.permissions : [],
+        isActive: user.isActive,
+      },
+    });
+  } catch (error) {
+    console.error('Platform login error:', error);
+    return res.status(500).json({ message: 'Erreur serveur lors de la connexion' });
+  }
 };
 
 // @desc    Get all platform users
@@ -62,19 +110,15 @@ exports.createPlatformUser = async (req, res) => {
       }
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create new platform user
+    // Le hachage est géré par le hook pre-save du modèle (comme userModel).
     const newUser = await PlatformUser.create({
       name,
       email,
       phone: phone || undefined,
-      password: hashedPassword,
+      password,
       role: role || 'support',
       permissions: permissions || [],
-      createdBy: req.user._id,
+      createdBy: req.user?._id || req.platformUser?._id || null,
     });
 
     res.status(201).json({

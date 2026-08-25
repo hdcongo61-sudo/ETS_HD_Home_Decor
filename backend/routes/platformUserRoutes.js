@@ -1,16 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { protect, superAdmin } = require('../middlewares/authMiddleware');
+const { protectAny, platformAdmin } = require('../middlewares/authMiddleware');
 const {
   getAllPlatformUsers,
   createPlatformUser,
   updatePlatformUser,
   deletePlatformUser,
   sendEmailToUsers,
+  loginPlatformUser,
 } = require('../controllers/platformUserController');
 
-// All routes require super-admin
-router.use(protect, superAdmin);
+// Connexion opérateur plateforme (public) — déclarée avant le garde global.
+router.post('/login', loginPlatformUser);
+
+// Le reste exige un super-admin (compte User) OU un opérateur plateforme habilité.
+router.use(protectAny, platformAdmin);
 
 // GET /api/platform-users - Get all platform users
 router.get('/', getAllPlatformUsers);

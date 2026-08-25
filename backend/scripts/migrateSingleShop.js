@@ -43,19 +43,31 @@ require('../models/subscriptionPaymentModel');
 
 const Tenant = mongoose.model('Tenant');
 const User = mongoose.model('User');
+const { TENANT_SCOPED_MODELS } = require('../utils/tenantCollections');
 
-const MODELS_TO_MIGRATE = [
-  'Product', 'Sale', 'Client', 'Employee', 'Expense',
-  'BankTransaction', 'AdminRequest', 'Document', 'AppSettings',
-  'Category', 'Container', 'Warehouse', 'Supplier',
-  'ExpenseCategory', 'DeletedSale', 'LoginHistory',
-  'Proforma', 'StockMovement', 'StockReplacementReminder',
-  'SupportTicket', 'SubscriptionPayment',
-];
+// Liste dérivée du registre central, sans User (migré séparément avec ses règles).
+const MODELS_TO_MIGRATE = TENANT_SCOPED_MODELS.filter((name) => name !== 'User');
+
+// `--dry-run` : compte les documents sans tenant sans rien modifier.
+const DRY_RUN = process.argv.includes('--dry-run');
 
 async function run() {
   await connectDB();
-  console.log('\n🔄  Multi-tenancy migration starting...\n');
+  console.log(`\n🔄  Multi-tenancy migration starting...${DRY_RUN ? ' (DRY-RUN — aucune écriture)' : ''}\n`);
+
+  // ── Step 0: Pré-vol — comptage des documents sans tenant par collection ──
+  console.log('── Pré-vol : documents sans tenantId ──');
+  for (const modelName of MODELS_TO_MIGRATE) {
+    try {
+      const Model = mongoose.model(modelName);
+      const count = await Model.countDocuments({ tenantId: null });
+      if (count > 0) console.log(`   ${modelName}: ${count}`);
+    } catch (err) {
+      console.warn(`   ⚠️  ${modelName}: ${err.message}`);
+    }
+  }
+  const orphanUsers = await User.countDocuments({ tenantId: null, isSuperAdmin: { $ne: true } });
+  if (orphanUsers > 0) console.log(`   User: ${orphanUsers}`);
 
   // ── Step 1: Find or create the default tenant ──
   let tenant = await Tenant.findOne({ code: 'DEFAULT' }).catch(() => null);
@@ -88,21 +100,25 @@ async function run() {
   const tenantId = tenant._id;
 
   // ── Step 2: Migrate Users ──
-  const userResult = await User.updateMany(
-    { tenantId: null, isSuperAdmin: { $ne: true } },
-    { $set: { tenantId } }
-  );
-  console.log(`👤  Users migrated: ${userResult.modifiedCount}`);
+  const userResult = DRY_RUN
+    ? { modifiedCount: 0 }
+    : await User.updateMany(
+        { tenantId: null, isSuperAdmin: { $ne: true } },
+        { $set: { tenantId } }
+      );
+  console.log(`👤  Users migrated: ${DRY_RUN ? '(dry-run)' : userResult.modifiedCount}`);
 
   // ── Step 3: Migrate all other collections ──
   for (const modelName of MODELS_TO_MIGRATE) {
     try {
       const Model = mongoose.model(modelName);
-      const result = await Model.updateMany(
-        { tenantId: null },
-        { $set: { tenantId } }
-      );
-      console.log(`📦  ${modelName}: ${result.modifiedCount} documents migrated`);
+      const result = DRY_RUN
+        ? { modifiedCount: 0 }
+        : await Model.updateMany(
+            { tenantId: null },
+            { $set: { tenantId } }
+          );
+      console.log(`📦  ${modelName}: ${DRY_RUN ? '(dry-run)' : result.modifiedCount + ' documents migrated'}`);
     } catch (err) {
       console.warn(`⚠️   Could not migrate ${modelName}:`, err.message);
     }
@@ -117,22 +133,29 @@ async function run() {
     ['appsettings', 'key_1'],
     ['clients', 'email_1'],
   ];
-  for (const [collection, indexName] of staleIndexes) {
-    try {
-      await mongoose.connection.db.collection(collection).dropIndex(indexName);
-      console.log(`🧹  Dropped stale index ${collection}.${indexName}`);
-    } catch (err) {
-      if (err.codeName === 'IndexNotFound' || /index not found/i.test(err.message)) {
-        // already gone — fine
-      } else {
-        console.warn(`⚠️   Could not drop ${collection}.${indexName}:`, err.message);
+  if (DRY_RUN) {
+    console.log('🧹  Index legacy à supprimer (ignorés en dry-run): ' +
+      staleIndexes.map(([c, i]) => `${c}.${i}`).join(', '));
+  } else {
+    for (const [collection, indexName] of staleIndexes) {
+      try {
+        await mongoose.connection.db.collection(collection).dropIndex(indexName);
+        console.log(`🧹  Dropped stale index ${collection}.${indexName}`);
+      } catch (err) {
+        if (err.codeName === 'IndexNotFound' || /index not found/i.test(err.message)) {
+          // already gone — fine
+        } else {
+          console.warn(`⚠️   Could not drop ${collection}.${indexName}:`, err.message);
+        }
       }
     }
   }
 
   // ── Step 4: Update tenant user count ──
   const userCount = await User.countDocuments({ tenantId });
-  await Tenant.findByIdAndUpdate(tenantId, { 'stats.userCount': userCount });
+  if (!DRY_RUN) {
+    await Tenant.findByIdAndUpdate(tenantId, { 'stats.userCount': userCount });
+  }
   console.log(`\n✅  Migration complete. ${userCount} users in default tenant.`);
   console.log(`\n🔑  Default tenant ID: ${tenantId}`);
   console.log('   Save this ID — you may need it for debugging.\n');

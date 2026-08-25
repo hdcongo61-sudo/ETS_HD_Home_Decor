@@ -2,16 +2,17 @@ const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const Tenant = require('../models/tenantModel');
+const PlatformUser = require('../models/platformUserModel');
 const { runWithTenant } = require('../utils/tenantContext');
 
 // Core token verification + tenant resolution.
 // `allowRestricted` lets suspended/expired shops through (they can still pay
 // their subscription to reactivate), while normal data-plane routes stay blocked.
-const authenticate = (allowRestricted) => asyncHandler(async (req, res, next) => {
+const authenticate = (allowRestricted, { allowPlatform = false } = {}) => asyncHandler(async (req, res, next) => {
   // Idempotent: when protect already ran earlier in this chain (e.g. a
   // mount-level guard before per-route protect), skip re-verifying. The tenant
   // context established by the first call is still active downstream.
-  if (req.user) {
+  if (req.user || req.platformUser) {
     return next();
   }
 
@@ -25,9 +26,46 @@ const authenticate = (allowRestricted) => asyncHandler(async (req, res, next) =>
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // ── Opérateur plateforme (PlatformUser) ──
+      // Jetons émis par POST /api/platform-users/login : ils ne portent aucun
+      // tenant et ne sont acceptés que là où `protectAny` est utilisé.
+      if (decoded.platformUserId) {
+        if (!allowPlatform) {
+          return res.status(403).json({
+            message: 'Jeton plateforme non autorisé sur cette route.',
+            code: 'PLATFORM_SCOPE_ONLY',
+          });
+        }
+        const platformUser = await PlatformUser.findById(decoded.platformUserId).select('-password');
+        if (!platformUser) {
+          return res.status(401).json({ message: 'Non autorisé. Session invalide.' });
+        }
+        if (platformUser.isActive === false) {
+          return res.status(403).json({
+            message: 'Votre compte a été désactivé. Veuillez contacter le super administrateur.',
+            code: 'ACCOUNT_INACTIVE',
+          });
+        }
+        req.platformUser = platformUser;
+        return next();
+      }
+
       const user = await User.findById(decoded.id).select('-password');
       if (!user) {
         return res.status(401).json({ message: 'Non autorisé. Session invalide.' });
+      }
+
+      // ── Révocation par version de jeton ──
+      // Un jeton émis avant le dernier bump de tokenVersion est rejeté.
+      if (
+        decoded.ver !== undefined &&
+        user.tokenVersion !== undefined &&
+        Number(decoded.ver) !== Number(user.tokenVersion)
+      ) {
+        return res.status(401).json({
+          message: 'Session révoquée. Veuillez vous reconnecter.',
+          code: 'TOKEN_REVOKED',
+        });
       }
 
       // ── Time-window access control ──
@@ -170,6 +208,23 @@ const superAdmin = (req, res, next) => {
   }
 };
 
+// Authentifie un utilisateur boutique OU un opérateur plateforme.
+// À utiliser sur le control plane (platform-users, support admin…).
+const protectAny = authenticate(false, { allowPlatform: true });
+
+// Control plane : super-admin (compte User) OU opérateur plateforme habilité
+// (rôle super-admin, permission `platform.manage` ou joker `*`).
+const platformAdmin = (req, res, next) => {
+  if (req.user && req.user.isSuperAdmin) return next();
+  if (req.platformUser) {
+    const perms = Array.isArray(req.platformUser.permissions) ? req.platformUser.permissions : [];
+    if (req.platformUser.role === 'super-admin' || perms.includes('*') || perms.includes('platform.manage')) {
+      return next();
+    }
+  }
+  return res.status(403).json({ message: 'Réservé aux opérateurs plateforme autorisés.' });
+};
+
 // Data-plane guard: every shop route must run inside a single tenant.
 // A super-admin who has NOT impersonated has no req.tenantId and is
 // rejected here — forcing them through impersonation to view a shop,
@@ -195,4 +250,4 @@ const adminOrPermission = (permission) => (req, res, next) => {
   }
 };
 
-module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission };
+module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission, protectAny, platformAdmin };

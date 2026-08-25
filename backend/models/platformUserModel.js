@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const platformUserSchema = new mongoose.Schema({
   name: {
@@ -54,5 +55,18 @@ const platformUserSchema = new mongoose.Schema({
 
 // Don't apply tenant guard to platform users - they're not tenant-scoped
 platformUserSchema.statics.bypassTenantGuard = true;
+
+// Vérification du mot de passe (bcrypt), alignée sur userModel.
+platformUserSchema.methods.matchPassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
+
+// Hasher le mot de passe avant sauvegarde, comme userModel.
+platformUserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
 
 module.exports = mongoose.model('PlatformUser', platformUserSchema);

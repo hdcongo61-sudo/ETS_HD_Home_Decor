@@ -449,7 +449,7 @@ const loginUser = asyncHandler(async (req, res) => {
       photo: user.photo || '',
       lastLogin: user.lastLogin,
       tenantId: user.tenantId ? user.tenantId.toString() : null,
-      token: generateToken(user._id, user.tenantId),
+      token: generateToken(user._id, user.tenantId, { tokenVersion: user.tokenVersion ?? 0 }),
     });
   }
 
@@ -1013,6 +1013,25 @@ const toggleUserActive = asyncHandler(async (req, res) => {
 });
 
 
+// @desc    Révoque toutes les sessions du compte courant (bump tokenVersion)
+// @route   POST /api/users/logout-all
+// @access  Private
+const revokeAllSessions = asyncHandler(async (req, res) => {
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { $inc: { tokenVersion: 1 } },
+    { new: true, select: 'tokenVersion' }
+  );
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur introuvable.' });
+  }
+  res.json({
+    message: 'Toutes les sessions ont été révoquées.',
+    tokenVersion: user.tokenVersion,
+  });
+});
+
+
 module.exports = {
   loginUser,
   requestPasswordUpdate,
@@ -1027,5 +1046,6 @@ module.exports = {
   getUserById,
   getLoginStats,
   getLoginActivity,
-  toggleUserActive
+  toggleUserActive,
+  revokeAllSessions
 };

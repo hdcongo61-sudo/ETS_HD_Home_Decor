@@ -3,16 +3,16 @@ const {
   createTicket, getMyTickets, getMyUnread, getMyTicket, replyMyTicket,
   getAllTickets, getAdminUnread, getTicketAdmin, replyTicketAdmin, updateTicketAdmin,
 } = require('../controllers/supportController');
-const { protect, admin, superAdmin, requireTenant } = require('../middlewares/authMiddleware');
+const { protect, admin, superAdmin, requireTenant, protectAny, platformAdmin } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// ── Super-admin (control plane) — declared before the shop /:id routes ──
-router.get('/admin/all', protect, superAdmin, getAllTickets);
-router.get('/admin/unread', protect, superAdmin, getAdminUnread);
-router.get('/admin/:id', protect, superAdmin, getTicketAdmin);
-router.post('/admin/:id/reply', protect, superAdmin, replyTicketAdmin);
-router.put('/admin/:id', protect, superAdmin, updateTicketAdmin);
+// ── Support / control plane — super-admin OU opérateur plateforme habilité ──
+router.get('/admin/all', protectAny, platformAdmin, getAllTickets);
+router.get('/admin/unread', protectAny, platformAdmin, getAdminUnread);
+router.get('/admin/:id', protectAny, platformAdmin, getTicketAdmin);
+router.post('/admin/:id/reply', protectAny, platformAdmin, replyTicketAdmin);
+router.put('/admin/:id', protectAny, platformAdmin, updateTicketAdmin);
 
 // ── Shop side (tenant admin) ──
 router.post('/', protect, admin, requireTenant, createTicket);

@@ -3,6 +3,13 @@ const dotenv = require('dotenv');
 const colors = require('colors');
 const cors = require('cors');
 const connectDB = require('./config/db');
+
+// ── Global tenant isolation ──
+// Enregistré AVANT toute compilation de modèle : authMiddleware ci-dessous
+// charge userModel, qui doit lui aussi être protégé.
+const mongoose = require('mongoose');
+mongoose.plugin(require('./utils/tenantGuardPlugin'));
+
 const { errorHandler } = require('./middlewares/errorMiddleware');
 const { protect } = require('./middlewares/authMiddleware');
 const { requireFeature } = require('./middlewares/featureMiddleware');
@@ -21,12 +28,6 @@ dotenv.config();
 connectDB();
 
 const path = require('path');
-
-// ── Global tenant isolation ──
-// Register BEFORE any model is compiled (i.e. before the route requires
-// below) so every tenant-scoped schema gets automatic query scoping.
-const mongoose = require('mongoose');
-mongoose.plugin(require('./utils/tenantGuardPlugin'));
 
 // Route files
 const productRoutes = require('./routes/productRoutes');
@@ -190,6 +191,19 @@ app.get('*', (req, res) => {
 
 // 12. Error handler middleware
 app.use(errorHandler);
+
+// ── Assertion de démarrage : tout modèle portant `tenantId` doit être protégé
+// par le tenant guard. Sinon, on refuse de démarrer (fail-fast).
+{
+  const unguarded = Object.values(mongoose.models)
+    .filter((m) => m.schema.path('tenantId') && !m.schema.tenantGuardVersion)
+    .map((m) => m.modelName);
+  if (unguarded.length > 0) {
+    console.error(`TENANT_GUARD: modèles sans protection tenant: ${unguarded.join(', ')}`);
+    process.exit(1);
+  }
+  console.log('✅ Tenant guard actif sur tous les modèles tenant-scopés');
+}
 
 // 13. Handle 404 for unknown API routes
 app.use('/api/*', (req, res, next) => {

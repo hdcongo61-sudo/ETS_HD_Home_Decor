@@ -56,6 +56,11 @@ const userSchema = mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Version de jeton : l'incrément révoque toutes les sessions de l'utilisateur.
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     lastLogin: {
       type: Date,
       default: null,

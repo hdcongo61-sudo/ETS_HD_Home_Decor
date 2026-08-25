@@ -17,11 +17,28 @@ const { getTenantId } = require('./tenantContext');
  * Safety rules:
  *   - If there is no tenant context (super-admin control plane, scripts,
  *     migrations, the pre-context auth lookup), nothing is injected.
- *   - If the caller already set `tenantId` on the query, it is respected.
+ *   - If the caller sets `tenantId` equal to the active context, it is kept.
+ *   - If the caller sets a DIFFERENT `tenantId`, the operation is rejected
+ *     (fail-closed) — prevents cross-tenant pollution in data-plane code.
  */
 module.exports = function tenantGuardPlugin(schema) {
   // Only guard models that actually carry a tenantId.
   if (!schema.path('tenantId')) return;
+
+  // Marker used by the startup assertion in server.js.
+  schema.tenantGuardVersion = 1;
+
+  const assertTenantMatch = (givenTenantId) => {
+    const tenantId = getTenantId();
+    if (!tenantId) return true; // pas de contexte → pas de vérification
+    const given = givenTenantId && givenTenantId.toString ? givenTenantId.toString() : null;
+    if (!given || given !== String(tenantId)) {
+      const err = new Error('TENANT_GUARD: opération ciblant un tenantId différent du contexte actif.');
+      err.tenantGuardViolation = true;
+      throw err;
+    }
+    return true;
+  };
 
   const QUERY_HOOKS = [
     'find', 'findOne', 'findOneAndUpdate', 'findOneAndDelete',
@@ -39,10 +56,12 @@ module.exports = function tenantGuardPlugin(schema) {
       if (!tenantId) return; // no context → no injection (super-admin / scripts)
 
       const q = this.getQuery();
-      // Respect an explicit tenantId already set by the caller.
-      if (q.tenantId === undefined) {
-        this.where({ tenantId });
+      // Fail-closed : un tenantId explicite doit correspondre au contexte actif.
+      if (q && q.tenantId !== undefined) {
+        assertTenantMatch(q.tenantId);
+        return;
       }
+      this.where({ tenantId });
     });
   });
 
@@ -56,16 +75,30 @@ module.exports = function tenantGuardPlugin(schema) {
     // Avoid double-scoping if a leading $match already filters tenantId.
     const alreadyScoped =
       first && first.$match && Object.prototype.hasOwnProperty.call(first.$match, 'tenantId');
-    if (!alreadyScoped) {
-      pipeline.unshift({ $match: { tenantId } });
+    if (alreadyScoped) {
+      assertTenantMatch(first.$match.tenantId);
+      return;
     }
+    pipeline.unshift({ $match: { tenantId } });
   });
 
   // New documents: stamp tenantId from context if not already set.
   schema.pre('save', function stampTenant(next) {
-    if (this.isNew && !this.tenantId) {
+    if (this.isNew) {
       const tenantId = getTenantId();
-      if (tenantId) this.tenantId = tenantId;
+      if (tenantId) {
+        if (!this.tenantId) {
+          this.tenantId = tenantId;
+        } else {
+          // Fail-closed : un document neuf déjà rattaché à un autre tenant est rejeté.
+          const given = this.tenantId && this.tenantId.toString ? this.tenantId.toString() : null;
+          if (given !== String(tenantId)) {
+            const err = new Error('TENANT_GUARD: création de document avec un tenantId différent du contexte actif.');
+            err.tenantGuardViolation = true;
+            return next(err);
+          }
+        }
+      }
     }
     next();
   });

@@ -14,7 +14,8 @@ const {
   getUserById,
   getLoginStats,
   getLoginActivity,
-  toggleUserActive
+  toggleUserActive,
+  revokeAllSessions
 } = require('../controllers/userController');
 const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
@@ -35,6 +36,8 @@ router.get('/login-stats', protect, requireTenant, admin, getLoginStats);
 router.get('/login-activity/:id', protect, requireTenant, admin, getLoginActivity);
 router.get('/me', protect, getCurrentUser);
 router.get('/stats', protect, requireTenant, admin, getUserStats);
+// Révoque toutes les sessions du compte courant (bump tokenVersion).
+router.post('/logout-all', protect, revokeAllSessions);
 router.route('/:id').get(protect, requireTenant, getUserById);
 
 
