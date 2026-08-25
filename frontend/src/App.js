@@ -18,6 +18,7 @@ import BottomTabBar from './components/BottomTabBar';
 import AppLoader from './components/AppLoader';
 import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
+import { DashboardDataProvider } from './context/DashboardDataContext';
 import DesktopNavRail from './components/DesktopNavRail';
 import ServerWakeup from './components/ServerWakeup';
 import TrialBanner from './components/TrialBanner';
@@ -74,6 +75,7 @@ const AdminRequests = lazy(() => import('./pages/AdminRequests'));
 const TenantRegister = lazy(() => import('./pages/TenantRegister'));
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 const ImpersonationBanner = lazy(() => import('./components/ImpersonationBanner'));
+const UltimateFilters = lazy(() => import('./pages/UltimateFilters'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const PUBLIC_ROUTES = new Set(['/login', '/access-restricted']);
@@ -436,6 +438,14 @@ function ApplicationRoutes() {
                   }
                 />
                 <Route
+                  path="/ultimate-filters"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <UltimateFilters />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/profile"
                   element={
                     <ProtectedRoute>
@@ -518,14 +528,16 @@ function App() {
       <ModalProvider>
         <AppSettingsProvider>
           <AuthProvider>
-            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <ScrollToTop />
-              <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-              <ConfirmProvider />
-              <ApplicationShell />
-          </Router>
-        </AuthProvider>
-      </AppSettingsProvider>
+            <DashboardDataProvider>
+              <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <ScrollToTop />
+                <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+                <ConfirmProvider />
+                <ApplicationShell />
+              </Router>
+            </DashboardDataProvider>
+          </AuthProvider>
+        </AppSettingsProvider>
       </ModalProvider>
     </ErrorBoundary>
   );

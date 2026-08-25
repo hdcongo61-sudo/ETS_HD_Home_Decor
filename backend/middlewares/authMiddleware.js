@@ -4,7 +4,10 @@ const User = require('../models/userModel');
 const Tenant = require('../models/tenantModel');
 const { runWithTenant } = require('../utils/tenantContext');
 
-const protect = asyncHandler(async (req, res, next) => {
+// Core token verification + tenant resolution.
+// `allowRestricted` lets suspended/expired shops through (they can still pay
+// their subscription to reactivate), while normal data-plane routes stay blocked.
+const authenticate = (allowRestricted) => asyncHandler(async (req, res, next) => {
   // Idempotent: when protect already ran earlier in this chain (e.g. a
   // mount-level guard before per-route protect), skip re-verifying. The tenant
   // context established by the first call is still active downstream.
@@ -76,18 +79,33 @@ const protect = asyncHandler(async (req, res, next) => {
           tenant.trialEndsAt &&
           new Date() > new Date(tenant.trialEndsAt);
 
-        if (tenant.status === 'suspended') {
+        const isPaymentOverdue =
+          tenant.status === 'active' &&
+          tenant.nextPaymentDue &&
+          new Date() > new Date(tenant.nextPaymentDue);
+
+        if (tenant.status === 'suspended' && !allowRestricted) {
           return res.status(403).json({
             message: 'Votre abonnement est suspendu. Veuillez contacter le support.',
             code: 'TENANT_SUSPENDED',
           });
         }
 
-        if (tenant.status === 'expired' || isTrialExpired) {
+        if ((tenant.status === 'expired' || isTrialExpired) && !allowRestricted) {
           return res.status(403).json({
-            message: "Votre période d'essai est terminée. Veuillez souscrire à un abonnement.",
+            message: "Votre periode d essai est terminee. Veuillez souscrire a un abonnement.",
             code: 'TENANT_EXPIRED',
             trialEndsAt: tenant.trialEndsAt,
+          });
+        }
+
+        if (isPaymentOverdue && !allowRestricted) {
+          const daysPastDue = Math.floor((new Date() - new Date(tenant.nextPaymentDue)) / (1000 * 60 * 60 * 24));
+          return res.status(403).json({
+            message: `Votre abonnement a expire il y a ${daysPastDue} jour(s). Payez pour reactiver votre boutique.`,
+            code: 'PAYMENT_OVERDUE',
+            nextPaymentDue: tenant.nextPaymentDue,
+            daysPastDue,
           });
         }
 
@@ -127,6 +145,11 @@ const protect = asyncHandler(async (req, res, next) => {
     return res.status(401).json({ message: 'Non autorisé, aucun token.' });
   }
 });
+
+const protect = authenticate(false);
+// Same as protect, but suspended/expired shops are allowed through so they can
+// reach the billing endpoints and reactivate by paying.
+const protectForBilling = authenticate(true);
 
 const admin = (req, res, next) => {
   if (req.user && (req.user.isAdmin || req.user.isSuperAdmin)) {
@@ -172,4 +195,4 @@ const adminOrPermission = (permission) => (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin, superAdmin, requireTenant, adminOrPermission };
+module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission };

@@ -1527,10 +1527,93 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       {renderResultStats()}
       {renderFiltersDrawer()}
 
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3 p-3">
+        {visibleProducts.map((p) => {
+          const stockStatus = getProductStockStatus(p.stock);
+          return (
+            <div key={p._id} className={`fluent-card-filled p-4 space-y-3 ${selectedIds.includes(p._id) ? 'ring-2 ring-[var(--ms-blue)]' : ''}`}>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(p._id)}
+                  onChange={() => toggleSelect(p._id)}
+                  className="mt-1 h-5 w-5 cursor-pointer accent-[var(--ms-blue)]"
+                  aria-label={`Sélectionner ${p.name}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <Link
+                    to={productPath(p)}
+                    state={productLinkState}
+                    className="block"
+                  >
+                    <div className="flex gap-3">
+                      {p.image ? (
+                        <img src={p.image} alt={p.name} className="h-16 w-16 shrink-0 rounded-[var(--radiusLarge)] border border-slate-100 object-cover bg-slate-50" loading="lazy" />
+                      ) : (
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] border border-slate-100 bg-slate-100 text-slate-500">
+                          <Package className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="fui-body1-strong line-clamp-2">{p.name}</p>
+                        {p.category && <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">{p.category}</p>}
+                      </div>
+                    </div>
+                  </Link>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix</p>
+                      <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Stock</p>
+                      <StatusBadge tone={stockStatus.tone}>{(p.stock || 0).toLocaleString('fr-FR')}</StatusBadge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {p.container && <StatusBadge tone="neutral">{p.container}</StatusBadge>}
+                    {p.warehouse && <StatusBadge tone="neutral">{p.warehouse}</StatusBadge>}
+                    {p.supplierName && <StatusBadge tone="brand">{p.supplierName}</StatusBadge>}
+                    {renderLossChip(lossMap, p)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                <button
+                  type="button"
+                  onClick={() => onEdit(p)}
+                  className="flex-1 min-w-[100px] ms-button ms-button-secondary ms-button-sm"
+                >
+                  <Edit3 className="h-4 w-4" /> Modifier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDuplicate(p)}
+                  className="flex-1 min-w-[100px] ms-button ms-button-secondary ms-button-sm"
+                >
+                  <Copy className="h-4 w-4" /> Dupliquer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(p)}
+                  className="ms-button ms-button-secondary ms-button-sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden lg:block overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm lg:text-base">
-          <thead className="bg-[var(--colorNeutralBackground2)] md:sticky md:top-0 z-10">
+          <thead className="bg-[var(--colorNeutralBackground2)] lg:sticky lg:top-0 z-10">
             <tr>
               <th className="px-3 py-3 lg:px-4 lg:py-4 w-10">
                 <input
@@ -1677,96 +1760,6 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
         </table>
       </div>
 
-      {/* Mobile cards (admin) */}
-      <div className="md:hidden space-y-4 p-4">
-        {visibleProducts.map((p) => (
-          <div key={p._id} className={`rounded-2xl p-4 shadow-sm ${selectedIds.includes(p._id) ? 'border-2 border-[var(--ms-blue)] bg-[var(--ms-blue-soft)]' : 'border border-slate-200 bg-white'}`} onClick={() => document.activeElement?.blur?.()}>
-            <div className="flex gap-3">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(p._id)}
-                onChange={() => toggleSelect(p._id)}
-                className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--ms-blue)]"
-                aria-label={`Sélectionner ${p.name}`}
-              />
-              {p.image ? (
-                <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-100" />
-              ) : (
-                <div className="w-16 h-16 bg-slate-100 text-slate-500 flex items-center justify-center rounded-xl shrink-0"><Package className="h-6 w-6" /></div>
-              )}
-              <div className="flex-1 min-w-0">
-                <Link
-                  to={productPath(p)}
-                  state={productLinkState}
-                  className="text-base font-semibold text-slate-950 hover:text-slate-700"
-                  {...desktopLinkProps}
-                >
-                  {p.name}
-                </Link>
-                <p className="text-sm text-slate-500">{p.category || '—'}</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  <StatusBadge tone="neutral">
-                    {p.container?.trim() || 'Non défini'}
-                  </StatusBadge>
-                  <StatusBadge tone="success">
-                    {p.warehouse?.trim() || 'Non défini'}
-                  </StatusBadge>
-                  {renderLossChip(lossMap, p)}
-                </div>
-                <p className="text-sm font-semibold text-slate-950 mt-1">
-                  {p.price?.toLocaleString('fr-FR')} CFA
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm text-[var(--ms-text-muted)] mt-4">
-              <div>
-                <p className="text-xs text-slate-500 uppercase">Stock</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-slate-950">{p.stock}</p>
-                  <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 uppercase">Fournisseur</p>
-                <p className="font-medium text-slate-950">{p.supplierName || '—'}</p>
-                {p.supplierPhone && <p className="text-xs text-slate-500">{p.supplierPhone}</p>}
-              </div>
-            </div>
-            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={() => onEdit(p)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-              >
-                <Edit3 className="h-4 w-4" />
-                Modifier
-              </button>
-              {isAdmin && (
-                <>
-                  <FeatureGate
-                    feature={FEATURE_KEYS.PRODUCT_DUPLICATE}
-                    locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_DUPLICATE} className="w-full justify-center" icon={<Copy className="h-4 w-4" />}>Dupliquer</LockedFeatureButton>}
-                  >
-                    <button
-                      onClick={() => onDuplicate(p)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Dupliquer
-                    </button>
-                  </FeatureGate>
-                  <button
-                    onClick={() => onDelete(p)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Supprimer
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
 
       {renderLoadMore()}
 

@@ -4,7 +4,7 @@ import { buildCacheKey, writeCache, readCache, clearCache } from '../utils/offli
 
 let lastFeatureToastAt = 0;
 
-const DEV_API_CANDIDATES = ['http://localhost:5001/api', 'http://localhost:5002/api'];
+const DEV_API_CANDIDATES = ['http://localhost:5002/api', 'http://localhost:5001/api'];
 const DEV_API_STORAGE_KEY = 'ets_hd_api_base_url';
 
 const isBrowser = typeof window !== 'undefined';

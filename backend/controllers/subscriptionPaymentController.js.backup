@@ -1,0 +1,280 @@
+const asyncHandler = require('express-async-handler');
+const crypto = require('crypto');
+const pawapay = require('../utils/pawapay');
+const pawapayConfig = require('../config/pawapay');
+const SubscriptionPayment = require('../models/subscriptionPaymentModel');
+const Tenant = require('../models/tenantModel');
+const PlatformAudit = require('../models/platformAuditModel');
+
+// Shared by the webhook and the status-polling endpoint: apply a final
+// PawaPay deposit status to the local payment + tenant subscription.
+// Idempotent — safe to call twice for the same deposit.
+const applyFinalDepositStatus = async (payment, deposit) => {
+  const pawaStatus = deposit.status || '';
+  const alreadySettled = payment.status !== 'pending';
+
+  if (pawaStatus === 'COMPLETED') {
+    if (alreadySettled && payment.status === 'completed') return payment;
+    const paidAmount = Number(deposit.amount) || payment.amount;
+    const paidAt = new Date();
+    const months = Number(payment.months) || 1;
+
+    const tenant = await Tenant.findById(payment.tenantId);
+    if (!tenant) {
+      payment.status = 'failed';
+      payment.pawaStatus = pawaStatus;
+      payment.failureReason = 'Boutique introuvable.';
+      await payment.save();
+      return payment;
+    }
+
+    // Extend the subscription by N months from the current due date if it is
+    // still in the future, otherwise from today.
+    const currentDue = tenant.nextPaymentDue ? new Date(tenant.nextPaymentDue) : null;
+    const base = currentDue && currentDue > paidAt ? currentDue : paidAt;
+    const nextDue = new Date(base);
+    nextDue.setMonth(nextDue.getMonth() + months);
+
+    tenant.payments.push({
+      amount: paidAmount,
+      method: 'mobile_money',
+      period: `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}${months > 1 ? ` (${months} mois)` : ''}`,
+      note: `PawaPay ${payment.provider}`,
+      recordedBy: payment.requestedBy || null,
+      paidAt,
+    });
+    tenant.lastPaymentAt = paidAt;
+    tenant.nextPaymentDue = nextDue;
+    if (tenant.status !== 'active') tenant.status = 'active';
+    await tenant.save();
+
+    payment.status = 'completed';
+    payment.pawaStatus = pawaStatus;
+    payment.providerTransactionId = deposit.providerTransactionId || '';
+    payment.completedAt = paidAt;
+    payment.failureReason = '';
+    await payment.save();
+
+    PlatformAudit.record({
+      req: null,
+      action: 'tenant.payment_pawapay',
+      tenant,
+      meta: {
+        amount: paidAmount,
+        months,
+        provider: payment.provider,
+        depositId: payment.depositId,
+        phone: payment.phoneNumber,
+      },
+    });
+    return payment;
+  }
+
+  if (pawaStatus === 'FAILED') {
+    if (alreadySettled) return payment;
+    payment.status = 'failed';
+    payment.pawaStatus = pawaStatus;
+    payment.failureReason =
+      deposit.failureReason?.failureMessage || deposit.failureReason?.failureCode || 'Paiement échoué.';
+    await payment.save();
+    return payment;
+  }
+
+  // Non-final status seen from PawaPay (ACCEPTED / PROCESSING / IN_RECONCILIATION).
+  payment.pawaStatus = pawaStatus;
+  await payment.save();
+  return payment;
+};
+
+// ── Authenticated: payment options for the current shop ──
+// GET /api/tenants/payment/pawapay/config
+const getPawaPayConfig = asyncHandler(async (req, res) => {
+  res.json({
+    enabled: pawapayConfig.isConfigured,
+    providers: pawapayConfig.isConfigured ? pawapayConfig.providers : [],
+    suggestedAmount: Number(req.tenant?.monthlyPrice) || 0,
+    nextPaymentDue: req.tenant?.nextPaymentDue || null,
+  });
+});
+
+// ── Authenticated (shop admin): initiate a mobile-money payment ──
+// POST /api/tenants/payment/pawapay/initiate
+const initiatePawaPayPayment = asyncHandler(async (req, res) => {
+  if (!req.tenant) {
+    res.status(403);
+    throw new Error(‘Boutique requise.’);
+  }
+  if (!pawapayConfig.isConfigured) {
+    res.status(503);
+    throw new Error(‘Le paiement mobile money n est pas encore configure. Contactez le support.’);
+  }
+
+  const { providerId, phoneNumber, amount, months } = req.body || {};
+  const provider = pawapayConfig.providers.find((p) => p.id === providerId);
+  if (!provider) {
+    res.status(400);
+    throw new Error(‘Operateur mobile money invalide.’);
+  }
+
+  const cleanedPhone = pawapay.cleanPhoneNumber(phoneNumber);
+  if (!/^\+?[0-9]{8,15}$/.test(cleanedPhone)) {
+    res.status(400);
+    throw new Error(‘Numero de telephone invalide.’);
+  }
+
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    res.status(400);
+    throw new Error(‘Montant invalide.’);
+  }
+  if (Math.round(numericAmount * 100) / 100 > 100000000) {
+    res.status(400);
+    throw new Error(‘Montant trop eleve.’);
+  }
+
+  const numericMonths = Number(months) || 1;
+  if (!Number.isInteger(numericMonths) || numericMonths < 1 || numericMonths > 12) {
+    res.status(400);
+    throw new Error(‘Nombre de mois invalide (1-12).’);
+  }
+
+  const depositId = crypto.randomUUID();
+  let response;
+  try {
+    response = await pawapay.createDeposit({
+      depositId,
+      amount: numericAmount,
+      currency: provider.currency,
+      provider: provider.id,
+      phoneNumber: cleanedPhone,
+      clientReferenceId: `TEN-${req.tenant._id}`,
+    });
+  } catch (err) {
+    res.status(502);
+    throw new Error(err.message || ‘Impossible de contacter PawaPay.’);
+  }
+
+  const pawaStatus = response?.status || ‘REJECTED’;
+  const failureReason = response?.failureReason;
+
+  const payment = await SubscriptionPayment.create({
+    tenantId: req.tenant._id,
+    depositId,
+    amount: numericAmount,
+    currency: provider.currency,
+    country: provider.country,
+    provider: provider.id,
+    phoneNumber: cleanedPhone,
+    months: numericMonths,
+    status: pawaStatus === ‘REJECTED’ ? ‘failed’ : ‘pending’,
+    pawaStatus,
+    failureReason: failureReason
+      ? failureReason.failureMessage || failureReason.failureCode || ‘’
+      : ‘’,
+    requestedBy: req.user._id,
+  });
+
+  if (pawaStatus === ‘REJECTED’) {
+    res.status(400).json({
+      success: false,
+      message: failureReason?.failureMessage || ‘Paiement refuse par l operateur.’,
+      code: failureReason?.failureCode || ‘REJECTED’,
+      payment: payment.toObject(),
+    });
+    return;
+  }
+
+  res.status(201).json({
+    success: true,
+    depositId,
+    status: pawaStatus,
+    payment: payment.toObject(),
+  });
+});
+
+// ── Authenticated: poll the status of an initiated payment ──
+// GET /api/tenants/payment/pawapay/:depositId
+const getPawaPayPaymentStatus = asyncHandler(async (req, res) => {
+  const payment = await SubscriptionPayment.findOne({
+    depositId: req.params.depositId,
+    tenantId: req.tenantId,
+  });
+  if (!payment) {
+    res.status(404);
+    throw new Error('Paiement introuvable.');
+  }
+
+  // If still pending locally, ask PawaPay for the latest status.
+  if (payment.status === 'pending') {
+    try {
+      const result = await pawapay.getDeposit(req.params.depositId);
+      const deposit = result?.status === 'FOUND' && result.data ? result.data : null;
+      if (deposit && ['COMPLETED', 'FAILED'].includes(deposit.status)) {
+        await applyFinalDepositStatus(payment, deposit);
+      } else if (deposit) {
+        payment.pawaStatus = deposit.status || payment.pawaStatus;
+        await payment.save();
+      }
+    } catch (err) {
+      // Network hiccup — keep returning local state, retry on next poll.
+      console.warn('[pawapay] status poll failed:', err.message);
+    }
+  }
+
+  res.json(payment.toObject());
+});
+
+// ── Public: PawaPay webhook (final deposit statuses) ──
+// POST /api/tenants/payment/pawapay/webhook
+const pawaPayWebhook = asyncHandler(async (req, res) => {
+  const verification = pawapay.verifyCallback(req);
+
+  // Strict mode: when a public key is configured, reject unverifiable callbacks.
+  if (verification.configured && (!verification.digestOk || !verification.sigOk)) {
+    console.warn('[pawapay] Rejecting webhook:', verification.reason);
+    res.status(401).json({ received: false, reason: verification.reason });
+    return;
+  }
+  if (!verification.digestOk) {
+    console.warn('[pawapay] Webhook Content-Digest mismatch — ignoring.');
+    res.status(400).json({ received: false, reason: verification.reason });
+    return;
+  }
+  if (verification.reason) {
+    console.warn('[pawapay]', verification.reason);
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {}));
+  } catch (err) {
+    res.status(400).json({ received: false, reason: 'Invalid JSON body' });
+    return;
+  }
+
+  const { depositId, status } = payload;
+  if (!depositId) {
+    res.status(400).json({ received: false, reason: 'Missing depositId' });
+    return;
+  }
+
+  const payment = await SubscriptionPayment.findOne({ depositId });
+  if (payment && payment.status === 'pending') {
+    try {
+      await applyFinalDepositStatus(payment, { status, amount: payload.amount, providerTransactionId: payload.providerTransactionId, failureReason: payload.failureReason });
+    } catch (err) {
+      console.error('[pawapay] Failed to apply webhook status:', err.message);
+      res.status(500).json({ received: false });
+      return;
+    }
+  }
+
+  res.status(200).json({ received: true });
+});
+
+module.exports = {
+  getPawaPayConfig,
+  initiatePawaPayPayment,
+  getPawaPayPaymentStatus,
+  pawaPayWebhook,
+};

@@ -85,7 +85,78 @@ const TopSellingProducts = () => {
 
       {/* Tableau principal */}
       <ProductSection title="Classement détaillé" description="Produits ordonnés par volume et performance financière.">
-      <div className="hidden overflow-x-auto md:block">
+      {/* Mobile cards */}
+      <div className="lg:hidden space-y-3 p-3">
+        {data.map((p, index) => (
+          <div
+            key={p._id || index}
+            className="fluent-card-filled p-4 space-y-3 cursor-pointer"
+            onClick={() => navigate(productPath(p))}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+                    style={{
+                      background: 'var(--ms-blue-soft)',
+                      color: 'var(--colorBrandForeground1)',
+                    }}
+                  >
+                    {index + 1}
+                  </span>
+                  <p className="fui-body1-strong">{p.name}</p>
+                </div>
+                {p.category && (
+                  <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-1">{p.category}</p>
+                )}
+              </div>
+            </div>
+
+            {p.supplierName && (
+              <div className="flex items-center gap-2 rounded-[var(--radiusMedium)] border px-3 py-2">
+                <Wallet className="h-4 w-4 text-[var(--colorNeutralForeground3)]" />
+                <span className="fui-caption1">{p.supplierName}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Unités vendues</p>
+                <p className="fui-body1-strong tabular-nums">{(p.sold || 0).toLocaleString('fr-FR')}</p>
+              </div>
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix unitaire</p>
+                <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t">
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Revenu</p>
+                <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusSuccessForeground1)'}}>
+                  {(p.revenue || 0).toLocaleString('fr-FR')} CFA
+                </p>
+              </div>
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Profit</p>
+                <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusSuccessForeground1)'}}>
+                  {(p.profit || 0).toLocaleString('fr-FR')} CFA
+                </p>
+              </div>
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Marge</p>
+                <p className="fui-body1-strong tabular-nums" style={{color: 'var(--ms-blue)'}}>
+                  {p.margin ? p.margin.toFixed(1) + '%' : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="min-w-full divide-y divide-[var(--colorNeutralStroke2)] text-sm">
           <thead className="bg-[var(--colorNeutralBackground2)]">
             <tr>
@@ -135,48 +206,6 @@ const TopSellingProducts = () => {
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Cartes mobiles */}
-      <div className="md:hidden space-y-4">
-        {data.map((p, index) => (
-          <div
-            key={p._id || index}
-            className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-4 shadow-sm"
-            onClick={() => navigate(productPath(p))}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-base font-semibold text-[var(--colorNeutralForeground1)]">{p.name}</p>
-                <p className="text-xs text-[var(--colorNeutralForeground3)]">{p.category || '—'}</p>
-              </div>
-              <span className="text-xs text-[var(--colorNeutralForeground3)]">#{index + 1}</span>
-            </div>
-            <p className="text-sm text-[var(--colorNeutralForeground3)] mt-1">
-              Fournisseur : <span className="text-[var(--colorNeutralForeground2)]">{p.supplierName || '—'}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Unités vendues</p>
-                <p className="font-semibold text-[var(--colorNeutralForeground1)]">{p.sold?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Revenu</p>
-                <p className="font-semibold text-emerald-700">{p.revenue?.toLocaleString() || '—'} CFA</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Profit</p>
-                <p className="font-semibold text-emerald-600">{p.profit?.toLocaleString() || '—'} CFA</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Marge</p>
-                <p className="font-semibold text-[var(--ms-blue)]">
-                  {p.margin ? p.margin.toFixed(1) + '%' : '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
       </ProductSection>
     </ProductPageShell>

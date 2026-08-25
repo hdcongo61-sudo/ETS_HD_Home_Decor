@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Building2,
   LifeBuoy,
+  Sparkles,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
@@ -37,6 +38,7 @@ const PRIMARY_NAV = [
 ];
 
 const ADMIN_NAV = [
+  { to: '/ultimate-filters',  icon: Sparkles,         label: 'Filtres Ultimes', highlight: true },
   { to: '/comptabilite',     icon: Calculator,      label: 'Comptabilité' },
   { to: '/expenses',         icon: Receipt,         label: 'Dépenses' },
   { to: '/employees',        icon: BriefcaseBusiness,label: 'Employés' },
@@ -46,13 +48,17 @@ const ADMIN_NAV = [
   { to: '/support',          icon: LifeBuoy,         label: 'Assistance' },
 ];
 
-const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0 }) => (
+const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0, highlight = false }) => (
   <Link
     to={to}
-    className={`fluent-nav-rail__item ${active ? 'fluent-nav-rail__item--active' : ''}`}
+    className={`fluent-nav-rail__item ${active ? 'fluent-nav-rail__item--active' : ''} ${highlight ? 'fluent-nav-rail__item--highlight' : ''}`}
     title={!expanded ? label : undefined}
     aria-label={badge > 0 ? `${label} (${badge} non lu${badge > 1 ? 's' : ''})` : label}
     aria-current={active ? 'page' : undefined}
+    style={highlight && !active ? {
+      background: 'var(--ms-blue-soft)',
+      color: 'var(--colorBrandForeground1)',
+    } : undefined}
   >
     <span className="fluent-nav-rail__item-icon" style={{ position: 'relative' }}>
       <Icon size={18} />
@@ -187,7 +193,7 @@ const DesktopNavRail = () => {
                 </motion.span>
               </AnimatePresence>
             )}
-            {adminNavItems.map(({ to, icon, label }) => (
+            {adminNavItems.map(({ to, icon, label, highlight }) => (
               <NavItem
                 key={to}
                 to={to}
@@ -196,6 +202,7 @@ const DesktopNavRail = () => {
                 expanded={expanded}
                 active={isActive(to)}
                 badge={to === '/support' ? supportUnread : 0}
+                highlight={highlight}
               />
             ))}
           </>

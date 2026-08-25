@@ -458,47 +458,110 @@ const Comptabilite = () => {
                 <EmptyState title="Journal vide" description="Aucune écriture sur la période." />
               </div>
             ) : (
-              <DataTable>
-                <table ref={journalRef} className="responsive-table w-full">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Libellé</th>
-                      <th>Type</th>
-                      <th className="text-right">Produit</th>
-                      <th className="text-right">Charge</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {journal.entries.map((e, i) => (
-                      <tr key={`${e.type}-${i}`}>
-                        <td className="text-[var(--ms-text-muted)] text-xs whitespace-nowrap">
-                          {new Date(e.date).toLocaleDateString('fr-FR')}
-                        </td>
-                        <td className="font-medium">{e.libelle}</td>
-                        <td>
-                          <StatusBadge tone={e.type === 'vente' ? 'success' : 'danger'}>
-                            {e.type === 'vente' ? 'Vente' : 'Dépense'}
-                          </StatusBadge>
-                        </td>
-                        <td className="text-right font-semibold tabular-nums text-[var(--ms-success)]">
-                          {e.credit ? fmt(e.credit) : '—'}
-                        </td>
-                        <td className="text-right font-semibold tabular-nums text-[var(--ms-danger)]">
-                          {e.debit ? fmt(e.debit) : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ borderTop: '2px solid var(--ms-border)' }}>
-                      <td colSpan={3} className="font-semibold">Totaux</td>
-                      <td className="text-right font-bold tabular-nums text-[var(--ms-success)]">{fmt(journal.totals.credit)}</td>
-                      <td className="text-right font-bold tabular-nums text-[var(--ms-danger)]">{fmt(journal.totals.debit)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </DataTable>
+              <>
+                {/* Mobile card layout */}
+                <div className="lg:hidden space-y-3 p-3">
+                  {journal.entries.map((e, i) => (
+                    <div key={`${e.type}-${i}`} className="fluent-card-filled p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="fui-body1-strong">{e.libelle}</p>
+                          <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">
+                            {new Date(e.date).toLocaleDateString('fr-FR', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        <StatusBadge tone={e.type === 'vente' ? 'success' : 'danger'}>
+                          {e.type === 'vente' ? 'Vente' : 'Dépense'}
+                        </StatusBadge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                        <div>
+                          <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Produit</p>
+                          <p className="fui-body1-strong tabular-nums" style={{ color: e.credit ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                            {e.credit ? fmt(e.credit) : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Charge</p>
+                          <p className="fui-body1-strong tabular-nums" style={{ color: e.debit ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                            {e.debit ? fmt(e.debit) : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Mobile totals card */}
+                  <div className="fluent-card-filled p-4 bg-[var(--colorNeutralBackground2)]">
+                    <p className="fui-subtitle2 mb-3">Totaux</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="fui-caption1 text-[var(--colorNeutralForeground3)]">Total Produits</p>
+                        <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                          {fmt(journal.totals.credit)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="fui-caption1 text-[var(--colorNeutralForeground3)]">Total Charges</p>
+                        <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
+                          {fmt(journal.totals.debit)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden lg:block">
+                  <DataTable>
+                    <table ref={journalRef} className="responsive-table w-full">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Libellé</th>
+                          <th>Type</th>
+                          <th className="text-right">Produit</th>
+                          <th className="text-right">Charge</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {journal.entries.map((e, i) => (
+                          <tr key={`${e.type}-${i}`}>
+                            <td className="text-[var(--ms-text-muted)] text-xs whitespace-nowrap">
+                              {new Date(e.date).toLocaleDateString('fr-FR')}
+                            </td>
+                            <td className="font-medium">{e.libelle}</td>
+                            <td>
+                              <StatusBadge tone={e.type === 'vente' ? 'success' : 'danger'}>
+                                {e.type === 'vente' ? 'Vente' : 'Dépense'}
+                              </StatusBadge>
+                            </td>
+                            <td className="text-right font-semibold tabular-nums text-[var(--ms-success)]">
+                              {e.credit ? fmt(e.credit) : '—'}
+                            </td>
+                            <td className="text-right font-semibold tabular-nums text-[var(--ms-danger)]">
+                              {e.debit ? fmt(e.debit) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '2px solid var(--ms-border)' }}>
+                          <td colSpan={3} className="font-semibold">Totaux</td>
+                          <td className="text-right font-bold tabular-nums text-[var(--ms-success)]">{fmt(journal.totals.credit)}</td>
+                          <td className="text-right font-bold tabular-nums text-[var(--ms-danger)]">{fmt(journal.totals.debit)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </DataTable>
+                </div>
+              </>
             )}
           </section>
         </>

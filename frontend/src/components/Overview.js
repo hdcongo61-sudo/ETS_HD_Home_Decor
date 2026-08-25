@@ -31,9 +31,13 @@ import {
   FileText,
   Crown,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
 } from "lucide-react";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
+import { useDashboardData } from "../context/DashboardDataContext";
 import { KPICard, LoadingSkeleton } from "./business";
 import { formatCfa as cfa } from "../utils/format";
 import { SERIE_PROFIT } from "../utils/chartColors";
@@ -41,7 +45,6 @@ import { useModal } from "../context/ModalContext";
 
 const num = (value) => (Number(value) || 0).toLocaleString("fr-FR");
 const isFiniteNumber = (value) => Number.isFinite(Number(value));
-const pick = (result) => (result.status === "fulfilled" ? result.value?.data : null);
 
 const TONES = {
   brand:   { bg: "var(--ms-blue-soft)",                    fg: "var(--colorBrandForeground1)" },
@@ -49,6 +52,55 @@ const TONES = {
   warning: { bg: "var(--colorStatusWarningBackground1)",  fg: "var(--colorStatusWarningForeground1)" },
   danger:  { bg: "var(--colorStatusDangerBackground1)",   fg: "var(--colorStatusDangerForeground1)" },
   neutral: { bg: "var(--colorNeutralBackground3)",        fg: "var(--colorNeutralForeground2)" },
+};
+
+/* ---------- Collapsible Section ---------- */
+const CollapsibleCard = ({ title, icon, defaultOpen = true, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <section className="ms-surface overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between gap-3 p-5 text-left transition-colors hover:bg-[var(--ms-bg-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ms-blue)]"
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: TONES.brand.bg, color: TONES.brand.fg }}>
+            {icon}
+          </span>
+          <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>{title}</h2>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="h-5 w-5 shrink-0" style={{ color: "var(--colorNeutralForeground3)" }} />
+        ) : (
+          <ChevronDown className="h-5 w-5 shrink-0" style={{ color: "var(--colorNeutralForeground3)" }} />
+        )}
+      </button>
+      {isOpen && <div className="px-5 pb-5">{children}</div>}
+    </section>
+  );
+};
+
+/* ---------- Compact Module Card ---------- */
+const CompactModuleCard = ({ to, icon, tone = "brand", title, stat }) => {
+  const t = TONES[tone] || TONES.brand;
+  return (
+    <Link
+      to={to}
+      className="group ms-surface flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: t.bg, color: t.fg }}>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{title}</h3>
+        {stat && (
+          <p className="mt-0.5 fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{stat}</p>
+        )}
+      </div>
+      <ArrowRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" style={{ color: "var(--colorNeutralForeground3)" }} />
+    </Link>
+  );
 };
 
 /* ---------- Bloc générique de section ---------- */
@@ -204,6 +256,7 @@ const FinanceRow = ({ label, value, badge, badgeTone, strong, color }) => (
 const Overview = () => {
   const { auth } = useContext(AuthContext);
   const { openModal } = useModal();
+  const { fetchOverviewData } = useDashboardData();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const userId = auth?.user?._id;
   const userName = auth?.user?.name || "";
@@ -214,6 +267,7 @@ const Overview = () => {
   const [products, setProducts] = useState(null);
   const [clients, setClients] = useState(null);
   const [bankTx, setBankTx] = useState(null);
+  const [paymentsToday, setPaymentsToday] = useState(null);
   const [compta, setCompta] = useState(null);
   const [reminders, setReminders] = useState(null);
   const [delivery, setDelivery] = useState(null);
@@ -227,38 +281,40 @@ const Overview = () => {
     const load = async () => {
       setLoading(true);
       setLoadIssues(0);
-      if (isAdmin) {
-        const todayKey = new Date().toLocaleDateString("fr-CA"); // YYYY-MM-DD
-        const [s, p, c, b, k, r, d] = await Promise.allSettled([
-          api.get(`/sales/dashboard-sale?range=30days&summaryDate=${todayKey}`),
-          api.get("/products/dashboard?range=month"),
-          api.get("/clients/stats"),
-          api.get("/bank"),
-          api.get("/comptabilite/summary"), // mois en cours par défaut
-          api.get("/sales/reminders/upcoming"),
-          api.get("/sales/stats/delivery"),
-        ]);
+
+      try {
+        // Use cached data from context
+        const data = await fetchOverviewData('30days');
+
         if (cancelled) return;
-        setLoadIssues([s, p, c, b, k, r, d].filter((result) => result.status === 'rejected').length);
-        setSales(pick(s));
-        setProducts(pick(p));
-        setClients(pick(c));
-        setBankTx(pick(b));
-        setCompta(pick(k)?.data || null);
-        setReminders(pick(r));
-        setDelivery(pick(d));
-      } else if (userId) {
-        const [u] = await Promise.allSettled([api.get(`/sales/user/${userId}`)]);
-        if (cancelled) return;
-        setLoadIssues(u.status === 'rejected' ? 1 : 0);
-        setUserSales(pick(u));
+
+        if (isAdmin) {
+          setSales(data.sales);
+          setProducts(data.products);
+          setClients(data.clients);
+          setBankTx(data.bank);
+          setCompta(data.compta?.data || null);
+          setReminders(data.reminders);
+          setDelivery(data.delivery);
+          setPaymentsToday(data.paymentsToday || null);
+          setLoadIssues(data.errors || 0);
+        } else {
+          setUserSales(data.userSales);
+          setLoadIssues(data.errors || 0);
+        }
+      } catch (err) {
+        console.error('Dashboard overview error:', err);
+        if (!cancelled) {
+          setLoadIssues(1);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     };
 
     load();
     return () => { cancelled = true; };
-  }, [isAdmin, userId, reloadKey]);
+  }, [isAdmin, userId, reloadKey, fetchOverviewData]);
 
   // Recharge silencieuse quand une vente/paiement/dépense est créée via le FAB.
   useEffect(() => {
@@ -268,17 +324,16 @@ const Overview = () => {
       // léger debounce : plusieurs événements peuvent arriver d'affilée
       if (timeoutId) window.clearTimeout(timeoutId);
       timeoutId = window.setTimeout(async () => {
-        const todayKey = new Date().toLocaleDateString("fr-CA");
-        const [s, b, k, r] = await Promise.allSettled([
-          api.get(`/sales/dashboard-sale?range=30days&summaryDate=${todayKey}`),
-          api.get("/bank"),
-          api.get("/comptabilite/summary"),
-          api.get("/sales/reminders/upcoming"),
-        ]);
-        setSales((prev) => pick(s) || prev);
-        setBankTx((prev) => pick(b) || prev);
-        setCompta((prev) => pick(k)?.data || prev);
-        setReminders((prev) => pick(r) || prev);
+        try {
+          const data = await fetchOverviewData('30days', true); // force refresh
+          setSales((prev) => data.sales || prev);
+          setBankTx((prev) => data.bank || prev);
+          setCompta((prev) => data.compta?.data || prev);
+          setReminders((prev) => data.reminders || prev);
+          setPaymentsToday((prev) => data.paymentsToday || prev);
+        } catch (err) {
+          console.error('Dashboard refresh error:', err);
+        }
       }, 400);
     };
     window.addEventListener("saleCreated", refresh);
@@ -290,7 +345,7 @@ const Overview = () => {
       window.removeEventListener("paymentCreated", refresh);
       window.removeEventListener("expenseCreated", refresh);
     };
-  }, [isAdmin]);
+  }, [isAdmin, fetchOverviewData]);
 
   const today = useMemo(
     () => new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
@@ -408,9 +463,31 @@ const Overview = () => {
   }
 
   // ---- Vue admin ----
-  const ds = sales?.dailySummary || {};
+  const ds = sales?.summary || {};
   const status = sales?.statusStats || {};
   const toSettle = (status.partially_paid?.count || 0) + (status.pending?.count || 0);
+
+  // Encaissements du jour — fournis par le backend (paiements reçus sur les
+  // ventes). Repli sur les mouvements de caisse si le champ est absent.
+  const paymentDate = new Date();
+  paymentDate.setHours(0, 0, 0, 0);
+  const todayKey = paymentDate.toISOString().split('T')[0];
+
+  const bankPaymentsToday = Array.isArray(bankTx)
+    ? bankTx.filter(tx => {
+        const txDate = new Date(tx.createdAt || tx.date);
+        txDate.setHours(0, 0, 0, 0);
+        const txKey = txDate.toISOString().split('T')[0];
+        return txKey === todayKey && tx.type !== 'expense';
+      })
+    : [];
+
+  const paymentsTotal = paymentsToday != null
+    ? (paymentsToday.total || 0)
+    : bankPaymentsToday.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  const paymentsCount = paymentsToday != null
+    ? (paymentsToday.count || 0)
+    : bankPaymentsToday.length;
 
   const lowStockArr = products?.lowStockProducts;
   const outOfStockArr = products?.outOfStockProducts;
@@ -462,15 +539,8 @@ const Overview = () => {
     },
   ].filter(Boolean);
 
-  // ----- KPI -----
-  const kpis = [
-    { title: "CA du jour", value: cfa(ds.totalAmount), context: `${num(ds.salesCount)} vente(s) aujourd'hui`, icon: <TrendingUp className="h-4 w-4" />, tone: "brand" },
-    { title: "Encaissé aujourd'hui", value: cfa(ds.paymentsTotal), context: `${num(ds.paymentsCount)} paiement(s)`, icon: <Wallet className="h-4 w-4" />, tone: "success" },
-    { title: "Solde de caisse", value: bankBalance == null ? "—" : cfa(bankBalance), context: "Dépôts − retraits", icon: <Landmark className="h-4 w-4" />, tone: bankBalance != null && bankBalance < 0 ? "warning" : "neutral" },
-    { title: "Créances clients", value: creances == null ? "—" : cfa(creances.clients), context: creances ? `${num(creances.nbFactures)} facture(s) à encaisser` : "", icon: <HandCoins className="h-4 w-4" />, tone: (creances?.clients || 0) > 0 ? "warning" : "neutral" },
-    { title: "Valeur du stock", value: stockValue == null ? "—" : cfa(stockValue), context: "Prix de vente potentiel", icon: <Boxes className="h-4 w-4" />, tone: "neutral" },
-    { title: "Résultat net (mois)", value: cr == null ? "—" : cfa(cr.resultatNet), context: cr ? `Marge brute ${cr.margeBrutePct}% · Net ${cr.resultatNetPct}%` : "", icon: <Calculator className="h-4 w-4" />, tone: cr ? (cr.resultatNet >= 0 ? "success" : "danger") : "neutral" },
-  ];
+  // Top 3 critical actions only
+  const criticalActions = actionItems.slice(0, 3);
 
   // ----- Top produits / clients -----
   const topProducts = Array.isArray(sales?.topProducts) ? sales.topProducts.slice(0, 5) : [];
@@ -493,59 +563,101 @@ const Overview = () => {
         </div>
       )}
 
-      {/* Bandeau KPI — situation instantanée */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {kpis.map((k) => (
-          <KPICard key={k.title} title={k.title} value={k.value} context={k.context} icon={k.icon} tone={k.tone} />
-        ))}
+      {/* Hero section — situation instantanée */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* CA du jour */}
+        <section className="ms-surface p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="fui-body1" style={{ color: "var(--colorNeutralForeground3)" }}>CA du jour</h2>
+              <p className="mt-2 fui-display tabular-nums" style={{ color: "var(--colorNeutralForeground1)" }}>
+                {ds.today != null ? cfa(ds.today) : '—'}
+              </p>
+              <p className="mt-1 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
+                {ds.todayCount != null ? `${ds.todayCount} vente${ds.todayCount > 1 ? 's' : ''}` : '—'}
+              </p>
+            </div>
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+              style={{ background: TONES.brand.bg, color: TONES.brand.fg }}
+            >
+              <ShoppingCart className="h-5 w-5" />
+            </span>
+          </div>
+        </section>
+
+        {/* Encaissé aujourd'hui */}
+        <section className="ms-surface p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="fui-body1" style={{ color: "var(--colorNeutralForeground3)" }}>Encaissé aujourd'hui</h2>
+              <p className="mt-2 fui-display tabular-nums" style={{ color: "var(--colorNeutralForeground1)" }}>
+                {paymentsTotal != null ? cfa(paymentsTotal) : '—'}
+              </p>
+              <p className="mt-1 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
+                {paymentsCount != null ? `${paymentsCount} encaissement${paymentsCount > 1 ? 's' : ''}` : '—'}
+              </p>
+            </div>
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+              style={{ background: TONES.success.bg, color: TONES.success.fg }}
+            >
+              <Wallet className="h-5 w-5" />
+            </span>
+          </div>
+        </section>
       </div>
 
-      {/* Centre d'actions */}
-      <section className="ms-surface p-5" aria-label="Actions à traiter">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>À traiter</h2>
-            <p className="mt-0.5 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
-              Ce qui demande votre attention aujourd'hui
-            </p>
+      {/* Alertes critiques */}
+      {criticalActions.length > 0 && (
+        <section className="ms-surface p-5" aria-label="Alertes critiques">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" style={{ color: "var(--colorStatusWarningForeground1)" }} />
+            <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>À traiter en priorité</h2>
           </div>
-          {actionItems.length > 0 && (
-            <span
-              className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-full px-2 fui-caption1-strong tabular-nums"
-              style={{ background: "var(--colorStatusWarningBackground1)", color: "var(--colorStatusWarningForeground1)" }}
-            >
-              {actionItems.length}
-            </span>
-          )}
-        </div>
-        {actionItems.length > 0 ? (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {actionItems.map((item) => (
-              <ActionItem key={item.key} {...item} />
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {criticalActions.map((item) => (
+              <Link
+                key={item.key}
+                to={item.link}
+                className="group flex items-center gap-3 rounded-[var(--radiusLarge)] p-3 transition-colors hover:bg-[var(--ms-bg-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ms-blue)]"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radiusMedium)]"
+                  style={{ background: "var(--colorStatusWarningBackground1)", color: "var(--colorStatusWarningForeground1)" }}
+                >
+                  {item.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{item.label}</span>
+                    <span
+                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 fui-caption2-strong tabular-nums"
+                      style={{ background: "var(--colorStatusWarningBackground2)", color: "var(--colorStatusWarningForeground1)" }}
+                    >
+                      {item.count}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>{item.detail}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: "var(--colorNeutralForeground3)" }} />
+              </Link>
             ))}
           </div>
-        ) : loadIssues > 0 ? (
-          <div
-            className="mt-4 flex items-center gap-3 rounded-[var(--radiusLarge)] p-4"
-            style={{ background: "var(--colorStatusWarningBackground1)", border: "1px solid var(--colorStatusWarningStroke1)" }}
-          >
-            <AlertTriangle className="h-5 w-5 shrink-0" style={{ color: "var(--colorStatusWarningForeground1)" }} />
-            <p className="fui-caption1-strong" style={{ color: "var(--colorStatusWarningForeground1)" }}>
-              Impossible de confirmer que tout est à jour tant que certaines données sont indisponibles.
-            </p>
-          </div>
-        ) : (
-          <div
-            className="mt-4 flex items-center gap-3 rounded-[var(--radiusLarge)] p-4"
-            style={{ background: "var(--colorStatusSuccessBackground1)", border: "1px solid var(--colorStatusSuccessStroke1)" }}
-          >
-            <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: "var(--colorStatusSuccessForeground1)" }} />
-            <p className="fui-caption1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>
-              Tout est à jour — aucun impayé en retard, stock sous contrôle.
-            </p>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
+
+      {/* CTA principale */}
+      <div className="flex gap-3">
+        <Link
+          to="/sales#sale-form"
+          className="inline-flex items-center gap-2 rounded-[var(--radiusLarge)] px-5 py-3 fui-body1-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
+          style={{ background: "var(--colorBrandBackground)", color: "var(--colorNeutralForegroundOnBrand)" }}
+        >
+          <ShoppingCart className="h-5 w-5" />
+          Nouvelle vente
+        </Link>
+      </div>
 
       {/* Tendance 30 jours + Finances du mois */}
       <div className="grid gap-4 xl:grid-cols-5">
@@ -710,8 +822,8 @@ const Overview = () => {
             tone="brand"
             title="Ventes"
             stats={[
-              { label: "Aujourd'hui", value: `${num(ds.salesCount)} vente(s)` },
-              { label: "CA du jour", value: cfa(ds.totalAmount) },
+              { label: "Aujourd'hui", value: `${num(ds.todayCount)} vente(s)` },
+              { label: "CA du jour", value: cfa(ds.today) },
               { label: "À solder", value: num(toSettle), color: toSettle > 0 ? "var(--colorStatusWarningForeground1)" : undefined },
             ]}
           />

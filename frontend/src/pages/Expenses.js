@@ -418,75 +418,153 @@ const Expenses = () => {
               )}
 
               {expenses.length > 0 && (
-              <DataTable>
-                <table ref={tableRef} className="responsive-table w-full">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Montant</th>
-                      <th>Catégorie</th>
-                      <th>Paiement</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <>
+                  {/* Mobile card layout */}
+                  <div className="lg:hidden space-y-3 p-3">
                     {expenses.map((expense) => (
-                      <tr key={expense._id}>
-                        <td data-title="Date" className="text-sm">
-                          {formatDateTime(expense.date)}
-                        </td>
-                        <td data-title="Description">
-                          <div className="text-sm font-semibold text-[var(--ms-text)]">{expense.description}</div>
-                          {(expense.createdBy || expense.updatedBy) && (
-                            <div className="mt-1.5 space-y-0.5 text-xs text-[var(--ms-text-muted)]">
-                              {expense.createdBy && (
-                                <div>Créé par {formatUser(expense.createdBy)}{formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}</div>
-                              )}
-                              {expense.updatedBy && (
-                                <div>Modifié par {formatUser(expense.updatedBy)}{formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}</div>
-                              )}
-                            </div>
-                          )}
-                          {expense.employee && (
-                            <div className="mt-2 border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs text-[var(--ms-text)]">
-                              <span className="font-semibold">Salaire :</span> {expense.employee.name}
-                              {formatSalaryPeriod(expense) ? ` · ${formatSalaryPeriod(expense)}` : ''}
-                            </div>
-                          )}
-                        </td>
-                        <td data-title="Montant" className="font-semibold tabular-nums">
-                          {expense.amount.toLocaleString('fr-FR')} CFA
-                        </td>
-                        <td data-title="Catégorie">
-                          <StatusBadge>{getCategoryLabel(expense.category)}</StatusBadge>
-                        </td>
-                        <td data-title="Paiement" className="text-sm capitalize">
-                          {expense.paymentMethod}
-                        </td>
-                        <td data-title="Actions">
-                          <div className="flex gap-2 flex-wrap">
-                            <IconButton
-                              type="button"
-                              onClick={() => handleEdit(expense)}
-                              label="Modifier"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </IconButton>
-                            <IconButton
-                              type="button"
-                              onClick={() => handleDelete(expense._id)}
-                              label="Supprimer"
-                            >
-                              <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
-                            </IconButton>
+                      <div key={expense._id} className="fluent-card-filled p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="fui-body1-strong">{expense.description}</p>
+                            <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">
+                              {new Date(expense.date).toLocaleDateString('fr-FR', {
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </p>
                           </div>
-                        </td>
-                      </tr>
+                          <StatusBadge>{getCategoryLabel(expense.category)}</StatusBadge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Montant</p>
+                            <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
+                              {expense.amount.toLocaleString('fr-FR')} CFA
+                            </p>
+                          </div>
+                          <div>
+                            <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Paiement</p>
+                            <p className="fui-body1-strong capitalize">{expense.paymentMethod}</p>
+                          </div>
+                        </div>
+
+                        {expense.employee && (
+                          <div className="rounded-[var(--radiusMedium)] border p-3" style={{ borderColor: 'var(--colorNeutralStroke2)', background: 'var(--colorNeutralBackground2)' }}>
+                            <p className="fui-caption2 text-[var(--colorNeutralForeground3)] mb-1">Salaire</p>
+                            <p className="fui-caption1-strong">{expense.employee.name}</p>
+                            {formatSalaryPeriod(expense) && (
+                              <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">{formatSalaryPeriod(expense)}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {(expense.createdBy || expense.updatedBy) && (
+                          <div className="text-xs text-[var(--colorNeutralForeground3)] space-y-0.5 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                            {expense.createdBy && (
+                              <p>Créé par {formatUser(expense.createdBy)}{formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}</p>
+                            )}
+                            {expense.updatedBy && (
+                              <p>Modifié par {formatUser(expense.updatedBy)}{formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}</p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(expense)}
+                            className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                          >
+                            <Pencil className="h-4 w-4" /> Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(expense._id)}
+                            className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                          >
+                            <Trash2 className="h-4 w-4" /> Supprimer
+                          </button>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </DataTable>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden lg:block">
+                    <DataTable>
+                      <table ref={tableRef} className="responsive-table w-full">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Montant</th>
+                            <th>Catégorie</th>
+                            <th>Paiement</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {expenses.map((expense) => (
+                            <tr key={expense._id}>
+                              <td data-title="Date" className="text-sm">
+                                {formatDateTime(expense.date)}
+                              </td>
+                              <td data-title="Description">
+                                <div className="text-sm font-semibold text-[var(--ms-text)]">{expense.description}</div>
+                                {(expense.createdBy || expense.updatedBy) && (
+                                  <div className="mt-1.5 space-y-0.5 text-xs text-[var(--ms-text-muted)]">
+                                    {expense.createdBy && (
+                                      <div>Créé par {formatUser(expense.createdBy)}{formatDateTime(expense.createdAt) ? ` · ${formatDateTime(expense.createdAt)}` : ''}</div>
+                                    )}
+                                    {expense.updatedBy && (
+                                      <div>Modifié par {formatUser(expense.updatedBy)}{formatDateTime(expense.updatedAt) ? ` · ${formatDateTime(expense.updatedAt)}` : ''}</div>
+                                    )}
+                                  </div>
+                                )}
+                                {expense.employee && (
+                                  <div className="mt-2 border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2 text-xs text-[var(--ms-text)]">
+                                    <span className="font-semibold">Salaire :</span> {expense.employee.name}
+                                    {formatSalaryPeriod(expense) ? ` · ${formatSalaryPeriod(expense)}` : ''}
+                                  </div>
+                                )}
+                              </td>
+                              <td data-title="Montant" className="font-semibold tabular-nums">
+                                {expense.amount.toLocaleString('fr-FR')} CFA
+                              </td>
+                              <td data-title="Catégorie">
+                                <StatusBadge>{getCategoryLabel(expense.category)}</StatusBadge>
+                              </td>
+                              <td data-title="Paiement" className="text-sm capitalize">
+                                {expense.paymentMethod}
+                              </td>
+                              <td data-title="Actions">
+                                <div className="flex gap-2 flex-wrap">
+                                  <IconButton
+                                    type="button"
+                                    onClick={() => handleEdit(expense)}
+                                    label="Modifier"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </IconButton>
+                                  <IconButton
+                                    type="button"
+                                    onClick={() => handleDelete(expense._id)}
+                                    label="Supprimer"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
+                                  </IconButton>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </DataTable>
+                  </div>
+                </>
               )}
             </>
           )}

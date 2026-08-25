@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, admin, superAdmin } = require('../middlewares/authMiddleware');
+const { protect, protectForBilling, admin, superAdmin } = require('../middlewares/authMiddleware');
 const {
   registerTenant,
   createTenant,
@@ -21,14 +21,27 @@ const {
   updatePlans,
   getTenantStats,
 } = require('../controllers/tenantController');
+const {
+  getPawaPayConfig,
+  initiatePawaPayPayment,
+  getPawaPayPaymentStatus,
+  pawaPayWebhook,
+} = require('../controllers/subscriptionPaymentController');
 
 // ── Public ───────────────────────────────────────────────
 router.post('/register', registerTenant);
+// PawaPay callback (no auth — verified via Content-Digest / RFC-9421 signature)
+router.post('/payment/pawapay/webhook', pawaPayWebhook);
 
 // ── Authenticated (any tenant user) ─────────────────────
 router.get('/me', protect, getMyTenant);
 router.get('/plan-catalog', protect, getPlanCatalog);
 router.post('/plan-request', protect, admin, requestPlanChange);
+
+// ── Billing: available even when the shop is suspended/expired ──
+router.get('/payment/pawapay/config',   protectForBilling, getPawaPayConfig);
+router.post('/payment/pawapay/initiate', protectForBilling, admin, initiatePawaPayPayment);
+router.get('/payment/pawapay/:depositId', protectForBilling, getPawaPayPaymentStatus);
 
 // ── Super-admin only ─────────────────────────────────────
 // Static paths BEFORE '/:id' so they are not captured as an id.

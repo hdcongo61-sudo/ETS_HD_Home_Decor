@@ -298,7 +298,44 @@ const ProductDashboard = () => {
               </ResponsiveContainer>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
+            {/* Mobile card layout */}
+            <div className="lg:hidden space-y-3 mt-4">
+              {stats.topSellingProducts.slice(0, 5).map((p, index) => (
+                <div key={p._id} className="fluent-card-filled p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                          {index + 1}
+                        </span>
+                        <p className="fui-body1-strong">{p.name}</p>
+                      </div>
+                      {p.category && (
+                        <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-1">{p.category}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Quantité</p>
+                      <p className="fui-body1-strong tabular-nums">{p.sold}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Revenu</p>
+                      <p className="fui-body1-strong tabular-nums" style={{ color: SERIE_REVENUE }}>{formatProductCurrency(p.revenue)}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Marge</p>
+                      <p className="fui-body1-strong tabular-nums" style={{ color: SERIE_PROFIT }}>{p.margin}%</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="mt-4 overflow-x-auto hidden lg:block">
               <table ref={topSellingTableRef} className="responsive-table min-w-full text-left text-sm">
                 <thead className="bg-[var(--colorNeutralBackground2)] text-xs uppercase text-[var(--colorNeutralForeground3)]">
                   <tr>

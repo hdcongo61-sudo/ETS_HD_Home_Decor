@@ -305,7 +305,8 @@ const getMyTenant = asyncHandler(async (req, res) => {
     return res.json(null);
   }
   const tenant = await Tenant.findById(req.tenantId)
-    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts planRequest dialCode')
+    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts planRequest dialCode monthlyPrice nextPaymentDue lastPaymentAt payments')
+    .slice('payments', -20)
     .lean();
   if (!tenant) {
     res.status(404);

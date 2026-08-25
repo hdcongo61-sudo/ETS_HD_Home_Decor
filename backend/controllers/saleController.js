@@ -2900,9 +2900,25 @@ const getBestDays = asyncHandler(async (req, res) => {
       { $unwind: '$payments' },
       { $match: { 'payments.paymentDate': { $gte: start, $lte: end } } },
       {
+        $addFields: {
+          paymentProfit: {
+            $cond: [
+              { $gt: ['$totalAmount', 0] },
+              {
+                $multiply: [
+                  { $ifNull: ['$profitData.totalProfit', 0] },
+                  { $divide: ['$payments.amount', '$totalAmount'] }
+                ]
+              },
+              0
+            ]
+          }
+        }
+      },
+      {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$payments.paymentDate' } },
-          totalAmount: { $sum: { $ifNull: ['$payments.profit', 0] } },
+          totalAmount: { $sum: '$paymentProfit' },
           count: { $sum: 1 }
         }
       },
@@ -2956,7 +2972,23 @@ const getBestDays = asyncHandler(async (req, res) => {
       { $match: { saleDate: { $gte: s, $lte: e }, status: { $ne: 'cancelled' } } },
       { $unwind: '$payments' },
       { $match: { 'payments.paymentDate': { $gte: s, $lte: e } } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$payments.profit', 0] } } } },
+      {
+        $addFields: {
+          paymentProfit: {
+            $cond: [
+              { $gt: ['$totalAmount', 0] },
+              {
+                $multiply: [
+                  { $ifNull: ['$profitData.totalProfit', 0] },
+                  { $divide: ['$payments.amount', '$totalAmount'] }
+                ]
+              },
+              0
+            ]
+          }
+        }
+      },
+      { $group: { _id: null, total: { $sum: '$paymentProfit' } } },
     ]))[0]?.total || 0;
   const sumExpectedProfit = async (s, e) =>
     (await Sale.aggregate([

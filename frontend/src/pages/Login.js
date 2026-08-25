@@ -106,13 +106,21 @@ const Login = () => {
 
       if (err.response) {
         if (err.response.status === 403) {
+          const code = err.response.data?.code;
+          const isTenantRestriction = code === 'TENANT_SUSPENDED' || code === 'TENANT_EXPIRED' || code === 'PAYMENT_OVERDUE';
           const payload = {
-            message: err.response.data?.message || 'Accès restreint. Veuillez contacter un administrateur.',
+            message: err.response.data?.message || 'Acces restreint. Veuillez contacter un administrateur.',
+            code: isTenantRestriction ? code : undefined,
+            trialEndsAt: isTenantRestriction ? err.response.data?.trialEndsAt || null : null,
+            nextPaymentDue: isTenantRestriction ? err.response.data?.nextPaymentDue || null : null,
+            daysPastDue: isTenantRestriction ? err.response.data?.daysPastDue || null : null,
             accessStart: err.response.data?.accessStart || null,
             accessEnd: err.response.data?.accessEnd || null,
           };
-          sessionStorage.setItem('accessRestrictionInfo', JSON.stringify(payload));
-          localStorage.removeItem('token');
+          sessionStorage.setItem(isTenantRestriction ? 'tenantRestrictionInfo' : 'accessRestrictionInfo', JSON.stringify(payload));
+          // Keep the token for suspended/expired/overdue shops: they can still reach the
+          // billing endpoints to pay and reactivate from the restricted page.
+          if (!isTenantRestriction) localStorage.removeItem('token');
           navigate('/access-restricted', { state: payload, replace: true });
           return;
         }

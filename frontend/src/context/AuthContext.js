@@ -40,17 +40,22 @@ export const AuthProvider = ({ children }) => {
         if (error.response?.status === 403) {
           const code = error.response.data?.code;
 
-          // Tenant suspension / expiry — show specific message
-          if (code === 'TENANT_SUSPENDED' || code === 'TENANT_EXPIRED') {
+          // Tenant suspension / expiry / payment overdue — keep the token so the shop can pay
+          // its subscription (mobile money / cash) from the restricted page
+          // and reactivate without contacting support.
+          if (code === 'TENANT_SUSPENDED' || code === 'TENANT_EXPIRED' || code === 'PAYMENT_OVERDUE') {
             const payload = {
               message: error.response.data?.message,
               code,
               trialEndsAt: error.response.data?.trialEndsAt || null,
+              nextPaymentDue: error.response.data?.nextPaymentDue || null,
+              daysPastDue: error.response.data?.daysPastDue || null,
             };
             sessionStorage.setItem('tenantRestrictionInfo', JSON.stringify(payload));
-            localStorage.removeItem('token');
-            localStorage.removeItem('tenantId');
-            window.location.replace('/access-restricted');
+            setAuth({ isAuthenticated: false, user: null, isAdmin: false, isSuperAdmin: false, tenantId: null, isLoading: false });
+            if (window.location.pathname !== '/access-restricted') {
+              window.location.replace('/access-restricted');
+            }
             return;
           }
 

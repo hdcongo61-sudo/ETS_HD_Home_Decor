@@ -4,13 +4,14 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Check, X, RotateCcw, Save,
-  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight, Printer, FileSpreadsheet,
+  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight, Printer, FileSpreadsheet, Smartphone,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getLogoDataUrl, mixHexColors, resolveAppLogo } from '../utils/appBranding';
 import { PageHeader, Workspace, EmptyState, LoadingSkeleton } from '../components/business';
 import { FEATURE_LABELS } from '../config/features';
+import PawaPaySubscriptionForm from '../components/PawaPaySubscriptionForm';
 
 const TABS = [
   { key: 'categories', label: 'Catégories produits', endpoint: '/lookups/categories', icon: Tag },
@@ -225,6 +226,16 @@ const Settings = () => {
       toast.error(err.response?.data?.message || "Erreur lors de l'envoi de la demande");
     } finally {
       setReqSubmitting(false);
+    }
+  };
+
+  // Recharger la boutique après un paiement mobile money réussi.
+  const refreshTenantAfterPayment = async () => {
+    try {
+      const { data } = await api.get('/tenants/me');
+      setMyTenant(data);
+    } catch {
+      /* non bloquant */
     }
   };
 
@@ -959,6 +970,78 @@ const Settings = () => {
                 </p>
               </div>
               <span className={`ms-status-badge ${statusTone}`}>{statusLabel}</span>
+            </div>
+
+            {/* Paiement mobile money (PawaPay) */}
+            <div className="mt-4 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+              <div className="mb-2 flex items-center gap-2">
+                <Smartphone className="h-4 w-4" style={{ color: 'var(--colorBrandForeground1)' }} />
+                <h3 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Payer mon abonnement</h3>
+              </div>
+
+              {/* Statut abonnement et jours restants */}
+              {myTenant.nextPaymentDue && (
+                <div className="mb-3 rounded-lg p-3" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke1)' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prochain paiement dû</p>
+                      <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                        {new Date(myTenant.nextPaymentDue).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {(() => {
+                        const now = new Date();
+                        const due = new Date(myTenant.nextPaymentDue);
+                        const daysRemaining = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+                        const isExpiringSoon = daysRemaining <= 7 && daysRemaining > 0;
+                        const isExpired = daysRemaining <= 0;
+                        return (
+                          <>
+                            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Jours restants</p>
+                            <p className="fui-title3" style={{ color: isExpired ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)' }}>
+                              {daysRemaining > 0 ? daysRemaining : 0}
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                Payez par mobile money : le paiement active automatiquement votre abonnement. Pour payer en espèces, contactez le support.
+              </p>
+              <PawaPaySubscriptionForm
+                suggestedAmount={Number(myTenant.monthlyPrice) || null}
+                onPaid={refreshTenantAfterPayment}
+              />
+
+              {/* Historique des paiements */}
+              {Array.isArray(myTenant.payments) && myTenant.payments.length > 0 && (
+                <div className="mt-4 border-t pt-3" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                  <p className="fui-caption1-strong mb-2 uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.04em' }}>
+                    Derniers paiements
+                  </p>
+                  <ul className="space-y-1.5">
+                    {myTenant.payments.slice().reverse().map((p, i) => {
+                      const paidDate = new Date(p.paidAt);
+                      const period = p.period || `${paidDate.getFullYear()}-${String(paidDate.getMonth() + 1).padStart(2, '0')}`;
+                      return (
+                        <li key={i} className="fui-caption1 flex flex-wrap items-center justify-between gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                          <span style={{ color: 'var(--colorNeutralForeground2)' }}>
+                            {paidDate.toLocaleDateString('fr-FR')} · Période {period} ·{' '}
+                            {p.method === 'mobile_money' ? 'Mobile money' : p.method === 'cash' ? 'Espèces' : p.method === 'transfer' ? 'Virement' : p.method}
+                            {p.note ? ` · ${p.note}` : ''}
+                          </span>
+                          <span className="fui-body1-strong">{Number(p.amount || 0).toLocaleString('fr-FR')} CFA</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {pending ? (

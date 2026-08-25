@@ -51,6 +51,7 @@ import { fr } from "date-fns/locale";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import AuthContext from "../context/AuthContext";
+import { useDashboardData } from "../context/DashboardDataContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import {
   DollarSign,
@@ -164,6 +165,7 @@ const getClientName = (row) => {
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
+  const { overviewData, isCacheValid } = useDashboardData();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk stats export — la facture de vente reste accessible à tous
   const currentYear = new Date().getFullYear();

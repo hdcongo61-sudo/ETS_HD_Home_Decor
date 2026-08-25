@@ -13,7 +13,7 @@ const Expense = require('../models/expenseModel');
 const Product = require('../models/productModel');
 const Employee = require('../models/employeeModel');
 const StockMovement = require('../models/stockMovementModel');
-const { tenantFilter } = require('../utils/tenantQuery');
+const { tenantFilter, matchNothing } = require('../utils/tenantQuery');
 
 // Resolve the [start, end] window. Defaults to the current calendar month.
 const resolvePeriod = (query) => {
@@ -27,13 +27,10 @@ const resolvePeriod = (query) => {
 
 const round = (n) => Math.round(n || 0);
 
-// @desc    Tableau de bord comptable consolidé (compte de résultat, trésorerie,
-//          créances / dettes, bilan simplifié) pour une période.
-// @route   GET /api/comptabilite/summary
-// @access  Private (feature: comptabilite)
-const getAccountingSummary = asyncHandler(async (req, res) => {
-  const { start, end } = resolvePeriod(req.query);
-  const tFilter = tenantFilter(req);
+// Computation partagée : utilisée par GET /api/comptabilite/summary et par le
+// tableau de bord (Overview) pour la section « Finances du mois ».
+const computeAccountingSummary = async ({ tenantId, start, end }) => {
+  const tFilter = tenantId ? { tenantId } : matchNothing();
 
   const notCancelled = { status: { $ne: 'cancelled' } };
 
@@ -148,11 +145,9 @@ const getAccountingSummary = asyncHandler(async (req, res) => {
     }
   }
 
-  res.json({
-    success: true,
-    data: {
-      periode: { start, end },
-      compteResultat: {
+  return {
+    periode: { start, end },
+    compteResultat: {
         chiffreAffaires: round(chiffreAffaires),
         coutMarchandises: round(coutMarchandises),
         margeBrute: round(margeBrute),
@@ -188,8 +183,17 @@ const getAccountingSummary = asyncHandler(async (req, res) => {
         masseSalariale: round(masseSalariale),
         nbBulletins,
       },
-    },
-  });
+  };
+};
+
+// @desc    Tableau de bord comptable consolidé (compte de résultat, trésorerie,
+//          créances / dettes, bilan simplifié) pour une période.
+// @route   GET /api/comptabilite/summary
+// @access  Private (feature: comptabilite)
+const getAccountingSummary = asyncHandler(async (req, res) => {
+  const { start, end } = resolvePeriod(req.query);
+  const data = await computeAccountingSummary({ tenantId: req.tenantId, start, end });
+  res.json({ success: true, data });
 });
 
 // @desc    Journal comptable — flux chronologique unifié (ventes, encaissements,
@@ -257,4 +261,4 @@ const getJournal = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getAccountingSummary, getJournal };
+module.exports = { getAccountingSummary, getJournal, computeAccountingSummary };

@@ -49,6 +49,8 @@ const appSettingsRoutes = require('./routes/appSettingsRoutes');
 const adminRequestRoutes = require('./routes/adminRequestRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const supportRoutes = require('./routes/supportRoutes');
+const platformUserRoutes = require('./routes/platformUserRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
@@ -127,7 +129,15 @@ app.use('/api/products/import', express.json({ limit: '5mb' }));
 app.use('/api/products/bulk', express.json({ limit: '1mb' }));
 // Editable super-admin documents can exceed the tiny default body limit.
 app.use('/api/export/doc', express.json({ limit: '256kb' }));
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({
+  limit: '10kb',
+  // Keep the raw bytes of the PawaPay webhook so the signature / digest can be verified.
+  verify: (req, res, buf) => {
+    if (req.originalUrl === '/api/tenants/payment/pawapay/webhook') {
+      req.rawBody = buf;
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
 // 5. Cookie parser
@@ -165,6 +175,8 @@ app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/platform-users', platformUserRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

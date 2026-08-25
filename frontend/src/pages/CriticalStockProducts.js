@@ -125,7 +125,69 @@ const CriticalStockProducts = () => {
 
       {/* Tableau */}
       <ProductSection title="Produits à traiter" description="Ouvrez la fiche ou réapprovisionnez directement.">
-      <div className="hidden overflow-x-auto md:block">
+      {/* Mobile cards */}
+      <div className="lg:hidden space-y-3 p-3">
+        {products.map((p) => (
+          <div
+            key={p._id}
+            className="fluent-card-filled p-4 space-y-3 cursor-pointer"
+            onClick={() => navigate(productPath(p))}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="fui-body1-strong">{p.name}</p>
+                {p.category && (
+                  <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">{p.category}</p>
+                )}
+              </div>
+              <span
+                className="inline-flex items-center gap-1 rounded-[var(--radiusMedium)] px-2 py-1 text-xs font-semibold"
+                style={{
+                  background: 'var(--colorPaletteRedBackground2)',
+                  color: 'var(--colorStatusDangerForeground1)',
+                }}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {p.stock}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix</p>
+                <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+              </div>
+              <div>
+                <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Valeur Totale</p>
+                <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusDangerForeground1)'}}>
+                  {((p.stock || 0) * (p.price || 0)).toLocaleString('fr-FR')} CFA
+                </p>
+              </div>
+            </div>
+
+            {p.supplierName && (
+              <div className="flex items-center gap-2 rounded-[var(--radiusMedium)] border px-3 py-2">
+                <Wallet className="h-4 w-4 text-[var(--colorNeutralForeground3)]" />
+                <span className="fui-caption1">{p.supplierName}</span>
+              </div>
+            )}
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(productEditPath(p));
+              }}
+              className="w-full ms-button ms-button-primary ms-button-md"
+            >
+              <Edit3 className="h-4 w-4" />
+              Réapprovisionner
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="min-w-full divide-y divide-[var(--colorNeutralStroke2)] text-sm">
           <thead className="bg-[var(--colorNeutralBackground2)]">
             <tr>
@@ -167,50 +229,6 @@ const CriticalStockProducts = () => {
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Cartes mobiles */}
-      <div className="md:hidden space-y-4">
-        {products.map((p) => (
-          <div
-            key={p._id}
-            className="rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-4 shadow-sm"
-            onClick={() => navigate(productPath(p))}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-base font-semibold text-[var(--colorNeutralForeground1)]">{p.name}</p>
-                <p className="text-xs text-[var(--colorNeutralForeground3)]">{p.category || '—'}</p>
-              </div>
-              <span className="text-xs text-[var(--colorStatusDangerForeground1)]">Stock: {p.stock}</span>
-            </div>
-            <p className="text-sm text-[var(--colorNeutralForeground3)] mt-1">
-              Fournisseur : <span className="text-[var(--colorNeutralForeground2)]">{p.supplierName || '—'}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Prix</p>
-                <p className="font-semibold text-[var(--colorNeutralForeground1)]">{p.price?.toLocaleString() || '—'} CFA</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--colorNeutralForeground3)] uppercase">Valeur</p>
-                <p className="font-semibold text-[var(--colorStatusDangerForeground1)]">
-                  {((p.stock || 0) * (p.price || 0)).toLocaleString()} CFA
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(productEditPath(p));
-              }}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radiusLarge)] bg-[var(--ms-blue)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--ms-blue-dark)]"
-            >
-              <Edit3 className="h-4 w-4" />
-              Réapprovisionner
-            </button>
-          </div>
-        ))}
       </div>
       </ProductSection>
       </>

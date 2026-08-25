@@ -9,7 +9,9 @@ import {
   Package, TrendingUp, Wallet, Receipt,
   CreditCard, History, BadgeDollarSign, Activity, ArrowRight, Zap,
   Layers, Save, Pencil, BarChart3, TrendingDown, Boxes, AlertCircle,
-  RotateCcw, BookOpen, LifeBuoy,
+  RotateCcw, BookOpen, LifeBuoy, Settings, FileText, Bell, Shield,
+  Database, DollarSign, UserCheck, Mail, Filter, Eye, EyeOff,
+  Calendar, BarChart2, PieChart as PieChartIcon, Server, Globe,
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, PieChart, Pie, Cell } from 'recharts';
 import { EmptyState, LoadingSkeleton, PageHeader, RightDetailPanel, Workspace } from '../components/business';
@@ -642,12 +644,17 @@ const PaymentModal = ({ tenant, onClose, onRecorded }) => {
 /*  MAIN                                                    */
 /* ═══════════════════════════════════════════════════════ */
 const TABS = [
-  { id: 'overview', label: "Vue d'ensemble", icon: TrendingUp },
+  { id: 'overview', label: "Tableau de bord", icon: BarChart2 },
   { id: 'tenants',  label: 'Boutiques',      icon: Building2 },
+  { id: 'users',    label: 'Utilisateurs',   icon: Users },
   { id: 'plans',    label: 'Forfaits',       icon: Layers },
+  { id: 'subscriptions', label: 'Abonnements', icon: CreditCard },
   { id: 'billing',  label: 'Facturation',    icon: Wallet },
-  { id: 'support',  label: 'Messages',       icon: LifeBuoy },
-  { id: 'resources', label: 'Ressources',    icon: BookOpen },
+  { id: 'payments', label: 'Paiements',      icon: Receipt },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'analytics', label: 'Analytiques',   icon: TrendingUp },
+  { id: 'support',  label: 'Support',        icon: LifeBuoy },
+  { id: 'system',   label: 'Systeme',        icon: Server },
   { id: 'audit',    label: 'Journal',        icon: History },
 ];
 
@@ -728,8 +735,24 @@ const SuperAdmin = () => {
         }
       />
 
-      {/* Tab bar */}
-      <div className="fui-pivot">
+      {/* Tab bar - Mobile: Dropdown, Desktop: Horizontal tabs */}
+      <div className="lg:hidden mb-4">
+        <select
+          value={tab}
+          onChange={(e) => setTab(e.target.value)}
+          className="form-control w-full"
+          style={{ minHeight: '44px' }}
+        >
+          {TABS.map(({ id, label }) => (
+            <option key={id} value={id}>
+              {label}
+              {id === 'support' && supportUnread > 0 && ` (${supportUnread})`}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="hidden lg:block fui-pivot">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)} className={`fui-pivot__tab ${tab === id ? 'fui-pivot__tab--active' : ''}`}>
             <Icon size={15} /> {label}
@@ -746,13 +769,18 @@ const SuperAdmin = () => {
         <div className="rounded-[var(--radiusLarge)] px-4 py-3 fui-body1" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>{error}</div>
       )}
 
-      {tab === 'overview' && <OverviewTab onJump={setTab} />}
-      {tab === 'tenants'  && <TenantsTab tenants={tenants} loading={loading} updating={updating} onReload={fetchTenants} onStatus={handleStatusChange} onPlan={handlePlanChange} onImpersonate={handleImpersonate} setTenants={setTenants} />}
-      {tab === 'plans'    && <PlansTab />}
-      {tab === 'billing'  && <BillingTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
-      {tab === 'support'  && <SupportTab onCountChange={fetchSupportUnread} />}
-      {tab === 'resources' && <ResourcesTab />}
-      {tab === 'audit'    && <AuditTab />}
+      {tab === 'overview'       && <OverviewTab onJump={setTab} />}
+      {tab === 'tenants'        && <TenantsTab tenants={tenants} loading={loading} updating={updating} onReload={fetchTenants} onStatus={handleStatusChange} onPlan={handlePlanChange} onImpersonate={handleImpersonate} setTenants={setTenants} />}
+      {tab === 'users'          && <UsersTab />}
+      {tab === 'plans'          && <PlansTab />}
+      {tab === 'subscriptions'  && <SubscriptionsTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
+      {tab === 'billing'        && <BillingTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
+      {tab === 'payments'       && <PaymentHistoryTab tenants={tenants} />}
+      {tab === 'notifications'  && <NotificationsTab tenants={tenants} />}
+      {tab === 'analytics'      && <AnalyticsTab tenants={tenants} />}
+      {tab === 'support'        && <SupportTab onCountChange={fetchSupportUnread} />}
+      {tab === 'system'         && <SystemTab />}
+      {tab === 'audit'          && <AuditTab />}
     </Workspace>
   );
 };
@@ -1494,42 +1522,77 @@ const LimitField = ({ label, used, editing, value, onChange }) => (
 /* ─── TAB: Billing ────────────────────────────────────── */
 const BillingTab = ({ tenants, loading, onReload }) => {
   const [payTarget, setPayTarget] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const now = Date.now();
 
-  const totalMRR = tenants.filter((t) => t.status === 'active').reduce((s, t) => s + (t.monthlyPrice || 0), 0);
+  // Metrics
+  const activeTenants = tenants.filter((t) => t.status === 'active');
+  const totalMRR = activeTenants.reduce((s, t) => s + (t.monthlyPrice || 0), 0);
   const overdue = tenants.filter((t) => t.status === 'active' && t.nextPaymentDue && new Date(t.nextPaymentDue) < now);
+  const upcoming = tenants.filter((t) => {
+    if (!t.nextPaymentDue || t.status !== 'active') return false;
+    const due = new Date(t.nextPaymentDue);
+    const daysUntil = Math.ceil((due - now) / 86400000);
+    return daysUntil > 0 && daysUntil <= 7;
+  });
+  const neverPaid = tenants.filter((t) => !t.lastPaymentAt && t.monthlyPrice > 0);
 
-  // Aging of overdue receivables (days past the due date).
+  // Aging of overdue receivables
   const aging = { d30: { count: 0, amount: 0 }, d60: { count: 0, amount: 0 }, d60plus: { count: 0, amount: 0 } };
   overdue.forEach((t) => {
     const days = Math.floor((now - new Date(t.nextPaymentDue)) / 86400000);
     const amt = Number(t.monthlyPrice) || 0;
     const bucket = days <= 30 ? aging.d30 : days <= 60 ? aging.d60 : aging.d60plus;
-    bucket.count += 1; bucket.amount += amt;
+    bucket.count += 1;
+    bucket.amount += amt;
   });
   const agingTotal = aging.d30.amount + aging.d60.amount + aging.d60plus.amount;
+
+  // Revenue this month
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const revenueThisMonth = tenants.reduce((sum, t) => {
+    const payments = (t.payments || []).filter(p => p.paidAt && p.paidAt.startsWith(thisMonth));
+    return sum + payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  }, 0);
+
+  // Filter tenants
+  const filtered = tenants.filter((t) => {
+    if (searchTerm && !t.name.toLowerCase().includes(searchTerm.toLowerCase()) && !t.ownerEmail?.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+    if (statusFilter === 'overdue') return overdue.includes(t);
+    if (statusFilter === 'upcoming') return upcoming.includes(t);
+    if (statusFilter === 'never-paid') return neverPaid.includes(t);
+    if (statusFilter === 'active') return t.status === 'active';
+    return true;
+  });
 
   if (loading) return <LoadingSkeleton rows={6} />;
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Kpi label="MRR" value={money(totalMRR)} sub="Revenu mensuel récurrent" accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
-        <Kpi label="Paiements en retard" value={fmt(overdue.length)} sub="Boutiques actives échues" accent={overdue.length ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={AlertCircle} />
-        <Kpi label="Boutiques facturables" value={fmt(tenants.filter((t) => t.monthlyPrice > 0).length)} accent="var(--colorBrandForeground1)" icon={Receipt} />
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <Kpi label="MRR" value={money(totalMRR)} sub={`${fmt(activeTenants.length)} boutiques actives`} accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
+        <Kpi label="Encaisse ce mois" value={money(revenueThisMonth)} sub="Paiements enregistres" accent="var(--colorBrandForeground1)" icon={Receipt} />
+        <Kpi label="En retard" value={fmt(overdue.length)} sub={`${money(agingTotal)} en souffrance`} accent={overdue.length ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={AlertCircle} />
+        <Kpi label="A venir (7j)" value={fmt(upcoming.length)} sub="Echeances cette semaine" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
+        <Kpi label="Jamais paye" value={fmt(neverPaid.length)} sub="Boutiques sans historique" accent="var(--colorNeutralForeground3)" icon={AlertTriangle} />
       </div>
 
-      {/* Aging of overdue receivables */}
+      {/* Aging analysis */}
       {overdue.length > 0 && (
         <div className="fluent-card-filled p-4">
           <p className="fui-subtitle2 mb-3 flex items-center gap-1.5" style={{ color: 'var(--colorNeutralForeground1)' }}>
-            <AlertCircle size={15} style={{ color: 'var(--colorStatusDangerForeground1)' }} /> Encours en retard — <span className="tabular-nums">{money(agingTotal)}</span>
+            <AlertCircle size={15} style={{ color: 'var(--colorStatusDangerForeground1)' }} />
+            Analyse de l anciennete des impayes — <span className="tabular-nums">{money(agingTotal)}</span>
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: '≤ 30 jours', ...aging.d30, color: 'var(--colorStatusWarningForeground1)' },
-              { label: '31 – 60 jours', ...aging.d60, color: '#C2410C' },
-              { label: '> 60 jours', ...aging.d60plus, color: 'var(--colorStatusDangerForeground1)' },
+              { label: '1-30 jours', ...aging.d30, color: 'var(--colorStatusWarningForeground1)' },
+              { label: '31-60 jours', ...aging.d60, color: '#C2410C' },
+              { label: '60+ jours', ...aging.d60plus, color: 'var(--colorStatusDangerForeground1)' },
             ].map((b) => (
               <div key={b.label} className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorNeutralBackground2)', borderLeft: `3px solid ${b.color}` }}>
                 <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{b.label}</p>
@@ -1541,33 +1604,1362 @@ const BillingTab = ({ tenants, loading, onReload }) => {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <div className="flex items-center gap-2">
+          <Search size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Rechercher une boutique..."
+            className="form-control w-64 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
+            <option value="all">Toutes ({tenants.length})</option>
+            <option value="active">Actives ({activeTenants.length})</option>
+            <option value="overdue">En retard ({overdue.length})</option>
+            <option value="upcoming">Echeances 7j ({upcoming.length})</option>
+            <option value="never-paid">Jamais paye ({neverPaid.length})</option>
+          </select>
+        </div>
+        <p className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(filtered.length)}</span> boutique{filtered.length > 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {/* Tenants table */}
       <div className="fluent-card-filled overflow-hidden">
         <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-          <span>Boutique</span><span>Plan</span><span>Prix/mois</span><span>Prochaine échéance</span><span>Dernier paiement</span><span>Action</span>
+          <span>Boutique</span><span>Plan</span><span>Prix/mois</span><span>Prochaine echeance</span><span>Dernier paiement</span><span>Action</span>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-          {tenants.map((t) => {
-            const isOverdue = t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
-            return (
-              <div key={t._id} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
-                <div className="min-w-0">
-                  <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
-                  <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</span>
+          {filtered.length === 0 ? (
+            <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune boutique trouvee.</div>
+          ) : (
+            filtered.map((t) => {
+              const isOverdue = t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
+              const daysUntilDue = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
+              const isUpcoming = daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= 7;
+              const hasNeverPaid = !t.lastPaymentAt && t.monthlyPrice > 0;
+
+              return (
+                <div key={t._id} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
+                      <StatusBadge status={t.status} />
+                    </div>
+                    <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</span>
+                  </div>
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>{PLAN_LABELS[t.plan]}</span>
+                  <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</span>
+                  <div className="flex flex-col">
+                    <span className="fui-caption1 tabular-nums" style={{ color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isUpcoming ? 'var(--colorStatusWarningForeground1)' : 'var(--colorNeutralForeground3)' }}>
+                      {isOverdue && '⚠ '}{isUpcoming && '⏰ '}{fmtDate(t.nextPaymentDue)}
+                    </span>
+                    {isOverdue && (
+                      <span className="fui-caption2" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
+                        {Math.abs(daysUntilDue)} j de retard
+                      </span>
+                    )}
+                    {isUpcoming && (
+                      <span className="fui-caption2" style={{ color: 'var(--colorStatusWarningForeground1)' }}>
+                        Dans {daysUntilDue} j
+                      </span>
+                    )}
+                  </div>
+                  <span className="fui-caption1 tabular-nums" style={{ color: hasNeverPaid ? 'var(--colorNeutralForeground3)' : 'var(--colorNeutralForeground2)' }}>
+                    {hasNeverPaid ? '—' : fmtDate(t.lastPaymentAt)}
+                  </span>
+                  <button onClick={() => setPayTarget(t)} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1">
+                    <CreditCard size={13} /> Paiement
+                  </button>
                 </div>
-                <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>{PLAN_LABELS[t.plan]}</span>
-                <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</span>
-                <span className="fui-caption1" style={{ color: isOverdue ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)' }}>
-                  {isOverdue && '⚠ '}{fmtDate(t.nextPaymentDue)}
-                </span>
-                <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{fmtDate(t.lastPaymentAt)}</span>
-                <button onClick={() => setPayTarget(t)} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1"><CreditCard size={13} /> Paiement</button>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
       {payTarget && <PaymentModal tenant={payTarget} onClose={() => setPayTarget(null)} onRecorded={() => onReload()} />}
+    </div>
+  );
+};
+
+/* ─── TAB: Payment History ────────────────────────────── */
+const PaymentHistoryTab = ({ tenants }) => {
+  const [filter, setFilter] = useState('');
+  const [methodFilter, setMethodFilter] = useState('');
+
+  // Flatten all payments from all tenants
+  const allPayments = tenants.flatMap((t) =>
+    (t.payments || []).map((p) => ({
+      ...p,
+      tenantId: t._id,
+      tenantName: t.name,
+      tenantPlan: t.plan,
+    }))
+  ).sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+
+  const filtered = allPayments.filter((p) => {
+    if (filter && !p.tenantName.toLowerCase().includes(filter.toLowerCase())) return false;
+    if (methodFilter && p.method !== methodFilter) return false;
+    return true;
+  });
+
+  const totalAmount = filtered.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const mobileMoneyTotal = filtered.filter(p => p.method === 'mobile_money').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const cashTotal = filtered.filter(p => p.method === 'cash').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Total encaissé" value={money(totalAmount)} sub={`${fmt(filtered.length)} paiements`} accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
+        <Kpi label="Mobile money" value={money(mobileMoneyTotal)} sub="PawaPay" accent="var(--colorBrandForeground1)" icon={CreditCard} />
+        <Kpi label="Espèces" value={money(cashTotal)} sub="Enregistré manuellement" accent="#7C3AED" icon={Receipt} />
+        <Kpi label="Boutiques payantes" value={fmt(new Set(filtered.map(p => p.tenantId)).size)} sub="Avec au moins 1 paiement" accent="var(--colorStatusWarningForeground1)" icon={Building2} />
+      </div>
+
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <div className="flex items-center gap-2">
+          <Search size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Rechercher une boutique..."
+            className="form-control w-64 text-sm"
+          />
+        </div>
+        <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
+          <option value="">Tous les modes</option>
+          <option value="mobile_money">Mobile money</option>
+          <option value="cash">Espèces</option>
+          <option value="transfer">Virement</option>
+        </select>
+        <p className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
+          <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(filtered.length)}</span> paiement{filtered.length > 1 ? 's' : ''}
+        </p>
+      </div>
+
+      <div className="fluent-card-filled overflow-hidden">
+        <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+          <span>Boutique</span><span>Date</span><span>Période</span><span>Montant</span><span>Méthode</span><span>Note</span>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          {filtered.length === 0 ? (
+            <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun paiement trouvé.</div>
+          ) : (
+            filtered.map((p, i) => (
+              <div key={i} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+                <div className="min-w-0">
+                  <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{p.tenantName}</span>
+                  <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{PLAN_LABELS[p.tenantPlan]}</span>
+                </div>
+                <span className="fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{fmtDate(p.paidAt)}</span>
+                <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.period || '—'}</span>
+                <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(p.amount)}</span>
+                <span className="fui-caption1">
+                  {p.method === 'mobile_money' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'var(--colorBrandBackground)', color: 'var(--colorBrandForeground1)' }}>
+                      <CreditCard size={12} /> Mobile money
+                    </span>
+                  )}
+                  {p.method === 'cash' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground2)' }}>
+                      Espèces
+                    </span>
+                  )}
+                  {p.method === 'transfer' && <span style={{ color: 'var(--colorNeutralForeground3)' }}>Virement</span>}
+                  {!['mobile_money', 'cash', 'transfer'].includes(p.method) && <span style={{ color: 'var(--colorNeutralForeground3)' }}>{p.method}</span>}
+                </span>
+                <span className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.note || '—'}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── TAB: Users Management ──────────────────────────────── */
+const UsersTab = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/platform-users');
+      setUsers(res.data.users || []);
+    } catch (err) {
+      console.error('Error fetching platform users:', err);
+      toast.error('Erreur lors du chargement des utilisateurs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = users.filter((u) => {
+    if (search && !u.name?.toLowerCase().includes(search.toLowerCase()) && !u.email?.toLowerCase().includes(search.toLowerCase())) {
+      return false;
+    }
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+    return true;
+  });
+
+  const stats = {
+    total: users.length,
+    superAdmins: users.filter(u => u.role === 'super-admin').length,
+    paymentCheckers: users.filter(u => u.role === 'payment-checker').length,
+    userManagers: users.filter(u => u.role === 'user-manager').length,
+    support: users.filter(u => u.role === 'support').length,
+    active: users.filter(u => u.isActive).length,
+  };
+
+  const handleEmailUsers = () => {
+    if (selectedUsers.length === 0) {
+      toast.error('Selectionnez au moins un utilisateur');
+      return;
+    }
+    setShowEmailModal(true);
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Etes-vous sur de vouloir supprimer cet utilisateur ?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/platform-users/${userId}`);
+      toast.success('Utilisateur supprime');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  if (loading) {
+    return <div className="p-4 text-center">Chargement...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Total utilisateurs" value={fmt(stats.total)} sub="Plateforme" accent="var(--colorBrandForeground1)" icon={Users} />
+        <Kpi label="Super-admins" value={fmt(stats.superAdmins)} sub="Acces complet" accent="var(--colorStatusDangerForeground1)" icon={Shield} />
+        <Kpi label="Verificateurs paiement" value={fmt(stats.paymentCheckers)} sub="Acces facturation" accent="#7C3AED" icon={CreditCard} />
+        <Kpi label="Gestionnaires utilisateurs" value={fmt(stats.userManagers)} sub="Acces gestion users" accent="var(--colorStatusSuccessForeground1)" icon={UserCheck} />
+      </div>
+
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Search size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher..."
+            className="form-control flex-1 sm:w-64 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
+            <option value="all">Tous les roles ({stats.total})</option>
+            <option value="super-admin">Super-admins ({stats.superAdmins})</option>
+            <option value="payment-checker">Verificateurs paiement ({stats.paymentCheckers})</option>
+            <option value="user-manager">Gestionnaires users ({stats.userManagers})</option>
+            <option value="support">Support ({stats.support})</option>
+          </select>
+        </div>
+        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap">
+          {selectedUsers.length > 0 && (
+            <>
+              <button onClick={handleEmailUsers} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1 flex-1 sm:flex-initial justify-center">
+                <Mail size={14} /> <span className="hidden sm:inline">Email</span> ({selectedUsers.length})
+              </button>
+              <button onClick={() => setSelectedUsers([])} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1">
+                <X size={14} />
+              </button>
+            </>
+          )}
+          <button onClick={() => setShowAddUser(true)} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 flex-1 sm:flex-initial justify-center">
+            <Plus size={14} /> <span className="sm:inline">Ajouter</span>
+          </button>
+        </div>
+      </div>
+
+      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(filtered.length)}</span> utilisateur{filtered.length > 1 ? 's' : ''}
+      </p>
+
+      {/* Desktop table view */}
+      <div className="hidden lg:block fluent-card-filled overflow-hidden">
+        <div className="grid grid-cols-[auto_2fr_1.5fr_1.5fr_1fr_1fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+          <span><input type="checkbox" onChange={(e) => setSelectedUsers(e.target.checked ? filtered.map(u => u._id) : [])} className="form-checkbox" /></span>
+          <span>Utilisateur</span><span>Email</span><span>Telephone</span><span>Role</span><span>Derniere connexion</span><span>Actions</span>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          {filtered.length === 0 ? (
+            <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun utilisateur trouve.</div>
+          ) : (
+            filtered.map((u) => {
+              const isSelected = selectedUsers.includes(u._id);
+              return (
+                <div key={u._id} className="grid grid-cols-[auto_2fr_1.5fr_1.5fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedUsers([...selectedUsers, u._id]);
+                      } else {
+                        setSelectedUsers(selectedUsers.filter(id => id !== u._id));
+                      }
+                    }}
+                    className="form-checkbox"
+                  />
+                  <div className="min-w-0">
+                    <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{u.name}</span>
+                    {!u.isActive && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs mt-1" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
+                        Inactif
+                      </span>
+                    )}
+                  </div>
+                  <span className="fui-body1 truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>{u.email}</span>
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>{u.phone || '—'}</span>
+                  <span className="fui-caption1">
+                    {u.role === 'super-admin' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
+                        <Shield size={12} /> Super-admin
+                      </span>
+                    )}
+                    {u.role === 'payment-checker' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: '#7C3AED20', color: '#7C3AED' }}>
+                        <CreditCard size={12} /> Verificateur paiement
+                      </span>
+                    )}
+                    {u.role === 'user-manager' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                        <UserCheck size={12} /> Gestionnaire users
+                      </span>
+                    )}
+                    {u.role === 'support' && (
+                      <span style={{ color: 'var(--colorNeutralForeground3)' }}>Support</span>
+                    )}
+                  </span>
+                  <span className="fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    {u.lastLogin ? relativeDays(u.lastLogin) : 'Jamais'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditingUser(u)}
+                      className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"
+                    >
+                      <Pencil size={12} /> Modifier
+                    </button>
+                    {u.role !== 'super-admin' && (
+                      <button
+                        onClick={() => handleDeleteUser(u._id)}
+                        className="ms-button ms-button-subtle ms-button-sm text-red-600"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="lg:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="fluent-card-filled p-6 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Aucun utilisateur trouve.
+          </div>
+        ) : (
+          filtered.map((u) => {
+            const isSelected = selectedUsers.includes(u._id);
+            return (
+              <div key={u._id} className="fluent-card-filled p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUsers([...selectedUsers, u._id]);
+                        } else {
+                          setSelectedUsers(selectedUsers.filter(id => id !== u._id));
+                        }
+                      }}
+                      className="form-checkbox mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{u.name}</p>
+                      <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{u.email}</p>
+                      {u.phone && (
+                        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          📱 {u.phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {u.role === 'super-admin' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
+                      <Shield size={12} /> Super-admin
+                    </span>
+                  )}
+                  {u.role === 'payment-checker' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs" style={{ background: '#7C3AED20', color: '#7C3AED' }}>
+                      <CreditCard size={12} /> Verificateur
+                    </span>
+                  )}
+                  {u.role === 'user-manager' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
+                      <UserCheck size={12} /> Gestionnaire
+                    </span>
+                  )}
+                  {u.role === 'support' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded text-xs" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground3)' }}>
+                      Support
+                    </span>
+                  )}
+                  {!u.isActive && (
+                    <span className="inline-flex items-center px-2 py-1 rounded text-xs" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
+                      Inactif
+                    </span>
+                  )}
+                </div>
+
+                {u.lastLogin && (
+                  <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Derniere connexion: {relativeDays(u.lastLogin)}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                  <button
+                    onClick={() => setEditingUser(u)}
+                    className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1 flex-1 justify-center"
+                  >
+                    <Pencil size={14} /> Modifier
+                  </button>
+                  {u.role !== 'super-admin' && (
+                    <button
+                      onClick={() => handleDeleteUser(u._id)}
+                      className="ms-button ms-button-subtle ms-button-sm text-red-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {showAddUser && <AddUserModal onClose={() => { setShowAddUser(false); fetchUsers(); }} />}
+      {editingUser && <EditUserModal user={editingUser} onClose={() => { setEditingUser(null); fetchUsers(); }} />}
+      {showEmailModal && <EmailUsersModal users={selectedUsers.map(id => filtered.find(u => u._id === id)).filter(Boolean)} onClose={() => setShowEmailModal(false)} />}
+    </div>
+  );
+};
+
+/* ─── Add User Modal ──────────────────────────────────────── */
+const AddUserModal = ({ onClose }) => {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'support',
+    permissions: [],
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+      toast.error('Nom, email et mot de passe requis');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await api.post('/platform-users', form);
+      toast.success(res.data.message || 'Utilisateur cree avec succes');
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la creation');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-lg w-full max-h-[90vh] overflow-y-auto" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Ajouter un utilisateur</h2>
+            <button onClick={onClose} className="ms-button ms-button-subtle ms-button-sm">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="form-label block mb-1">Nom complet</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+              className="form-control"
+              placeholder="Jean Dupont"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+              className="form-control"
+              placeholder="jean@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Telephone</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+              className="form-control"
+              placeholder="+242 06 123 45 67"
+            />
+            <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              Peut se connecter avec son numero
+            </p>
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Mot de passe</label>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+              className="form-control"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div>
+            <label className="form-label block mb-2">Role</label>
+            <select value={form.role} onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))} className="form-control">
+              <option value="support">Support - Acces de base</option>
+              <option value="payment-checker">Verificateur paiement - Acces facturation</option>
+              <option value="user-manager">Gestionnaire utilisateurs - Gestion des users</option>
+              <option value="super-admin">Super-admin - Acces complet</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="p-5 border-t flex items-center justify-end gap-2" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <button onClick={onClose} className="ms-button ms-button-secondary ms-button-md">
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting} className="ms-button ms-button-primary ms-button-md">
+            {submitting ? 'Creation...' : 'Creer l utilisateur'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Edit User Modal ─────────────────────────────────────── */
+const EditUserModal = ({ user, onClose }) => {
+  const [form, setForm] = useState({
+    role: user.role,
+    isActive: user.isActive,
+    phone: user.phone || '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      await api.patch(`/platform-users/${user._id}`, form);
+      toast.success('Utilisateur mis a jour');
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la mise a jour');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-lg w-full" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Modifier l utilisateur</h2>
+            <button onClick={onClose} className="ms-button ms-button-subtle ms-button-sm">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="p-3 rounded" style={{ background: 'var(--colorNeutralBackground2)' }}>
+            <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{user.name}</p>
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{user.email}</p>
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Telephone</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+              className="form-control"
+              placeholder="+242 06 123 45 67"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="form-label block mb-2">Role</label>
+            <select value={form.role} onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))} className="form-control">
+              <option value="support">Support - Acces de base</option>
+              <option value="payment-checker">Verificateur paiement - Acces facturation</option>
+              <option value="user-manager">Gestionnaire utilisateurs - Gestion des users</option>
+              <option value="super-admin">Super-admin - Acces complet</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(e) => setForm(f => ({ ...f, isActive: e.target.checked }))}
+                className="form-checkbox"
+              />
+              <div>
+                <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Compte actif</p>
+                <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>L utilisateur peut se connecter</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div className="p-5 border-t flex items-center justify-end gap-2" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <button onClick={onClose} className="ms-button ms-button-secondary ms-button-md">
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting} className="ms-button ms-button-primary ms-button-md">
+            {submitting ? 'Mise a jour...' : 'Mettre a jour'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Email Users Modal ───────────────────────────────────── */
+const EmailUsersModal = ({ users, onClose }) => {
+  const [form, setForm] = useState({
+    subject: '',
+    message: '',
+  });
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!form.subject.trim() || !form.message.trim()) {
+      toast.error('Sujet et message requis');
+      return;
+    }
+
+    try {
+      setSending(true);
+      const payload = {
+        userIds: users.map(u => u._id),
+        subject: form.subject,
+        message: form.message,
+      };
+      const res = await api.post('/platform-users/send-email', payload);
+      toast.success(res.data.message || `Email envoye a ${users.length} utilisateur(s)`);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de l envoi');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="fui-title3" style={{ color: 'var(--colorNeutralForeground1)' }}>Envoyer un email</h2>
+              <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                {users.length} destinataire{users.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <button onClick={onClose} className="ms-button ms-button-subtle ms-button-sm">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="p-3 rounded" style={{ background: 'var(--colorNeutralBackground2)' }}>
+            <p className="fui-caption1-strong mb-2" style={{ color: 'var(--colorNeutralForeground2)' }}>Destinataires :</p>
+            <div className="flex flex-wrap gap-2">
+              {users.slice(0, 10).map((u, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke1)' }}>
+                  {u.name}
+                </span>
+              ))}
+              {users.length > 10 && (
+                <span className="inline-flex items-center px-2 py-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  +{users.length - 10} autres
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Sujet</label>
+            <input
+              type="text"
+              value={form.subject}
+              onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))}
+              className="form-control"
+              placeholder="Objet de l email"
+              maxLength={200}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Message</label>
+            <textarea
+              value={form.message}
+              onChange={(e) => setForm(f => ({ ...f, message: e.target.value }))}
+              className="form-control"
+              rows={10}
+              placeholder="Redigez votre message ici..."
+            />
+          </div>
+        </div>
+
+        <div className="p-5 border-t flex items-center justify-end gap-2" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <button onClick={onClose} className="ms-button ms-button-secondary ms-button-md">
+            Annuler
+          </button>
+          <button onClick={handleSend} disabled={sending} className="ms-button ms-button-primary ms-button-md flex items-center gap-2">
+            {sending ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" /> Envoi...
+              </>
+            ) : (
+              <>
+                <Mail size={16} /> Envoyer
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── TAB: Notifications ──────────────────────────────────── */
+const NotificationsTab = ({ tenants }) => {
+  const [form, setForm] = useState({
+    title: '',
+    message: '',
+    type: 'info',
+    targetType: 'all',
+    plans: [],
+    statuses: [],
+    paymentStatus: 'all',
+  });
+  const [sending, setSending] = useState(false);
+  const [preview, setPreview] = useState(false);
+
+  const now = Date.now();
+
+  // Calculate target audience
+  const targetTenants = tenants.filter((t) => {
+    if (form.targetType === 'all') return true;
+
+    if (form.targetType === 'plans' && form.plans.length > 0) {
+      if (!form.plans.includes(t.plan)) return false;
+    }
+
+    if (form.targetType === 'statuses' && form.statuses.length > 0) {
+      if (!form.statuses.includes(t.status)) return false;
+    }
+
+    if (form.targetType === 'payment') {
+      if (form.paymentStatus === 'overdue') {
+        const isOverdue = t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
+        if (!isOverdue) return false;
+      }
+      if (form.paymentStatus === 'upcoming') {
+        const daysUntil = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
+        if (!daysUntil || daysUntil <= 0 || daysUntil > 7) return false;
+      }
+      if (form.paymentStatus === 'never-paid') {
+        if (t.lastPaymentAt || t.monthlyPrice <= 0) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const handleSend = async () => {
+    if (!form.title.trim() || !form.message.trim()) {
+      toast.error('Titre et message requis');
+      return;
+    }
+    if (targetTenants.length === 0) {
+      toast.error('Aucune boutique ciblee');
+      return;
+    }
+
+    try {
+      setSending(true);
+      // API call would go here
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      toast.success(`Notification envoyee a ${targetTenants.length} boutique(s)`);
+      setForm({
+        title: '',
+        message: '',
+        type: 'info',
+        targetType: 'all',
+        plans: [],
+        statuses: [],
+        paymentStatus: 'all',
+      });
+    } catch (err) {
+      toast.error('Erreur lors de l envoi');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const typeOptions = [
+    { value: 'info', label: 'Information', color: 'var(--colorBrandForeground1)', icon: Bell },
+    { value: 'warning', label: 'Avertissement', color: 'var(--colorStatusWarningForeground1)', icon: AlertTriangle },
+    { value: 'success', label: 'Succes', color: 'var(--colorStatusSuccessForeground1)', icon: CheckCircle2 },
+    { value: 'urgent', label: 'Urgent', color: 'var(--colorStatusDangerForeground1)', icon: AlertCircle },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Toutes les boutiques" value={fmt(tenants.length)} sub="Cible par defaut" accent="var(--colorBrandForeground1)" icon={Building2} />
+        <Kpi label="Boutiques actives" value={fmt(tenants.filter(t => t.status === 'active').length)} sub="En operation" accent="var(--colorStatusSuccessForeground1)" icon={CheckCircle2} />
+        <Kpi label="Paiements en retard" value={fmt(tenants.filter(t => t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active').length)} sub="Necessitent suivi" accent="var(--colorStatusDangerForeground1)" icon={AlertCircle} />
+        <Kpi label="Cible actuelle" value={fmt(targetTenants.length)} sub="Recevront le message" accent="var(--colorStatusWarningForeground1)" icon={Bell} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Compose notification */}
+        <div className="fluent-card-filled p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Composer une notification</p>
+            <button
+              onClick={() => setPreview(!preview)}
+              className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"
+            >
+              {preview ? <EyeOff size={14} /> : <Eye size={14} />}
+              {preview ? 'Masquer' : 'Apercu'}
+            </button>
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Titre de la notification</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Ex: Nouvelle fonctionnalite disponible"
+              className="form-control"
+              maxLength={100}
+            />
+            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              {form.title.length}/100 caracteres
+            </p>
+          </div>
+
+          <div>
+            <label className="form-label block mb-1">Message</label>
+            <textarea
+              value={form.message}
+              onChange={(e) => setForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Redigez votre message ici..."
+              className="form-control"
+              rows={6}
+              maxLength={500}
+            />
+            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              {form.message.length}/500 caracteres
+            </p>
+          </div>
+
+          <div>
+            <label className="form-label block mb-2">Type de notification</label>
+            <div className="grid grid-cols-2 gap-2">
+              {typeOptions.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setForm(f => ({ ...f, type: opt.value }))}
+                    className={`p-3 rounded-lg border-2 flex items-center gap-2 transition ${
+                      form.type === opt.value
+                        ? 'border-current'
+                        : 'border-transparent bg-[var(--colorNeutralBackground2)]'
+                    }`}
+                    style={{
+                      color: form.type === opt.value ? opt.color : 'var(--colorNeutralForeground2)',
+                    }}
+                  >
+                    <Icon size={16} />
+                    <span className="fui-body1-strong">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Target audience */}
+        <div className="fluent-card-filled p-5 space-y-4">
+          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            Cibler l audience ({fmt(targetTenants.length)} boutique{targetTenants.length > 1 ? 's' : ''})
+          </p>
+
+          <div>
+            <label className="form-label block mb-2">Type de ciblage</label>
+            <select
+              value={form.targetType}
+              onChange={(e) => setForm(f => ({ ...f, targetType: e.target.value, plans: [], statuses: [], paymentStatus: 'all' }))}
+              className="form-control"
+            >
+              <option value="all">Toutes les boutiques</option>
+              <option value="plans">Par plan d abonnement</option>
+              <option value="statuses">Par statut</option>
+              <option value="payment">Par situation de paiement</option>
+            </select>
+          </div>
+
+          {form.targetType === 'plans' && (
+            <div>
+              <label className="form-label block mb-2">Plans d abonnement</label>
+              <div className="space-y-2">
+                {Object.entries(PLAN_LABELS).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.plans.includes(key)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForm(f => ({
+                          ...f,
+                          plans: checked ? [...f.plans, key] : f.plans.filter(p => p !== key),
+                        }));
+                      }}
+                      className="form-checkbox"
+                    />
+                    <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      {label} ({tenants.filter(t => t.plan === key).length})
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {form.targetType === 'statuses' && (
+            <div>
+              <label className="form-label block mb-2">Statuts</label>
+              <div className="space-y-2">
+                {Object.entries(STATUS_META).map(([key, meta]) => (
+                  <label key={key} className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.statuses.includes(key)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForm(f => ({
+                          ...f,
+                          statuses: checked ? [...f.statuses, key] : f.statuses.filter(s => s !== key),
+                        }));
+                      }}
+                      className="form-checkbox"
+                    />
+                    <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      {meta.label} ({tenants.filter(t => t.status === key).length})
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {form.targetType === 'payment' && (
+            <div>
+              <label className="form-label block mb-2">Situation de paiement</label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={form.paymentStatus === 'all'}
+                    onChange={() => setForm(f => ({ ...f, paymentStatus: 'all' }))}
+                    className="form-radio"
+                  />
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Tous ({tenants.length})
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={form.paymentStatus === 'overdue'}
+                    onChange={() => setForm(f => ({ ...f, paymentStatus: 'overdue' }))}
+                    className="form-radio"
+                  />
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Paiements en retard ({tenants.filter(t => t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active').length})
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={form.paymentStatus === 'upcoming'}
+                    onChange={() => setForm(f => ({ ...f, paymentStatus: 'upcoming' }))}
+                    className="form-radio"
+                  />
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Echeances 7 jours ({tenants.filter(t => {
+                      const daysUntil = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
+                      return daysUntil && daysUntil > 0 && daysUntil <= 7;
+                    }).length})
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={form.paymentStatus === 'never-paid'}
+                    onChange={() => setForm(f => ({ ...f, paymentStatus: 'never-paid' }))}
+                    className="form-radio"
+                  />
+                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    Jamais paye ({tenants.filter(t => !t.lastPaymentAt && t.monthlyPrice > 0).length})
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleSend}
+            disabled={sending || !form.title.trim() || !form.message.trim() || targetTenants.length === 0}
+            className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-50"
+          >
+            {sending ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" /> Envoi en cours...
+              </>
+            ) : (
+              <>
+                <Bell size={16} /> Envoyer a {fmt(targetTenants.length)} boutique{targetTenants.length > 1 ? 's' : ''}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {preview && form.title && form.message && (
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>Apercu de la notification</p>
+          <div
+            className="p-4 rounded-lg border-l-4"
+            style={{
+              background: 'var(--colorNeutralBackground2)',
+              borderLeftColor: typeOptions.find(t => t.value === form.type)?.color,
+            }}
+          >
+            <div className="flex items-start gap-3">
+              {(() => {
+                const Icon = typeOptions.find(t => t.value === form.type)?.icon || Bell;
+                return <Icon size={20} style={{ color: typeOptions.find(t => t.value === form.type)?.color }} />;
+              })()}
+              <div className="flex-1 min-w-0">
+                <p className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>{form.title}</p>
+                <p className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)', whiteSpace: 'pre-wrap' }}>{form.message}</p>
+                <p className="fui-caption2 mt-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  <Clock size={12} className="inline" /> A l instant
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Target list preview */}
+      {targetTenants.length > 0 && targetTenants.length <= 20 && (
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            Boutiques ciblees ({targetTenants.length})
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {targetTenants.map(t => (
+              <div key={t._id} className="p-2 rounded flex items-center gap-2" style={{ background: 'var(--colorNeutralBackground2)' }}>
+                <div className="min-w-0 flex-1">
+                  <p className="fui-body2-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</p>
+                  <p className="fui-caption2 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{PLAN_LABELS[t.plan]}</p>
+                </div>
+                <StatusBadge status={t.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── TAB: Analytics ──────────────────────────────────────── */
+const AnalyticsTab = ({ tenants }) => {
+  const now = Date.now();
+
+  // Growth metrics
+  const last30Days = tenants.filter(t => t.createdAt && (now - new Date(t.createdAt)) <= 30 * 86400000);
+  const last60Days = tenants.filter(t => t.createdAt && (now - new Date(t.createdAt)) <= 60 * 86400000);
+  const growthRate = last60Days.length > 30 ? ((last30Days.length / (last60Days.length - last30Days.length) - 1) * 100).toFixed(1) : 0;
+
+  // Revenue trends (last 6 months)
+  const monthlyRevenue = [];
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    const monthKey = date.toISOString().slice(0, 7);
+    const revenue = tenants.reduce((sum, t) => {
+      const payments = (t.payments || []).filter(p => p.paidAt && p.paidAt.startsWith(monthKey));
+      return sum + payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    }, 0);
+    monthlyRevenue.push({ month: monthKey, revenue });
+  }
+
+  // Churn analysis
+  const churnedThisMonth = tenants.filter(t => {
+    if (t.status !== 'expired' && t.status !== 'suspended') return false;
+    const lastActive = t.lastPaymentAt || t.createdAt;
+    if (!lastActive) return false;
+    return (now - new Date(lastActive)) <= 30 * 86400000;
+  });
+
+  // Plan distribution
+  const planDist = tenants.reduce((acc, t) => {
+    acc[t.plan] = (acc[t.plan] || 0) + 1;
+    return acc;
+  }, {});
+  const planChartData = Object.entries(planDist).map(([name, value]) => ({
+    name: PLAN_LABELS[name] || name,
+    value,
+    color: PLAN_COLORS[name] || '#666',
+  }));
+
+  // Retention rate
+  const totalActive = tenants.filter(t => t.status === 'active').length;
+  const retentionRate = tenants.length > 0 ? ((totalActive / tenants.length) * 100).toFixed(1) : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Croissance 30j" value={`${growthRate}%`} sub={`${last30Days.length} nouvelles boutiques`} accent={growthRate >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)'} icon={TrendingUp} />
+        <Kpi label="Taux de retention" value={`${retentionRate}%`} sub={`${totalActive}/${tenants.length} actives`} accent="var(--colorBrandForeground1)" icon={CheckCircle2} />
+        <Kpi label="Churn ce mois" value={fmt(churnedThisMonth.length)} sub="Perdus ce mois" accent="var(--colorStatusDangerForeground1)" icon={TrendingDown} />
+        <Kpi label="LTV moyen" value={money(totalActive > 0 ? tenants.reduce((s, t) => s + (t.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 0) / totalActive : 0)} sub="Par boutique active" accent="#7C3AED" icon={DollarSign} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Revenue trend */}
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Revenu mensuel (6 mois)</p>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyRevenue} margin={{ top: 6, right: 6, left: -24, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+                <RTooltip content={({ payload }) => payload?.[0] ? <div className="px-2 py-1 rounded" style={{ background: 'var(--colorNeutralBackground1)', border: '1px solid var(--colorNeutralStroke1)' }}>{money(payload[0].value)}</div> : null} />
+                <Bar dataKey="revenue" fill="var(--colorBrandForeground1)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Plan distribution */}
+        <div className="fluent-card-filled p-5">
+          <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Repartition des plans</p>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={planChartData} dataKey="value" cx="50%" cy="50%" outerRadius={80} label={(entry) => `${entry.name} (${entry.value})`}>
+                  {planChartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <RTooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Top performing tenants */}
+      <div className="fluent-card-filled p-5">
+        <p className="fui-subtitle2 mb-3" style={{ color: 'var(--colorNeutralForeground1)' }}>Top 10 boutiques (revenu total)</p>
+        <div className="space-y-2">
+          {tenants
+            .map(t => ({
+              ...t,
+              totalRevenue: (t.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+            }))
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .slice(0, 10)
+            .map((t, i) => (
+              <div key={t._id} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-[var(--colorNeutralBackground2)]">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <span className="fui-subtitle2 shrink-0 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)', width: 24 }}>#{i + 1}</span>
+                  <div className="min-w-0">
+                    <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
+                    <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{PLAN_LABELS[t.plan]} · {(t.payments || []).length} paiement{(t.payments || []).length > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <span className="fui-title3 tabular-nums shrink-0" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{money(t.totalRevenue)}</span>
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── TAB: System Management ─────────────────────────────────── */
+const SystemTab = () => {
+  const [settings, setSettings] = useState({
+    maintenanceMode: false,
+    allowNewRegistrations: true,
+    defaultTrialDays: 30,
+    minPasswordLength: 8,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Kpi label="Uptime" value="99.9%" sub="30 derniers jours" accent="var(--colorStatusSuccessForeground1)" icon={Server} />
+        <Kpi label="API Calls" value="1.2M" sub="Ce mois" accent="var(--colorBrandForeground1)" icon={Activity} />
+        <Kpi label="Storage" value="2.4 GB" sub="Base de donnees" accent="var(--colorStatusWarningForeground1)" icon={Database} />
+        <Kpi label="Backups" value="Daily" sub="Dernier: il y a 2h" accent="var(--colorNeutralForeground2)" icon={Shield} />
+      </div>
+
+      <div className="fluent-card-filled p-5">
+        <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Configuration systeme</p>
+        <div className="space-y-4">
+          <label className="flex items-center justify-between p-3 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+            <div>
+              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Mode maintenance</p>
+              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Bloquer l acces aux boutiques (super-admin uniquement)</p>
+            </div>
+            <input type="checkbox" checked={settings.maintenanceMode} onChange={(e) => setSettings(s => ({ ...s, maintenanceMode: e.target.checked }))} className="form-checkbox" />
+          </label>
+
+          <label className="flex items-center justify-between p-3 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
+            <div>
+              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Nouvelles inscriptions</p>
+              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Autoriser l inscription de nouvelles boutiques</p>
+            </div>
+            <input type="checkbox" checked={settings.allowNewRegistrations} onChange={(e) => setSettings(s => ({ ...s, allowNewRegistrations: e.target.checked }))} className="form-checkbox" />
+          </label>
+
+          <div className="p-3 rounded hover:bg-[var(--colorNeutralBackground2)]">
+            <label className="block">
+              <p className="fui-body1-strong mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Duree d essai par defaut (jours)</p>
+              <input type="number" min="0" max="365" value={settings.defaultTrialDays} onChange={(e) => setSettings(s => ({ ...s, defaultTrialDays: Number(e.target.value) }))} className="form-control w-32" />
+            </label>
+          </div>
+
+          <div className="p-3 rounded hover:bg-[var(--colorNeutralBackground2)]">
+            <label className="block">
+              <p className="fui-body1-strong mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Longueur minimale du mot de passe</p>
+              <input type="number" min="6" max="32" value={settings.minPasswordLength} onChange={(e) => setSettings(s => ({ ...s, minPasswordLength: Number(e.target.value) }))} className="form-control w-32" />
+            </label>
+          </div>
+
+          <button className="ms-button ms-button-primary ms-button-md flex items-center gap-2">
+            <Save size={16} /> Enregistrer les parametres
+          </button>
+        </div>
+      </div>
+
+      <div className="fluent-card-filled p-5">
+        <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Actions systeme</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
+            <Database size={16} /> Exporter la base de donnees
+          </button>
+          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
+            <RefreshCw size={16} /> Vider le cache
+          </button>
+          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
+            <Download size={16} /> Telecharger les logs
+          </button>
+          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
+            <Mail size={16} /> Tester les emails
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1760,6 +3152,284 @@ const PlansTab = () => {
         Le prix et les limites changent au prochain changement de plan d'une boutique (ou manuellement depuis l'onglet Boutiques).
         Les <strong>fonctionnalités</strong>, elles, s'appliquent immédiatement à toutes les boutiques du forfait concerné.
       </p>
+    </div>
+  );
+};
+
+/* ─── TAB: Subscriptions Management ──────────────────────── */
+const SubscriptionsTab = ({ tenants, loading, onReload }) => {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('nextDue');
+
+  const now = new Date();
+
+  // Filter tenants
+  const filtered = tenants.filter((t) => {
+    if (search && !t.name?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+    if (planFilter !== 'all' && t.plan !== planFilter) return false;
+    return true;
+  });
+
+  // Sort tenants
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'nextDue') {
+      const aDate = a.nextPaymentDue ? new Date(a.nextPaymentDue) : new Date('2099-12-31');
+      const bDate = b.nextPaymentDue ? new Date(b.nextPaymentDue) : new Date('2099-12-31');
+      return aDate - bDate;
+    }
+    if (sortBy === 'name') return a.name.localeCompare(b.name);
+    if (sortBy === 'plan') return (a.plan || '').localeCompare(b.plan || '');
+    return 0;
+  });
+
+  // Statistics
+  const stats = {
+    total: tenants.length,
+    active: tenants.filter(t => t.status === 'active').length,
+    trial: tenants.filter(t => t.plan === 'trial').length,
+    expiringSoon: tenants.filter(t => {
+      if (!t.nextPaymentDue || t.status !== 'active') return false;
+      const due = new Date(t.nextPaymentDue);
+      const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+      return daysLeft > 0 && daysLeft <= 7;
+    }).length,
+    overdue: tenants.filter(t => {
+      if (!t.nextPaymentDue || t.status !== 'active') return false;
+      return new Date(t.nextPaymentDue) < now;
+    }).length,
+  };
+
+  const getDaysRemaining = (dueDate) => {
+    if (!dueDate) return null;
+    const due = new Date(dueDate);
+    return Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+  };
+
+  const getStatusColor = (tenant) => {
+    if (tenant.status !== 'active') return 'var(--colorNeutralForeground3)';
+    if (!tenant.nextPaymentDue) return 'var(--colorNeutralForeground3)';
+    const daysLeft = getDaysRemaining(tenant.nextPaymentDue);
+    if (daysLeft === null) return 'var(--colorNeutralForeground3)';
+    if (daysLeft < 0) return 'var(--colorStatusDangerForeground1)';
+    if (daysLeft <= 7) return 'var(--colorStatusWarningForeground1)';
+    return 'var(--colorStatusSuccessForeground1)';
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <Kpi label="Total abonnements" value={fmt(stats.total)} sub="Toutes boutiques" accent="var(--colorBrandForeground1)" icon={Building2} />
+        <Kpi label="Actifs" value={fmt(stats.active)} sub="Abonnements actifs" accent="var(--colorStatusSuccessForeground1)" icon={CheckCircle2} />
+        <Kpi label="Essais gratuits" value={fmt(stats.trial)} sub="Plan trial" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
+        <Kpi label="Expire bientot" value={fmt(stats.expiringSoon)} sub="Dans les 7 jours" accent="var(--colorStatusWarningForeground1)" icon={AlertTriangle} />
+        <Kpi label="En retard" value={fmt(stats.overdue)} sub="Paiement en retard" accent={stats.overdue ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={XCircle} />
+      </div>
+
+      <div className="ms-command-bar flex-wrap gap-y-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Search size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher..."
+            className="form-control flex-1 sm:w-64 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
+            <option value="all">Tous les statuts</option>
+            <option value="active">Actifs ({stats.active})</option>
+            <option value="trial">Essai</option>
+            <option value="suspended">Suspendus</option>
+            <option value="expired">Expires</option>
+          </select>
+          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
+            <option value="all">Tous les plans</option>
+            <option value="trial">Trial</option>
+            <option value="basic">Basic</option>
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
+            <option value="nextDue">Echeance</option>
+            <option value="name">Nom</option>
+            <option value="plan">Plan</option>
+          </select>
+        </div>
+      </div>
+
+      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(sorted.length)}</span> abonnement{sorted.length > 1 ? 's' : ''}
+      </p>
+
+      {/* Desktop table view */}
+      <div className="hidden lg:block fluent-card-filled overflow-hidden">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+          <span>Boutique</span><span>Plan</span><span>Statut</span><span>Prix mensuel</span><span>Prochaine echeance</span><span>Jours restants</span>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          {loading ? (
+            <div className="px-4 py-10 text-center">Chargement...</div>
+          ) : sorted.length === 0 ? (
+            <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun abonnement trouve.</div>
+          ) : (
+            sorted.map((t) => {
+              const daysLeft = getDaysRemaining(t.nextPaymentDue);
+              const statusColor = getStatusColor(t);
+              const isOverdue = daysLeft !== null && daysLeft < 0;
+              const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
+
+              return (
+                <div key={t._id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+                  <div className="min-w-0">
+                    <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
+                    <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.users?.length || 0} utilisateur{(t.users?.length || 0) > 1 ? 's' : ''}</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded w-fit" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
+                    {PLAN_LABELS[t.plan] || t.plan}
+                  </span>
+                  <StatusBadge status={t.status} />
+                  <span className="fui-body1 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{money(t.monthlyPrice || 0)}</span>
+                  <span className="fui-body1 tabular-nums" style={{ color: statusColor }}>
+                    {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {daysLeft !== null && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium tabular-nums`} style={{
+                        background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
+                        color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
+                      }}>
+                        {isOverdue ? (
+                          <>
+                            <AlertCircle size={12} /> {Math.abs(daysLeft)} j retard
+                          </>
+                        ) : daysLeft === 0 ? (
+                          <>
+                            <AlertTriangle size={12} /> Aujourd hui
+                          </>
+                        ) : daysLeft <= 7 ? (
+                          <>
+                            <Clock size={12} /> {daysLeft} j
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={12} /> {daysLeft} j
+                          </>
+                        )}
+                      </span>
+                    )}
+                    {!t.nextPaymentDue && t.status === 'active' && (
+                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Pas d echeance</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="lg:hidden space-y-3">
+        {loading ? (
+          <div className="fluent-card-filled p-6 text-center">Chargement...</div>
+        ) : sorted.length === 0 ? (
+          <div className="fluent-card-filled p-6 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Aucun abonnement trouve.
+          </div>
+        ) : (
+          sorted.map((t) => {
+            const daysLeft = getDaysRemaining(t.nextPaymentDue);
+            const isOverdue = daysLeft !== null && daysLeft < 0;
+            const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
+
+            return (
+              <div key={t._id} className="fluent-card-filled p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</p>
+                    <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      {t.users?.length || 0} utilisateur{(t.users?.length || 0) > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs whitespace-nowrap" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
+                    {PLAN_LABELS[t.plan] || t.plan}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={t.status} />
+                  {daysLeft !== null && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium tabular-nums`} style={{
+                      background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
+                      color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
+                    }}>
+                      {isOverdue ? (
+                        <>
+                          <AlertCircle size={12} /> {Math.abs(daysLeft)} j retard
+                        </>
+                      ) : daysLeft === 0 ? (
+                        <>
+                          <AlertTriangle size={12} /> Aujourd hui
+                        </>
+                      ) : daysLeft <= 7 ? (
+                        <>
+                          <Clock size={12} /> {daysLeft} j
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={12} /> {daysLeft} j
+                        </>
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                  <div>
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix mensuel</p>
+                    <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prochaine echeance</p>
+                    <p className="fui-body1-strong" style={{ color: getStatusColor(t) }}>
+                      {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {sorted.length > 0 && (
+        <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke1)' }}>
+          <p className="fui-caption1-strong mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>Legende</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusSuccessForeground1)' }} />
+              Plus de 7 jours
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusWarningForeground1)' }} />
+              Expire dans 7 jours ou moins
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusDangerForeground1)' }} />
+              Paiement en retard
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorNeutralForeground3)' }} />
+              Pas d echeance
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
