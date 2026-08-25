@@ -31,6 +31,13 @@ const TENANT_SCOPED_MODELS = [
   'StockReplacementReminder',
   'SupportTicket',
   'SubscriptionPayment',
+  'Location',
+  'Membership',
+  'Role',
+  'AttributeDefinition',
+  'ProductVariant',
+  'UnitOfMeasure',
+  'UnitConversion',
 ];
 
 module.exports = { TENANT_SCOPED_MODELS };

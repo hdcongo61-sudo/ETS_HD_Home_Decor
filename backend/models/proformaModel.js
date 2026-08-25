@@ -8,6 +8,12 @@ const proformaSchema = mongoose.Schema(
       required: true,
       index: true,
     },
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+      index: true,
+    },
     reference: {
       type: String,
       required: true,

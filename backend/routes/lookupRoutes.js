@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getCategories, createCategory, updateCategory, deleteCategory,
+  getCategories, getCategoriesTree, createCategory, updateCategory, deleteCategory,
   getExpenseCategories, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory,
   getContainers, createContainer, updateContainer, deleteContainer,
   getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
@@ -13,6 +13,8 @@ const { protect, admin, requireTenant } = require('../middlewares/authMiddleware
 router.route('/categories')
   .get(protect, requireTenant, getCategories)
   .post(protect, requireTenant, admin, createCategory);
+// Arborescence complète (Phase 3) — déclarée avant /:id.
+router.get('/categories/tree', protect, requireTenant, getCategoriesTree);
 router.route('/categories/:id')
   .put(protect, requireTenant, admin, updateCategory)
   .delete(protect, requireTenant, admin, deleteCategory);

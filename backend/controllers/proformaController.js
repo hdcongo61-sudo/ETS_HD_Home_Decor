@@ -107,6 +107,7 @@ const createProforma = asyncHandler(async (req, res) => {
     const created = await Proforma.create(
       applyTenant(req, {
         reference: buildReference(),
+        locationId: req.locationId || null,
         client,
         products,
         totalAmount,

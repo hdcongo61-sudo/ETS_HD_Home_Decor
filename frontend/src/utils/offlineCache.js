@@ -27,14 +27,16 @@ const openDb = () => {
   return dbPromise;
 };
 
-// Stable key independent of the (dev/prod) base URL — keyed on path + params.
-export const buildCacheKey = (config = {}, userId, tenantId) => {
+// Stable key independent of the (dev/prod) base URL — keyed on path + params,
+// namespaced per user / tenant / boutique (location) pour éviter toute fuite
+// de cache entre comptes, organisations ou boutiques.
+export const buildCacheKey = (config = {}, userId, tenantId, locationId) => {
   const method = (config.method || 'get').toLowerCase();
   const url = config.url || '';
   const params = config.params ? JSON.stringify(config.params) : '';
   const baseKey = `${method}:${url}:${params}`;
   if (userId && tenantId) {
-    return `${userId}_${tenantId}_${baseKey}`;
+    return `${userId}_${tenantId}_${locationId ? `${locationId}_` : ''}${baseKey}`;
   }
   return baseKey;
 };

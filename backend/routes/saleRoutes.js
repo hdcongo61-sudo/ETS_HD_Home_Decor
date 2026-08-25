@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
 const {
   createSale,
   addPayment,
@@ -41,7 +41,7 @@ router.route('/user/:userId')
 // Main sales routes
 router.route('/')
   .get(protect, requireTenant, getSales)          // GET /api/sales (with optional query params)
-  .post(protect, requireTenant, createSale);
+  .post(protect, requireTenant, resolveLocation, createSale);
 
 // Deleted sales history
 router.get('/deleted', protect, requireTenant, admin, getDeletedSales);

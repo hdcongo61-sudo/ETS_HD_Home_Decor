@@ -38,6 +38,7 @@ import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useModal } from "../context/ModalContext";
 import { resolveAppLogo } from "../utils/appBranding";
+import LocationSwitcher from "./LocationSwitcher";
 
 const Navigation = () => {
   const { auth } = useContext(AuthContext);
@@ -231,6 +232,11 @@ const Navigation = () => {
               <ShieldCheck className="h-3.5 w-3.5" />
               <span className="hidden lg:inline">Super Admin</span>
             </Link>
+          )}
+
+          {/* Sélecteur de boutique (Phase 2.8) — membres de boutique uniquement */}
+          {auth.isAuthenticated && !auth.isSuperAdmin && (
+            <LocationSwitcher />
           )}
 
           {/* Quick Access button — desktop only (hidden for platform operators) */}

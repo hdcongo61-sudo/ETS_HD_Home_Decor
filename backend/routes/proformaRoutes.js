@@ -7,13 +7,13 @@ const {
   markProformaConverted,
   deleteProforma,
 } = require('../controllers/proformaController');
-const { protect, requireTenant } = require('../middlewares/authMiddleware');
+const { protect, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 router.route('/')
   .get(protect, requireTenant, getProformas)
-  .post(protect, requireTenant, createProforma);
+  .post(protect, requireTenant, resolveLocation, createProforma);
 
 router.put('/:id/convert', protect, requireTenant, markProformaConverted);
 

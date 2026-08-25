@@ -216,6 +216,7 @@ const createExpense = async (req, res) => {
     }
 
     const expense = new Expense({ tenantId: req.tenantId,
+      locationId: req.locationId || null,
       ...salaryValidation.payload,
       createdBy: req.user ? req.user._id : undefined,
     });

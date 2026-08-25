@@ -8,6 +8,12 @@ const bankTransactionSchema = mongoose.Schema(
       default: null,
       index: true,
     },
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+      index: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

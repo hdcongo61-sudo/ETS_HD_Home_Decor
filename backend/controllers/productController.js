@@ -1,4 +1,5 @@
 const Product = require('../models/productModel');
+const ProductVariant = require('../models/productVariantModel');
 const Sale = require('../models/saleModel');
 const StockMovement = require('../models/stockMovementModel');
 const Supplier = require('../models/supplierModel');
@@ -648,6 +649,22 @@ const createProduct = async (req, res) => {
     });
 
     const createdProduct = await product.save();
+
+    // Phase 3 : variante par défaut automatique (compatibilité catalogue v2).
+    try {
+      await ProductVariant.create({
+        tenantId: req.tenantId,
+        productId: createdProduct._id,
+        optionValues: {},
+        sku: createdProduct.sku || undefined,
+        barcodes: [],
+        status: 'active',
+        isDefault: true,
+      });
+    } catch (error) {
+      console.error('Erreur création variante par défaut:', error.message);
+    }
+
     res.status(201).json(createdProduct);
   } catch (error) {
     console.error('❌ Erreur création produit :', error);
@@ -1296,6 +1313,7 @@ const createStockMovement = async (req, res) => {
     await product.save();
 
     const movement = await StockMovement.create({
+      locationId: req.locationId || null,
       product: product._id,
       productName: product.name,
       category: product.category,

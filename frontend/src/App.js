@@ -19,6 +19,7 @@ import AppLoader from './components/AppLoader';
 import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
 import { DashboardDataProvider } from './context/DashboardDataContext';
+import { LocationProvider } from './context/LocationContext';
 import DesktopNavRail from './components/DesktopNavRail';
 import ServerWakeup from './components/ServerWakeup';
 import TrialBanner from './components/TrialBanner';
@@ -528,14 +529,16 @@ function App() {
       <ModalProvider>
         <AppSettingsProvider>
           <AuthProvider>
-            <DashboardDataProvider>
-              <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <ScrollToTop />
-                <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-                <ConfirmProvider />
-                <ApplicationShell />
-              </Router>
-            </DashboardDataProvider>
+            <LocationProvider>
+              <DashboardDataProvider>
+                <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                  <ScrollToTop />
+                  <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+                  <ConfirmProvider />
+                  <ApplicationShell />
+                </Router>
+              </DashboardDataProvider>
+            </LocationProvider>
           </AuthProvider>
         </AppSettingsProvider>
       </ModalProvider>

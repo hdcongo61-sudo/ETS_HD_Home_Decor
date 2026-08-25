@@ -693,6 +693,7 @@ const createSale = asyncHandler(async (req, res) => {
 
     const saleData = {
       client,
+      locationId: req.locationId || null,
       products: populatedProducts,
       totalAmount,
       saleType: resolvedSaleType,

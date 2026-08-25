@@ -94,6 +94,7 @@ const createBankTransaction = asyncHandler(async (req, res) => {
 
   const transaction = await BankTransaction.create({
     tenantId: req.tenantId,
+    locationId: req.locationId || null,
     user: req.user?._id,
     type,
     amount: numericAmount,

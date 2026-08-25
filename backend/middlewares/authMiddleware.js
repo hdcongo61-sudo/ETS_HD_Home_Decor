@@ -3,6 +3,8 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const Tenant = require('../models/tenantModel');
 const PlatformUser = require('../models/platformUserModel');
+const Location = require('../models/locationModel');
+const { authorize } = require('../services/authorization');
 const { runWithTenant } = require('../utils/tenantContext');
 
 // Core token verification + tenant resolution.
@@ -237,6 +239,35 @@ const requireTenant = (req, res, next) => {
   });
 };
 
+// Résout la boutique active (Phase 2) : en-tête `X-Location-Id` validé dans
+// l'organisation, sinon boutique par défaut (la plus ancienne active).
+// Pose `req.locationId` pour que les créations soient rattachées au bon lieu.
+const resolveLocation = asyncHandler(async (req, res, next) => {
+  if (!req.tenantId) return next();
+  const headerId = req.headers['x-location-id'];
+  if (headerId) {
+    const loc = await Location.findOne({
+      tenantId: req.tenantId,
+      _id: headerId,
+      isActive: true,
+    }).select('_id').lean();
+    if (!loc) {
+      return res.status(403).json({
+        message: 'Boutique invalide pour cette organisation.',
+        code: 'INVALID_LOCATION',
+      });
+    }
+    req.locationId = loc._id;
+    return next();
+  }
+  const defaultLocation = await Location.findOne({
+    tenantId: req.tenantId,
+    isActive: true,
+  }).sort({ createdAt: 1 }).select('_id').lean();
+  req.locationId = defaultLocation ? defaultLocation._id : null;
+  next();
+});
+
 const adminOrPermission = (permission) => (req, res, next) => {
   if (
     req.user &&
@@ -250,4 +281,28 @@ const adminOrPermission = (permission) => (req, res, next) => {
   }
 };
 
-module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission, protectAny, platformAdmin };
+// RBAC (Phase 2) : vérifie la permission agrégée des rôles de la membership.
+// Adaptateur legacy : isAdmin/isSuperAdmin continuent de passer (propriétaires
+// historiques), le temps que toutes les routes migrent vers les permissions.
+const requirePermission = (permission) => asyncHandler(async (req, res, next) => {
+  if (req.user && (req.user.isAdmin || req.user.isSuperAdmin)) return next();
+  if (!req.tenantId) {
+    return res.status(403).json({ message: 'Aucune boutique active.', code: 'NO_TENANT_CONTEXT' });
+  }
+  const result = await authorize({
+    tenantId: req.tenantId,
+    userId: req.user ? req.user._id : null,
+    permission,
+    locationId: req.locationId || undefined,
+  });
+  if (!result.allowed) {
+    return res.status(403).json({
+      message: 'Permission insuffisante.',
+      code: 'FORBIDDEN',
+      reason: result.reason,
+    });
+  }
+  next();
+});
+
+module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission, protectAny, platformAdmin, resolveLocation, requirePermission };

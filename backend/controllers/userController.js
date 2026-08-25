@@ -3,6 +3,7 @@ const Employee = require('../models/employeeModel');
 const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
+const { ensureMembershipForUser } = require('../services/authorization');
 const LoginHistory = require('../models/loginHistoryModel');
 const AdminRequest = require('../models/adminRequestModel');
 const streamifier = require('streamifier');
@@ -703,6 +704,13 @@ const createUserByAdmin = async (req, res) => {
     photo: photoUrl || '',
     employee: employee || null,
   });
+
+  // RBAC : membership automatique (owner si admin, staff sinon).
+  if (user.tenantId) {
+    await ensureMembershipForUser(user.tenantId, user).catch((err) => {
+      console.error('Erreur création membership:', err.message);
+    });
+  }
 
   const populatedUser = await User.findById(user._id)
     .select('-password -loginAttempts -lockUntil')

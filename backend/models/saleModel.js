@@ -8,6 +8,12 @@ const saleSchema = mongoose.Schema(
       default: null,
       index: true,
     },
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+      index: true,
+    },
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Client',

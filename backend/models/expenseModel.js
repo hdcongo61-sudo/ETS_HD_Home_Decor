@@ -8,6 +8,12 @@ const expenseSchema = mongoose.Schema(
       default: null,
       index: true,
     },
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+      index: true,
+    },
     description: {
       type: String,
       required: true,

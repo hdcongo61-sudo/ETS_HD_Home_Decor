@@ -24,7 +24,7 @@ const {
   getProductSalesHistory,
   importProducts
 } = require('../controllers/productController');
-const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 const { requireFeature } = require('../middlewares/featureMiddleware');
 const { FEATURE_KEYS } = require('../config/features');
@@ -33,7 +33,7 @@ router.route('/never-sold').get(protect, requireTenant, getNeverSoldProducts);
 router.route('/slow-movers').get(protect, requireTenant, admin, getSlowMovingProducts);
 router.route('/stock-movements').get(protect, requireTenant, admin, getStockMovements);
 router.route('/loss-map').get(protect, requireTenant, admin, getProductLossMap);
-router.route('/stock-movement').post(protect, requireTenant, admin, createStockMovement);
+router.route('/stock-movement').post(protect, requireTenant, admin, resolveLocation, createStockMovement);
 router.route('/stock-movement/:id').delete(protect, requireTenant, admin, deleteStockMovement);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
 router.route('/dashboard')

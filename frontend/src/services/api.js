@@ -1,6 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { buildCacheKey, writeCache, readCache, clearCache, clearUserCache } from '../utils/offlineCache';
+import { ACTIVE_LOCATION_STORAGE_KEY } from '../context/LocationContext';
 
 let lastFeatureToastAt = 0;
 
@@ -80,6 +81,12 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Boutique active (Phase 2.8) : le backend valide l'appartenance à l'organisation.
+  let activeLocationId = null;
+  try { activeLocationId = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY); } catch {}
+  if (activeLocationId) {
+    config.headers['X-Location-Id'] = activeLocationId;
+  }
   return config;
 });
 
@@ -98,7 +105,9 @@ api.interceptors.response.use(
     if ((cfg.method || 'get').toLowerCase() === 'get' && response?.data != null && !cfg.__noOfflineCache) {
       const userId = localStorage.getItem('userId');
       const tenantId = localStorage.getItem('tenantId');
-      writeCache(buildCacheKey(cfg, userId, tenantId), response.data);
+      let activeLocationId = null;
+      try { activeLocationId = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY); } catch {}
+      writeCache(buildCacheKey(cfg, userId, tenantId, activeLocationId), response.data);
     }
     return response;
   },
@@ -151,7 +160,9 @@ api.interceptors.response.use(
     if (!error.response && (cfg.method || 'get').toLowerCase() === 'get' && !cfg.__noOfflineCache) {
       const userId = localStorage.getItem('userId');
       const tenantId = localStorage.getItem('tenantId');
-      const cached = await readCache(buildCacheKey(cfg, userId, tenantId));
+      let activeLocationId = null;
+      try { activeLocationId = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY); } catch {}
+      const cached = await readCache(buildCacheKey(cfg, userId, tenantId, activeLocationId));
       if (cached && cached.value != null) {
         return {
           data: cached.value,

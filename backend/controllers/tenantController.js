@@ -7,6 +7,7 @@ const User = require('../models/userModel');
 const PlatformAudit = require('../models/platformAuditModel');
 const PlatformConfig = require('../models/platformConfigModel');
 const { TENANT_SCOPED_MODELS } = require('../utils/tenantCollections');
+const { ensureMembershipForUser } = require('../services/authorization');
 
 // Modèles référencés par la cascade de suppression (garantit leur enregistrement).
 require('../models/loginHistoryModel');
@@ -123,6 +124,11 @@ const registerTenant = asyncHandler(async (req, res) => {
     ownerEmail: tenant.ownerEmail,
     ownerPhone: tenant.ownerPhone,
     primaryColor: tenant.branding?.primaryColor,
+  });
+
+  // RBAC : membership propriétaire pour le compte créé.
+  await ensureMembershipForUser(tenant._id, adminUser).catch((err) => {
+    console.error('Erreur création membership propriétaire:', err.message);
   });
 
   // Update tenant stats

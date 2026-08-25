@@ -14,6 +14,12 @@ const stockMovementSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+      index: true,
+    },
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',

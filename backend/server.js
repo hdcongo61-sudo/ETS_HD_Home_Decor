@@ -46,6 +46,11 @@ const bankRoutes = require('./routes/bankRoutes');
 const comptabiliteRoutes = require('./routes/comptabiliteRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const lookupRoutes = require('./routes/lookupRoutes');
+const locationRoutes = require('./routes/locationRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
+const attributeDefinitionRoutes = require('./routes/attributeDefinitionRoutes');
+const variantRoutes = require('./routes/variantRoutes');
+const unitRoutes = require('./routes/unitRoutes');
 const appSettingsRoutes = require('./routes/appSettingsRoutes');
 const adminRequestRoutes = require('./routes/adminRequestRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
@@ -56,6 +61,11 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const app = express();
 
 app.disable('x-powered-by');
+
+// 0. Observabilité (Phase 1) : requestId + journal JSON structuré.
+const { requestIdMiddleware, requestLoggerMiddleware } = require('./middlewares/requestContext');
+app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
 
 // 1. Set security HTTP headers
 app.use(helmet({
@@ -172,6 +182,11 @@ app.use('/api/bank', protect, requireFeature(FEATURE_KEYS.BANK), bankRoutes);
 app.use('/api/comptabilite', protect, requireFeature(FEATURE_KEYS.COMPTABILITE), comptabiliteRoutes);
 app.use('/api/documents', protect, requireFeature(FEATURE_KEYS.DOCUMENTS), documentRoutes);
 app.use('/api/lookups', lookupRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/memberships', membershipRoutes);
+app.use('/api/attribute-definitions', attributeDefinitionRoutes);
+app.use('/api/variants', variantRoutes);
+app.use('/api/uoms', unitRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api/admin-requests', adminRequestRoutes);
 app.use('/api/tenants', tenantRoutes);
