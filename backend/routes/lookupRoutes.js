@@ -7,46 +7,46 @@ const {
   getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier,
 } = require('../controllers/lookupController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 
 // Categories
 router.route('/categories')
-  .get(protect, getCategories)
-  .post(protect, admin, createCategory);
+  .get(protect, requireTenant, getCategories)
+  .post(protect, requireTenant, admin, createCategory);
 router.route('/categories/:id')
-  .put(protect, admin, updateCategory)
-  .delete(protect, admin, deleteCategory);
+  .put(protect, requireTenant, admin, updateCategory)
+  .delete(protect, requireTenant, admin, deleteCategory);
 
 // Expense categories
 router.route('/expense-categories')
-  .get(protect, getExpenseCategories)
-  .post(protect, admin, createExpenseCategory);
+  .get(protect, requireTenant, getExpenseCategories)
+  .post(protect, requireTenant, admin, createExpenseCategory);
 router.route('/expense-categories/:id')
-  .put(protect, admin, updateExpenseCategory)
-  .delete(protect, admin, deleteExpenseCategory);
+  .put(protect, requireTenant, admin, updateExpenseCategory)
+  .delete(protect, requireTenant, admin, deleteExpenseCategory);
 
 // Containers
 router.route('/containers')
-  .get(protect, getContainers)
-  .post(protect, admin, createContainer);
+  .get(protect, requireTenant, getContainers)
+  .post(protect, requireTenant, admin, createContainer);
 router.route('/containers/:id')
-  .put(protect, admin, updateContainer)
-  .delete(protect, admin, deleteContainer);
+  .put(protect, requireTenant, admin, updateContainer)
+  .delete(protect, requireTenant, admin, deleteContainer);
 
 // Warehouses
 router.route('/warehouses')
-  .get(protect, getWarehouses)
-  .post(protect, admin, createWarehouse);
+  .get(protect, requireTenant, getWarehouses)
+  .post(protect, requireTenant, admin, createWarehouse);
 router.route('/warehouses/:id')
-  .put(protect, admin, updateWarehouse)
-  .delete(protect, admin, deleteWarehouse);
+  .put(protect, requireTenant, admin, updateWarehouse)
+  .delete(protect, requireTenant, admin, deleteWarehouse);
 
 // Suppliers
 router.route('/suppliers')
-  .get(protect, getSuppliers)
-  .post(protect, admin, createSupplier);
+  .get(protect, requireTenant, getSuppliers)
+  .post(protect, requireTenant, admin, createSupplier);
 router.route('/suppliers/:id')
-  .put(protect, admin, updateSupplier)
-  .delete(protect, admin, deleteSupplier);
+  .put(protect, requireTenant, admin, updateSupplier)
+  .delete(protect, requireTenant, admin, deleteSupplier);
 
 module.exports = router;

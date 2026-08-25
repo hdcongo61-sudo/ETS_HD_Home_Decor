@@ -8,6 +8,7 @@ import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
 const Login = () => {
   const [loginId, setLoginId] = useState(''); // téléphone ou email
   const [password, setPassword] = useState('');
+  const [tenantCode, setTenantCode] = useState(''); // code boutique (optionnel)
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,13 +30,12 @@ const Login = () => {
   const isEmail = (value) => typeof value === 'string' && value.includes('@');
   const loginPayload = () => {
     const trimmed = (loginId || '').trim();
-    if (!trimmed) return { password };
-    const isEmailLogin = isEmail(trimmed);
-    return {
-      login: trimmed,
-      ...(isEmailLogin ? { email: trimmed } : { phone: trimmed }),
-      password,
-    };
+    const code = (tenantCode || '').trim();
+    const payload = trimmed
+      ? { login: trimmed, ...(isEmail(trimmed) ? { email: trimmed } : { phone: trimmed }), password }
+      : { password };
+    if (code) payload.tenantCode = code;
+    return payload;
   };
 
   // Redirect only after the AuthProvider has validated the stored session.
@@ -79,6 +79,7 @@ const Login = () => {
 
       // Fetch user profile
       const { data: userData } = await api.get('/users/me');
+      localStorage.setItem('userId', userData._id);
 
       // Update auth context
       setAuth({
@@ -131,6 +132,9 @@ const Login = () => {
           const retrySeconds = Number.parseInt(retryAfter, 10);
           const retryDate = Date.parse(retryAfter);
           setLockout(Number.isFinite(retrySeconds) ? Date.now() + retrySeconds * 1000 : retryDate);
+        } else if (err.response.status === 409 && err.response.data?.availableTenants) {
+          const codes = err.response.data.availableTenants.map((t) => t.code).join(', ');
+          errorMessage = `${err.response.data?.message || 'Plusieurs boutiques utilisent cet identifiant.'} Codes disponibles : ${codes}`;
         } else if (err.response.status === 423) {
           const rawLockUntil = err.response.data.lockUntil;
           const lockUntil = Number(rawLockUntil) || Date.parse(rawLockUntil);
@@ -261,6 +265,20 @@ const Login = () => {
             <p id="login-help" className="mt-1 text-xs text-gray-500">
               Entrez votre numéro de téléphone ou votre adresse email
             </p>
+          </div>
+
+          <div>
+            <label htmlFor="tenantCode" className="form-label mb-2 block">Code boutique <span className="text-gray-400">(optionnel)</span></label>
+            <input
+              id="tenantCode"
+              type="text"
+              autoComplete="off"
+              value={tenantCode}
+              onChange={(e) => setTenantCode(e.target.value)}
+              className="form-control"
+              placeholder="Code boutique — si votre identifiant existe dans plusieurs boutiques"
+              disabled={!!lockoutTime}
+            />
           </div>
 
           <div>

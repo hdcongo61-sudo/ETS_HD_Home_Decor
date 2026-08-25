@@ -255,67 +255,6 @@ const updateMyProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Register new user
-// @route   POST /api/users
-// @access  Public
-const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, isAdmin, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
-
-  // ── Plan limit: max users per tenant ──
-  if (req.tenantId && req.tenant) {
-    const Tenant = require('../models/tenantModel');
-    const currentCount = await User.countDocuments({ tenantId: req.tenantId });
-    const maxUsers = req.tenant.maxUsers || 3;
-    if (currentCount >= maxUsers) {
-      res.status(403);
-      throw new Error(`Limite atteinte : votre plan autorise ${maxUsers} utilisateur(s) maximum. Contactez le support pour augmenter la limite.`);
-    }
-  }
-
-  // Check email uniqueness within the same tenant
-  const userExists = await User.findOne({ email, tenantId: req.tenantId || null });
-  if (userExists) {
-    res.status(400);
-    throw new Error('Un utilisateur avec cet email existe déjà dans cette boutique.');
-  }
-
-  let photoUrl = req.body.photo;
-  if (req.file?.buffer) {
-    photoUrl = await uploadUserPhoto(req.file.buffer);
-  }
-
-  const user = await User.create({
-    tenantId: req.tenantId || null,
-    name,
-    email,
-    password,
-    isAdmin: isAdmin || false,
-    permissions: normalizePermissions(req.body.permissions),
-    phone: phone ? phone.trim() : '',
-    accessControlEnabled: Boolean(accessControlEnabled),
-    accessStart: parseDateOrNull(accessStart),
-    accessEnd: parseDateOrNull(accessEnd),
-    photo: photoUrl || '',
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      isAdmin: user.isAdmin,
-      permissions: Array.isArray(user.permissions) ? user.permissions : [],
-      photo: user.photo || '',
-      lastLogin: user.lastLogin,
-      token: generateToken(user._id, user.tenantId),
-    });
-  } else {
-    res.status(400);
-    throw new Error('Invalid user data');
-  }
-});
-
 // @desc    Authenticate user (by email or phone)
 // @route   POST /api/users/login
 // @access  Public
@@ -332,17 +271,22 @@ const normalizePhoneForMatch = (value) => {
   return digits;
 };
 
-const findUserByPhone = async (phoneInput) => {
+const findUsersByPhone = async (phoneInput) => {
   const inputNorm = normalizePhoneForMatch(phoneInput);
-  if (inputNorm.length < 8) return null;
+  if (inputNorm.length < 8) return [];
   const inputDigits = normalizePhoneToDigits(phoneInput);
   const users = await User.find({ phone: { $exists: true, $ne: '' } });
-  return users.find((u) => {
+  return users.filter((u) => {
     const stored = u.phone || '';
     const storedNorm = normalizePhoneForMatch(stored);
     const storedDigits = normalizePhoneToDigits(stored);
     return storedNorm.length >= 8 && (storedNorm === inputNorm || storedDigits === inputDigits);
-  }) || null;
+  });
+};
+
+const findUserByPhone = async (phoneInput) => {
+  const matches = await findUsersByPhone(phoneInput);
+  return matches[0] || null;
 };
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -367,11 +311,42 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   let user = null;
+  let candidates = [];
   if (loginByPhone) {
-    user = await findUserByPhone(phoneStr);
+    candidates = await findUsersByPhone(phoneStr);
   }
-  if (!user && emailStr) {
-    user = await User.findOne({ email: emailStr });
+  if (candidates.length === 0 && emailStr) {
+    candidates = await User.find({ email: emailStr });
+  }
+
+  if (candidates.length === 1) {
+    user = candidates[0];
+  } else if (candidates.length > 1) {
+    // Même email/téléphone dans plusieurs boutiques : exiger le code boutique.
+    const tenantCodeInput = String(req.body.tenantCode || req.body.shopCode || '').trim();
+    if (!tenantCodeInput) {
+      const tenantIds = [...new Set(candidates.map((c) => c.tenantId).filter(Boolean))];
+      const Tenant = require('../models/tenantModel');
+      const tenants = tenantIds.length
+        ? await Tenant.find({ _id: { $in: tenantIds } }).select('code name').lean()
+        : [];
+      return res.status(409).json({
+        message: 'Plusieurs boutiques utilisent cet identifiant. Ajoutez votre code boutique pour vous connecter.',
+        code: 'TENANT_SELECTION_REQUIRED',
+        availableTenants: tenants.map((t) => ({ code: t.code, name: t.name })),
+      });
+    }
+    const Tenant = require('../models/tenantModel');
+    const tenant = await Tenant.findOne({
+      $or: [{ code: tenantCodeInput.toUpperCase() }, { slug: tenantCodeInput.toLowerCase() }],
+    }).select('_id').lean();
+    if (!tenant) {
+      return res.status(400).json({ message: 'Code boutique inconnu.' });
+    }
+    user = candidates.find((c) => c.tenantId && String(c.tenantId) === String(tenant._id)) || null;
+    if (!user) {
+      return res.status(400).json({ message: 'Aucun compte avec cet identifiant dans cette boutique.' });
+    }
   }
 
   // Get client information
@@ -1044,7 +1019,6 @@ module.exports = {
   getUsers,
   getUserProfile,
   updateMyProfile,
-  registerUser,
   getCurrentUser,
   getUserStats,
   createUserByAdmin,

@@ -7,19 +7,19 @@ const {
   markProformaConverted,
   deleteProforma,
 } = require('../controllers/proformaController');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, requireTenant } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 router.route('/')
-  .get(protect, getProformas)
-  .post(protect, createProforma);
+  .get(protect, requireTenant, getProformas)
+  .post(protect, requireTenant, createProforma);
 
-router.put('/:id/convert', protect, markProformaConverted);
+router.put('/:id/convert', protect, requireTenant, markProformaConverted);
 
 router.route('/:id')
-  .get(protect, getProformaById)
-  .put(protect, updateProforma)
-  .delete(protect, deleteProforma);
+  .get(protect, requireTenant, getProformaById)
+  .put(protect, requireTenant, updateProforma)
+  .delete(protect, requireTenant, deleteProforma);
 
 module.exports = router;

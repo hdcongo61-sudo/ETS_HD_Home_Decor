@@ -21,7 +21,6 @@ const employeeSchema = mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
     },
     phone: {
       type: String,
@@ -83,5 +82,11 @@ employeeSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Unicité par boutique : un même email employé peut exister chez plusieurs tenants.
+employeeSchema.index(
+  { tenantId: 1, email: 1 },
+  { unique: true, partialFilterExpression: { tenantId: { $type: 'objectId' } } }
+);
 
 module.exports = mongoose.model('Employee', employeeSchema);

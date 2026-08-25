@@ -97,7 +97,6 @@ const productSchema = mongoose.Schema(
     },
     sku: {
       type: String,
-      unique: true,
       sparse: true,
       uppercase: true,
       trim: true
@@ -159,6 +158,16 @@ const productSchema = mongoose.Schema(
 productSchema.index({ name: 'text', description: 'text', category: 1, container: 1, warehouse: 1 });
 productSchema.index({ stock: 1 });
 productSchema.index({ isActive: 1 });
+
+// Unicité du SKU par boutique (plus de blocage entre tenants).
+// Le filtre partiel exclut les docs sans tenant ET sans SKU (équivalent sparse).
+productSchema.index(
+  { tenantId: 1, sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { tenantId: { $type: 'objectId' }, sku: { $type: 'string' } },
+  }
+);
 
 // Virtual pour vérifier si le stock est faible
 productSchema.virtual('isLowStock').get(function() {

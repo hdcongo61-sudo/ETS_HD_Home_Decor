@@ -4,10 +4,10 @@ const {
   getBankTransactions,
   createBankTransaction
 } = require('../controllers/bankController');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, requireTenant } = require('../middlewares/authMiddleware');
 
 router.route('/')
-  .get(protect, getBankTransactions)
-  .post(protect, createBankTransaction);
+  .get(protect, requireTenant, getBankTransactions)
+  .post(protect, requireTenant, createBankTransaction);
 
 module.exports = router;

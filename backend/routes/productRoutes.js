@@ -24,60 +24,60 @@ const {
   getProductSalesHistory,
   importProducts
 } = require('../controllers/productController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 const { requireFeature } = require('../middlewares/featureMiddleware');
 const { FEATURE_KEYS } = require('../config/features');
 
-router.route('/never-sold').get(protect, getNeverSoldProducts);
-router.route('/slow-movers').get(protect, admin, getSlowMovingProducts);
-router.route('/stock-movements').get(protect, admin, getStockMovements);
-router.route('/loss-map').get(protect, admin, getProductLossMap);
-router.route('/stock-movement').post(protect, admin, createStockMovement);
-router.route('/stock-movement/:id').delete(protect, admin, deleteStockMovement);
+router.route('/never-sold').get(protect, requireTenant, getNeverSoldProducts);
+router.route('/slow-movers').get(protect, requireTenant, admin, getSlowMovingProducts);
+router.route('/stock-movements').get(protect, requireTenant, admin, getStockMovements);
+router.route('/loss-map').get(protect, requireTenant, admin, getProductLossMap);
+router.route('/stock-movement').post(protect, requireTenant, admin, createStockMovement);
+router.route('/stock-movement/:id').delete(protect, requireTenant, admin, deleteStockMovement);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
 router.route('/dashboard')
-  .get(protect, admin, getProductDashboard);
+  .get(protect, requireTenant, admin, getProductDashboard);
 
 router.route('/by-supplier')
-  .get(protect, admin, getProductsBySupplier);
+  .get(protect, requireTenant, admin, getProductsBySupplier);
 
 router.route('/by-container')
-  .get(protect, admin, getProductsByContainer);
+  .get(protect, requireTenant, admin, getProductsByContainer);
 
 router.route('/by-warehouse')
-  .get(protect, admin, getProductsByWarehouse);
+  .get(protect, requireTenant, admin, getProductsByWarehouse);
 
 // Routes standard pour les produits
 router.route('/')
-  .get(protect, getProducts)
-  .post(protect, admin, imageUpload.single('imageFile'), createProduct);
+  .get(protect, requireTenant, getProducts)
+  .post(protect, requireTenant, admin, imageUpload.single('imageFile'), createProduct);
 
 router.route('/import')
-  .post(protect, admin, requireFeature(FEATURE_KEYS.PRODUCT_IMPORT), importProducts);
+  .post(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.PRODUCT_IMPORT), importProducts);
 
 router.route('/bulk')
-  .put(protect, admin, requireFeature(FEATURE_KEYS.BULK_EDIT), bulkUpdateProducts);
+  .put(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.BULK_EDIT), bulkUpdateProducts);
 
 router.route('/:id/duplicate')
-  .post(protect, admin, requireFeature(FEATURE_KEYS.PRODUCT_DUPLICATE), duplicateProduct);
+  .post(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.PRODUCT_DUPLICATE), duplicateProduct);
 
 router.route('/image-library')
-  .get(protect, getImageLibrary);
+  .get(protect, requireTenant, getImageLibrary);
 
 router.route('/:id/stats')
-  .get(protect,getProductStats);
+  .get(protect, requireTenant, getProductStats);
 
 router.route('/:id/images')
-  .get(protect, getProductImages);
+  .get(protect, requireTenant, getProductImages);
 
 router.route('/:id/sales-history')
-  .get(protect, getProductSalesHistory);
+  .get(protect, requireTenant, getProductSalesHistory);
 
 router.route('/:id')
-  .get(protect, getProductById)
-  .put(protect, admin, imageUpload.single('imageFile'), updateProduct)
-  .delete(protect, admin, deleteProduct);
+  .get(protect, requireTenant, getProductById)
+  .put(protect, requireTenant, admin, imageUpload.single('imageFile'), updateProduct)
+  .delete(protect, requireTenant, admin, deleteProduct);
 
 
 

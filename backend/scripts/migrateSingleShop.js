@@ -35,6 +35,11 @@ require('../models/supplierModel');
 require('../models/expenseCategoryModel');
 require('../models/deletedSaleModel');
 require('../models/loginHistoryModel');
+require('../models/proformaModel');
+require('../models/stockMovementModel');
+require('../models/stockReplacementReminderModel');
+require('../models/supportTicketModel');
+require('../models/subscriptionPaymentModel');
 
 const Tenant = mongoose.model('Tenant');
 const User = mongoose.model('User');
@@ -44,6 +49,8 @@ const MODELS_TO_MIGRATE = [
   'BankTransaction', 'AdminRequest', 'Document', 'AppSettings',
   'Category', 'Container', 'Warehouse', 'Supplier',
   'ExpenseCategory', 'DeletedSale', 'LoginHistory',
+  'Proforma', 'StockMovement', 'StockReplacementReminder',
+  'SupportTicket', 'SubscriptionPayment',
 ];
 
 async function run() {

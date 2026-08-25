@@ -21,7 +21,6 @@ const clientSchema = mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
     },
     phone: {
       type: String,
@@ -119,5 +118,11 @@ clientSchema.pre('save', async function (next) {
   }
   next();
 });
+
+// Unicité par boutique : un même email client peut exister chez plusieurs tenants.
+clientSchema.index(
+  { tenantId: 1, email: 1 },
+  { unique: true, partialFilterExpression: { tenantId: { $type: 'objectId' } } }
+);
 
 module.exports = mongoose.model('Client', clientSchema);

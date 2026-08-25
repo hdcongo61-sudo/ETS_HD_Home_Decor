@@ -28,11 +28,15 @@ const openDb = () => {
 };
 
 // Stable key independent of the (dev/prod) base URL — keyed on path + params.
-export const buildCacheKey = (config = {}) => {
+export const buildCacheKey = (config = {}, userId, tenantId) => {
   const method = (config.method || 'get').toLowerCase();
   const url = config.url || '';
   const params = config.params ? JSON.stringify(config.params) : '';
-  return `${method}:${url}:${params}`;
+  const baseKey = `${method}:${url}:${params}`;
+  if (userId && tenantId) {
+    return `${userId}_${tenantId}_${baseKey}`;
+  }
+  return baseKey;
 };
 
 export const writeCache = async (key, value) => {
@@ -46,20 +50,33 @@ export const writeCache = async (key, value) => {
   }
 };
 
-export const readCache = (key) =>
-  new Promise((resolve) => {
-    openDb().then((db) => {
-      if (!db) return resolve(null);
-      try {
-        const t = db.transaction(STORE, 'readonly');
-        const req = t.objectStore(STORE).get(key);
-        req.onsuccess = () => resolve(req.result || null); // { value, ts } | null
-        req.onerror = () => resolve(null);
-      } catch {
-        resolve(null);
-      }
+export const readCache = async (key) => {
+  const db = await openDb();
+  if (!db) return null;
+  try {
+    const t = db.transaction(STORE, 'readonly');
+    const req = t.objectStore(STORE).get(key);
+    const result = await new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
     });
-  });
+
+    if (result) {
+      const TTL_MS = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+      if (now - result.ts > TTL_MS) {
+        // Expired, delete it
+        const txDel = db.transaction(STORE, 'readwrite');
+        txDel.objectStore(STORE).delete(key);
+        return null;
+      }
+    }
+
+    return result;
+  } catch {
+    return null;
+  }
+};
 
 export const clearCache = async () => {
   const db = await openDb();
@@ -68,5 +85,34 @@ export const clearCache = async () => {
     db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
   } catch {
     /* ignore */
+  }
+};
+
+export const clearUserCache = async (userId, tenantId) => {
+  if (!userId || !tenantId) return;
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const prefix = `${userId}_${tenantId}_`;
+    const request = store.openCursor();
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        if (String(cursor.key).startsWith(prefix)) {
+          cursor.delete();
+        }
+        cursor.continue();
+      }
+    };
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = reject;
+    });
+  } catch (err) {
+    console.warn('Failed to clear user cache:', err);
   }
 };

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { buildCacheKey, writeCache, readCache, clearCache } from '../utils/offlineCache';
+import { buildCacheKey, writeCache, readCache, clearCache, clearUserCache } from '../utils/offlineCache';
 
 let lastFeatureToastAt = 0;
 
@@ -96,7 +96,9 @@ api.interceptors.response.use(
     // Cache successful GETs so they can be served offline (read-only).
     const cfg = response?.config || {};
     if ((cfg.method || 'get').toLowerCase() === 'get' && response?.data != null && !cfg.__noOfflineCache) {
-      writeCache(buildCacheKey(cfg), response.data);
+      const userId = localStorage.getItem('userId');
+      const tenantId = localStorage.getItem('tenantId');
+      writeCache(buildCacheKey(cfg, userId, tenantId), response.data);
     }
     return response;
   },
@@ -125,12 +127,18 @@ api.interceptors.response.use(
     }
 
     if (error.response && error.response.status === 401) {
+      const userId = localStorage.getItem('userId');
+      const tenantId = localStorage.getItem('tenantId');
       localStorage.removeItem('token');
       try {
         sessionStorage.removeItem('accessRestrictionInfo');
       } catch (_) {}
       // Drop cached data so the next user on this device doesn't see stale data.
-      clearCache();
+      if (userId && tenantId) {
+        clearUserCache(userId, tenantId);
+      } else {
+        clearCache();
+      }
       const isLoginRoute = typeof window !== 'undefined' && window.location.pathname === '/login';
       if (!isLoginRoute && typeof window !== 'undefined') {
         window.location.href = '/login';
@@ -141,7 +149,9 @@ api.interceptors.response.use(
     // back to the last cached data so lists/dashboards still render.
     const cfg = error.config || {};
     if (!error.response && (cfg.method || 'get').toLowerCase() === 'get' && !cfg.__noOfflineCache) {
-      const cached = await readCache(buildCacheKey(cfg));
+      const userId = localStorage.getItem('userId');
+      const tenantId = localStorage.getItem('tenantId');
+      const cached = await readCache(buildCacheKey(cfg, userId, tenantId));
       if (cached && cached.value != null) {
         return {
           data: cached.value,

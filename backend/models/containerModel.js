@@ -11,11 +11,16 @@ const containerSchema = mongoose.Schema(
     name: {
       type: String,
       required: [true, 'Le nom du conteneur est requis'],
-      unique: true,
       trim: true,
     },
   },
   { timestamps: true }
+);
+
+// Unicité par boutique : le même nom peut exister chez plusieurs tenants.
+containerSchema.index(
+  { tenantId: 1, name: 1 },
+  { unique: true, partialFilterExpression: { tenantId: { $type: 'objectId' } } }
 );
 
 module.exports = mongoose.model('Container', containerSchema);

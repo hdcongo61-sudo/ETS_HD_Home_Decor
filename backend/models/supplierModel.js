@@ -11,7 +11,6 @@ const supplierSchema = mongoose.Schema(
     name: {
       type: String,
       required: [true, 'Le nom du fournisseur est requis'],
-      unique: true,
       trim: true,
     },
     phone: {
@@ -21,6 +20,12 @@ const supplierSchema = mongoose.Schema(
     },
   },
   { timestamps: true }
+);
+
+// Unicité par boutique : le même nom peut exister chez plusieurs tenants.
+supplierSchema.index(
+  { tenantId: 1, name: 1 },
+  { unique: true, partialFilterExpression: { tenantId: { $type: 'objectId' } } }
 );
 
 module.exports = mongoose.model('Supplier', supplierSchema);

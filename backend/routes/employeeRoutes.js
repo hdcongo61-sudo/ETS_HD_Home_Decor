@@ -15,31 +15,31 @@ const {
   getEmployeePaySlips,
   getFinancialSummary,
 } = require('../controllers/payrollController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 router.route('/')
-  .get(protect, admin, getEmployees)
-  .post(protect, admin, imageUpload.single('photoFile'), createEmployee);
+  .get(protect, requireTenant, admin, getEmployees)
+  .post(protect, requireTenant, admin, imageUpload.single('photoFile'), createEmployee);
 
 router.route('/:id')
-  .get(protect, admin, getEmployeeById)
-  .put(protect, admin, imageUpload.single('photoFile'), updateEmployee)
-  .delete(protect, admin, deleteEmployee);
+  .get(protect, requireTenant, admin, getEmployeeById)
+  .put(protect, requireTenant, admin, imageUpload.single('photoFile'), updateEmployee)
+  .delete(protect, requireTenant, admin, deleteEmployee);
 
 // Routes pour la gestion des fiches de paie
 router.route('/:id/payroll')
-  .post(protect, admin, createPaySlip)
-  .get(protect, admin, getEmployeePaySlips);
+  .post(protect, requireTenant, admin, createPaySlip)
+  .get(protect, requireTenant, admin, getEmployeePaySlips);
 
 // Route spécifique pour une fiche de paie individuelle (AJOUTÉE)
 router.route('/:id/payroll/:payslipId')
-  .get(protect, admin, getPaySlip) // Route GET pour une fiche spécifique
-  .put(protect, admin, updatePaySlip)
-  .delete(protect, admin, deletePaySlip);
+  .get(protect, requireTenant, admin, getPaySlip) // Route GET pour une fiche spécifique
+  .put(protect, requireTenant, admin, updatePaySlip)
+  .delete(protect, requireTenant, admin, deletePaySlip);
 
 // Route pour le résumé financier
 router.route('/:id/financial-summary')
-  .get(protect, admin, getFinancialSummary);
+  .get(protect, requireTenant, admin, getFinancialSummary);
 
 module.exports = router;

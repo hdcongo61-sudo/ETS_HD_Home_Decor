@@ -6,17 +6,17 @@ const {
   createDocument,
   deleteDocument,
 } = require('../controllers/documentController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 const { documentUpload } = require('../middlewares/uploadMiddleware');
 
 router.route('/')
-  .get(protect, admin, getDocuments)
-  .post(protect, admin, documentUpload.single('file'), createDocument);
+  .get(protect, requireTenant, admin, getDocuments)
+  .post(protect, requireTenant, admin, documentUpload.single('file'), createDocument);
 
 router.route('/years')
-  .get(protect, admin, getDocumentYears);
+  .get(protect, requireTenant, admin, getDocumentYears);
 
 router.route('/:id')
-  .delete(protect, admin, deleteDocument);
+  .delete(protect, requireTenant, admin, deleteDocument);
 
 module.exports = router;

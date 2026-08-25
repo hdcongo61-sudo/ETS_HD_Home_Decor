@@ -4,9 +4,9 @@ const {
   getPendingStockReplacementReminders,
   confirmStockReplacementReminder,
 } = require('../controllers/stockReplacementReminderController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 
-router.get('/', protect, admin, getPendingStockReplacementReminders);
-router.post('/:id/confirm', protect, admin, confirmStockReplacementReminder);
+router.get('/', protect, requireTenant, admin, getPendingStockReplacementReminders);
+router.post('/:id/confirm', protect, requireTenant, admin, confirmStockReplacementReminder);
 
 module.exports = router;

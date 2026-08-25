@@ -4,9 +4,9 @@ const {
   getAccountingSummary,
   getJournal,
 } = require('../controllers/comptabiliteController');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, requireTenant } = require('../middlewares/authMiddleware');
 
-router.get('/summary', protect, getAccountingSummary);
-router.get('/journal', protect, getJournal);
+router.get('/summary', protect, requireTenant, getAccountingSummary);
+router.get('/journal', protect, requireTenant, getJournal);
 
 module.exports = router;

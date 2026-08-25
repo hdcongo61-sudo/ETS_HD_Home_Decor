@@ -26,6 +26,8 @@ export const AuthProvider = ({ children }) => {
         const tenantId = data.tenantId || null;
         if (tenantId) localStorage.setItem('tenantId', tenantId);
         else localStorage.removeItem('tenantId');
+        if (data._id) localStorage.setItem('userId', data._id);
+        else localStorage.removeItem('userId');
 
         setAuth({
           isAuthenticated: true,
@@ -68,12 +70,14 @@ export const AuthProvider = ({ children }) => {
           sessionStorage.setItem('accessRestrictionInfo', JSON.stringify(payload));
           localStorage.removeItem('token');
           localStorage.removeItem('tenantId');
+          localStorage.removeItem('userId');
           window.location.replace('/access-restricted');
           return;
         }
 
         localStorage.removeItem('token');
         localStorage.removeItem('tenantId');
+        localStorage.removeItem('userId');
         setAuth({ isAuthenticated: false, user: null, isAdmin: false, isSuperAdmin: false, tenantId: null, isLoading: false });
       }
     };
@@ -81,12 +85,14 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Intercept setAuth to keep tenantId in localStorage in sync
+  // Intercept setAuth to keep tenantId and userId in localStorage in sync
   const setAuthWithStorage = (nextAuth) => {
     setAuth((prev) => {
       const resolved = typeof nextAuth === 'function' ? nextAuth(prev) : nextAuth;
       if (resolved.tenantId) localStorage.setItem('tenantId', resolved.tenantId);
       else localStorage.removeItem('tenantId');
+      if (resolved.user?._id) localStorage.setItem('userId', resolved.user._id);
+      else localStorage.removeItem('userId');
       return resolved;
     });
   };

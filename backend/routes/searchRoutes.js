@@ -5,13 +5,13 @@ const Client = require("../models/clientModel");
 const Sale = require("../models/saleModel");
 const Employee = require("../models/employeeModel");
 const Supplier = require("../models/supplierModel");
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, requireTenant } = require("../middlewares/authMiddleware");
 const { tenantFilter } = require("../utils/tenantQuery");
 
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // 🔍 Recherche globale (tenant-scoped)
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, requireTenant, async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     if (q.length < 2) return res.json({ results: [] });

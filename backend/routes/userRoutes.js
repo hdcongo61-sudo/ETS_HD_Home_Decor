@@ -3,7 +3,6 @@ const router = express.Router();
 const {
   loginUser,
   requestPasswordUpdate,
-  registerUser,
   getUsers,
   getUserProfile,
   updateMyProfile,
@@ -17,7 +16,7 @@ const {
   getLoginActivity,
   toggleUserActive
 } = require('../controllers/userController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 
 // Route de login
@@ -25,24 +24,23 @@ router.post('/login', loginUser);
 router.post('/password-update-request', requestPasswordUpdate);
 
 router.route('/')
-  .post(imageUpload.single('photoFile'), registerUser)
-  .get(protect, admin, getUsers);
-router.post('/admin', protect, admin, imageUpload.single('photoFile'), createUserByAdmin);
+  .get(protect, requireTenant, admin, getUsers);
+router.post('/admin', protect, requireTenant, admin, imageUpload.single('photoFile'), createUserByAdmin);
 router.route('/profile')
   .get(protect, getUserProfile)
   .put(protect, imageUpload.single('photoFile'), updateMyProfile);
 
 // Add this new route for login statistics
-router.get('/login-stats', protect, admin, getLoginStats);
-router.get('/login-activity/:id', protect, admin, getLoginActivity);
+router.get('/login-stats', protect, requireTenant, admin, getLoginStats);
+router.get('/login-activity/:id', protect, requireTenant, admin, getLoginActivity);
 router.get('/me', protect, getCurrentUser);
-router.get('/stats', protect, admin, getUserStats);
-router.route('/:id').get(protect, getUserById);
+router.get('/stats', protect, requireTenant, admin, getUserStats);
+router.route('/:id').get(protect, requireTenant, getUserById);
 
 
-router.delete('/:id', protect, admin, deleteUser);
-router.put('/:id/toggle-active', protect, admin, toggleUserActive);
-router.put('/:id', protect, admin, imageUpload.single('photoFile'), updateUser);
+router.delete('/:id', protect, requireTenant, admin, deleteUser);
+router.put('/:id/toggle-active', protect, requireTenant, admin, toggleUserActive);
+router.put('/:id', protect, requireTenant, admin, imageUpload.single('photoFile'), updateUser);
 
 
 module.exports = router;

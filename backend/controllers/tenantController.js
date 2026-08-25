@@ -6,6 +6,14 @@ const { PLAN_CATALOG } = require('../models/tenantModel');
 const User = require('../models/userModel');
 const PlatformAudit = require('../models/platformAuditModel');
 const PlatformConfig = require('../models/platformConfigModel');
+
+// Modèles référencés par la cascade de suppression (garantit leur enregistrement).
+require('../models/loginHistoryModel');
+require('../models/proformaModel');
+require('../models/stockMovementModel');
+require('../models/stockReplacementReminderModel');
+require('../models/supportTicketModel');
+require('../models/subscriptionPaymentModel');
 const { effectivePlanFeatures, invalidateFeatureCache, ALL_FEATURES } = require('../config/features');
 const generateToken = require('../utils/generateToken');
 const { seedTenantSettings } = require('./appSettingsController');
@@ -279,7 +287,9 @@ const deleteTenant = asyncHandler(async (req, res) => {
     'User', 'Product', 'Sale', 'Client', 'Employee',
     'Expense', 'BankTransaction', 'AdminRequest', 'Document',
     'AppSettings', 'Category', 'Container', 'Warehouse',
-    'Supplier', 'ExpenseCategory', 'DeletedSale',
+    'Supplier', 'ExpenseCategory', 'DeletedSale', 'LoginHistory',
+    'Proforma', 'StockMovement', 'StockReplacementReminder',
+    'SupportTicket', 'SubscriptionPayment',
   ];
   await Promise.all(
     modelNames.map((name) => {

@@ -4,14 +4,14 @@ const {
   createAdminRequest,
   reviewAdminRequest,
 } = require('../controllers/adminRequestController');
-const { protect, adminOrPermission } = require('../middlewares/authMiddleware');
+const { protect, adminOrPermission, requireTenant } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 router.route('/')
-  .get(protect, getAdminRequests)
-  .post(protect, createAdminRequest);
+  .get(protect, requireTenant, getAdminRequests)
+  .post(protect, requireTenant, createAdminRequest);
 
-router.put('/:id/review', protect, adminOrPermission('approve_admin_requests'), reviewAdminRequest);
+router.put('/:id/review', protect, requireTenant, adminOrPermission('approve_admin_requests'), reviewAdminRequest);
 
 module.exports = router;

@@ -7,17 +7,17 @@ const {
   deleteExpense,
   getExpensesByDateRange
 } = require('../controllers/expenseController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
 
 router.route('/')
-  .get(protect, admin, getExpenses)
-  .post(protect, admin,createExpense);
+  .get(protect, requireTenant, admin, getExpenses)
+  .post(protect, requireTenant, admin,createExpense);
 
 router.route('/date-range')
-  .get(protect, getExpensesByDateRange);
+  .get(protect, requireTenant, getExpensesByDateRange);
 
 router.route('/:id')
-  .delete(protect, admin, deleteExpense)
-  .put(protect, admin, updateExpense);
+  .delete(protect, requireTenant, admin, deleteExpense)
+  .put(protect, requireTenant, admin, updateExpense);
 
 module.exports = router;

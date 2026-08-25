@@ -596,6 +596,14 @@ const createSale = asyncHandler(async (req, res) => {
       }
     }
 
+    // Anti fuite inter-tenant : le client doit appartenir à cette boutique.
+    if (client) {
+      const clientExists = await Client.exists({ ...tenantFilter(req), _id: client });
+      if (!clientExists) {
+        return res.status(400).json({ message: 'Client introuvable dans cette boutique.' });
+      }
+    }
+
     let totalAmount = 0;
     const populatedProducts = [];
     const requestedItems = products.map((item) => ({
@@ -723,7 +731,8 @@ const createSale = asyncHandler(async (req, res) => {
 
     const stockOperations = [...requestedQuantities.entries()].map(([productId, quantity]) => ({
       updateOne: {
-        filter: { _id: productId },
+        // Condition atomique : n'autorise jamais un stock négatif (ventes concurrentes).
+        filter: { _id: productId, stock: { $gte: quantity } },
         update: { $inc: { stock: -quantity } }
       }
     }));
@@ -742,7 +751,15 @@ const createSale = asyncHandler(async (req, res) => {
     );
 
     if (stockOperations.length > 0) {
-      await Product.bulkWrite(stockOperations, { session });
+      const stockResult = await Product.bulkWrite(stockOperations, { session });
+      if (stockResult.matchedCount < stockOperations.length) {
+        await session.abortTransaction();
+        session.endSession();
+        session = null;
+        return res.status(409).json({
+          message: 'Stock insuffisant pour un ou plusieurs produits. La vente a été annulée.'
+        });
+      }
     }
 
     if (sourceProforma) {
@@ -2260,13 +2277,20 @@ const updateSale = asyncHandler(async (req, res) => {
         );
       }
 
-      // 2. Appliquer les nouvelles quantités
+      // 2. Appliquer les nouvelles quantités (condition atomique anti stock négatif)
       for (const update of productUpdates) {
-        await Product.findByIdAndUpdate(
-          update.productId,
+        const updated = await Product.findOneAndUpdate(
+          { _id: update.productId, stock: { $gte: update.quantity } },
           { $inc: { stock: -update.quantity } },
-          { session }
+          { session, new: true }
         );
+        if (!updated) {
+          await session.abortTransaction();
+          session.endSession();
+          return res.status(409).json({
+            message: 'Stock insuffisant pour un ou plusieurs produits. Modification annulée.'
+          });
+        }
       }
 
       // 3. Calculer le nouveau solde et statut
