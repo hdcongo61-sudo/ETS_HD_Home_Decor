@@ -36,6 +36,13 @@ const expenseSchema = mongoose.Schema(
       enum: ['cash', 'paymentMethod', 'debit', 'transfer', 'check', 'bank_transfer'],
       default: 'cash',
     },
+    // Phase 5.7 : dépense liée à une session de caisse (sinon null).
+    cashSessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CashSession',
+      default: null,
+      index: true,
+    },
     employee: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Employee',

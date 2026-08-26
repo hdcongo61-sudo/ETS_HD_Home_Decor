@@ -16,6 +16,7 @@ const {
 const mongoose = require('mongoose');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 const { issueStock, receiveStock } = require('../services/inventoryService');
+const { recordPayment } = require('../services/paymentService');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -792,6 +793,23 @@ const createSale = asyncHandler(async (req, res) => {
     session.endSession();
     session = null;
 
+    // Phase 5 : double-écriture du paiement initial dans la collection dédiée.
+    if (normalizedInitialPayment > 0) {
+      recordPayment({
+        tenantId: req.tenantId,
+        locationId: req.locationId || null,
+        saleId: sale._id,
+        amount: normalizedInitialPayment,
+        method: paymentMethod || 'cash',
+        paidAt: effectiveSaleDate,
+        receivedBy: req.user ? req.user._id : null,
+        idempotencyKey: `sale:${sale._id}:payment:0`,
+      }).catch((error) => {
+        if (error && error.code === 11000) return;
+        console.error('Payment double-write error (initial):', error);
+      });
+    }
+
     createStockReplacementRemindersForCompletedSale({
       req,
       sale,
@@ -860,15 +878,30 @@ const addPayment = asyncHandler(async (req, res) => {
     const effectivePaymentDate = parsedPaymentDate.value || new Date();
     const wasFullyPaid = isSaleFullyPaid(sale);
 
+    const paymentAmount = Number(amount);
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({ message: 'Montant de paiement invalide' });
+    }
+
+    const saleTotalAmount = Number(sale.totalAmount) || 0;
+    const currentPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const remainingBefore = Math.max(saleTotalAmount - currentPaid, 0);
+    // Phase 5 : anti-sur-paiement, sauf crédit client explicite (prépaiement).
+    if (method !== 'credit' && paymentAmount > remainingBefore + 0.005) {
+      return res.status(400).json({
+        message: `Le montant dépasse le solde restant (${remainingBefore.toFixed(2)} CFA). Utilisez le crédit client pour un prépaiement.`
+      });
+    }
+
     sale.payments.push({
-      amount,
+      amount: paymentAmount,
       method,
       paymentDate: effectivePaymentDate,
       user: req.user._id // Inclure l'utilisateur
     });
+    const embeddedPaymentIndex = sale.payments.length - 1;
 
     const updatedTotalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-    const saleTotalAmount = Number(sale.totalAmount) || 0;
     const remainingBalance = Math.max(saleTotalAmount - updatedTotalPaid, 0);
 
     if (markAsDelivered) {
@@ -882,6 +915,22 @@ const addPayment = asyncHandler(async (req, res) => {
 
     await sale.save();
     const isNowFullyPaid = isSaleFullyPaid(sale);
+
+    // Phase 5 : double-écriture dans la collection dédiée (idempotente).
+    // En cas de rejeu (clé déjà présente), la clé unique suffit — aucune erreur.
+    recordPayment({
+      tenantId: req.tenantId,
+      locationId: sale.locationId || req.locationId || null,
+      saleId: sale._id,
+      amount: paymentAmount,
+      method,
+      paidAt: effectivePaymentDate,
+      receivedBy: req.user ? req.user._id : null,
+      idempotencyKey: `sale:${sale._id}:payment:${embeddedPaymentIndex}`,
+    }).catch((error) => {
+      if (error && error.code === 11000) return;
+      console.error('Payment double-write error:', error);
+    });
 
     if (!wasFullyPaid && isNowFullyPaid) {
       createStockReplacementRemindersForCompletedSale({

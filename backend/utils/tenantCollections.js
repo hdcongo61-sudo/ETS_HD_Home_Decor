@@ -41,6 +41,16 @@ const TENANT_SCOPED_MODELS = [
   'InventoryBalance',
   'StockTransfer',
   'StockCount',
+  'Payment',
+  'SaleReturn',
+  'Refund',
+  'CashRegister',
+  'CashSession',
+  'NumberSequence',
+  'SupplierProduct',
+  'PurchaseOrder',
+  'InboundShipment',
+  'SupplierInvoice',
 ];
 
 module.exports = { TENANT_SCOPED_MODELS };

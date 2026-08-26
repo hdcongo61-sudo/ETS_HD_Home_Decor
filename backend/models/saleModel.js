@@ -126,7 +126,7 @@ const saleSchema = mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ['pending', 'partially_paid', 'completed', 'cancelled'],
+        values: ['pending', 'partially_paid', 'completed', 'cancelled', 'partially_returned', 'returned'],
         message: 'Statut de vente non valide'
       },
       default: 'pending'
