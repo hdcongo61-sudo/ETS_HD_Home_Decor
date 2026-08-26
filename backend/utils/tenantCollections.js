@@ -38,6 +38,9 @@ const TENANT_SCOPED_MODELS = [
   'ProductVariant',
   'UnitOfMeasure',
   'UnitConversion',
+  'InventoryBalance',
+  'StockTransfer',
+  'StockCount',
 ];
 
 module.exports = { TENANT_SCOPED_MODELS };

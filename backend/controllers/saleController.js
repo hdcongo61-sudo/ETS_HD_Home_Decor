@@ -15,6 +15,7 @@ const {
 
 const mongoose = require('mongoose');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
+const { issueStock, receiveStock } = require('../services/inventoryService');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -730,14 +731,6 @@ const createSale = asyncHandler(async (req, res) => {
       };
     }
 
-    const stockOperations = [...requestedQuantities.entries()].map(([productId, quantity]) => ({
-      updateOne: {
-        // Condition atomique : n'autorise jamais un stock négatif (ventes concurrentes).
-        filter: { _id: productId, stock: { $gte: quantity } },
-        update: { $inc: { stock: -quantity } }
-      }
-    }));
-
     session = await mongoose.startSession();
     session.startTransaction();
 
@@ -751,9 +744,25 @@ const createSale = asyncHandler(async (req, res) => {
       { new: true, select: 'name', session }
     );
 
-    if (stockOperations.length > 0) {
-      const stockResult = await Product.bulkWrite(stockOperations, { session });
-      if (stockResult.matchedCount < stockOperations.length) {
+    // Phase 4 : sortie de stock via le registre d'inventaire (balance atomique
+    // + mouvement append-only) avec dual-write legacy `Product.stock`, le tout
+    // dans la même transaction que la vente.
+    for (const [productId, quantity] of requestedQuantities.entries()) {
+      const productMeta = productMap.get(productId) || {};
+      const issued = await issueStock({
+        tenantId: req.tenantId,
+        locationId: req.locationId || null,
+        productId,
+        quantity,
+        unitCost: Number(productMeta.costPrice) || 0,
+        type: 'sale',
+        referenceType: 'sale',
+        referenceId: sale._id,
+        idempotencyKey: `sale:${sale._id}:${productId}:stock`,
+        userId: req.user ? req.user._id : null,
+        occurredAt: effectiveSaleDate,
+      }, session);
+      if (issued.insufficient) {
         await session.abortTransaction();
         session.endSession();
         session = null;
@@ -2269,28 +2278,40 @@ const updateSale = asyncHandler(async (req, res) => {
     session.startTransaction();
 
     try {
-      // 1. Restaurer les anciennes quantités
-      for (const item of oldProductQuantities) {
-        await Product.findByIdAndUpdate(
-          item.productId,
-          { $inc: { stock: item.quantity } },
-          { session }
-        );
-      }
+      // 1. Écarts nets par produit via le registre d'inventaire (balance
+      //    atomique + mouvement append-only), dans la même transaction.
+      const oldById = new Map(oldProductQuantities.map((item) => [String(item.productId), item.quantity]));
+      const newById = new Map(productUpdates.map((update) => [String(update.productId), update.quantity]));
+      const modIndex = Array.isArray(existingSale.modificationHistory) ? existingSale.modificationHistory.length : 0;
+      const changedProductIds = new Set([...oldById.keys(), ...newById.keys()]);
 
-      // 2. Appliquer les nouvelles quantités (condition atomique anti stock négatif)
-      for (const update of productUpdates) {
-        const updated = await Product.findOneAndUpdate(
-          { _id: update.productId, stock: { $gte: update.quantity } },
-          { $inc: { stock: -update.quantity } },
-          { session, new: true }
-        );
-        if (!updated) {
-          await session.abortTransaction();
-          session.endSession();
-          return res.status(409).json({
-            message: 'Stock insuffisant pour un ou plusieurs produits. Modification annulée.'
-          });
+      for (const productId of changedProductIds) {
+        const delta = (newById.get(productId) || 0) - (oldById.get(productId) || 0);
+        if (delta === 0) continue;
+
+        const base = {
+          tenantId: req.tenantId,
+          locationId: req.locationId || null,
+          productId,
+          unitCost: 0,
+          referenceType: 'sale',
+          referenceId: existingSale._id,
+          idempotencyKey: `sale:${existingSale._id}:${productId}:update:${modIndex}`,
+          note: 'Modification de vente',
+          userId: req.user ? req.user._id : null,
+        };
+        if (delta > 0) {
+          const issued = await issueStock({ ...base, quantity: delta, type: 'sale' }, session);
+          if (issued.insufficient) {
+            await session.abortTransaction();
+            session.endSession();
+            session = null;
+            return res.status(409).json({
+              message: 'Stock insuffisant pour un ou plusieurs produits. Modification annulée.'
+            });
+          }
+        } else {
+          await receiveStock({ ...base, quantity: -delta, type: 'sale_return' }, session);
         }
       }
 
@@ -2441,14 +2462,24 @@ const deleteSale = asyncHandler(async (req, res) => {
     }], { session });
 
     // Annuler les effets de la vente
-    // 1. Restaurer le stock des produits
+    // 1. Restaurer le stock via le registre d'inventaire (mouvement sale_return).
     if (sale.stockDeducted) {
       for (const item of sale.products) {
         const productId = item.product?._id || item.product;
         if (!productId) continue;
-        await Product.findByIdAndUpdate(productId, {
-          $inc: { stock: item.quantity }
-        }, { session });
+        await receiveStock({
+          tenantId: req.tenantId,
+          locationId: req.locationId || null,
+          productId,
+          quantity: item.quantity,
+          unitCost: item.product?.costPrice || 0,
+          type: 'sale_return',
+          referenceType: 'sale',
+          referenceId: sale._id,
+          idempotencyKey: `sale:${sale._id}:${productId}:restore`,
+          note: 'Suppression de vente',
+          userId: req.user ? req.user._id : null,
+        }, session);
       }
     }
 

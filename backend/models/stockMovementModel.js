@@ -26,6 +26,39 @@ const stockMovementSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Phase 4 — registre d'inventaire : mouvement lié à une variante.
+    variantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ProductVariant',
+      default: null,
+      index: true,
+    },
+    type: {
+      type: String,
+      enum: [
+        'opening', 'purchase_receipt', 'sale', 'sale_return',
+        'transfer_out', 'transfer_in', 'adjustment_in', 'adjustment_out',
+        'damage', 'loss', 'gift', 'reservation', 'reservation_release',
+      ],
+      default: 'adjustment_out',
+    },
+    // Delta signé exprimé en unité de base (négatif = sortie).
+    quantityDelta: {
+      type: Number,
+      default: null,
+    },
+    idempotencyKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    // Lien vers le document métier source (vente, transfert, proforma…).
+    referenceType: { type: String, trim: true, default: null },
+    referenceId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    occurredAt: {
+      type: Date,
+      default: null,
+    },
     // Snapshots so the report stays correct even if the product changes/disappears.
     productName: { type: String, trim: true },
     category: { type: String, trim: true },
@@ -42,12 +75,19 @@ const stockMovementSchema = new mongoose.Schema(
     costImpact: { type: Number, default: 0 }, // unitCost * quantity (capital lost)
     note: { type: String, trim: true, maxLength: 300 },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    source: { type: String, enum: ['direct', 'request'], default: 'direct' },
+    source: { type: String, enum: ['direct', 'request', 'migration'], default: 'direct' },
   },
   { timestamps: true }
 );
 
 stockMovementSchema.index({ tenantId: 1, createdAt: -1 });
+stockMovementSchema.index({ tenantId: 1, referenceType: 1, referenceId: 1 });
 stockMovementSchema.index({ tenantId: 1, reason: 1 });
+stockMovementSchema.index({ tenantId: 1, variantId: 1, createdAt: -1 });
+// Idempotence par organisation : une clé = un mouvement.
+stockMovementSchema.index(
+  { tenantId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('StockMovement', stockMovementSchema);
