@@ -28,12 +28,14 @@ const { protect, admin, requireTenant, resolveLocation } = require('../middlewar
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 const { requireFeature } = require('../middlewares/featureMiddleware');
 const { FEATURE_KEYS } = require('../config/features');
+const { deprecate } = require('../middlewares/deprecation');
+const { DEPRECATIONS } = require('../config/deprecations');
 
 router.route('/never-sold').get(protect, requireTenant, getNeverSoldProducts);
 router.route('/slow-movers').get(protect, requireTenant, admin, getSlowMovingProducts);
 router.route('/stock-movements').get(protect, requireTenant, admin, getStockMovements);
 router.route('/loss-map').get(protect, requireTenant, admin, getProductLossMap);
-router.route('/stock-movement').post(protect, requireTenant, admin, resolveLocation, createStockMovement);
+router.route('/stock-movement').post(protect, requireTenant, admin, resolveLocation, deprecate(DEPRECATIONS[1]), createStockMovement);
 router.route('/stock-movement/:id').delete(protect, requireTenant, admin, deleteStockMovement);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)
 router.route('/dashboard')
@@ -54,7 +56,7 @@ router.route('/')
   .post(protect, requireTenant, admin, imageUpload.single('imageFile'), createProduct);
 
 router.route('/import')
-  .post(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.PRODUCT_IMPORT), importProducts);
+  .post(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.PRODUCT_IMPORT), deprecate(DEPRECATIONS[0]), importProducts);
 
 router.route('/bulk')
   .put(protect, requireTenant, admin, requireFeature(FEATURE_KEYS.BULK_EDIT), bulkUpdateProducts);

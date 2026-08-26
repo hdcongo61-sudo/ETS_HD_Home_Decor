@@ -51,6 +51,12 @@ const TENANT_SCOPED_MODELS = [
   'PurchaseOrder',
   'InboundShipment',
   'SupplierInvoice',
+  'ModuleSetting',
+  'SettingOverride',
+  'ExportJob',
+  'ImportJob',
+  'FeatureFlag',
+  'CutoverReport',
 ];
 
 module.exports = { TENANT_SCOPED_MODELS };
