@@ -14,9 +14,9 @@ import {
   Mail,
   Phone,
   RefreshCw,
+  Shield,
   ShieldCheck,
   TrendingUp,
-  UserCheck,
   UserRound,
   Users,
   WalletCards,
@@ -363,7 +363,11 @@ const UserProfile = () => {
                 Actions rapides
               </h2>
               <div className="space-y-2">
-                <Button onClick={() => navigate('/')} variant="primary" className="w-full justify-center">
+                <Button onClick={() => navigate('/security')} variant="primary" className="w-full justify-center">
+                  <Shield className="h-4 w-4" />
+                  Sécurité
+                </Button>
+                <Button onClick={() => navigate('/')} variant="secondary" className="w-full justify-center">
                   <Home className="h-4 w-4" />
                   Retour à l'accueil
                 </Button>

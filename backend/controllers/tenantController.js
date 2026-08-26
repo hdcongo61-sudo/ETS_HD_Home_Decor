@@ -347,8 +347,30 @@ const impersonateTenant = asyncHandler(async (req, res) => {
     throw new Error('Aucun administrateur actif trouvé pour cette boutique.');
   }
 
-  // Motif de supervision — obligatoire à terme ; enregistré dans l'audit.
-  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 300) : 'Non renseignée';
+  // Motif de supervision — obligatoire (Phase 0.8) ; enregistré dans l'audit.
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 300) : '';
+  if (!reason) {
+    return res.status(400).json({ message: 'Un motif de supervision est requis pour usurper une boutique.', code: 'IMPERSONATION_REASON_REQUIRED' });
+  }
+
+  // MFA (Phase 0.8) : si le principal l'a activé, un code TOTP valide est requis.
+  const principal = req.platformUser || req.user;
+  if (principal && principal.mfaEnabled) {
+    const code = String(req.body?.code || '').trim();
+    if (!code) {
+      return res.status(403).json({ message: 'Un code MFA est requis pour usurper une boutique.', code: 'MFA_REQUIRED' });
+    }
+    let secret = principal.mfaSecret;
+    if (!secret && !req.platformUser) {
+      const UserModel = require('../models/userModel');
+      const fresh = await UserModel.findById(principal._id).select('+mfaSecret').lean();
+      secret = fresh ? fresh.mfaSecret : null;
+    }
+    const { verifyCode } = require('../services/mfaService');
+    if (!secret || !verifyCode(secret, code)) {
+      return res.status(403).json({ message: 'Code MFA invalide.', code: 'MFA_INVALID' });
+    }
+  }
 
   // Issue a token valid 1 hour — shorter than normal 30d
   const jwt = require('jsonwebtoken');

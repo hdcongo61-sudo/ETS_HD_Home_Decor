@@ -84,7 +84,7 @@ async function ensureDefaultVariantAndBalance(tenantId, locationId, productId, s
     }
   }
 
-  return { variant, balance };
+  return { variant, balance, product };
 }
 
 const findByKey = (tenantId, idempotencyKey, session) =>
@@ -133,7 +133,7 @@ async function issueStock({
 
     locationId = await resolveLocationId(tenantId, locationId, session);
 
-    const { variant, balance } = await ensureDefaultVariantAndBalance(tenantId, locationId, productId, session);
+    const { variant, balance, product } = await ensureDefaultVariantAndBalance(tenantId, locationId, productId, session);
 
     // Décrément atomique : n'autorise jamais un onHand négatif.
     const updated = await InventoryBalance.findOneAndUpdate(
@@ -146,6 +146,10 @@ async function issueStock({
       return { alreadyApplied: false, balance: null, movement: null, insufficient: true };
     }
 
+    // Coût au moment de la sortie : fourni par l'appelant (instantané de
+    // vente) sinon coût moyen pondéré courant du produit (COGS).
+    const movementUnitCost = Math.round((Number(unitCost) || Number(product.costPrice) || 0) * 100) / 100;
+
     const [movement] = await StockMovement.create([{
       tenantId,
       locationId,
@@ -155,8 +159,8 @@ async function issueStock({
       type,
       quantityDelta: -qty,
       quantity: qty,
-      unitCost: Number(unitCost) || 0,
-      costImpact: 0,
+      unitCost: movementUnitCost,
+      costImpact: Math.round(-qty * movementUnitCost * 100) / 100,
       reason: 'correction',
       source: 'direct',
       note: String(note || '').slice(0, 300),
@@ -208,7 +212,23 @@ async function receiveStock({
 
     locationId = await resolveLocationId(tenantId, locationId, session);
 
-    const { variant } = await ensureDefaultVariantAndBalance(tenantId, locationId, productId, session);
+    const { variant, product } = await ensureDefaultVariantAndBalance(tenantId, locationId, productId, session);
+
+    // Coût moyen pondéré (Phase 5.6) : le coût d'entrée lisse le coût
+    // courant du produit ; sans coût fourni, le coût courant est conservé.
+    const balanceBefore = await InventoryBalance.findOne({
+      tenantId, locationId, variantId: variant._id,
+    }).session(session).lean();
+    const onHandBefore = balanceBefore ? balanceBefore.onHand : 0;
+    const incomingCost = Number(unitCost) || 0;
+    const currentCost = Number(product.costPrice) || 0;
+    let movementUnitCost = incomingCost > 0 ? incomingCost : currentCost;
+    let newAverageCost = null;
+    if (incomingCost > 0 && onHandBefore + qty > 0) {
+      newAverageCost = Math.round(
+        ((onHandBefore * currentCost + qty * incomingCost) / (onHandBefore + qty)) * 100
+      ) / 100;
+    }
 
     const updated = await InventoryBalance.findOneAndUpdate(
       { tenantId, locationId, variantId: variant._id },
@@ -225,8 +245,8 @@ async function receiveStock({
       type,
       quantityDelta: qty,
       quantity: qty,
-      unitCost: Number(unitCost) || 0,
-      costImpact: 0,
+      unitCost: Math.round(movementUnitCost * 100) / 100,
+      costImpact: Math.round(qty * movementUnitCost * 100) / 100,
       reason: 'correction',
       source: 'direct',
       note: String(note || '').slice(0, 300),
@@ -237,11 +257,10 @@ async function receiveStock({
       occurredAt: occurredAt || new Date(),
     }], { session });
 
-    await Product.updateOne(
-      { _id: productId },
-      { $inc: { stock: qty } },
-      { session }
-    );
+    // Dual-write legacy : stock + coût moyen pondéré mis à jour.
+    const productUpdate = { $inc: { stock: qty } };
+    if (newAverageCost !== null) productUpdate.$set = { costPrice: newAverageCost };
+    await Product.updateOne({ _id: productId }, productUpdate, { session });
 
     if (ownSession) await session.commitTransaction();
     return { alreadyApplied: false, balance: updated, movement, insufficient: false };

@@ -38,6 +38,20 @@ const platformUserSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  // Version de jeton : l'incrément révoque toutes les sessions (Phase 0.8).
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
+  // MFA TOTP (Phase 0.8) : activé uniquement après vérification du code.
+  mfaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  mfaSecret: {
+    type: String,
+    default: null,
+  },
   lastLogin: {
     type: Date,
   },

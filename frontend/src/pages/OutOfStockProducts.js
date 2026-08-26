@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Edit3, PackageX, Wallet } from 'lucide-react';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import { productEditPath, productPath } from '../utils/paths';
 import {
   ProductActionButton,
@@ -26,7 +26,7 @@ const OutOfStockProducts = () => {
     const fetchOutOfStock = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/products/dashboard');
+        const res = await catalogApi.dashboard();
         setProducts(res.data.outOfStockProducts || []);
       } catch (err) {
         console.error(err);

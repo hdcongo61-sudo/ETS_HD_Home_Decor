@@ -61,6 +61,16 @@ const userSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // MFA TOTP (Phase 0.8) : activé uniquement après vérification du code.
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    mfaSecret: {
+      type: String,
+      default: null,
+      select: false,
+    },
     lastLogin: {
       type: Date,
       default: null,

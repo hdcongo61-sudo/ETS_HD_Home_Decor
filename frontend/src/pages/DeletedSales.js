@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../services/api";
+import { salesApi } from "../features/sales/api";
 import { formatDate } from "../utils/saleUtils";
 import { formatCfa as cfa } from "../utils/format";
 import {
@@ -24,7 +24,7 @@ const DeletedSales = () => {
     const fetchDeletedSales = async () => {
       setLoading(true);
       try {
-        const { data } = await api.get("/sales/deleted");
+        const { data } = await salesApi.deleted();
         setDeletedSales(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Erreur lors du chargement des ventes supprimées :", err);

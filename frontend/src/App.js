@@ -27,6 +27,8 @@ import TrialBanner from './components/TrialBanner';
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
+const AdminModules = lazy(() => import('./pages/AdminModules'));
+const Security = lazy(() => import('./pages/Security'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
 const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
 const EmployeeDetails = lazy(() => import('./components/EmployeeDetail'));
@@ -419,6 +421,22 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/security"
+                  element={
+                    <ProtectedRoute>
+                      <Security />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin-modules"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <AdminModules />
                     </ProtectedRoute>
                   }
                 />

@@ -700,9 +700,31 @@ const SuperAdmin = () => {
   };
 
   const handleImpersonate = async (id) => {
+    // Motif de supervision OBLIGATOIRE (backend Phase 0.8) ; MFA si activé.
+    const reason = window.prompt('Motif de supervision (obligatoire) :');
+    if (!reason || !reason.trim()) {
+      alert('Un motif de supervision est requis.');
+      return;
+    }
+    const payload = { reason: reason.trim().slice(0, 300) };
     try {
       setUpdating(id);
-      const { data } = await api.post(`/tenants/${id}/impersonate`);
+      let data;
+      try {
+        data = (await api.post(`/tenants/${id}/impersonate`, payload)).data;
+      } catch (err) {
+        const code = err.response?.data?.code;
+        if (code === 'MFA_REQUIRED' || code === 'MFA_INVALID') {
+          const mfaCode = window.prompt(code === 'MFA_INVALID'
+            ? 'Code MFA invalide. Saisissez un nouveau code :'
+            : 'Votre compte exige un code MFA pour cette action :');
+          if (!mfaCode || !mfaCode.trim()) { setUpdating(null); return; }
+          payload.code = mfaCode.trim();
+          data = (await api.post(`/tenants/${id}/impersonate`, payload)).data;
+        } else {
+          throw err;
+        }
+      }
       sessionStorage.setItem('superAdminToken', localStorage.getItem('token') || '');
       sessionStorage.setItem('superAdminTenantId', localStorage.getItem('tenantId') || '');
       sessionStorage.setItem('impersonating', '1');

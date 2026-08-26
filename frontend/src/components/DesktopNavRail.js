@@ -21,6 +21,7 @@ import {
   Building2,
   LifeBuoy,
   Sparkles,
+  Blocks,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
@@ -46,6 +47,8 @@ const ADMIN_NAV = [
   { to: '/users/stats',      icon: Activity,         label: 'Utilisateurs' },
   { to: '/documents',        icon: FileText,         label: 'Documents' },
   { to: '/support',          icon: LifeBuoy,         label: 'Assistance' },
+  { to: '/security',         icon: ShieldCheck,      label: 'Sécurité' },
+  { to: '/admin-modules',    icon: Blocks,           label: 'Modules' },
 ];
 
 const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0, highlight = false }) => (

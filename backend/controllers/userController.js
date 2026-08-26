@@ -3,6 +3,8 @@ const Employee = require('../models/employeeModel');
 const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
+const sessionService = require('../services/sessionService');
+const mfaService = require('../services/mfaService');
 const { ensureMembershipForUser } = require('../services/authorization');
 const LoginHistory = require('../models/loginHistoryModel');
 const AdminRequest = require('../models/adminRequestModel');
@@ -227,6 +229,20 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/profile
 // @access  Private
 const updateMyProfile = asyncHandler(async (req, res) => {
+  // Phase 0.1: Security - reject client-supplied privilege escalation fields
+  if (req.body.isAdmin !== undefined) {
+    res.status(403);
+    throw new Error('Cannot modify isAdmin field');
+  }
+  if (req.body.isSuperAdmin !== undefined) {
+    res.status(403);
+    throw new Error('Cannot modify isSuperAdmin field');
+  }
+  if (req.body.tenantId !== undefined) {
+    res.status(403);
+    throw new Error('Cannot modify tenantId field');
+  }
+
   const user = await User.findById(req.user._id);
   if (!user) {
     res.status(404);
@@ -431,6 +447,17 @@ const loginUser = asyncHandler(async (req, res) => {
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save({ validateBeforeSave: false });
+
+    // Phase 0.8 : enregistrer la session (appareil/IP, tokenVersion).
+    await sessionService.recordSession({
+      kind: 'user',
+      userId: user._id,
+      tenantId: user.tenantId || null,
+      device,
+      ip: ipAddress,
+      userAgent: device,
+      tokenVersion: user.tokenVersion ?? 0,
+    });
 
     // Keep tenant lastActiveAt fresh (fire-and-forget)
     if (user.tenantId) {
@@ -674,8 +701,18 @@ const getUserStats = async (req, res) => {
 // @desc    Create user by admin
 // @route   POST /api/users
 // @access  Private/Admin
-const createUserByAdmin = async (req, res) => {
-  const { name, email, password, isAdmin, isActive, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
+const createUserByAdmin = asyncHandler(async (req, res) => {
+  // Phase 0.1: Security - reject client-supplied privilege escalation fields
+  if (req.body.isSuperAdmin !== undefined) {
+    res.status(400);
+    throw new Error('Cannot set isSuperAdmin field');
+  }
+  if (req.body.tenantId !== undefined) {
+    res.status(400);
+    throw new Error('Cannot set tenantId field');
+  }
+
+  const { name, email, password, isActive, phone, accessControlEnabled, accessStart, accessEnd } = req.body;
 
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -694,7 +731,7 @@ const createUserByAdmin = async (req, res) => {
     name,
     email,
     password, // Le mot de passe sera hashé par le middleware pre-save du modèle User
-    isAdmin: isAdmin || false,
+    isAdmin: false, // Phase 0.1: Never accept client-supplied isAdmin
     isActive: isActive !== false,
     permissions: normalizePermissions(req.body.permissions),
     phone: phone ? phone.trim() : '',
@@ -719,7 +756,7 @@ const createUserByAdmin = async (req, res) => {
   await populatedUser.populate('employee', 'name email phone position isActive');
 
   res.status(201).json(sanitizeUser(populatedUser));
-};
+});
 
 // @desc    Delete user
 // @route   DELETE /api/users/:id
@@ -748,7 +785,21 @@ const deleteUser = async (req, res) => {
 // @desc    Update user
 // @route   PUT /api/users/:id
 // @access  Private/Admin
-const updateUser = async (req, res) => {
+const updateUser = asyncHandler(async (req, res) => {
+  // Phase 0.1: Security - reject client-supplied privilege escalation fields
+  if (req.body.isAdmin !== undefined) {
+    res.status(403);
+    throw new Error('Cannot modify isAdmin field');
+  }
+  if (req.body.isSuperAdmin !== undefined) {
+    res.status(400);
+    throw new Error('Cannot modify isSuperAdmin field');
+  }
+  if (req.body.tenantId !== undefined) {
+    res.status(400);
+    throw new Error('Cannot modify tenantId field');
+  }
+
   const user = await User.findById(req.params.id);
 
   if (user) {
@@ -767,9 +818,6 @@ const updateUser = async (req, res) => {
         tenantId: user.tenantId || req.tenantId,
         userId: user._id,
       });
-    }
-    if (typeof req.body.isAdmin !== 'undefined') {
-      user.isAdmin = Boolean(req.body.isAdmin);
     }
     if (typeof req.body.isActive !== 'undefined') {
       user.isActive = Boolean(req.body.isActive);
@@ -901,7 +949,8 @@ const updateUser = async (req, res) => {
     res.status(404);
     throw new Error('User not found');
   }
-}
+});
+
 const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id)
     .select('-password')
@@ -1025,24 +1074,68 @@ const toggleUserActive = asyncHandler(async (req, res) => {
 // @route   POST /api/users/logout-all
 // @access  Private
 const revokeAllSessions = asyncHandler(async (req, res) => {
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    { $inc: { tokenVersion: 1 } },
-    { new: true, select: 'tokenVersion' }
-  );
+  await sessionService.revokeAllForUser({ kind: 'user', userId: req.user._id });
+  const user = await User.findById(req.user._id).select('tokenVersion').lean();
   if (!user) {
     return res.status(404).json({ message: 'Utilisateur introuvable.' });
   }
   res.json({
     message: 'Toutes les sessions ont été révoquées.',
     tokenVersion: user.tokenVersion,
+    mustReLogin: true,
   });
 });
 
+// ── Sessions (Phase 0.8) ──
+// @route   GET /api/users/sessions
+const listMySessions = asyncHandler(async (req, res) => {
+  const sessions = await sessionService.listSessions({ kind: 'user', userId: req.user._id });
+  res.json(sessions);
+});
+
+// @route   POST /api/users/sessions/:id/revoke
+const revokeMySession = asyncHandler(async (req, res) => {
+  await sessionService.revokeSession({ kind: 'user', userId: req.user._id, sessionId: req.params.id });
+  res.json({ revoked: true });
+});
+
+// ── MFA TOTP (Phase 0.8) ──
+// @route   POST /api/users/mfa/setup
+const mfaSetup = asyncHandler(async (req, res) => {
+  const setup = mfaService.setup(req.user.email);
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { mfaSecret: setup.secret, mfaEnabled: false } },
+    { new: true, select: '+mfaSecret' }
+  );
+  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' });
+  res.json({ secret: setup.secret, otpauthUrl: setup.otpauthUrl });
+});
+
+// @route   POST /api/users/mfa/verify
+const mfaVerify = asyncHandler(async (req, res) => {
+  const code = String(req.body.code || '').trim();
+  if (!code) return res.status(400).json({ message: 'Code requis.' });
+  const user = await User.findById(req.user._id).select('+mfaSecret').lean();
+  if (!user || !user.mfaSecret || !mfaService.verifyCode(user.mfaSecret, code)) {
+    return res.status(400).json({ message: 'Code MFA invalide.' });
+  }
+  await User.updateOne({ _id: req.user._id }, { $set: { mfaEnabled: true } });
+  res.json({ mfaEnabled: true });
+});
+
+// @route   POST /api/users/mfa/disable
+const mfaDisable = asyncHandler(async (req, res) => {
+  const password = String(req.body.password || '');
+  if (!password || !(await req.user.matchPassword(password))) {
+    return res.status(401).json({ message: 'Mot de passe invalide.' });
+  }
+  await User.updateOne({ _id: req.user._id }, { $set: { mfaEnabled: false, mfaSecret: null } });
+  res.json({ mfaEnabled: false });
+});
 
 module.exports = {
-  loginUser,
-  requestPasswordUpdate,
+  loginUser,requestPasswordUpdate,
   getUsers,
   getUserProfile,
   updateMyProfile,
@@ -1055,5 +1148,10 @@ module.exports = {
   getLoginStats,
   getLoginActivity,
   toggleUserActive,
-  revokeAllSessions
+  revokeAllSessions,
+  listMySessions,
+  revokeMySession,
+  mfaSetup,
+  mfaVerify,
+  mfaDisable
 };

@@ -881,6 +881,10 @@ video {
   top: 0px;
 }
 
+.top-0\.5 {
+  top: 0.125rem;
+}
+
 .top-1\/2 {
   top: 50%;
 }
@@ -1347,6 +1351,10 @@ video {
   height: 18px;
 }
 
+.h-\[200px\] {
+  height: 200px;
+}
+
 .h-\[21px\] {
   height: 21px;
 }
@@ -1665,6 +1673,10 @@ video {
 
 .w-\[18px\] {
   width: 18px;
+}
+
+.w-\[200px\] {
+  width: 200px;
 }
 
 .w-\[21px\] {

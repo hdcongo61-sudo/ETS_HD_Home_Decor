@@ -795,7 +795,7 @@ const createSale = asyncHandler(async (req, res) => {
 
     // Phase 5 : double-écriture du paiement initial dans la collection dédiée.
     if (normalizedInitialPayment > 0) {
-      recordPayment({
+      await recordPayment({
         tenantId: req.tenantId,
         locationId: req.locationId || null,
         saleId: sale._id,
@@ -918,7 +918,7 @@ const addPayment = asyncHandler(async (req, res) => {
 
     // Phase 5 : double-écriture dans la collection dédiée (idempotente).
     // En cas de rejeu (clé déjà présente), la clé unique suffit — aucune erreur.
-    recordPayment({
+    await recordPayment({
       tenantId: req.tenantId,
       locationId: sale.locationId || req.locationId || null,
       saleId: sale._id,

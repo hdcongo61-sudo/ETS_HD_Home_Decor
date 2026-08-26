@@ -1,6 +1,8 @@
 const PlatformUser = require('../models/platformUserModel');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const sessionService = require('../services/sessionService');
+const mfaService = require('../services/mfaService');
 
 // Create email transporter (configure with your SMTP settings)
 const createTransporter = () => {
@@ -39,6 +41,16 @@ exports.loginPlatformUser = async (req, res) => {
 
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
+
+    // Phase 0.8 : session plateforme (appareil/IP).
+    await sessionService.recordSession({
+      kind: 'platform',
+      userId: user._id,
+      device: req.headers['user-agent'] || 'Unknown device',
+      ip: req.ip || req.headers['x-forwarded-for'] || '',
+      userAgent: req.headers['user-agent'] || '',
+      tokenVersion: user.tokenVersion ?? 0,
+    });
 
     const token = jwt.sign(
       { platformUserId: String(user._id) },
@@ -296,5 +308,58 @@ exports.sendEmailToUsers = async (req, res) => {
       message: 'Erreur lors de l envoi de l email',
       error: error.message,
     });
+  }
+};
+
+// ── MFA TOTP opérateur plateforme (Phase 0.8) ──
+
+// @desc    Préparer MFA (renvoie secret + URL d'application d'authentification)
+// @route   POST /api/platform-users/mfa/setup
+exports.mfaSetup = async (req, res) => {
+  try {
+    const setup = mfaService.setup(req.platformUser.email);
+    req.platformUser.mfaSecret = setup.secret;
+    req.platformUser.mfaEnabled = false;
+    await req.platformUser.save({ validateBeforeSave: false });
+    res.json({ secret: setup.secret, otpauthUrl: setup.otpauthUrl });
+  } catch (error) {
+    console.error('MFA setup error:', error);
+    res.status(500).json({ message: 'Erreur lors de la préparation MFA.' });
+  }
+};
+
+// @desc    Activer MFA après vérification d'un code
+// @route   POST /api/platform-users/mfa/verify
+exports.mfaVerify = async (req, res) => {
+  try {
+    const code = String(req.body.code || '').trim();
+    if (!code) return res.status(400).json({ message: 'Code requis.' });
+    if (!req.platformUser.mfaSecret || !mfaService.verifyCode(req.platformUser.mfaSecret, code)) {
+      return res.status(400).json({ message: 'Code MFA invalide.' });
+    }
+    req.platformUser.mfaEnabled = true;
+    await req.platformUser.save({ validateBeforeSave: false });
+    res.json({ mfaEnabled: true });
+  } catch (error) {
+    console.error('MFA verify error:', error);
+    res.status(500).json({ message: 'Erreur lors de la vérification MFA.' });
+  }
+};
+
+// @desc    Désactiver MFA (mot de passe requis)
+// @route   POST /api/platform-users/mfa/disable
+exports.mfaDisable = async (req, res) => {
+  try {
+    const password = String(req.body.password || '');
+    if (!password || !(await req.platformUser.matchPassword(password))) {
+      return res.status(401).json({ message: 'Mot de passe invalide.' });
+    }
+    req.platformUser.mfaEnabled = false;
+    req.platformUser.mfaSecret = null;
+    await req.platformUser.save({ validateBeforeSave: false });
+    res.json({ mfaEnabled: false });
+  } catch (error) {
+    console.error('MFA disable error:', error);
+    res.status(500).json({ message: 'Erreur lors de la désactivation MFA.' });
   }
 };

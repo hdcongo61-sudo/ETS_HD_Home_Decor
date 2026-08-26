@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -24,7 +24,7 @@ const CriticalStockProducts = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/products/dashboard');
+      const res = await catalogApi.dashboard();
       setProducts(res.data.lowStockProducts || []);
     } catch (err) {
       console.error(err);

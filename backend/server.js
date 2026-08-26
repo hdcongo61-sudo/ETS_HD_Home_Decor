@@ -253,18 +253,27 @@ app.use('/api/*', (req, res, next) => {
 });
 
 const port = process.env.PORT;
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${port} is busy, trying port ${Number(port) + 1}`);
-    app.listen(Number(port) + 1);
-  }
-});
+let server = null;
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`.red);
-  // Close server & exit process
-  server.close(() => process.exit(1));
-});
+// Ne démarre le listener qu'en exécution directe (supertest importe `app`
+// sans écouter le port).
+if (require.main === module) {
+  server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying port ${Number(port) + 1}`);
+      app.listen(Number(port) + 1);
+    }
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err, promise) => {
+    console.log(`Error: ${err.message}`.red);
+    // Close server & exit process
+    server.close(() => process.exit(1));
+  });
+}
+
+// Export app for testing
+module.exports = app;

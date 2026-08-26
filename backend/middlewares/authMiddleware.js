@@ -101,6 +101,12 @@ const authenticate = (allowRestricted, { allowPlatform = false } = {}) => asyncH
         req.impersonatedBy = decoded.impersonatedBy;
       }
 
+      // ── Impersonation en lecture seule (Phase 0.8) ──
+      const impersonationViolation = enforceImpersonationReadOnly(req);
+      if (impersonationViolation) {
+        return res.status(403).json(impersonationViolation);
+      }
+
       // ── Tenant resolution + validation ──
       // The tenant ALWAYS comes from the signed token (decoded.tenantId),
       // never from a header or query the client could tamper with.
@@ -305,4 +311,39 @@ const requirePermission = (permission) => asyncHandler(async (req, res, next) =>
   next();
 });
 
-module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission, protectAny, platformAdmin, resolveLocation, requirePermission };
+// ── Impersonation en lecture seule (Phase 0.8) ──
+// Helper exporté pour les tests : renvoie une violation 403 ou null.
+const enforceImpersonationReadOnly = (req) => {
+  if (req.isImpersonating && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return {
+      message: 'L\'usurpation est en lecture seule : les modifications sont désactivées.',
+      code: 'IMPERSONATION_READ_ONLY',
+    };
+  }
+  return null;
+};
+
+// ── MFA TOTP pour les actions sensibles (Phase 0.8) ──
+// Si le principal a activé MFA, exige un code valide (body.code ou
+// en-tête X-MFA-Code).
+const requireMfaCode = asyncHandler(async (req, res, next) => {
+  const principal = req.platformUser || req.user;
+  if (!principal || !principal.mfaEnabled) return next();
+  const code = String(req.body?.code || req.headers['x-mfa-code'] || '').trim();
+  if (!code) {
+    return res.status(403).json({
+      message: 'Un code MFA est requis pour cette action.',
+      code: 'MFA_REQUIRED',
+    });
+  }
+  const { verifyCode } = require('../services/mfaService');
+  if (!verifyCode(principal.mfaSecret, code)) {
+    return res.status(403).json({
+      message: 'Code MFA invalide.',
+      code: 'MFA_INVALID',
+    });
+  }
+  next();
+});
+
+module.exports = { protect, protectForBilling, admin, superAdmin, requireTenant, adminOrPermission, protectAny, platformAdmin, resolveLocation, requirePermission, requireMfaCode, enforceImpersonationReadOnly };

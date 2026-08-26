@@ -8,6 +8,9 @@ const {
   deletePlatformUser,
   sendEmailToUsers,
   loginPlatformUser,
+  mfaSetup,
+  mfaVerify,
+  mfaDisable,
 } = require('../controllers/platformUserController');
 
 // Connexion opérateur plateforme (public) — déclarée avant le garde global.
@@ -30,5 +33,10 @@ router.delete('/:userId', deletePlatformUser);
 
 // POST /api/platform-users/send-email - Send email to multiple users
 router.post('/send-email', sendEmailToUsers);
+
+// MFA TOTP opérateur plateforme (Phase 0.8).
+router.post('/mfa/setup', mfaSetup);
+router.post('/mfa/verify', mfaVerify);
+router.post('/mfa/disable', mfaDisable);
 
 module.exports = router;

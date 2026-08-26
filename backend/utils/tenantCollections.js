@@ -57,6 +57,7 @@ const TENANT_SCOPED_MODELS = [
   'ImportJob',
   'FeatureFlag',
   'CutoverReport',
+  'UserSession',
 ];
 
 module.exports = { TENANT_SCOPED_MODELS };
