@@ -1129,6 +1129,47 @@ const supplierStats = Object.values(supplierStatsMap).sort(
       (a, b) => b.totalRevenue - a.totalRevenue
     );
 
+    // 11️⃣ Statistiques par catégorie
+    const categoryStatsMap = {};
+
+    for (const p of products) {
+      const categoryName = (p.category && p.category.trim()) || 'Non catégorisé';
+      if (!categoryStatsMap[categoryName]) {
+        categoryStatsMap[categoryName] = {
+          categoryName,
+          totalProducts: 0,
+          totalStockValue: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnitsSold: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+        };
+      }
+
+      const productId = p._id?.toString?.() || p._id;
+      const salesData = productSalesMap[productId] || {
+        sold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      categoryStatsMap[categoryName].totalProducts += 1;
+      categoryStatsMap[categoryName].totalStockValue +=
+        (p.price || 0) * (p.stock || 0);
+      categoryStatsMap[categoryName].totalRevenue += salesData.revenue;
+      categoryStatsMap[categoryName].totalProfit += salesData.profit;
+      categoryStatsMap[categoryName].totalUnitsSold += salesData.sold;
+
+      if (p.stock === 0) categoryStatsMap[categoryName].outOfStockCount += 1;
+      if (p.stock > 0 && p.stock <= 5)
+        categoryStatsMap[categoryName].lowStockCount += 1;
+    }
+
+    const categoryStats = Object.values(categoryStatsMap).sort(
+      (a, b) => b.totalRevenue - a.totalRevenue
+    );
+
     const daysInRange = Math.max(
       1,
       Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -1266,9 +1307,10 @@ res.json({
   topSellingProducts,
   salesTrend,
   productActionSuggestions,
-  supplierStats, 
+  supplierStats,
   containerStats,
   warehouseStats,
+  categoryStats,
 });
 
   } catch (error) {
@@ -1841,6 +1883,18 @@ const getProductsByWarehouse = async (req, res) => {
   }
 };
 
+// @desc Products grouped by category  @route GET /api/products/by-category
+const getProductsByCategory = async (req, res) => {
+  try {
+    const data = await buildGroupedInventory(req, 'category', req.query.range || 'month', 'Non catégorisé');
+    const categories = data.groups.map((g) => ({ ...g, categoryName: g.name }));
+    res.json({ ...data, categories, totals: { ...data.totals, categoryCount: data.totals.groupCount } });
+  } catch (error) {
+    console.error('❌ getProductsByCategory error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // @desc    Bulk import products from JSON array
 // @route   POST /api/products/import
@@ -1966,6 +2020,44 @@ const importProducts = async (req, res) => {
   }
 };
 
+// @desc    Get distinct field values from existing products (for dynamic dropdowns/exports)
+// @route   GET /api/products/field-values
+// @access  Private
+const getProductFieldValues = async (req, res) => {
+  try {
+    const products = await Product.find(tenantFilter(req)).select('category container warehouse supplierName supplierPhone').lean();
+
+    const categories = new Set();
+    const containers = new Set();
+    const warehouses = new Set();
+    const suppliers = new Map(); // Map to store supplier name -> phone
+
+    products.forEach(p => {
+      if (p.category?.trim()) categories.add(p.category.trim());
+      if (p.container?.trim()) containers.add(p.container.trim());
+      if (p.warehouse?.trim()) warehouses.add(p.warehouse.trim());
+      if (p.supplierName?.trim()) {
+        const name = p.supplierName.trim();
+        const phone = p.supplierPhone?.trim() || '';
+        // Keep the phone if we don't have one yet for this supplier, or if the new one is not empty
+        if (!suppliers.has(name) || (phone && !suppliers.get(name))) {
+          suppliers.set(name, phone);
+        }
+      }
+    });
+
+    res.json({
+      categories: Array.from(categories).sort(),
+      containers: Array.from(containers).sort(),
+      warehouses: Array.from(warehouses).sort(),
+      suppliers: Array.from(suppliers.entries()).map(([name, phone]) => ({ name, phone })).sort((a, b) => a.name.localeCompare(b.name))
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération valeurs de champs:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // @desc    Bulk update several products at once (admin)
 // @route   PUT /api/products/bulk
 // @access  Private/Admin
@@ -2055,6 +2147,8 @@ module.exports = {
   getProductsBySupplier,
   getProductsByContainer,
   getProductsByWarehouse,
+  getProductsByCategory,
   getProductSalesHistory,
-  importProducts
+  importProducts,
+  getProductFieldValues
 };

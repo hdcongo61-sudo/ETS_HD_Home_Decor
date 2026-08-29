@@ -11,7 +11,8 @@ import { ExternalLink } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
-import {    Chart as ChartJS,
+import {
+    Chart as ChartJS,
     CategoryScale,
     LinearScale,
     BarElement,
@@ -744,7 +745,7 @@ const SaleDetailPage = () => {
                         </span>
                         <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Détails de la vente</p>
-                            <h1 className="truncate text-xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-2xl">Vente #{sale._id?.substring(18) || 'N/A'}</h1>
+                            <h1 className="truncate text-xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-2xl">{sale.reference || ('Vente #' + (sale._id?.substring(18) || 'N/A'))}</h1>
                             <p className="mt-0.5 text-sm text-gray-500">{sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}</p>
                         </div>
                     </div>
@@ -805,7 +806,7 @@ const SaleDetailPage = () => {
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                                     <h2 className="hidden text-lg sm:block sm:text-xl font-semibold text-gray-900 dark:text-white">
-                                        Vente #{sale._id?.substring(18) || 'N/A'}
+                                        {sale.reference || ('Vente #' + (sale._id?.substring(18) || 'N/A'))}
                                     </h2>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(sale.status)}`}>
                                         {getStatusText(sale.status)}
@@ -871,7 +872,7 @@ const SaleDetailPage = () => {
                                             type: 'sale.edit',
                                             targetModel: 'Sale',
                                             targetId: sale._id,
-                                            targetLabel: `Vente #${sale._id?.slice(-6) || ''}`
+                                            targetLabel: `Vente ${sale.reference || ('#' + (sale._id?.slice(-6) || ''))}`
                                         })}
                                         className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
                                     >
@@ -885,7 +886,7 @@ const SaleDetailPage = () => {
                                             type: 'sale.delete',
                                             targetModel: 'Sale',
                                             targetId: sale._id,
-                                            targetLabel: `Vente #${sale._id?.slice(-6) || ''}`
+                                            targetLabel: `Vente ${sale.reference || ('#' + (sale._id?.slice(-6) || ''))}`
                                         })}
                                         className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-medium text-red-700 shadow-sm transition hover:bg-red-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5"
                                     >

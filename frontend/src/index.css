@@ -1208,8 +1208,9 @@ form input[type="radio"],
 .ms-kpi-value {
   margin-top: 4px;
   color: var(--ms-text-strong);
-  font-size: 24px;
+  font-size: clamp(18px, 5vw, 24px);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .ms-kpi-context {
@@ -1401,10 +1402,10 @@ form input[type="radio"],
     flex-direction: column-reverse;
   }
 
-  /* KPI cards: currency values (e.g. "1 234 567 CFA") overflow the narrow
-     multi-column grid on phones — shrink the type and let it wrap. */
+  /* KPI cards: keep numbers and currency on same line with responsive sizing */
   .ms-kpi-value {
-    font-size: 19px;
+    font-size: clamp(16px, 4vw, 19px);
+    white-space: nowrap;
   }
   .ms-kpi-card {
     padding: 12px;
@@ -1412,8 +1413,7 @@ form input[type="radio"],
   .ms-kpi-card > div:first-child {
     min-width: 0;
   }
-  .ms-kpi-title,
-  .ms-kpi-value {
+  .ms-kpi-title {
     overflow-wrap: anywhere;
   }
 }
@@ -1774,14 +1774,15 @@ form input[type="radio"],
   flex-shrink: 0;
 }
 
-/* KPI value override using Fluent 2 sizing */
+/* KPI value override using Fluent 2 sizing with responsive font */
 .ms-kpi-value {
   margin-top: 4px;
   color: var(--colorNeutralForeground1);
-  font-size: 26px;
+  font-size: clamp(18px, 5vw, 26px);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 /* Updated ms-kpi-card to use Fluent 2 shadow */

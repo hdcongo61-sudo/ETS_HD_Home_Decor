@@ -5,7 +5,11 @@ import { ACTIVE_LOCATION_STORAGE_KEY } from '../context/LocationContext';
 
 let lastFeatureToastAt = 0;
 
-const DEV_API_CANDIDATES = ['http://localhost:5002/api', 'http://localhost:5001/api'];
+// Ports sondés en dev, dans l'ordre de préférence (5002 historique, puis 5001,
+// puis 5003-5010 en repli). Le backend essaie aussi les ports successifs quand
+// le port configuré est occupé.
+const DEV_API_PORTS = [5002, 5001, ...Array.from({ length: 8 }, (_, i) => 5003 + i)];
+const DEV_API_CANDIDATES = DEV_API_PORTS.map((p) => `http://localhost:${p}/api`);
 const DEV_API_STORAGE_KEY = 'ets_hd_api_base_url';
 
 const isBrowser = typeof window !== 'undefined';
@@ -42,12 +46,11 @@ const getInitialBaseUrl = () => {
 const isRetriableDevFallback = (error) => {
   if (!isLocalDev || explicitApiUrl) return false;
   if (!error?.config) return false;
-  if (error.config.__devPortRetried) return false;
+  const tried = error.config.__devPortTried || [];
+  const hasUntriedCandidate = DEV_API_CANDIDATES.some((candidate) => !tried.includes(candidate));
+  if (!hasUntriedCandidate) return false;
   return !error.response || error.isHtmlResponse;
 };
-
-const getAlternateDevBaseUrl = (currentBaseUrl) =>
-  DEV_API_CANDIDATES.find((candidate) => candidate !== currentBaseUrl) || null;
 
 const api = axios.create({
   baseURL: getInitialBaseUrl(),
@@ -114,10 +117,11 @@ api.interceptors.response.use(
   async (error) => {
     if (isRetriableDevFallback(error)) {
       const currentBaseUrl = error.config.baseURL || api.defaults.baseURL;
-      const alternateBaseUrl = getAlternateDevBaseUrl(currentBaseUrl);
+      const nextTried = [...(error.config.__devPortTried || []), currentBaseUrl];
+      error.config.__devPortTried = nextTried;
+      const alternateBaseUrl = DEV_API_CANDIDATES.find((candidate) => !nextTried.includes(candidate));
 
       if (alternateBaseUrl) {
-        error.config.__devPortRetried = true;
         error.config.baseURL = alternateBaseUrl;
         api.defaults.baseURL = alternateBaseUrl;
         storeDevApiBaseUrl(alternateBaseUrl);

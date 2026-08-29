@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { formatCfa as cfa } from '../utils/format';
@@ -93,7 +93,7 @@ const SupplierProfile = () => {
       setLoading(true);
       setError('');
       try {
-        const res = await api.get(`/products/by-supplier?range=${range}`);
+        const res = await catalogApi.bySupplier({ range });
         const suppliers = res.data?.suppliers || res.data?.groups || [];
         const match = suppliers.find(
           (s) => (s.name || s.supplierName || '').trim().toLowerCase() === supplierName.trim().toLowerCase()
@@ -236,7 +236,7 @@ const SupplierProfile = () => {
   };
 
   return (
-    <Workspace className="space-y-6 pb-10">
+    <Workspace className="space-y-6">
       <PageHeader
         eyebrow="Partenaires & approvisionnement"
         title={supplier?.name || supplier?.supplierName || supplierName}

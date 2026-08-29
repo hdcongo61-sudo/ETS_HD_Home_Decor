@@ -28,7 +28,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import api from '../services/api';
+import { salesApi } from '../features/sales/api';
+import { platformApi } from '../features/platform/api';
+import { reportingApi } from '../features/reporting/api';
 import AuthContext from '../context/AuthContext';
 import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
@@ -216,7 +218,7 @@ const DashboardAdmin = () => {
     try {
       setLoading(true);
       setError('');
-      const { data } = await api.get('/users/stats');
+      const { data } = await platformApi.userStats();
       setStats({
         totalUsers: data?.totalUsers || 0,
         activeUsers: data?.activeUsers || 0,
@@ -241,7 +243,7 @@ const DashboardAdmin = () => {
     try {
       setSalesLoading(true);
       setSalesError('');
-      const { data } = await api.get(`/sales/user-stats?range=${encodeURIComponent(range)}`);
+      const { data } = await salesApi.userStats({ range });
       setSalesStats(Array.isArray(data) ? data : []);
     } catch (err) {
       setSalesError(err.response?.data?.message || 'Échec du chargement des statistiques commerciales');
@@ -254,7 +256,7 @@ const DashboardAdmin = () => {
     try {
       setUsersCatalogLoading(true);
       setUsersCatalogError('');
-      const { data } = await api.get('/users');
+      const { data } = await platformApi.users();
       setUsersCatalog(Array.isArray(data) ? data : []);
     } catch (err) {
       setUsersCatalogError(err.response?.data?.message || 'Échec du chargement des objectifs et alertes.');
@@ -447,7 +449,7 @@ const DashboardAdmin = () => {
 
     try {
       setSavingGoalId(userId);
-      const { data } = await api.put(`/users/${userId}`, {
+      const { data } = await platformApi.updateUser(userId, {
         salesGoals: draft,
       });
       setUsersCatalog((current) => current.map((user) => (user._id === userId ? data : user)));
@@ -466,7 +468,7 @@ const DashboardAdmin = () => {
 
     try {
       setSavingReportPreferences(true);
-      const { data } = await api.put(`/users/${auth.user._id}`, {
+      const { data } = await platformApi.updateUser(auth.user._id, {
         adminPreferences: reportPreferences,
       });
       setUsersCatalog((current) => current.map((user) => (user._id === data._id ? data : user)));
@@ -479,19 +481,16 @@ const DashboardAdmin = () => {
   };
 
   const fetchWeeklySummary = async () => {
-    const { data } = await api.get('/sales/user-stats?range=7days');
+    const { data } = await salesApi.userStats({ range: '7days' });
     return buildSalesSummary(Array.isArray(data) ? data : [], stats.totalUsers);
   };
 
   const exportWeeklyExcel = async () => {
     try {
       setReportActionLoading('excel');
-      const response = await api.get('/exports/sales-export', {
-        params: {
-          period: 'weekly',
-          status: 'all',
-        },
-        responseType: 'blob',
+      const response = await reportingApi.salesExport({
+        period: 'weekly',
+        status: 'all',
       });
       const blob = new Blob([response.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -563,7 +562,7 @@ const DashboardAdmin = () => {
     try {
       setReportActionLoading('notify');
       const weeklySummary = await fetchWeeklySummary();
-      await api.post('/notifications/admin-weekly-report', {
+      await platformApi.weeklyReport({
         rangeLabel: '7 derniers jours',
         totalRevenue: weeklySummary.totalRevenue,
         totalBalance: weeklySummary.totalBalance,

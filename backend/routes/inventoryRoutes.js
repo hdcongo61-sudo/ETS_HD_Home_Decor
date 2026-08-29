@@ -5,12 +5,15 @@ const {
   getBalances, getMovements, createAdjustment,
   createTransfer, shipTransfer, receiveTransfer, cancelTransfer,
   createCount, postCount, cancelCount, getReconciliation,
+  listTransfers, listCounts,
 } = require('../controllers/inventoryController');
 
 // Lecture — toute personne authentifiée du tenant.
 router.get('/balances', protect, requireTenant, getBalances);
 router.get('/movements', protect, requireTenant, getMovements);
 router.get('/reconciliation', protect, requireTenant, getReconciliation);
+router.get('/transfers', protect, requireTenant, listTransfers);
+router.get('/counts', protect, requireTenant, listCounts);
 
 // Ajustements manuels.
 router.post('/adjustments', protect, requireTenant, resolveLocation, requirePermission('inventory.adjust'), createAdjustment);

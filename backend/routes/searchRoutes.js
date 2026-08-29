@@ -25,7 +25,7 @@ router.get("/", protect, requireTenant, async (req, res) => {
     const [products, clients, sales, employees, suppliers] = await Promise.all([
       Product.find({ ...tf, name: regex }).select("name _id image slug stock").sort({ stock: -1, name: 1 }).limit(5),
       Client.find({ ...tf, name: regex }).select("name _id slug").limit(5),
-      Sale.find({ ...tf, clientName: regex }).select("clientName totalAmount _id").limit(5),
+      Sale.find({ ...tf, $or: [{ reference: regex }, { clientName: regex }] }).select("clientName totalAmount _id reference").limit(5),
       Employee.find({ ...tf, name: regex }).select("name _id slug").limit(5),
       Supplier.find({ ...tf, name: regex }).select("name _id phone").limit(5),
     ]);

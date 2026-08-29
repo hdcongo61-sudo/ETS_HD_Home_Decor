@@ -17,7 +17,9 @@ import {
   WalletCards,
 } from "lucide-react";
 import { getSaleTypeText } from "../utils/saleUtils";
-import api from "../services/api";
+import { salesApi } from '../features/sales/api';
+import { customersApi } from '../features/customers/api';
+import { catalogApi } from '../features/catalog/api';
 import AuthContext from "../context/AuthContext";
 import {
   calculateSaleTotals,
@@ -123,7 +125,7 @@ const SalesTable = React.memo(({ sales, showProfit, getProfitText }) => (
                   to={`/sales/${sale._id}`}
                   className="font-semibold text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] whitespace-nowrap"
                 >
-                  #{sale._id.slice(-6)}
+                  {sale.reference || ("#" + sale._id.slice(-6))}
                 </Link>
                 <div className="mt-1 flex flex-wrap gap-1">
                   <StatusBadge tone={sale.saleType === "wholesale" ? "warning" : "neutral"}>
@@ -181,7 +183,7 @@ const SalesTable = React.memo(({ sales, showProfit, getProfitText }) => (
                 <Link
                   to={`/sales/${sale._id}`}
                   className="ms-icon-button opacity-60 transition-opacity group-hover:opacity-100"
-                  aria-label={`Voir la vente #${sale._id.slice(-6)}`}
+                  aria-label={`Voir la vente ${sale.reference || ("#" + sale._id.slice(-6))}`}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Link>
@@ -234,9 +236,9 @@ const SalesArchive = () => {
       setLoading(true);
       try {
         const [salesRes, clientsRes, containersRes] = await Promise.all([
-          api.get("/sales", { params: { summary: "list" } }),
-          api.get("/clients"),
-          api.get("/lookups/containers"),
+          salesApi.list({ summary: 'list' }),
+          customersApi.list(),
+          catalogApi.lookupContainers(),
         ]);
         setSales(salesRes.data || []);
         const list = Array.isArray(clientsRes.data)

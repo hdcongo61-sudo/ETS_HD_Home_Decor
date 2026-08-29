@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { format, endOfDay, startOfDay, startOfYear, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import api from '../services/api';
+import { salesApi } from '../features/sales/api';
 import AuthContext from '../context/AuthContext';
 import { useFeature, LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
@@ -327,7 +327,7 @@ const UserSalesDashboard = () => {
       try {
         setLoading(true);
         setError('');
-        const response = await api.get(`/sales/user/${userId}`);
+        const response = await salesApi.byUser(userId);
         const payload = response?.data || {};
         setUser(payload.user || null);
         setSales(Array.isArray(payload.sales) ? payload.sales : []);

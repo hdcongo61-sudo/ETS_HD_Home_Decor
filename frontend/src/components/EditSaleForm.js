@@ -221,7 +221,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
         }
     };
 
-    const saleRef = sale?._id ? `#${sale._id.slice(-6).toUpperCase()}` : '';
+    const saleRef = sale?._id ? (sale.reference || `#${sale._id.slice(-6).toUpperCase()}`) : '';
     const originalTotal = Number(sale?.totalAmount || 0);
     const newTotal = Number(calculateTotal());
     const totalDelta = newTotal - originalTotal;

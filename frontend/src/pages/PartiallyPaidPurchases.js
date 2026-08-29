@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend
 } from "chart.js";
-import api from "../services/api";
+import { salesApi } from '../features/sales/api';
 import AuthContext from "../context/AuthContext";
 import { useFeature, LockedFeatureButton } from "../components/FeatureGate";
 import { FEATURE_KEYS } from "../config/features";
@@ -158,12 +158,8 @@ const PartiallyPaidPurchases = () => {
     setError("");
     try {
       const [partiallyPaidResponse, pendingResponse] = await Promise.all([
-        api.get("/sales", {
-          params: { status: "partially_paid", summary: "compact" },
-        }),
-        api.get("/sales", {
-          params: { status: "pending", summary: "compact" },
-        }),
+        salesApi.list({ status: 'partially_paid', summary: 'compact' }),
+        salesApi.list({ status: 'pending', summary: 'compact' }),
       ]);
       setSales([
         ...(partiallyPaidResponse.data || []),
@@ -313,7 +309,7 @@ const PartiallyPaidPurchases = () => {
 
   const handleAddPayment = async (paymentData) => {
     if (!selectedSale) return;
-    const { data } = await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
+    const { data } = await salesApi.addPayment(selectedSale._id, paymentData);
     const nextSale = {
       ...selectedSale,
       ...data,
@@ -551,7 +547,7 @@ const PartiallyPaidPurchases = () => {
                           )}
                         </div>
                         <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>
-                          Vente #{s._id.slice(-6)} · {new Date(s.saleDate).toLocaleDateString("fr-FR")}
+                          {s.reference || ("Vente #" + s._id.slice(-6))} · {new Date(s.saleDate).toLocaleDateString("fr-FR")}
                           {s.lastPay ? ` · dernier paiement le ${new Date(s.lastPay).toLocaleDateString("fr-FR")}` : ""}
                         </p>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import { LoadingSkeleton, EmptyState } from '../components/business';
 import {
   ProductPageShell, ProductHero, ProductMetricCard, ProductSection,
@@ -40,7 +40,7 @@ const StockLossReport = () => {
       const p = PERIODS.find((x) => x.key === period);
       if (p?.days) params.startDate = new Date(Date.now() - p.days * 86400000).toISOString();
       if (reason !== 'all') params.reason = reason;
-      const { data: res } = await api.get('/products/stock-movements', { params });
+      const { data: res } = await catalogApi.stockMovements(params);
       setData(res);
     } catch {
       setData({ movements: [], summary: {} });

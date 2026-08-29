@@ -2,7 +2,7 @@ import { confirmDialog } from '../components/ConfirmProvider';
 // src/pages/Products.jsx
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
@@ -10,6 +10,7 @@ import LoaderOverlay from '../components/LoaderOverlay';
 import AppLoader from '../components/AppLoader';
 import toast from 'react-hot-toast';
 import { productPath } from '../utils/paths';
+import ProductDataMigration from '../components/ProductDataMigration';
 import {
   Button,
   CommandBar,
@@ -36,6 +37,7 @@ import {
   ChevronRight,
   Layers3,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -108,6 +110,7 @@ const Products = () => {
   const [loadError, setLoadError] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [lookups, setLookups] = useState({ categories: [], containers: [], warehouses: [], suppliers: [] });
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -115,12 +118,15 @@ const Products = () => {
 
   const fetchLookups = useCallback(async () => {
     try {
+      // Listes depuis les PARAMÈTRES (référentiels), pas depuis les produits
+      // existants : catégories, conteneurs, entrepôts et fournisseurs.
       const [cats, conts, whs, supps] = await Promise.all([
-        api.get('/lookups/categories'),
-        api.get('/lookups/containers'),
-        api.get('/lookups/warehouses'),
-        api.get('/lookups/suppliers'),
+        catalogApi.lookupCategories(),
+        catalogApi.lookupContainers(),
+        catalogApi.lookupWarehouses(),
+        catalogApi.lookupSuppliers(),
       ]);
+
       setLookups({
         categories: cats.data,
         containers: conts.data,
@@ -135,7 +141,7 @@ const Products = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
-    api.get('/products/loss-map').then(({ data }) => setLossMap(data.map || {})).catch(() => setLossMap({}));
+    catalogApi.lossMap().then(({ data }) => setLossMap(data.map || {})).catch(() => setLossMap({}));
   }, [isAdmin]);
 
   const fetchProducts = useCallback(async (options = {}) => {
@@ -143,7 +149,7 @@ const Products = () => {
     try {
       if (showLoading) setLoading(true);
       setLoadError('');
-      const response = await api.get('/products?summary=list');
+      const response = await catalogApi.list({ summary: 'list' });
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -198,8 +204,8 @@ const Products = () => {
       }
 
       const { data } = editingProduct
-        ? await api.put(`/products/${editingProduct._id}`, payload, config)
-        : await api.post('/products', payload, config);
+        ? await catalogApi.update(editingProduct._id, payload, config)
+        : await catalogApi.create(payload, config);
 
       if (data) {
         toast.success(
@@ -240,7 +246,7 @@ const Products = () => {
       }
     )) {
       try {
-        await api.delete(`/products/${productId}`);
+        await catalogApi.remove(productId);
         setProducts((prev) => prev.filter((product) => product._id !== productId));
         toast.success('Produit supprimé ✅');
       } catch (error) {
@@ -255,7 +261,7 @@ const Products = () => {
     if (!(await confirmDialog(`Dupliquer le produit « ${product.name} » ?`))) return;
 
     try {
-      const { data } = await api.post(`/products/${product._id}/duplicate`);
+      const { data } = await catalogApi.duplicate(product._id);
       if (data) {
         setProducts((prev) => sortProductsByName([data, ...prev]));
       } else {
@@ -277,7 +283,7 @@ const Products = () => {
 
   if (!loading && loadError && products.length === 0) {
     return (
-      <Workspace className="space-y-6 pb-10">
+      <Workspace className="space-y-6">
         <PageHeader
           eyebrow="Catalogue & inventaire"
           title="Produits"
@@ -322,6 +328,9 @@ const Products = () => {
         meta={!loading && products.length > 0 ? `${products.length} produit${products.length > 1 ? 's' : ''} au catalogue` : null}
         actions={isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => setShowMigrationModal(true)}>
+              <RefreshCw className="h-4 w-4" /> Migrer données
+            </Button>
             <FeatureGate
               feature={FEATURE_KEYS.PRODUCT_IMPORT}
               locked={<LockedFeatureButton feature={FEATURE_KEYS.PRODUCT_IMPORT} icon={<FileSpreadsheet className="h-4 w-4" />}>Importer</LockedFeatureButton>}
@@ -443,7 +452,7 @@ const Products = () => {
           count={selectedIds.length}
           lookups={lookups}
           onApply={async (updates) => {
-            const { data } = await api.put('/products/bulk', { ids: selectedIds, updates });
+            const { data } = await catalogApi.bulkUpdate({ ids: selectedIds, updates });
             const updatedProducts = Array.isArray(data.products) ? data.products : [];
             const updatedById = new Map(updatedProducts.map((product) => [product._id, product]));
             setProducts((currentProducts) =>
@@ -506,6 +515,20 @@ const Products = () => {
           fetchProducts();
         }}
       />
+
+      {/* Data Migration Modal */}
+      <Modal
+        isOpen={showMigrationModal}
+        onClose={() => setShowMigrationModal(false)}
+        title="Migration des données produits"
+      >
+        <ProductDataMigration
+          products={products}
+          onComplete={() => {
+            fetchProducts({ showLoading: false });
+          }}
+        />
+      </Modal>
     </Workspace>
   );
 };
@@ -1054,6 +1077,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       const fileDateStamp = exportDate.toISOString().split('T')[0];
       const XLSX = await import('xlsx');
       const workbook = XLSX.utils.book_new();
+
+      // Sheet 1: Filters summary
       const filterSheet = XLSX.utils.json_to_sheet([
         {
           Filtres: filterSummary,
@@ -1061,6 +1086,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
           'Exporté le': exportDate.toLocaleString('fr-FR'),
         },
       ]);
+
+      // Sheet 2: Product data
       const dataSheet = XLSX.utils.json_to_sheet(
         exportRows.map((row) => ({
           ...row,
@@ -1068,6 +1095,35 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
           Stock: formatNumberForExport(row.Stock),
         }))
       );
+
+      // Sheet 3: Field values (dynamic lists from existing products)
+      try {
+        const { data: fieldValues } = await catalogApi.fieldValues();
+
+        const maxRows = Math.max(
+          fieldValues.categories?.length || 0,
+          fieldValues.containers?.length || 0,
+          fieldValues.warehouses?.length || 0,
+          fieldValues.suppliers?.length || 0
+        );
+
+        const listRows = [];
+        for (let i = 0; i < maxRows; i++) {
+          listRows.push({
+            'Catégorie': fieldValues.categories?.[i] || '',
+            'Conteneur': fieldValues.containers?.[i] || '',
+            'Entrepôt': fieldValues.warehouses?.[i] || '',
+            'Fournisseur': fieldValues.suppliers?.[i]?.name || '',
+            'Téléphone fournisseur': fieldValues.suppliers?.[i]?.phone || ''
+          });
+        }
+
+        const listSheet = XLSX.utils.json_to_sheet(listRows);
+        XLSX.utils.book_append_sheet(workbook, listSheet, 'Listes de valeurs');
+      } catch (listError) {
+        console.warn('Could not fetch field values for export:', listError);
+      }
+
       XLSX.utils.book_append_sheet(workbook, filterSheet, 'Filtres');
       XLSX.utils.book_append_sheet(workbook, dataSheet, 'Produits');
       XLSX.writeFile(workbook, `produits-filtres-${fileDateStamp}.xlsx`);

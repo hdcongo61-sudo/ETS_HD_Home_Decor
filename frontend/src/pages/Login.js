@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { authApi } from '../features/auth/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
@@ -71,14 +71,14 @@ const Login = () => {
     setError('');
 
     try {
-      const { data } = await api.post('/users/login', loginPayload());
+      const { data } = await authApi.login(loginPayload());
 
       // Store token securely (consider using HTTP-only cookies in production)
       localStorage.setItem('token', data.token);
       if (data.tenantId) localStorage.setItem('tenantId', data.tenantId);
 
       // Fetch user profile
-      const { data: userData } = await api.get('/users/me');
+      const { data: userData } = await authApi.me();
       localStorage.setItem('userId', userData._id);
 
       // Update auth context
@@ -173,7 +173,7 @@ const Login = () => {
 
     try {
       setPasswordRequestLoading(true);
-      const { data } = await api.post('/users/password-update-request', {
+      const { data } = await authApi.passwordUpdateRequest({
         login,
         reason,
       });

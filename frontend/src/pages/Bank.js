@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import api from '../services/api';
+import { salesApi } from '../features/sales/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
-import AppLoader from '../components/AppLoader';
 import {
   Button,
   CommandBar,
@@ -18,9 +17,6 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Banknote,
-  Landmark,
-  Plus,
-  Search,
   Wallet,
 } from 'lucide-react';
 
@@ -44,10 +40,7 @@ const Bank = () => {
     try {
       setLoading(true);
       setError('');
-      const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.type) params.append('type', filters.type);
-      const res = await api.get(`/bank?${params.toString()}`);
+      const res = await salesApi.bankList({ search: filters.search, type: filters.type });
       setTransactions(res.data || []);
     } catch (err) {
       setError(err.response?.data?.message || "Erreur lors du chargement des mouvements");
@@ -106,7 +99,7 @@ const Bank = () => {
 
     try {
       setSubmitting(true);
-      const { data } = await api.post('/bank', {
+      const { data } = await salesApi.bankCreate({
         type: formData.type,
         amount,
         label: formData.label.trim()

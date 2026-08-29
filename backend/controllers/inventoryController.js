@@ -213,6 +213,26 @@ const getReconciliation = asyncRoute(async (req, res) => {
   });
 });
 
+// ─────────────────────── Listes (lecture UI) ───────────────────────
+
+// @route   GET /api/v2/inventory/transfers
+const listTransfers = asyncRoute(async (req, res) => {
+  const items = await StockTransfer.find({ tenantId: req.tenantId })
+    .sort({ createdAt: -1 })
+    .limit(Math.min(Number(req.query.limit) || 100, 500))
+    .lean();
+  res.json(items);
+});
+
+// @route   GET /api/v2/inventory/counts
+const listCounts = asyncRoute(async (req, res) => {
+  const items = await StockCount.find({ tenantId: req.tenantId })
+    .sort({ createdAt: -1 })
+    .limit(Math.min(Number(req.query.limit) || 100, 500))
+    .lean();
+  res.json(items);
+});
+
 module.exports = {
   getBalances,
   getMovements,
@@ -225,4 +245,6 @@ module.exports = {
   postCount,
   cancelCount,
   getReconciliation,
+  listTransfers,
+  listCounts,
 };

@@ -22,6 +22,11 @@ import {
   LifeBuoy,
   Sparkles,
   Blocks,
+  Truck,
+  Boxes,
+  RotateCcw,
+  BarChart3,
+  Workflow,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
@@ -41,12 +46,17 @@ const PRIMARY_NAV = [
 const ADMIN_NAV = [
   { to: '/ultimate-filters',  icon: Sparkles,         label: 'Filtres Ultimes', highlight: true },
   { to: '/comptabilite',     icon: Calculator,      label: 'Comptabilité' },
+  { to: '/purchasing',       icon: Truck,           label: 'Achats', modules: ['purchasing'] },
+  { to: '/inventory-v2',     icon: Boxes,           label: 'Inventaire', modules: ['inventory'] },
+  { to: '/returns',          icon: RotateCcw,       label: 'Retours', modules: ['returns'] },
+  { to: '/reporting',        icon: BarChart3,       label: 'Rapports' },
   { to: '/expenses',         icon: Receipt,         label: 'Dépenses' },
   { to: '/employees',        icon: BriefcaseBusiness,label: 'Employés' },
   { to: '/product-dashboard',icon: BarChart2,        label: 'Analytics' },
   { to: '/users/stats',      icon: Activity,         label: 'Utilisateurs' },
   { to: '/documents',        icon: FileText,         label: 'Documents' },
   { to: '/support',          icon: LifeBuoy,         label: 'Assistance' },
+  { to: '/cutover',          icon: Workflow,         label: 'Bascule' },
   { to: '/security',         icon: ShieldCheck,      label: 'Sécurité' },
   { to: '/admin-modules',    icon: Blocks,           label: 'Modules' },
 ];
@@ -108,6 +118,23 @@ const DesktopNavRail = () => {
   const location = useLocation();
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
   const [supportUnread, setSupportUnread] = useState(0);
+  const [moduleStates, setModuleStates] = useState(null);
+
+  // Catalogue de modules serveur (Phase 7.2) : les entrées dont les modules
+  // requis sont désactivés ou interdits par le backend sont masquées.
+  useEffect(() => {
+    if (!auth.isAdmin) return undefined;
+    let alive = true;
+    api.get('/v2/modules')
+      .then(({ data }) => {
+        if (!alive) return;
+        const map = {};
+        (data?.modules || []).forEach((m) => { map[m.key] = m; });
+        setModuleStates(map);
+      })
+      .catch(() => setModuleStates(null));
+    return () => { alive = false; };
+  }, [auth.isAdmin]);
 
   // Unread support replies → nav badge. Refreshed on navigation so it clears
   // after the admin opens the Assistance page.
@@ -156,7 +183,16 @@ const DesktopNavRail = () => {
   const isPlatformOperator = auth.isSuperAdmin && !isImpersonating;
 
   const primaryNavItems = isPlatformOperator ? [] : PRIMARY_NAV;
-  const adminNavItems = (!isPlatformOperator && auth.isAdmin) ? ADMIN_NAV : [];
+  const adminNavItems = (!isPlatformOperator && auth.isAdmin)
+    ? ADMIN_NAV.filter((item) => {
+        if (!item.modules || item.modules.length === 0) return true;
+        if (!moduleStates) return true; // catalogue pas encore chargé → ne rien masquer
+        return item.modules.every((key) => {
+          const m = moduleStates[key];
+          return m && m.enabled !== false && m.allowed !== false;
+        });
+      })
+    : [];
 
   return (
     <motion.aside

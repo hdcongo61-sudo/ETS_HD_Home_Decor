@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
-import { KPICard, ChartCard } from "./business";
 
 const formatCFA = (value) =>
   `${Math.round(value || 0).toLocaleString("fr-FR")} CFA`;

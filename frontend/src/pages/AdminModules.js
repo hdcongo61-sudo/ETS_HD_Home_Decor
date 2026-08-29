@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
+import { platformApi } from '../features/platform/api';
 import toast from 'react-hot-toast';
 import { Blocks, Check, X, SlidersHorizontal, Save } from 'lucide-react';
 import { PageHeader, Workspace, LoadingSkeleton } from '../components/business';
@@ -23,8 +23,8 @@ const AdminModules = () => {
     try {
       setLoading(true);
       const [modulesRes, settingsRes] = await Promise.all([
-        api.get('/v2/modules'),
-        api.get('/v2/settings'),
+        platformApi.modules(),
+        platformApi.settings(),
       ]);
       setModules(Array.isArray(modulesRes.data?.modules) ? modulesRes.data.modules : []);
       setSettings(settingsRes.data?.settings || {});
@@ -42,7 +42,7 @@ const AdminModules = () => {
   const handleToggle = async (module) => {
     try {
       setToggling(module.key);
-      await api.put(`/v2/modules/${module.key}/settings`, { enabled: !module.enabled });
+      await platformApi.updateModule(module.key, { enabled: !module.enabled });
       setModules((prev) => prev.map((m) => (m.key === module.key ? { ...m, enabled: !m.enabled } : m)));
       toast.success(`${module.label} ${module.enabled ? 'désactivé' : 'activé'}`);
     } catch (err) {
@@ -59,7 +59,7 @@ const AdminModules = () => {
   const handleSaveSettings = async () => {
     try {
       setSavingSettings(true);
-      await api.put('/v2/settings', { values: settings });
+      await platformApi.updateSettings(settings);
       toast.success('Paramètres enregistrés');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erreur lors de l\'enregistrement');

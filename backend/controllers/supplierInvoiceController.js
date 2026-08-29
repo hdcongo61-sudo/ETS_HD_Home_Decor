@@ -57,6 +57,14 @@ const postInvoice = asyncRoute(async (req, res) => {
   res.json(invoice);
 });
 
+// @route   POST /api/v2/supplier-invoices/:id/cancel
+const cancelInvoice = asyncRoute(async (req, res) => {
+  const invoice = await invoiceService.cancelInvoice({
+    tenantId: req.tenantId, invoiceId: req.params.id, userId: req.user ? req.user._id : null,
+  });
+  res.json(invoice);
+});
+
 // @route   POST /api/v2/supplier-invoices/:id/payments
 const registerInvoicePayment = asyncRoute(async (req, res) => {
   const invoice = await invoiceService.registerInvoicePayment({
@@ -88,6 +96,6 @@ const getPayableSummary = asyncRoute(async (req, res) => {
 });
 
 module.exports = {
-  getInvoices, getInvoice, createInvoice, postInvoice,
+  getInvoices, getInvoice, createInvoice, postInvoice, cancelInvoice,
   registerInvoicePayment, getDiscrepancies, getPayableSummary,
 };

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Award, Crown, Gift, Users, Coins, Sparkles, ArrowLeft, ChevronRight } from 'lucide-react';
-import api from '../services/api';
+import { customersApi } from '../features/customers/api';
 import Modal from '../components/Modal';
 import { clientPath } from '../utils/paths';
 import {
@@ -44,7 +44,7 @@ const AdjustModal = ({ client, onClose, onDone }) => {
     if (tooMany) { toast.error('Points insuffisants.'); return; }
     try {
       setSaving(true);
-      await api.post(`/clients/${client._id}/loyalty`, {
+      await customersApi.addLoyalty(client._id, {
         delta: mode === 'redeem' ? -n : n,
         reason: mode,
         note: note.trim(),
@@ -118,7 +118,7 @@ const ClientLoyalty = () => {
     setLoading(true);
     setError('');
     try {
-      const { data: res } = await api.get('/clients/loyalty');
+      const { data: res } = await customersApi.loyaltyList();
       setData(res);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur de chargement du programme de fidélité.');

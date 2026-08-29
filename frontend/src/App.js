@@ -29,6 +29,11 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const AdminModules = lazy(() => import('./pages/AdminModules'));
 const Security = lazy(() => import('./pages/Security'));
+const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'));
+const InventoryV2 = lazy(() => import('./pages/InventoryV2'));
+const ReturnsRefunds = lazy(() => import('./pages/ReturnsRefunds'));
+const Reporting = lazy(() => import('./pages/Reporting'));
+const Cutover = lazy(() => import('./pages/Cutover'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
 const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
 const EmployeeDetails = lazy(() => import('./components/EmployeeDetail'));
@@ -62,6 +67,7 @@ const ProductDashboard = lazy(() => import('./pages/ProductDashboard'));
 const SupplierProducts = lazy(() => import('./pages/SupplierProducts'));
 const ContainerProducts = lazy(() => import('./pages/ContainerProducts'));
 const WarehouseProducts = lazy(() => import('./pages/WarehouseProducts'));
+const CategoryProducts = lazy(() => import('./pages/CategoryProducts'));
 const SupplierProfile = lazy(() => import('./pages/SupplierProfile'));
 const EditProductForm = lazy(() => import('./components/EditProductForm'));
 const UserManagement = lazy(() => import('./components/UserManagement'));
@@ -80,6 +86,8 @@ const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 const ImpersonationBanner = lazy(() => import('./components/ImpersonationBanner'));
 const UltimateFilters = lazy(() => import('./pages/UltimateFilters'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const PageGuide = lazy(() => import('./components/PageGuide'));
+const AttributeManager = lazy(() => import('./components/AttributeManager'));
 
 const PUBLIC_ROUTES = new Set(['/login', '/access-restricted']);
 
@@ -119,6 +127,7 @@ function ApplicationShell() {
       {showAuthenticatedShell && (
         <>
           <GlobalModals />
+          <PageGuide />
           <PushNotificationManager />
           <PwaInstallPrompt />
           <BottomTabBar />
@@ -265,6 +274,14 @@ function ApplicationRoutes() {
                   }
                 />
                 <Route
+                  path="/products/by-category"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <CategoryProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/suppliers/:name"
                   element={
                     <ProtectedRoute adminOnly>
@@ -341,6 +358,54 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <DeletedSales />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchasing"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <PurchaseOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventory-v2"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <InventoryV2 />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/returns"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <ReturnsRefunds />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reporting"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Reporting />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/cutover"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Cutover />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/attributes"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <AttributeManager />
                     </ProtectedRoute>
                   }
                 />

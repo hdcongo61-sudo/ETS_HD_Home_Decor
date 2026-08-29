@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import api from '../services/api';
+import { platformApi } from '../features/platform/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Send, ArrowLeft, Lightbulb, AlertTriangle, HelpCircle, Tag, CheckCircle2,
@@ -93,7 +93,7 @@ const NewTicket = ({ onCancel, onCreated }) => {
     if (!subject.trim() || !message.trim()) { toast.error('Sujet et message requis.'); return; }
     setSending(true);
     try {
-      const { data } = await api.post('/support', { category, subject: subject.trim(), message: message.trim() });
+      const { data } = await platformApi.supportCreate({ category, subject: subject.trim(), message: message.trim() });
       toast.success('Message envoyé au support.');
       onCreated(data._id);
     } catch (err) {
@@ -160,7 +160,7 @@ const TicketThread = ({ id, onBack, onChanged }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/support/${id}`);
+      const { data } = await platformApi.supportGet(id);
       setTicket(data);
     } catch {
       toast.error('Message introuvable.');
@@ -175,7 +175,7 @@ const TicketThread = ({ id, onBack, onChanged }) => {
     if (!reply.trim()) return;
     setSending(true);
     try {
-      const { data } = await api.post(`/support/${id}/reply`, { message: reply.trim() });
+      const { data } = await platformApi.supportReply(id, { message: reply.trim() });
       setTicket(data);
       setReply('');
       onChanged?.();
@@ -259,7 +259,7 @@ const Support = () => {
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/support');
+      const { data } = await platformApi.supportList();
       setTickets(data || []);
     } catch {
       setTickets([]);

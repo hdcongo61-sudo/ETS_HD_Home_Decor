@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -47,6 +47,7 @@ const GROUP_TABS = [
   { key: 'suppliers', label: 'Fournisseurs', nameKey: 'supplierName', detailPath: '/products/by-supplier', csv: 'Fournisseurs' },
   { key: 'containers', label: 'Conteneurs', nameKey: 'containerName', detailPath: '/products/by-container', csv: 'Conteneurs' },
   { key: 'warehouses', label: 'Entrepôts', nameKey: 'warehouseName', detailPath: '/products/by-warehouse', csv: 'Entrepots' },
+  { key: 'categories', label: 'Catégories', nameKey: 'categoryName', detailPath: '/products/by-category', csv: 'Categories' },
 ];
 
 const ProductDashboard = () => {
@@ -69,13 +70,14 @@ const ProductDashboard = () => {
     salesTrend: [],
     supplierStats: [],
     containerStats: [],
-    warehouseStats: []
+    warehouseStats: [],
+    categoryStats: []
   });
 
   const fetchData = useCallback(async (opts = {}) => {
     const { silent = false } = opts;
     try {
-      const res = await api.get('/products/dashboard');
+      const res = await catalogApi.dashboard();
       setStats({
         totalProducts: res.data.totalProducts || 0,
         soldProducts: res.data.soldProducts || 0,
@@ -88,7 +90,8 @@ const ProductDashboard = () => {
         salesTrend: res.data.salesTrend || [],
         supplierStats: res.data.supplierStats || [],
         containerStats: res.data.containerStats || [],
-        warehouseStats: res.data.warehouseStats || []
+        warehouseStats: res.data.warehouseStats || [],
+        categoryStats: res.data.categoryStats || []
       });
     } catch (err) {
       console.error(err);
@@ -111,12 +114,13 @@ const ProductDashboard = () => {
   }, [fetchData]);
 
   useResponsiveTable(topSellingTableRef, [stats.topSellingProducts]);
-  useResponsiveTable(groupTableRef, [groupTab, stats.supplierStats, stats.containerStats, stats.warehouseStats]);
+  useResponsiveTable(groupTableRef, [groupTab, stats.supplierStats, stats.containerStats, stats.warehouseStats, stats.categoryStats]);
 
   const groupDataByTab = {
     suppliers: stats.supplierStats,
     containers: stats.containerStats,
     warehouses: stats.warehouseStats,
+    categories: stats.categoryStats,
   };
   const activeTab = GROUP_TABS.find((t) => t.key === groupTab) || GROUP_TABS[0];
   const activeGroupData = (groupDataByTab[groupTab] || []).map((g) => ({

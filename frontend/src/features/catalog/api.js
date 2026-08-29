@@ -12,11 +12,24 @@ export const catalogApi = {
   remove: (id) => api.delete(`/products/${id}`),
   duplicate: (id) => api.post(`/products/${id}/duplicate`),
   bulkUpdate: (data) => api.put('/products/bulk', data),
-  dashboard: () => api.get('/products/dashboard'),
+  dashboard: (params) => api.get('/products/dashboard', { params }),
   neverSold: () => api.get('/products/never-sold'),
-  slowMovers: () => api.get('/products/slow-movers'),
+  slowMovers: (params) => api.get('/products/slow-movers', { params }),
+  bySupplier: (params) => api.get('/products/by-supplier', { params }),
   lossMap: () => api.get('/products/loss-map'),
-  stockMovements: () => api.get('/products/stock-movements'),
+  stockMovements: (params) => api.get('/products/stock-movements', { params }),
+  fieldValues: () => api.get('/products/field-values'),
+  images: (id) => api.get(`/products/${id}/images`),
+  stats: (id, range) => api.get(`/products/${id}/stats`, { params: { range } }),
+  salesHistory: (id, limit) => api.get(`/products/${id}/sales-history`, { params: { limit } }),
+  addStockMovement: (data) => api.post('/products/stock-movement', data),
+  removeStockMovement: (id) => api.delete(`/products/stock-movement/${id}`),
+
+  // Référentiels (lookups) utilisés par le catalogue et les ventes.
+  lookupCategories: () => api.get('/lookups/categories'),
+  lookupContainers: () => api.get('/lookups/containers'),
+  lookupWarehouses: () => api.get('/lookups/warehouses'),
+  lookupSuppliers: () => api.get('/lookups/suppliers'),
 
   // Inventaire v2 (registre).
   balances: (params) => api.get('/v2/inventory/balances', { params }),

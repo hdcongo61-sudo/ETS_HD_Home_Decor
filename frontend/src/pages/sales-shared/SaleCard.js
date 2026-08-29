@@ -68,7 +68,7 @@ const SaleCard = ({
                 {sale.client?.name || "Client non spécifié"}
               </span>
               <span className="fui-caption1 mt-0.5 block" style={{ color: "var(--colorBrandForeground1)" }}>
-                Vente #{sale._id.slice(-6)}
+                {sale.reference || ("Vente #" + sale._id.slice(-6))}
                 <span style={{ color: "var(--colorNeutralForeground3)" }}> · {formatDate(sale.saleDate)}</span>
               </span>
             </Link>

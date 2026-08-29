@@ -270,4 +270,16 @@ async function cancelReturn({ tenantId, returnId, userId = null }) {
   return ret;
 }
 
-module.exports = { createReturn, postReturn, cancelReturn, createRefund };
+// Liste des retours d'une vente (lecture, tenant-scopée).
+async function listReturnsBySale({ tenantId, saleId }) {
+  return SaleReturn.find({ tenantId, saleId }).sort({ createdAt: -1 }).lean();
+}
+
+// Liste des remboursements (lecture, tenant-scopée).
+async function listRefunds({ tenantId, saleId = null }) {
+  const filter = { tenantId };
+  if (saleId) filter.saleId = saleId;
+  return Refund.find(filter).sort({ createdAt: -1 }).lean();
+}
+
+module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listRefunds };

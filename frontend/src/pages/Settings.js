@@ -1,6 +1,8 @@
 import { confirmDialog } from '../components/ConfirmProvider';
 import { useState, useEffect, useCallback, useContext } from 'react';
 import api from '../services/api';
+import { platformApi } from '../features/platform/api';
+import { salesApi } from '../features/sales/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Check, X, RotateCcw, Save,
@@ -49,6 +51,18 @@ const buildBrandingForm = (branding = {}) => ({
 });
 
 const settingInputClass = 'form-control';
+
+// Mention légale/sécurité imprimée en bas des factures/reçus de vente partielle.
+const DEFAULT_PARTIAL_SECURITY_NOTE = 'La somme avancée ne peut être retirée. La boutique se donne le droit de vendre l’article après le délai d’accord passé.';
+// Mention légale fixe, imprimée sous les libellés de signature (facture vente partielle)
+const PARTIAL_SIGNATURE_LEGAL_NOTE = 'La somme avancée ne peut être retirée. La boutique se donne le droit de vendre l’article après le délai d’accord passé.';
+
+const formatDateShort = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 const currentDateValue = () => new Date().toISOString().slice(0, 10);
 
 const parseDateValue = (value) => {
@@ -117,16 +131,6 @@ const buildSaleEmployeeSign = (employeeName) => {
 const formatSaleReferenceDate = (date) =>
   `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
 
-const formatDocumentDate = (value) => {
-  const date = value ? new Date(value) : new Date();
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-};
-
 // Plan mis en avant comme « Recommandé ».
 const RECOMMENDED_PLAN = 'pro';
 
@@ -175,10 +179,31 @@ const Settings = () => {
   const [saleSheetRowsPerDay, setSaleSheetRowsPerDay] = useState(12);
   const [employees, setEmployees] = useState([]);
   const [generatingSalesSheet, setGeneratingSalesSheet] = useState(false);
-  const [partialInvoiceProductRows, setPartialInvoiceProductRows] = useState(7);
-  const [partialInvoicePaymentRows, setPartialInvoicePaymentRows] = useState(6);
+  const [partialInvoiceProductRows, setPartialInvoiceProductRows] = useState(3);
+  const [partialInvoicePaymentRows, setPartialInvoicePaymentRows] = useState(3);
   const [partialInvoiceCopies, setPartialInvoiceCopies] = useState(2);
   const [generatingPartialInvoice, setGeneratingPartialInvoice] = useState(false);
+  const [partialInvoiceSecurityNote, setPartialInvoiceSecurityNote] = useState(DEFAULT_PARTIAL_SECURITY_NOTE);
+
+  // Facture vente partielle — modèle B : reçu basé sur les données.
+  const [partialInvoiceMode, setPartialInvoiceMode] = useState('paper'); // 'paper' | 'data'
+  const [partialReceiptSales, setPartialReceiptSales] = useState([]);
+  const [partialReceiptSaleId, setPartialReceiptSaleId] = useState('');
+  const [partialReceiptShowMethod, setPartialReceiptShowMethod] = useState(true);
+  const [partialReceiptShowBalance, setPartialReceiptShowBalance] = useState(true);
+  const [partialReceiptShowSignature, setPartialReceiptShowSignature] = useState(false);
+  const [partialReceiptFooter, setPartialReceiptFooter] = useState('');
+  const [partialReceiptSecurityNote, setPartialReceiptSecurityNote] = useState(DEFAULT_PARTIAL_SECURITY_NOTE);
+  const [generatingPartialReceipt, setGeneratingPartialReceipt] = useState(false);
+
+  useEffect(() => {
+    if (partialInvoiceMode !== 'data') return undefined;
+    let alive = true;
+    salesApi.list({ status: 'partially_paid', summary: 'compact' })
+      .then(({ data }) => { if (alive) setPartialReceiptSales(Array.isArray(data) ? data : []); })
+      .catch(() => { if (alive) setPartialReceiptSales([]); });
+    return () => { alive = false; };
+  }, [partialInvoiceMode]);
   const [finalInvoiceProductRows, setFinalInvoiceProductRows] = useState(12);
   const [finalInvoiceCopies, setFinalInvoiceCopies] = useState(2);
   const [generatingFinalInvoice, setGeneratingFinalInvoice] = useState(false);
@@ -192,13 +217,13 @@ const Settings = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
-    api.get('/tenants/me').then(({ data }) => setMyTenant(data)).catch(() => setMyTenant(null));
-    api.get('/tenants/plan-catalog').then(({ data }) => setPlanCatalog(data.plans || {})).catch(() => setPlanCatalog({}));
+    platformApi.myTenant().then(({ data }) => setMyTenant(data)).catch(() => setMyTenant(null));
+    platformApi.planCatalog().then(({ data }) => setPlanCatalog(data.plans || {})).catch(() => setPlanCatalog({}));
   }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
-    api.get('/employees')
+    platformApi.employeesList()
       .then(({ data }) => setEmployees(Array.isArray(data) ? data : []))
       .catch(() => setEmployees([]));
   }, [isAdmin]);
@@ -216,8 +241,8 @@ const Settings = () => {
     if (!reqPlan) { toast.error('Choisissez un plan.'); return; }
     try {
       setReqSubmitting(true);
-      await api.post('/tenants/plan-request', { requestedPlan: reqPlan, note: reqNote.trim() });
-      const { data } = await api.get('/tenants/me');
+      await platformApi.requestPlan({ requestedPlan: reqPlan, note: reqNote.trim() });
+      const { data } = await platformApi.myTenant();
       setMyTenant(data);
       setReqNote('');
       setReqPlan('');
@@ -232,7 +257,7 @@ const Settings = () => {
   // Recharger la boutique après un paiement mobile money réussi.
   const refreshTenantAfterPayment = async () => {
     try {
-      const { data } = await api.get('/tenants/me');
+      const { data } = await platformApi.myTenant();
       setMyTenant(data);
     } catch {
       /* non bloquant */
@@ -321,7 +346,7 @@ const Settings = () => {
         payload.append('logoFile', brandingLogoFile);
       }
 
-      const { data } = await api.put('/app-settings', payload);
+      const { data } = await platformApi.updateAppSettings(payload);
       setAppSettings(data);
       toast.success('Personnalisation enregistrée');
     } catch (error) {
@@ -333,7 +358,7 @@ const Settings = () => {
 
   const handleDownloadBrochure = async () => {
     try {
-      const res = await api.get('/export/brochure', { responseType: 'blob' });
+      const res = await platformApi.exportBrochure();
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
@@ -364,7 +389,7 @@ const Settings = () => {
       setDateSettings(nextDateSettings);
 
       const currentAdminPreferences = auth?.user?.adminPreferences || {};
-      const { data } = await api.put(`/users/${auth.user._id}`, {
+      const { data } = await platformApi.updateUser(auth.user._id, {
         adminPreferences: {
           ...currentAdminPreferences,
           ...nextDateSettings,
@@ -650,6 +675,7 @@ const Settings = () => {
     productRowsCount,
     paymentRowsCount = 0,
     copyCount = 2,
+    securityNote = '',
     setGenerating,
   }) => {
     const isPartial = variant === 'partial';
@@ -678,8 +704,8 @@ const Settings = () => {
       const copyHeight = isFourCopyLayout ? pageHeight / 2 : pageHeight;
       const title = isPartial ? 'FACTURE VENTE PARTIELLE' : 'FACTURE VENTE FINALE';
       const partialFourCopyRowBudget = 6;
-      const productMaxRows = isPartial ? (isFourCopyLayout ? 5 : 10) : (isFourCopyLayout ? 4 : 12);
-      const paymentMaxRows = isPartial ? (isFourCopyLayout ? 5 : 8) : 0;
+      const productMaxRows = isPartial ? (isFourCopyLayout ? 4 : 10) : (isFourCopyLayout ? 4 : 12);
+      const paymentMaxRows = isPartial ? (isFourCopyLayout ? 4 : 8) : 0;
       const productRowCount = Math.min(Math.max(Number(productRowsCount) || productMaxRows, 1), productMaxRows);
       const availablePaymentRows = isPartial && isFourCopyLayout
         ? Math.max(partialFourCopyRowBudget - productRowCount, 1)
@@ -769,8 +795,8 @@ const Settings = () => {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(isFourCopyLayout ? 6 : 7);
         doc.setTextColor(55, 65, 81);
-        doc.text('N :', saleCardX + 4, infoY + (isFourCopyLayout ? 10 : 12));
-        doc.line(saleCardX + 13, infoY + (isFourCopyLayout ? 10 : 12), saleCardX + cardWidth - 4, infoY + (isFourCopyLayout ? 10 : 12));
+        doc.text('N° :', saleCardX + 4, infoY + (isFourCopyLayout ? 10 : 12));
+        doc.line(saleCardX + (isFourCopyLayout ? 16 : 18), infoY + (isFourCopyLayout ? 10 : 12), saleCardX + cardWidth - 4, infoY + (isFourCopyLayout ? 10 : 12));
         doc.text('Date :', saleCardX + 4, infoY + (isFourCopyLayout ? 15 : 18));
         doc.line(saleCardX + 20, infoY + (isFourCopyLayout ? 15 : 18), saleCardX + cardWidth - 4, infoY + (isFourCopyLayout ? 15 : 18));
         if (!isFourCopyLayout) {
@@ -794,9 +820,18 @@ const Settings = () => {
           },
         });
 
+        // « Prix total » directement sous le tableau des produits
+        const totalLineY = doc.lastAutoTable.finalY + (isFourCopyLayout ? 3 : 7);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(isFourCopyLayout ? 6 : 8);
+        doc.setTextColor(17, 24, 39);
+        doc.text('Prix total :', copyRight - (isFourCopyLayout ? 50 : 60), totalLineY);
+        doc.setDrawColor(156, 163, 175);
+        doc.line(copyRight - (isFourCopyLayout ? 30 : 40), totalLineY, copyRight - 4, totalLineY);
+
         if (isPartial) {
           autoTable(doc, {
-            startY: doc.lastAutoTable.finalY + (isFourCopyLayout ? 2 : 3),
+            startY: totalLineY + (isFourCopyLayout ? 3 : 7),
             head: [['#', 'Date du paiement', 'Montant payé']],
             body: paymentRows,
             theme: 'grid',
@@ -811,28 +846,33 @@ const Settings = () => {
           });
         }
 
-        const totalsY = doc.lastAutoTable.finalY + 4;
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(copyRight - 60, totalsY, 60, isFourCopyLayout ? 11 : 14, 3, 3, 'F');
+        const footerTop = doc.lastAutoTable.finalY + (isFourCopyLayout ? 3 : 7);
+        const hasSecurityNote = Boolean(securityNote && String(securityNote).trim());
+        if (hasSecurityNote) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(isFourCopyLayout ? 4.5 : 6.5);
+          doc.setTextColor(153, 27, 27);
+          const noteLines = doc.splitTextToSize(String(securityNote).trim(), copyUsableWidth - 6);
+          doc.text(noteLines.slice(0, isFourCopyLayout ? 1 : 2), copyLeft, footerTop + (isFourCopyLayout ? 2 : 5));
+        }
+        const sigY = footerTop + (hasSecurityNote ? (isFourCopyLayout ? 6 : 13) : (isFourCopyLayout ? 3 : 7));
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(isFourCopyLayout ? 6 : 7);
-        doc.setTextColor(107, 114, 128);
-        doc.text('Prix total', copyRight - 56, totalsY + (isFourCopyLayout ? 4 : 5));
-        doc.text('Total payé', copyRight - 56, totalsY + (isFourCopyLayout ? 9 : 11));
-        doc.setDrawColor(156, 163, 175);
-        doc.line(copyRight - 30, totalsY + (isFourCopyLayout ? 4 : 5), copyRight - 4, totalsY + (isFourCopyLayout ? 4 : 5));
-        doc.line(copyRight - 30, totalsY + (isFourCopyLayout ? 9 : 11), copyRight - 4, totalsY + (isFourCopyLayout ? 9 : 11));
-
-        const signatureBottomOffset = isPartial ? (isFourCopyLayout ? 10 : 10) : (isFourCopyLayout ? 14 : 18);
-        const signatureY = Math.min(totalsY + (isFourCopyLayout ? 15 : 20), offsetY + copyHeight - signatureBottomOffset);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(isFourCopyLayout ? 6 : 7);
+        doc.setFontSize(isFourCopyLayout ? 5 : 7);
         doc.setTextColor(55, 65, 81);
-        doc.text('Signature acheteur', copyLeft, signatureY);
-        doc.text('Signature boutique', copyRight - 46, signatureY);
+        doc.text('Signature acheteur', copyLeft, sigY);
+        doc.text('Signature boutique', copyRight - 46, sigY);
         doc.setDrawColor(156, 163, 175);
-        doc.line(copyLeft, signatureY + (isFourCopyLayout ? 6 : 8), copyLeft + 46, signatureY + (isFourCopyLayout ? 6 : 8));
-        doc.line(copyRight - 46, signatureY + (isFourCopyLayout ? 6 : 8), copyRight, signatureY + (isFourCopyLayout ? 6 : 8));
+        doc.line(copyLeft, sigY + (isFourCopyLayout ? 3.5 : 6), copyLeft + 46, sigY + (isFourCopyLayout ? 3.5 : 6));
+        doc.line(copyRight - 46, sigY + (isFourCopyLayout ? 3.5 : 6), copyRight, sigY + (isFourCopyLayout ? 3.5 : 6));
+        if (isPartial) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(isFourCopyLayout ? 4 : 5.5);
+          doc.setTextColor(107, 114, 128);
+          const legalLines = doc.splitTextToSize(PARTIAL_SIGNATURE_LEGAL_NOTE, copyUsableWidth - 6);
+          const legalY = sigY + (isFourCopyLayout ? 7 : 12);
+          const canFitTwo = legalY + (isFourCopyLayout ? 3.4 : 4.6) <= offsetY + copyHeight - (isFourCopyLayout ? 2 : 3);
+          doc.text(legalLines.slice(0, canFitTwo ? 2 : 1), copyLeft + copyUsableWidth / 2, legalY, { align: 'center' });
+        }
 
       };
 
@@ -858,6 +898,7 @@ const Settings = () => {
     productRowsCount: partialInvoiceProductRows,
     paymentRowsCount: partialInvoicePaymentRows,
     copyCount: partialInvoiceCopies,
+    securityNote: partialInvoiceSecurityNote,
     setGenerating: setGeneratingPartialInvoice,
   });
 
@@ -867,6 +908,180 @@ const Settings = () => {
     copyCount: finalInvoiceCopies,
     setGenerating: setGeneratingFinalInvoice,
   });
+
+  // ── Modèle B : reçu de paiement partiel basé sur les données de la vente ──
+  const handleGeneratePartialReceiptPdf = async () => {
+    const saleId = partialReceiptSaleId;
+    const hasSale = Boolean(saleId);
+    setGeneratingPartialReceipt(true);
+    try {
+      let sale = null;
+      if (hasSale) {
+        const response = await salesApi.get(saleId);
+        sale = response.data;
+      }
+      const [jsPDFModule, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default;
+      const autoTable = autoTableModule.default || autoTableModule;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const branding = appSettings?.branding || {};
+      const companyName = branding.appName || branding.shortName || 'Boutique';
+      const companyLogo = await getLogoDataUrl(resolveAppLogo(branding.logoUrl));
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 8;
+      const copyWidth = pageWidth / 2;
+
+      const total = hasSale ? (Number(sale.totalAmount) || 0) : null;
+      const paid = hasSale ? (Number(sale.collectedAmount) || 0) : null;
+      const balance = hasSale ? Math.max(total - paid, 0) : null;
+      const saleRef = hasSale ? (sale.reference || String(sale._id).slice(-6).toUpperCase()) : '';
+      const clientName = hasSale ? (sale.client?.name || sale.clientName || '') : '';
+      const clientPhone = hasSale ? (sale.client?.phone || '') : '';
+      const products = hasSale
+        ? (sale.products || []).map((p) => ({
+            name: p.product?.name || p.productName || p.name || '—',
+            quantity: Number(p.quantity) || 1,
+            unit: Number(p.priceAtSale ?? p.price ?? 0) || 0,
+          }))
+        : Array.from({ length: 6 }, () => ({ name: '', quantity: '', unit: null }));
+      const payments = hasSale
+        ? (sale.payments || []).map((pay) => ({
+            amount: Number(pay.amount) || 0,
+            method: pay.method || '—',
+            date: pay.date || null,
+          }))
+        : Array.from({ length: 3 }, () => ({ amount: null, method: '', date: null }));
+      const lastPayment = hasSale ? (payments[payments.length - 1] || null) : null;
+      // Montant formaté : vide si non renseigné (mode vierge à la main).
+      const fmt = (v) => {
+        if (v === null || v === undefined || v === '') return '';
+        return `${Number(v || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`;
+      };
+      const moneyBlank = (v) => (v === null || v === undefined ? '_________________' : fmt(v));
+
+      const drawCopy = (offsetX) => {
+        const copyLeft = offsetX + margin;
+        const copyRight = offsetX + copyWidth - margin;
+        const usable = copyWidth - margin * 2;
+        let y = 6;
+        if (companyLogo) {
+          try { doc.addImage(companyLogo, 'PNG', copyLeft, y, 16, 16); } catch (_) { /* logo ignoré */ }
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text(companyName, companyLogo ? copyLeft + 19 : copyLeft, y + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text('REÇU DE PAIEMENT PARTIEL', copyRight, y + 6, { align: 'right' });
+        doc.setFontSize(8);
+        doc.text(hasSale ? `N° ${saleRef}` : 'N° ____________', copyRight, y + 11, { align: 'right' });
+        y += 16;
+        doc.setDrawColor(209, 213, 219);
+        doc.setLineWidth(0.3);
+        doc.line(copyLeft, y, copyRight, y);
+        y += 6;
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Client : ${hasSale ? clientName : '__________________________'}`, copyLeft, y);
+        doc.text(`Tél : ${hasSale ? clientPhone || '—' : '________________'}`, copyLeft, y + 5);
+        doc.text(`Date vente : ${hasSale ? formatDateShort(sale.saleDate || sale.createdAt) : '____/____/______'}`, copyRight, y, { align: 'right' });
+        doc.text(`Date reçu : ${hasSale ? formatDateShort(new Date()) : '____/____/______'}`, copyRight, y + 5, { align: 'right' });
+        y += 12;
+        autoTable(doc, {
+          startY: y,
+          margin: { left: copyLeft, right: pageWidth - copyRight },
+          head: [['Produit', 'Qté', 'P.U.', 'Total']],
+          body: products.map((p) => [p.name.slice(0, 32), String(p.quantity ?? ''), fmt(p.unit), fmt(p.unit != null ? p.unit * p.quantity : null)]),
+          theme: 'grid',
+          styles: { fontSize: 7.5, cellPadding: 1.6 },
+          headStyles: { fillColor: [37, 99, 235], fontSize: 7.5 },
+          columnStyles: {
+            0: { cellWidth: usable * 0.46 },
+            1: { cellWidth: usable * 0.14, halign: 'center' },
+            2: { cellWidth: usable * 0.2, halign: 'right' },
+            3: { cellWidth: usable * 0.2, halign: 'right' },
+          },
+        });
+        y = doc.lastAutoTable.finalY + 5;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`TOTAL FACTURE : ${moneyBlank(total)}`, copyLeft, y);
+        doc.setFontSize(10);
+        doc.text(
+          hasSale
+            ? `Payé ce jour : ${fmt(lastPayment?.amount ?? null)} — le ${lastPayment?.date ? formatDateShort(lastPayment.date) : '____/____/______'}${partialReceiptShowMethod && lastPayment ? ` (${lastPayment.method})` : ''}`
+            : `Payé ce jour : ________ — le ____/____/______${partialReceiptShowMethod ? ' (mode : ________)' : ''}`,
+          copyLeft,
+          y + 7
+        );
+        if (partialReceiptShowBalance) {
+          doc.text(`Reste à payer : ${moneyBlank(balance)}`, copyRight, y + 7, { align: 'right' });
+        }
+        y += 14;
+        if (payments.length > 0) {
+          autoTable(doc, {
+            startY: y,
+            margin: { left: copyLeft, right: pageWidth - copyRight },
+            head: [['Historique des paiements', 'Montant']],
+            body: payments.map((p) => [p.date ? formatDateShort(p.date) : '', fmt(p.amount)]),
+            theme: 'plain',
+            styles: { fontSize: 7, cellPadding: 1 },
+            columnStyles: {
+              0: { cellWidth: usable * 0.7 },
+              1: { cellWidth: usable * 0.3, halign: 'right' },
+            },
+          });
+          y = doc.lastAutoTable.finalY + 5;
+        }
+        if (partialReceiptFooter) {
+          doc.setFontSize(7.5);
+          doc.setTextColor(96, 94, 92);
+          doc.text(partialReceiptFooter.slice(0, 90), copyLeft, Math.min(y + 4, partialReceiptShowSignature ? pageHeight - 76 : pageHeight - 16));
+        }
+        if (partialReceiptSecurityNote && String(partialReceiptSecurityNote).trim()) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(153, 27, 27);
+          const noteLines = doc.splitTextToSize(String(partialReceiptSecurityNote).trim(), usable - 6);
+          doc.text(noteLines.slice(0, 2), copyLeft, Math.min(y + 9, partialReceiptShowSignature ? pageHeight - 64 : pageHeight - 34));
+        }
+        if (partialReceiptShowSignature) {
+          doc.setTextColor(0, 0, 0);
+          doc.setDrawColor(150, 150, 150);
+          const sigY = pageHeight - 46;
+          doc.setFontSize(7.5);
+          doc.text(`N° vente : ${hasSale ? saleRef : '____________________'}`, copyLeft, sigY - 7);
+          doc.line(copyLeft, sigY, copyLeft + 50, sigY);
+          doc.text('Signature vendeur', copyLeft, sigY + 4);
+          doc.line(copyRight - 50, sigY, copyRight, sigY);
+          doc.text('Signature client', copyRight - 50, sigY + 4);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(6.5);
+          doc.setTextColor(90, 90, 90);
+          const legalLines = doc.splitTextToSize(PARTIAL_SIGNATURE_LEGAL_NOTE, usable - 4);
+          doc.text(legalLines.slice(0, 2), copyLeft, sigY + 10);
+        }
+      };
+
+      drawCopy(0);
+      doc.setDrawColor(209, 213, 219);
+      doc.setLineWidth(0.25);
+      doc.line(pageWidth / 2, margin, pageWidth / 2, pageHeight - margin);
+      drawCopy(copyWidth);
+
+      doc.save(hasSale ? `recu_partiel_${saleRef}.pdf` : 'recu_partiel_vierge.pdf');
+      toast.success(hasSale ? 'Reçu de paiement partiel généré.' : 'Modèle de reçu vierge généré.');
+    } catch (error) {
+      console.error('Partial receipt PDF error:', error);
+      toast.error('Impossible de générer le reçu.');
+    } finally {
+      setGeneratingPartialReceipt(false);
+    }
+  };
 
   const activeTabConfig = TABS.find((t) => t.key === activeTab);
 
@@ -1473,7 +1688,50 @@ const Settings = () => {
             </span>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
+          <div className="mb-4 grid gap-3 md:grid-cols-[280px_1fr_200px] md:items-end">
+            <BrandingField
+              label="Modèle de facture"
+              description="A — papier vierge à remplir à la main · B — reçu généré depuis les données d'une vente partiellement payée."
+            >
+              <select
+                value={partialInvoiceMode}
+                onChange={(event) => setPartialInvoiceMode(event.target.value)}
+                className={settingInputClass}
+              >
+                <option value="paper">A — Papier vierge (à la main)</option>
+                <option value="data">B — Reçu de paiement partiel (données)</option>
+              </select>
+            </BrandingField>
+
+            <p className="fui-caption1 self-end pb-2 leading-relaxed" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              A — billet papier vierge à remplir par le vendeur · B — reçu partiel (pré-rempli ou vierge).
+            </p>
+
+            {partialInvoiceMode === 'paper' && (
+              <BrandingField label="Nombre de copies (modèle A)" description="2 copies ou 4 copies sur une page A4.">
+                <select
+                  value={partialInvoiceCopies}
+                  onChange={(event) => {
+                    const nextCopyCount = Number(event.target.value);
+                    setPartialInvoiceCopies(nextCopyCount);
+                    if (nextCopyCount === 4) {
+                      // 3 lignes produits + 3 lignes paiements = 6 au total
+                      setPartialInvoiceProductRows(3);
+                      setPartialInvoicePaymentRows(3);
+                    }
+                  }}
+                  className={settingInputClass}
+                >
+                  <option value={2}>2 copies</option>
+                  <option value={4}>4 copies</option>
+                </select>
+              </BrandingField>
+            )}
+          </div>
+
+          {partialInvoiceMode === 'paper' && (
+          <>
+          <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <BrandingField
               label="Lignes produits"
               description={partialInvoiceCopies === 4 ? 'Produits + paiements = maximum 6 lignes.' : 'Maximum 10 lignes avec les deux copies côte à côte.'}
@@ -1481,12 +1739,12 @@ const Settings = () => {
               <input
                 type="number"
                 min="1"
-                max={partialInvoiceCopies === 4 ? String(Math.max(6 - (Number(partialInvoicePaymentRows) || 1), 1)) : '10'}
+                max={partialInvoiceCopies === 4 ? String(Math.min(Math.max(6 - (Number(partialInvoicePaymentRows) || 1), 1), 4)) : '10'}
                 value={partialInvoiceProductRows}
                 onChange={(event) => {
                   if (partialInvoiceCopies === 4) {
-                    const paymentRows = Math.min(Math.max(Number(partialInvoicePaymentRows) || 1, 1), 5);
-                    const nextProductRows = Math.min(Math.max(Number(event.target.value) || 1, 1), Math.max(6 - paymentRows, 1));
+                    const paymentRows = Math.min(Math.max(Number(partialInvoicePaymentRows) || 1, 1), 4);
+                    const nextProductRows = Math.min(Math.max(Number(event.target.value) || 1, 1), Math.min(Math.max(6 - paymentRows, 1), 4));
                     setPartialInvoiceProductRows(nextProductRows);
                     return;
                   }
@@ -1498,7 +1756,7 @@ const Settings = () => {
 
             <BrandingField
               label="Lignes paiements"
-              description={partialInvoiceCopies === 4 ? 'Utilise les lignes restantes du total de 6.' : 'Maximum 8 paiements liés au même N.'}
+              description={partialInvoiceCopies === 4 ? 'Utilise les lignes restantes du total de 6.' : 'Maximum 8 paiements liés au même N°.'}
             >
               <input
                 type="number"
@@ -1507,7 +1765,7 @@ const Settings = () => {
                 value={partialInvoicePaymentRows}
                 onChange={(event) => {
                   if (partialInvoiceCopies === 4) {
-                    const productRows = Math.min(Math.max(Number(partialInvoiceProductRows) || 1, 1), 5);
+                    const productRows = Math.min(Math.max(Number(partialInvoiceProductRows) || 1, 1), 4);
                     const nextPaymentRows = Math.min(Math.max(Number(event.target.value) || 1, 1), Math.max(6 - productRows, 1));
                     setPartialInvoicePaymentRows(nextPaymentRows);
                     return;
@@ -1516,26 +1774,6 @@ const Settings = () => {
                 }}
                 className={settingInputClass}
               />
-            </BrandingField>
-
-            <BrandingField label="Nombre de copies" description="2 copies ou 4 copies sur une page A4.">
-              <select
-                value={partialInvoiceCopies}
-                onChange={(event) => {
-                  const nextCopyCount = Number(event.target.value);
-                  setPartialInvoiceCopies(nextCopyCount);
-                  if (nextCopyCount === 4) {
-                    const productRows = Math.min(Math.max(Number(partialInvoiceProductRows) || 3, 1), 5);
-                    const paymentRows = Math.min(Math.max(Number(partialInvoicePaymentRows) || 3, 1), Math.max(6 - productRows, 1));
-                    setPartialInvoiceProductRows(Math.min(productRows, 6 - paymentRows));
-                    setPartialInvoicePaymentRows(paymentRows);
-                  }
-                }}
-                className={settingInputClass}
-              >
-                <option value={2}>2 copies</option>
-                <option value={4}>4 copies</option>
-              </select>
             </BrandingField>
 
             <button
@@ -1549,6 +1787,20 @@ const Settings = () => {
             </button>
           </div>
 
+          <div className="mt-3">
+            <BrandingField
+              label="Mention de sécurité (bas du billet)"
+              description="Imprimée en rouge avant les signatures. Videz le champ pour ne rien imprimer."
+            >
+              <textarea
+                rows={2}
+                value={partialInvoiceSecurityNote}
+                onChange={(event) => setPartialInvoiceSecurityNote(event.target.value)}
+                className={settingInputClass}
+              />
+            </BrandingField>
+          </div>
+
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {['Copies côte à côte', 'Champs à remplir par le vendeur', 'Aucun mode ni solde restant'].map((item) => (
               <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
@@ -1557,6 +1809,87 @@ const Settings = () => {
               </div>
             ))}
           </div>
+          </>
+          )}
+
+          {partialInvoiceMode === 'data' && (
+            <div className="mt-4 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-4">
+              <div className="grid gap-4 md:grid-cols-[1fr_220px_1fr_auto] md:items-end">
+                <BrandingField
+                  label="Vente (pré-remplissage optionnel)"
+                  description="Choisissez une vente pour pré-remplir le reçu, sinon il sort vierge à remplir à la main."
+                >
+                  <select
+                    value={partialReceiptSaleId}
+                    onChange={(event) => setPartialReceiptSaleId(event.target.value)}
+                    className={settingInputClass}
+                  >
+                    <option value="">— Vierge : à remplir à la main —</option>
+                    {partialReceiptSales.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {(s.reference || String(s._id).slice(-6).toUpperCase())} · {s.client?.name || s.clientName || '—'} · {formatDateShort(s.saleDate || s.createdAt)} · Reste {Number((s.totalAmount || 0) - (s.collectedAmount || 0)).toLocaleString('fr-FR')} F
+                      </option>
+                    ))}
+                  </select>
+                </BrandingField>
+
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <input type="checkbox" checked={partialReceiptShowMethod} onChange={(e) => setPartialReceiptShowMethod(e.target.checked)} /> Afficher le mode de paiement
+                  </label>
+                  <label className="flex items-center gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <input type="checkbox" checked={partialReceiptShowBalance} onChange={(e) => setPartialReceiptShowBalance(e.target.checked)} /> Afficher le solde restant
+                  </label>
+                  <label className="flex items-center gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <input type="checkbox" checked={partialReceiptShowSignature} onChange={(e) => setPartialReceiptShowSignature(e.target.checked)} /> Zones de signature
+                  </label>
+                </div>
+
+                <BrandingField label="Message de pied de page" description="Optionnel.">
+                  <input
+                    type="text"
+                    value={partialReceiptFooter}
+                    onChange={(event) => setPartialReceiptFooter(event.target.value)}
+                    placeholder="Merci de votre confiance."
+                    className={settingInputClass}
+                  />
+                </BrandingField>
+
+                <button
+                  type="button"
+                  onClick={handleGeneratePartialReceiptPdf}
+                  disabled={generatingPartialReceipt}
+                  className="ms-button ms-button-primary ms-button-md w-full justify-center disabled:opacity-60"
+                >
+                  <FileDown className="h-4 w-4" />
+                  {generatingPartialReceipt ? 'Génération...' : 'Générer le reçu'}
+                </button>
+              </div>
+
+              <div className="mt-3">
+                <BrandingField
+                  label="Mention de sécurité (bas du reçu)"
+                  description="Imprimée en rouge avant les signatures. Videz le champ pour ne rien imprimer."
+                >
+                  <textarea
+                    rows={2}
+                    value={partialReceiptSecurityNote}
+                    onChange={(event) => setPartialReceiptSecurityNote(event.target.value)}
+                    className={settingInputClass}
+                  />
+                </BrandingField>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {['Pré-rempli ou vierge à la main', 'Calculs automatiques si vente choisie', 'Même N° pour paiements liés'].map((item) => (
+                  <div key={item} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground1)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <Check className="mr-2 inline h-3.5 w-3.5" style={{ color: 'var(--colorStatusSuccessForeground1)' }} />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 

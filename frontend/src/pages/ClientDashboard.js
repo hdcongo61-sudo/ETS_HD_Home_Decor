@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
 } from 'recharts';
-import api from '../services/api';
+import { customersApi } from '../features/customers/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 import AppLoader from '../components/AppLoader';
@@ -13,7 +13,6 @@ import {
   Clock3,
   Repeat2,
   ShoppingBag,
-  Trophy,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -23,7 +22,6 @@ import {
   DataTable,
   EmptyState,
   KPICard,
-  LoadingSkeleton,
   PageHeader,
   Workspace,
 } from '../components/business';
@@ -41,8 +39,8 @@ const ClientDashboard = () => {
     try {
       setLoading(true);
       const [statsRes, clientsRes] = await Promise.all([
-        api.get('/clients/stats'),
-        api.get('/clients'),
+        customersApi.stats(),
+        customersApi.list(),
       ]);
       setStats(statsRes.data);
       setClients(clientsRes.data.clients || []);

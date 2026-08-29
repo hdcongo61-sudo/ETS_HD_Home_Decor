@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { platformApi } from '../features/platform/api';
+import { API_URL } from '../config';
 import AuthContext from '../context/AuthContext';
 import {
   Building2, Users, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
@@ -9,9 +10,9 @@ import {
   Package, TrendingUp, Wallet, Receipt,
   CreditCard, History, BadgeDollarSign, Activity, ArrowRight, Zap,
   Layers, Save, Pencil, BarChart3, TrendingDown, Boxes, AlertCircle,
-  RotateCcw, BookOpen, LifeBuoy, Settings, FileText, Bell, Shield,
-  Database, DollarSign, UserCheck, Mail, Filter, Eye, EyeOff,
-  Calendar, BarChart2, PieChart as PieChartIcon, Server, Globe,
+  RotateCcw, LifeBuoy, Bell, Shield,
+  Database, DollarSign, UserCheck, Mail, Eye, EyeOff,
+  BarChart2, Server, FileText,
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, PieChart, Pie, Cell } from 'recharts';
 import { EmptyState, LoadingSkeleton, PageHeader, RightDetailPanel, Workspace } from '../components/business';
@@ -92,7 +93,7 @@ const DOC_LABELS = {
 
 // Generates the branded PDF for a doc type and triggers a download.
 const downloadDocPdf = async (type) => {
-  const res = await api.get(`/export/doc/${type}`, { responseType: 'blob' });
+  const res = await platformApi.docPdf(type);
   const url = URL.createObjectURL(res.data);
   const a = document.createElement('a');
   a.href = url;
@@ -145,7 +146,7 @@ const DocEditor = () => {
   const load = useCallback(async (t) => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/export/doc/${t}/content`);
+      const { data } = await platformApi.docContent(t);
       setSpec(data.spec || { title: '', subtitle: '', sections: [] });
       setEdited(!!data.edited);
       setDirty(false);
@@ -166,7 +167,7 @@ const DocEditor = () => {
     if (!spec?.title?.trim()) { toast.error('Le titre est requis.'); return; }
     setSaving(true);
     try {
-      const { data } = await api.put(`/export/doc/${type}/content`, { spec });
+      const { data } = await platformApi.saveDocContent(type, { spec });
       setSpec(data.spec); setEdited(true); setDirty(false);
       toast.success('Document enregistré.');
     } catch (err) {
@@ -178,7 +179,7 @@ const DocEditor = () => {
     if (!window.confirm('Restaurer le contenu par défaut ? Vos modifications seront perdues.')) return;
     setSaving(true);
     try {
-      const { data } = await api.put(`/export/doc/${type}/content`, { reset: true });
+      const { data } = await platformApi.resetDocContent(type);
       setSpec(data.spec); setEdited(false); setDirty(false);
       toast.success('Contenu par défaut restauré.');
     } catch {
@@ -271,7 +272,7 @@ const DocEditor = () => {
   );
 };
 
-/* ─── TAB: Ressources ─────────────────────────────────── */
+/* ─── TAB: Ressources (documents PDF et éditeur de contenu) ── */
 const ResourcesTab = () => (
   <div className="space-y-4">
     <EditorDocs />
@@ -290,7 +291,7 @@ const AdminTicketThread = ({ id, onBack, onChanged }) => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/support/admin/${id}`); setTicket(data); onChanged?.(); }
+    try { const { data } = await platformApi.adminSupportGet(id); setTicket(data); onChanged?.(); }
     catch { toast.error('Message introuvable.'); onBack(); }
     finally { setLoading(false); }
   }, [id, onBack, onChanged]);
@@ -300,7 +301,7 @@ const AdminTicketThread = ({ id, onBack, onChanged }) => {
     if (!reply.trim()) { toast.error('Le message est requis.'); return; }
     setSending(true);
     try {
-      const { data } = await api.post(`/support/admin/${id}/reply`, { message: reply.trim(), resolve });
+      const { data } = await platformApi.adminSupportReply(id, { message: reply.trim(), resolve });
       setTicket(data); setReply(''); onChanged?.();
       toast.success(resolve ? 'Réponse envoyée et marqué résolu.' : 'Réponse envoyée.');
     } catch (err) { toast.error(err.response?.data?.message || 'Erreur.'); }
@@ -308,7 +309,7 @@ const AdminTicketThread = ({ id, onBack, onChanged }) => {
   };
 
   const setStatus = async (status) => {
-    try { const { data } = await api.put(`/support/admin/${id}`, { status }); setTicket(data); onChanged?.(); }
+    try { const { data } = await platformApi.adminSupportUpdate(id, { status }); setTicket(data); onChanged?.(); }
     catch { toast.error('Erreur.'); }
   };
 
@@ -386,7 +387,7 @@ const SupportTab = ({ onCountChange }) => {
       if (status) params.status = status;
       if (category) params.category = category;
       if (q.trim()) params.q = q.trim();
-      const { data } = await api.get('/support/admin/all', { params });
+      const { data } = await platformApi.adminSupportAll(params);
       setTickets(data || []);
       onCountChange?.();
     } catch { setTickets([]); }
@@ -477,7 +478,7 @@ const PlanRequests = () => {
   const [busy, setBusy] = useState('');
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get('/tenants');
+      const { data } = await platformApi.tenants();
       setRows((data || []).filter((t) => t.planRequest && t.planRequest.status === 'pending'));
     } catch {
       setRows([]);
@@ -488,7 +489,7 @@ const PlanRequests = () => {
   const resolve = async (id, action) => {
     setBusy(id + action);
     try {
-      await api.put(`/tenants/${id}/plan-request`, { action });
+      await platformApi.respondPlanRequest(id, action);
       await load();
     } catch {
       /* ignore */
@@ -556,7 +557,7 @@ const CreateTenantModal = ({ open, onClose, onCreated }) => {
     if (!form.shopName || !form.ownerName || !form.ownerEmail || !form.password) { setError('Tous les champs obligatoires doivent être remplis.'); return; }
     try {
       setSubmitting(true);
-      const { data } = await api.post('/tenants', form);
+      const { data } = await platformApi.createTenant(form);
       onCreated(data.tenant);
       setForm({ shopName: '', ownerName: '', ownerEmail: '', ownerPhone: '', password: '', plan: 'trial', status: 'trial' });
       onClose();
@@ -605,7 +606,7 @@ const PaymentModal = ({ tenant, onClose, onRecorded }) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const { data } = await api.post(`/tenants/${tenant._id}/payment`, form);
+      const { data } = await platformApi.tenantPayment(tenant._id, form);
       onRecorded(data);
       onClose();
     } catch (err) { setError(err.response?.data?.message || 'Erreur.'); }
@@ -656,6 +657,7 @@ const TABS = [
   { id: 'support',  label: 'Support',        icon: LifeBuoy },
   { id: 'system',   label: 'Systeme',        icon: Server },
   { id: 'audit',    label: 'Journal',        icon: History },
+  { id: 'resources', label: 'Ressources',    icon: FileText },
 ];
 
 const SuperAdmin = () => {
@@ -671,7 +673,7 @@ const SuperAdmin = () => {
   const [lastRefresh, setLastRefresh] = useState(null);
 
   const fetchSupportUnread = useCallback(() => {
-    api.get('/support/admin/unread').then(({ data }) => setSupportUnread(data?.unread || 0)).catch(() => {});
+    platformApi.adminSupportUnread().then(({ data }) => setSupportUnread(data?.unread || 0)).catch(() => {});
   }, []);
   useEffect(() => {
     fetchSupportUnread();
@@ -682,7 +684,7 @@ const SuperAdmin = () => {
   useEffect(() => { if (!auth.isLoading && !auth.isSuperAdmin) navigate('/', { replace: true }); }, [auth, navigate]);
 
   const fetchTenants = useCallback(async () => {
-    try { setLoading(true); const { data } = await api.get('/tenants'); setTenants(data); setLastRefresh(Date.now()); }
+    try { setLoading(true); const { data } = await platformApi.tenants(); setTenants(data); setLastRefresh(Date.now()); }
     catch (err) { setError(err.response?.data?.message || 'Erreur de chargement.'); }
     finally { setLoading(false); }
   }, []);
@@ -691,11 +693,11 @@ const SuperAdmin = () => {
   const patchTenant = (id, patch) => setTenants((prev) => prev.map((t) => (t._id === id ? { ...t, ...patch } : t)));
 
   const handleStatusChange = async (id, status) => {
-    try { setUpdating(id); const { data } = await api.put(`/tenants/${id}`, { status }); patchTenant(id, { status: data.status }); }
+    try { setUpdating(id); const { data } = await platformApi.updateTenant(id, { status }); patchTenant(id, { status: data.status }); }
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); } finally { setUpdating(null); }
   };
   const handlePlanChange = async (id, plan) => {
-    try { setUpdating(id); const { data } = await api.put(`/tenants/${id}`, { plan }); patchTenant(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts }); }
+    try { setUpdating(id); const { data } = await platformApi.updateTenant(id, { plan }); patchTenant(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts }); }
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); } finally { setUpdating(null); }
   };
 
@@ -711,7 +713,7 @@ const SuperAdmin = () => {
       setUpdating(id);
       let data;
       try {
-        data = (await api.post(`/tenants/${id}/impersonate`, payload)).data;
+        data = (await platformApi.impersonateTenant(id, payload)).data;
       } catch (err) {
         const code = err.response?.data?.code;
         if (code === 'MFA_REQUIRED' || code === 'MFA_INVALID') {
@@ -720,7 +722,7 @@ const SuperAdmin = () => {
             : 'Votre compte exige un code MFA pour cette action :');
           if (!mfaCode || !mfaCode.trim()) { setUpdating(null); return; }
           payload.code = mfaCode.trim();
-          data = (await api.post(`/tenants/${id}/impersonate`, payload)).data;
+          data = (await platformApi.impersonateTenant(id, payload)).data;
         } else {
           throw err;
         }
@@ -803,6 +805,7 @@ const SuperAdmin = () => {
       {tab === 'support'        && <SupportTab onCountChange={fetchSupportUnread} />}
       {tab === 'system'         && <SystemTab />}
       {tab === 'audit'          && <AuditTab />}
+      {tab === 'resources'      && <ResourcesTab />}
     </Workspace>
   );
 };
@@ -812,7 +815,7 @@ const OverviewTab = ({ onJump }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async (initial) => {
-    try { const { data } = await api.get('/tenants/stats/overview'); setStats(data); }
+    try { const { data } = await platformApi.tenantsOverview(); setStats(data); }
     catch { /* ignore */ } finally { if (initial) setLoading(false); }
   }, []);
   useEffect(() => {
@@ -1087,7 +1090,7 @@ const TenantFeatureOverrides = ({ tenant, onSaved }) => {
         if (v === 'on') featureOverrides[k] = true;
         else if (v === 'off') featureOverrides[k] = false;
       });
-      const { data } = await api.put(`/tenants/${tenant._id}`, { featureOverrides });
+      const { data } = await platformApi.updateTenant(tenant._id, { featureOverrides });
       onSaved?.(data.featureOverrides || featureOverrides);
       toast.success('Dérogations enregistrées.');
     } catch (e) {
@@ -1154,7 +1157,7 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
     if (!edit) return;
     try {
       setSavingLimits(true);
-      const { data } = await api.put(`/tenants/${t._id}`, edit);
+      const { data } = await platformApi.updateTenant(t._id, edit);
       onPatch(t._id, { maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice });
       setEdit(null);
     } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
@@ -1164,7 +1167,7 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
   const saveDial = async () => {
     try {
       setSavingDial(true);
-      const { data } = await api.put(`/tenants/${t._id}`, { dialCode: dial });
+      const { data } = await platformApi.updateTenant(t._id, { dialCode: dial });
       onPatch(t._id, { dialCode: data.dialCode });
       setDial(data.dialCode || '');
     } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
@@ -1294,7 +1297,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     if (!ids.length) return;
     try {
       setBulkBusy(true);
-      await Promise.all(ids.map((id) => api.put(`/tenants/${id}`, { status }).then(({ data }) => patch(id, { status: data.status }))));
+      await Promise.all(ids.map((id) => platformApi.updateTenant(id, { status }).then(({ data }) => patch(id, { status: data.status }))));
       setSelected(new Set());
     } catch (err) { alert(err.response?.data?.message || "Erreur lors de l'action groupée."); }
     finally { setBulkBusy(false); }
@@ -1305,7 +1308,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     if (!ids.length || !bulkPlan) return;
     try {
       setBulkBusy(true);
-      await Promise.all(ids.map((id) => api.put(`/tenants/${id}`, { plan: bulkPlan }).then(({ data }) =>
+      await Promise.all(ids.map((id) => platformApi.updateTenant(id, { plan: bulkPlan }).then(({ data }) =>
         patch(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts })
       )));
       setSelected(new Set());
@@ -1324,7 +1327,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
 
   const handleDelete = async () => {
     try {
-      await api.delete(`/tenants/${deleteTarget}`);
+      await platformApi.deleteTenant(deleteTarget);
       setTenants((prev) => prev.filter((t) => t._id !== deleteTarget));
       if (detailId === deleteTarget) setDetailId(null);
       setDeleteTarget(null);
@@ -1332,7 +1335,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
   };
   const handleExportCsv = () => {
-    fetch(`${api.defaults.baseURL}/tenants/export/csv`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+    fetch(`${API_URL}/tenants/export/csv`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then((r) => r.blob()).then((blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `boutiques-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href); })
       .catch(() => alert('Erreur export.'));
   };
@@ -1826,7 +1829,7 @@ const UsersTab = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/platform-users');
+      const res = await platformApi.platformUsers();
       setUsers(res.data.users || []);
     } catch (err) {
       console.error('Error fetching platform users:', err);
@@ -1867,7 +1870,7 @@ const UsersTab = () => {
     }
 
     try {
-      await api.delete(`/platform-users/${userId}`);
+      await platformApi.deletePlatformUser(userId);
       toast.success('Utilisateur supprime');
       fetchUsers();
     } catch (err) {
@@ -2131,7 +2134,7 @@ const AddUserModal = ({ onClose }) => {
 
     try {
       setSubmitting(true);
-      const res = await api.post('/platform-users', form);
+      const res = await platformApi.createPlatformUser(form);
       toast.success(res.data.message || 'Utilisateur cree avec succes');
       onClose();
     } catch (err) {
@@ -2238,7 +2241,7 @@ const EditUserModal = ({ user, onClose }) => {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
-      await api.patch(`/platform-users/${user._id}`, form);
+      await platformApi.updatePlatformUser(user._id, form);
       toast.success('Utilisateur mis a jour');
       onClose();
     } catch (err) {
@@ -2338,7 +2341,7 @@ const EmailUsersModal = ({ users, onClose }) => {
         subject: form.subject,
         message: form.message,
       };
-      const res = await api.post('/platform-users/send-email', payload);
+      const res = await platformApi.sendPlatformEmail(payload);
       toast.success(res.data.message || `Email envoye a ${users.length} utilisateur(s)`);
       onClose();
     } catch (err) {
@@ -2993,7 +2996,7 @@ const AuditTab = () => {
   const [filter, setFilter] = useState('');
   useEffect(() => {
     (async () => {
-      try { const { data } = await api.get('/tenants/audit?limit=200'); setLogs(data); }
+      try { const { data } = await platformApi.tenantsAudit({ limit: 200 }); setLogs(data); }
       catch { /* ignore */ } finally { setLoading(false); }
     })();
   }, []);
@@ -3061,7 +3064,7 @@ const PlansTab = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get('/tenants/plans');
+        const { data } = await platformApi.plans();
         setPlans(data);
         setDraft(JSON.parse(JSON.stringify(data)));
       } catch { /* ignore */ } finally { setLoading(false); }
@@ -3083,7 +3086,7 @@ const PlansTab = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const { data } = await api.put('/tenants/plans', { plans: draft });
+      const { data } = await platformApi.savePlans(draft);
       setPlans(data);
       setDraft(JSON.parse(JSON.stringify(data)));
       setSavedAt(Date.now());
@@ -3471,7 +3474,7 @@ const TenantStatsModal = ({ tenant, onClose }) => {
     (async () => {
       try {
         setLoading(true);
-        const { data } = await api.get(`/tenants/${tenant._id}/stats`);
+        const { data } = await platformApi.tenantStats(tenant._id);
         if (active) setStats(data);
       } catch (err) {
         if (active) setError(err.response?.data?.message || 'Erreur de chargement.');

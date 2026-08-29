@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import { productPath } from '../utils/paths';
 import { LoadingSkeleton, EmptyState } from '../components/business';
 import {
@@ -41,7 +41,7 @@ const SlowProductSuggestions = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: res } = await api.get('/products/slow-movers', { params: { days } });
+      const { data: res } = await catalogApi.slowMovers({ days });
       setData(res);
     } catch {
       setData({ summary: {}, products: [] });

@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   CreditCard,
+  ExternalLink,
   Loader2,
   Package,
   ReceiptText,
@@ -15,6 +16,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { useModal } from '../context/ModalContext';
 import api from '../services/api';
 import Modal from './Modal';
@@ -408,9 +410,16 @@ const GlobalPaymentModal = () => {
                       <p className="inline-flex items-center gap-1.5 fui-caption1-strong uppercase" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.04em' }}>
                         <Package className="h-3.5 w-3.5" /> Produits de la vente
                       </p>
-                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                      <Link
+                        to={`/sales/${selectedSaleData._id}`}
+                        onClick={closeModal}
+                        className="inline-flex items-center gap-1 rounded-[var(--radiusMedium)] px-2 py-1 fui-caption1-strong transition-colors hover:bg-[var(--ms-bg-subtle)]"
+                        style={{ color: 'var(--colorBrandForeground1)' }}
+                        title="Voir le détail de la vente"
+                      >
                         Vente #{String(selectedSaleData._id || '').slice(-6)}
-                      </span>
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
                     </div>
                     <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
                       {selectedSaleData.products.map((p, i) => (

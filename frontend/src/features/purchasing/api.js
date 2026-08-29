@@ -44,6 +44,7 @@ export const purchasingApi = {
   invoice: (id) => api.get(`/v2/supplier-invoices/${id}`),
   createInvoice: (data) => api.post('/v2/supplier-invoices', data),
   postInvoice: (id) => api.post(`/v2/supplier-invoices/${id}/post`),
+  cancelInvoice: (id) => api.post(`/v2/supplier-invoices/${id}/cancel`),
   payInvoice: (id, data) => api.post(`/v2/supplier-invoices/${id}/payments`, data),
   invoiceDiscrepancies: (id) => api.get(`/v2/supplier-invoices/${id}/discrepancies`),
   payables: (params) => api.get('/v2/supplier-payables', { params }),

@@ -19,7 +19,7 @@ const Home = () => {
   // The home stays an operational hub. Deep analytics live on /dashboard so
   // users are not forced to load and scroll through two dashboards at once.
   return (
-    <Workspace className="space-y-6 pb-10">
+    <Workspace className="space-y-6">
       <Suspense fallback={<AppLoader />}>
         <Overview />
       </Suspense>

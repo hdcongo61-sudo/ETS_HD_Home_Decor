@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import api from '../services/api';
-import AppLoader from '../components/AppLoader';
+import { customersApi } from '../features/customers/api';
+import { salesApi } from '../features/sales/api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import { getPaymentStructureKey } from '../utils/saleUtils';
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   Copy,
   CreditCard,
   Edit3,
-  History,
   Phone,
   Printer,
   UserRound,
@@ -38,8 +36,6 @@ const PROFILE_GENDER_LABELS = {
   other: 'Autre',
   unknown: 'Non renseigné'
 };
-
-const ALERT_TONES = { yellow: 'warning', gray: 'neutral', green: 'success' };
 
 const PAYMENT_METHOD_LABELS = {
   cash: 'Espèces',
@@ -92,8 +88,8 @@ const ClientProfile = () => {
       try {
         setLoading(true);
         const [clientRes, salesRes] = await Promise.all([
-          api.get(`/clients/${id}`),
-          api.get(`/sales?client=${id}`)
+          customersApi.get(id),
+          salesApi.byClient(id)
         ]);
 
         const c = clientRes.data;

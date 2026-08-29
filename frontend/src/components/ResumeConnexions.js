@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
-import AppLoader from './AppLoader';
 import {
   Button,
   DataTable,

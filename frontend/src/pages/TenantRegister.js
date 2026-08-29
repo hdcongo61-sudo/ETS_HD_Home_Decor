@@ -1,12 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import { platformApi } from '../features/platform/api';
 import AuthContext from '../context/AuthContext';
 import { Building2, User, Mail, Phone, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
-
-const PLANS = [
-  { id: 'trial', label: 'Essai gratuit', price: 'Gratuit pendant 14 jours', features: ['Jusqu\'à 3 utilisateurs', '500 produits', 'Toutes les fonctions'] },
-];
 
 const TenantRegister = () => {
   const navigate = useNavigate();
@@ -47,7 +43,7 @@ const TenantRegister = () => {
 
     try {
       setSubmitting(true);
-      const { data } = await api.post('/tenants/register', {
+      const { data } = await platformApi.registerTenant({
         shopName: form.shopName.trim(),
         ownerName: form.ownerName.trim(),
         ownerEmail: form.ownerEmail.trim(),

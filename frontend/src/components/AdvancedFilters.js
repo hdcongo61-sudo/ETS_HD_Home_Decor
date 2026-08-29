@@ -1,7 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Filter, Download, Calendar, Search, Tag, User, DollarSign, Package, TrendingUp, ChevronDown } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { X, Filter, Download, Search, ChevronDown } from 'lucide-react';
 
 /**
  * AdvancedFilters - Composant de filtres avancés réutilisable

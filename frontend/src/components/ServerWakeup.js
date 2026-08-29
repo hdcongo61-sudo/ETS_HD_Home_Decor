@@ -59,7 +59,11 @@ const ServerWakeup = () => {
     <div
       role={failed ? 'alert' : 'status'}
       aria-live={failed ? 'assertive' : 'polite'}
-      className="fixed left-1/2 z-[300] flex w-max max-w-[92vw] -translate-x-1/2 items-center gap-2.5 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 shadow-[var(--ms-shadow-lg)] sm:rounded-full"
+      /* z-[250] < z-[260] des modales : le pill ne doit jamais intercepter les
+         clics destinés à une modale ouverte au-dessus (sinon le premier clic est
+         avalé et il faut re-cliquer). pointer-events-none : seuls les éléments
+         interactifs du pill (bouton Réessayer) reçoivent des clics. */
+      className="pointer-events-none fixed left-1/2 z-[250] flex w-max max-w-[92vw] -translate-x-1/2 items-center gap-2.5 rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2.5 shadow-[var(--ms-shadow-lg)] sm:rounded-full"
       style={{ top: 'calc(var(--app-nav-offset, 0px) + max(0.75rem, env(safe-area-inset-top, 0px)) + 0.5rem)' }}
     >
       {failed ? (
@@ -75,7 +79,7 @@ const ServerWakeup = () => {
         {failed ? 'Connexion au service impossible.' : 'Connexion au service… cela peut prendre jusqu’à une minute.'}
       </p>
       {failed && (
-        <button type="button" className="ms-button ms-button-secondary ms-button-sm shrink-0" onClick={() => setRetryKey((value) => value + 1)}>
+        <button type="button" className="pointer-events-auto ms-button ms-button-secondary ms-button-sm shrink-0" onClick={() => setRetryKey((value) => value + 1)}>
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Réessayer
         </button>
       )}

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import api from '../services/api';
+import { platformApi } from '../features/platform/api';
 import AppLoader from '../components/AppLoader';
 import {
   Button,
@@ -24,12 +24,6 @@ const REQUEST_LABELS = {
   'stock.adjustment': 'Ajustement stock',
   'user.password_update': 'Mise à jour mot de passe',
   other: 'Autre demande',
-};
-
-const STATUS_STYLES = {
-  pending: 'bg-amber-100 text-amber-800',
-  approved: 'bg-emerald-100 text-emerald-800',
-  rejected: 'bg-red-100 text-red-800',
 };
 
 const STATUS_LABELS = {
@@ -79,7 +73,7 @@ const AdminRequests = () => {
     try {
       setLoading(true);
       setError('');
-      const { data } = await api.get('/admin-requests');
+      const { data } = await platformApi.listRequests();
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.response?.data?.message || 'Impossible de charger les demandes');
@@ -100,7 +94,7 @@ const AdminRequests = () => {
   const handleReview = async (requestId, status) => {
     try {
       setReviewingId(requestId);
-      const { data } = await api.put(`/admin-requests/${requestId}/review`, {
+      const { data } = await platformApi.reviewRequest(requestId, {
         status,
         adminComment,
       });

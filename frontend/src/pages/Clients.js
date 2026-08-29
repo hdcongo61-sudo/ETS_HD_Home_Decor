@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useContext, useRef } from 'rea
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { customersApi } from '../features/customers/api';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
@@ -106,7 +106,7 @@ const Clients = () => {
   // --- Fetch stats ---
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await api.get('/clients/stats');
+      const { data } = await customersApi.stats();
       setStats(data && typeof data === 'object' ? data : null);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -121,7 +121,7 @@ const Clients = () => {
     const { showLoading = true } = options;
     try {
       if (showLoading) setLoading(true);
-      const { data } = await api.get('/clients', { params: { search: searchTerm }, signal });
+      const { data } = await customersApi.list({ search: searchTerm }, { signal });
       const list = data && (Array.isArray(data.clients) ? data.clients : Array.isArray(data) ? data : []);
       setClients(list);
     } catch (err) {
@@ -155,7 +155,7 @@ const Clients = () => {
   const applyFilters = async () => {
     try {
       setFiltering(true);
-      const { data } = await api.get('/clients/filter', { params: filters });
+      const { data } = await customersApi.filter(filters);
       const list = Array.isArray(data) ? data : (data && Array.isArray(data.clients) ? data.clients : []);
       setClients(list);
       toast.success('Filtres appliqués');
@@ -248,7 +248,7 @@ const Clients = () => {
     e.preventDefault();
     try {
       if (editingClient) {
-        const { data } = await api.put(`/clients/${editingClient._id}`, formData);
+        const { data } = await customersApi.update(editingClient._id, formData);
         setClients((prev) => {
           const next = prev.filter((client) => client._id !== editingClient._id);
           if (matchesClientSearch(data)) {
@@ -258,7 +258,7 @@ const Clients = () => {
         });
         toast.success('✅ Client mis à jour avec succès');
       } else {
-        const { data } = await api.post('/clients', formData);
+        const { data } = await customersApi.create(formData);
         if (matchesClientSearch(data)) {
           setClients((prev) => sortClientsByCreatedAt([data, ...prev]));
         }
@@ -287,7 +287,7 @@ const Clients = () => {
       }
     )) return;
     try {
-      await api.delete(`/clients/${id}`);
+      await customersApi.remove(id);
       setClients((prev) => prev.filter((client) => client._id !== id));
       toast.success('🗑️ Client supprimé avec succès');
       fetchStats();

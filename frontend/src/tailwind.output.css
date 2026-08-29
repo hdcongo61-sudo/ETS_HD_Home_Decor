@@ -941,6 +941,10 @@ video {
   z-index: 200;
 }
 
+.z-\[250\] {
+  z-index: 250;
+}
+
 .z-\[260\] {
   z-index: 260;
 }
@@ -973,8 +977,28 @@ video {
   order: 2;
 }
 
+.col-span-1 {
+  grid-column: span 1 / span 1;
+}
+
 .col-span-2 {
   grid-column: span 2 / span 2;
+}
+
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
+
+.col-span-4 {
+  grid-column: span 4 / span 4;
+}
+
+.col-span-5 {
+  grid-column: span 5 / span 5;
+}
+
+.col-span-9 {
+  grid-column: span 9 / span 9;
 }
 
 .col-span-full {
@@ -1098,6 +1122,10 @@ video {
 
 .ml-3 {
   margin-left: 0.75rem;
+}
+
+.ml-6 {
+  margin-left: 1.5rem;
 }
 
 .ml-auto {
@@ -1631,6 +1659,10 @@ video {
   width: 1rem;
 }
 
+.w-40 {
+  width: 10rem;
+}
+
 .w-5 {
   width: 1.25rem;
 }
@@ -1777,10 +1809,6 @@ video {
   min-width: 240px;
 }
 
-.min-w-\[24px\] {
-  min-width: 24px;
-}
-
 .min-w-\[260px\] {
   min-width: 260px;
 }
@@ -1848,6 +1876,10 @@ video {
 
 .max-w-\[260px\] {
   max-width: 260px;
+}
+
+.max-w-\[280px\] {
+  max-width: 280px;
 }
 
 .max-w-\[430px\] {
@@ -1998,6 +2030,10 @@ video {
 
 .grid-cols-1 {
   grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-12 {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 .grid-cols-2 {
@@ -2252,6 +2288,10 @@ video {
   border-color: var(--colorNeutralStroke2);
 }
 
+.divide-\[var\(--colorNeutralStroke3\)\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--colorNeutralStroke3);
+}
+
 .divide-\[var\(--ms-border\)\] > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--ms-border);
 }
@@ -2278,6 +2318,10 @@ video {
 
 .self-start {
   align-self: flex-start;
+}
+
+.self-end {
+  align-self: flex-end;
 }
 
 .overflow-auto {
@@ -2508,6 +2552,10 @@ video {
 
 .border-\[var\(--colorBrandBackground\)\] {
   border-color: var(--colorBrandBackground);
+}
+
+.border-\[var\(--colorNeutralStroke1\)\] {
+  border-color: var(--colorNeutralStroke1);
 }
 
 .border-\[var\(--colorNeutralStroke2\)\] {
@@ -2798,8 +2846,16 @@ video {
   background-color: var(--colorNeutralStroke1);
 }
 
+.bg-\[var\(--colorNeutralStroke3\)\] {
+  background-color: var(--colorNeutralStroke3);
+}
+
 .bg-\[var\(--colorStatusDangerBackground1\)\] {
   background-color: var(--colorStatusDangerBackground1);
+}
+
+.bg-\[var\(--colorStatusInfoBackground1\)\] {
+  background-color: var(--colorStatusInfoBackground1);
 }
 
 .bg-\[var\(--colorStatusSuccessBackground1\)\] {
@@ -3333,10 +3389,6 @@ video {
   padding-bottom: 1rem;
 }
 
-.pb-5 {
-  padding-bottom: 1.25rem;
-}
-
 .pb-6 {
   padding-bottom: 1.5rem;
 }
@@ -3572,6 +3624,10 @@ video {
   text-transform: capitalize;
 }
 
+.italic {
+  font-style: italic;
+}
+
 .tabular-nums {
   --tw-numeric-spacing: tabular-nums;
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
@@ -3669,6 +3725,10 @@ video {
 
 .text-\[var\(--colorStatusDangerForeground1\)\] {
   color: var(--colorStatusDangerForeground1);
+}
+
+.text-\[var\(--colorStatusInfoForeground1\)\] {
+  color: var(--colorStatusInfoForeground1);
 }
 
 .text-\[var\(--colorStatusSuccessForeground1\)\] {
@@ -4214,6 +4274,11 @@ video {
 
 .shadow-\[var\(--shadow4\)\] {
   --tw-shadow-color: var(--shadow4);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.shadow-\[var\(--shadow8\)\] {
+  --tw-shadow-color: var(--shadow8);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
@@ -5496,8 +5561,9 @@ form input[type="radio"],
 .ms-kpi-value {
   margin-top: 4px;
   color: var(--ms-text-strong);
-  font-size: 24px;
+  font-size: clamp(18px, 5vw, 24px);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .ms-kpi-context {
@@ -5698,11 +5764,11 @@ form input[type="radio"],
     flex-direction: column-reverse;
   }
 
-  /* KPI cards: currency values (e.g. "1 234 567 CFA") overflow the narrow
-     multi-column grid on phones — shrink the type and let it wrap. */
+  /* KPI cards: keep numbers and currency on same line with responsive sizing */
 
   .ms-kpi-value {
-    font-size: 19px;
+    font-size: clamp(16px, 4vw, 19px);
+    white-space: nowrap;
   }
 
   .ms-kpi-card {
@@ -5713,8 +5779,7 @@ form input[type="radio"],
     min-width: 0;
   }
 
-  .ms-kpi-title,
-  .ms-kpi-value {
+  .ms-kpi-title {
     overflow-wrap: anywhere;
   }
 }
@@ -6155,15 +6220,16 @@ form input[type="radio"],
   flex-shrink: 0;
 }
 
-/* KPI value override using Fluent 2 sizing */
+/* KPI value override using Fluent 2 sizing with responsive font */
 
 .ms-kpi-value {
   margin-top: 4px;
   color: var(--colorNeutralForeground1);
-  font-size: 26px;
+  font-size: clamp(18px, 5vw, 26px);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 /* Updated ms-kpi-card to use Fluent 2 shadow */
@@ -6226,6 +6292,11 @@ form input[type="radio"],
 
 .app-page-frame .file\:rounded-xl::file-selector-button {
   border-radius: var(--apple-radius);
+}
+
+.app-page-frame .after\:bg-white::after {
+  content: var(--tw-content);
+  border-color: var(--app-border);
 }
 
 .app-page-frame .hover\:bg-white:hover {
@@ -6474,6 +6545,54 @@ form input[type="radio"],
   color: rgb(156 163 175 / var(--tw-text-opacity, 1));
 }
 
+.after\:absolute::after {
+  content: var(--tw-content);
+  position: absolute;
+}
+
+.after\:left-\[2px\]::after {
+  content: var(--tw-content);
+  left: 2px;
+}
+
+.after\:top-\[2px\]::after {
+  content: var(--tw-content);
+  top: 2px;
+}
+
+.after\:h-5::after {
+  content: var(--tw-content);
+  height: 1.25rem;
+}
+
+.after\:w-5::after {
+  content: var(--tw-content);
+  width: 1.25rem;
+}
+
+.after\:rounded-full::after {
+  content: var(--tw-content);
+  border-radius: 9999px;
+}
+
+.after\:bg-white::after {
+  content: var(--tw-content);
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
+}
+
+.after\:transition-all::after {
+  content: var(--tw-content);
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.after\:content-\[\'\'\]::after {
+  --tw-content: '';
+  content: var(--tw-content);
+}
+
 .last\:mb-0:last-child {
   margin-bottom: 0px;
 }
@@ -6509,6 +6628,10 @@ form input[type="radio"],
   --tw-scale-x: 1.05;
   --tw-scale-y: 1.05;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.hover\:border-\[var\(--colorBrandBackground\)\]:hover {
+  border-color: var(--colorBrandBackground);
 }
 
 .hover\:border-\[var\(--colorNeutralStroke1\)\]:hover {
@@ -6687,6 +6810,10 @@ form input[type="radio"],
 
 .hover\:text-\[var\(--colorNeutralForeground1\)\]:hover {
   color: var(--colorNeutralForeground1);
+}
+
+.hover\:text-\[var\(--colorStatusDangerForeground1\)\]:hover {
+  color: var(--colorStatusDangerForeground1);
 }
 
 .hover\:text-\[var\(--ms-blue\)\]:hover {
@@ -7000,11 +7127,6 @@ form input[type="radio"],
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.group:hover .group-hover\:translate-x-1 {
-  --tw-translate-x: 0.25rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .group:hover .group-hover\:scale-\[1\.03\] {
   --tw-scale-x: 1.03;
   --tw-scale-y: 1.03;
@@ -7035,6 +7157,16 @@ form input[type="radio"],
 
 .group:hover .group-hover\:opacity-100 {
   opacity: 1;
+}
+
+.peer:checked ~ .peer-checked\:bg-\[var\(--colorBrandBackground\)\] {
+  background-color: var(--colorBrandBackground);
+}
+
+.peer:checked ~ .peer-checked\:after\:translate-x-full::after {
+  content: var(--tw-content);
+  --tw-translate-x: 100%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 @media (min-width: 640px) {
@@ -7686,8 +7818,16 @@ form input[type="radio"],
     grid-template-columns: 1fr 180px auto;
   }
 
-  .md\:grid-cols-\[1fr_1fr_180px_auto\] {
-    grid-template-columns: 1fr 1fr 180px auto;
+  .md\:grid-cols-\[1fr_1fr_auto\] {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .md\:grid-cols-\[1fr_220px_1fr_auto\] {
+    grid-template-columns: 1fr 220px 1fr auto;
+  }
+
+  .md\:grid-cols-\[280px_1fr_200px\] {
+    grid-template-columns: 280px 1fr 200px;
   }
 
   .md\:flex-row {

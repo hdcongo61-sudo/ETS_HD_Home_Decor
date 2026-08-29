@@ -8,7 +8,8 @@ import Modal from './Modal';
 import toast from 'react-hot-toast';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import AppLoader from './AppLoader';
-import { PageHeader, Workspace, KPICard, StatusBadge, Button, DataTable } from './business';
+import { StatusBadge } from './business';
+
 // Icônes SVG réutilisables
 const PencilIcon = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,7 +410,6 @@ const UserDashboard = () => {
                                 <tbody className="divide-y divide-gray-200">
                                     {filteredUsers.map((user) => {
                                         const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
-                                        const activityDate = user.lastActivity ? new Date(user.lastActivity) : null;
                                         const lastLoginDisplay = lastLoginDate ? formatDateTime(lastLoginDate) : null;
                                         const lastModifiedDisplay = formatDateTime(user.lastModifiedAt);
                                         const passwordModifiedDisplay = formatDateTime(user.passwordModifiedAt);

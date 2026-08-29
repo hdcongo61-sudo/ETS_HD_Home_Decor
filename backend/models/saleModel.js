@@ -55,6 +55,11 @@ const saleSchema = mongoose.Schema(
       default: 'normal',
       index: true
     },
+    reference: {
+      type: String,
+      trim: true,
+      index: true
+    },
     paymentMethod: {
       type: String,
       enum: ['cash', 'MobileMoney', 'credit'],
@@ -734,6 +739,7 @@ saleSchema.index({ 'periodData.year': 1, 'periodData.month': 1 });
 saleSchema.index({ 'periodData.year': 1, 'periodData.week': 1 });
 saleSchema.index({ 'profitData.totalProfit': -1 });
 saleSchema.index({ profitCategory: 1 });
+saleSchema.index({ tenantId: 1, reference: 1 }, { unique: true, sparse: true });
 saleSchema.index({ 'profitData.profitMargin': -1 });
 
 // HOOK POUR LOGGER LES VENTES TRÈS RENTABLES

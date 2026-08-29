@@ -113,6 +113,17 @@ async function postInvoice({ tenantId, invoiceId, userId = null }) {
   return invoice;
 }
 
+async function cancelInvoice({ tenantId, invoiceId, userId = null }) {
+  const invoice = await SupplierInvoice.findOne({ tenantId, _id: invoiceId });
+  if (!invoice) throw notFound('Facture introuvable dans cette organisation.');
+  if (invoice.status !== 'draft') throw conflict(`Seule une facture au statut « draft » peut être annulée (« ${invoice.status} » actuel).`);
+  invoice.status = 'cancelled';
+  invoice.postedBy = userId;
+  invoice.postedAt = new Date();
+  await invoice.save();
+  return invoice;
+}
+
 async function registerInvoicePayment({
   tenantId, invoiceId, amount, method = 'cash', date = null, paidBy = null,
 }) {
@@ -205,5 +216,5 @@ async function getPayableSummary({ tenantId, supplierId = null }) {
 }
 
 module.exports = {
-  createInvoice, postInvoice, registerInvoicePayment, detectDiscrepancies, getPayableSummary,
+  createInvoice, postInvoice, cancelInvoice, registerInvoicePayment, detectDiscrepancies, getPayableSummary,
 };

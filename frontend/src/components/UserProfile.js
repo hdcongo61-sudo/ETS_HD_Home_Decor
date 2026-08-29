@@ -32,9 +32,9 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adminStats, setAdminStats] = useState(null);
-  const [statsError, setStatsError] = useState('');
+  const [, setStatsError] = useState('');
   const [salesStats, setSalesStats] = useState(null);
-  const [salesError, setSalesError] = useState('');
+  const [, setSalesError] = useState('');
   const [salesRange, setSalesRange] = useState('30days');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileRef = useRef(null);
@@ -91,7 +91,8 @@ const UserProfile = () => {
     }
   };
 
-  useEffect(() => { fetchProfile(); /* eslint-disable-next-line */ }, [navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchProfile(); }, [navigate]);
 
   const handleRetry = () => { setError(''); fetchProfile(); };
 

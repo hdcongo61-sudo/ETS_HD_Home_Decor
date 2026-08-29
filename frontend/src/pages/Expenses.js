@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, Plus, ReceiptText, RefreshCcw, Trash2 } from 'lucide-react';
-import api from '../services/api';
+import { expensesApi } from '../features/expenses/api';
 import ExpenseForm from '../components/ExpenseForm';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { confirmAlert } from 'react-confirm-alert';
@@ -81,7 +81,7 @@ const Expenses = () => {
   useEffect(() => {
     const fetchExpenseCategories = async () => {
       try {
-        const { data } = await api.get('/lookups/expense-categories');
+        const { data } = await expensesApi.categories();
         setExpenseCategories(Array.isArray(data) ? data : []);
       } catch {
         setExpenseCategories([]);
@@ -107,7 +107,7 @@ const Expenses = () => {
         category: filter.category
       });
 
-      const response = await api.get(`/expenses?${params.toString()}`);
+      const response = await expensesApi.list(params);
       setExpenses(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur de chargement des dépenses');
@@ -139,7 +139,7 @@ const Expenses = () => {
       setSubmitting(true);
 
       if (editingExpense) {
-        const { data } = await api.put(`/expenses/${editingExpense._id}`, expenseData);
+        const { data } = await expensesApi.update(editingExpense._id, expenseData);
         setExpenses((prev) => {
           const next = prev.filter((expense) => expense._id !== editingExpense._id);
           if (matchesExpenseFilter(data)) {
@@ -150,7 +150,7 @@ const Expenses = () => {
         setEditingExpense(null);
         setFormPanelOpen(false);
       } else {
-        const { data } = await api.post('/expenses', expenseData);
+        const { data } = await expensesApi.create(expenseData);
         if (matchesExpenseFilter(data)) {
           setExpenses((prev) =>
             [data, ...prev].sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime())
@@ -175,7 +175,7 @@ const Expenses = () => {
           onClick: async () => {
             try {
               setError('');
-              await api.delete(`/expenses/${id}`);
+              await expensesApi.remove(id);
               setExpenses((prev) => prev.filter((expense) => expense._id !== id));
             } catch (err) {
               setError(err.response?.data?.message || 'Erreur de suppression');

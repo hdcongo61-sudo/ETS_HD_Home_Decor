@@ -12,6 +12,7 @@ import {
 } from './business';
 import Modal from './Modal';
 import { FormActionsSticky } from './FormLayout';
+import VariantManager from './VariantManager';
 
 // Hint shown under a select when its reference list is empty.
 const LookupHint = ({ label }) => (
@@ -415,6 +416,13 @@ const EditProductForm = () => {
 
           </form>
       </Surface>
+
+      {/* Variant Manager Section */}
+      {product && (
+        <Surface className="max-w-5xl p-4 sm:p-6 mt-4">
+          <VariantManager productId={product._id} productName={product.name} />
+        </Surface>
+      )}
 
       {/* Sticky action bar — pinned above the mobile bottom tab bar, inline on desktop.
           Lives outside Surface because .ms-surface uses overflow:hidden, which breaks position:sticky. */}

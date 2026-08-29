@@ -1,7 +1,8 @@
 import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
+import { platformApi } from '../features/platform/api';
 import { confirmDialog } from '../components/ConfirmProvider';
 import QRCode from 'react-qr-code';
 import { Line } from 'react-chartjs-2';
@@ -105,7 +106,6 @@ const ProductDetails = () => {
   const [imageZoom, setImageZoom] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRCode, setShowQRCode] = useState(false);
-  const [qrMode, setQrMode] = useState('sell'); // 'sell' (scan-to-sell) | 'view'
   const [showProfitSections, setShowProfitSections] = useState(true);
   const [salesHistory, setSalesHistory] = useState([]);
   const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
@@ -133,7 +133,7 @@ const ProductDetails = () => {
     if (!id) return;
     setLossLoading(true);
     try {
-      const { data } = await api.get(`/products/stock-movements?product=${id}`);
+      const { data } = await catalogApi.stockMovements({ product: id });
       setLossMovements(data.movements || []);
     } catch {
       setLossMovements([]);
@@ -146,11 +146,11 @@ const ProductDetails = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/products/${id}`);
+        const res = await catalogApi.get(id);
         setProduct(res.data);
         // Shared pictures across same-name duplicates (one per container).
         try {
-          const imgRes = await api.get(`/products/${id}/images`);
+          const imgRes = await catalogApi.images(id);
           const imgs = imgRes.data?.images || [];
           setGallery(imgs);
           setActiveImage(res.data.image || imgRes.data?.primary || '');
@@ -158,9 +158,9 @@ const ProductDetails = () => {
           setGallery([]);
           setActiveImage(res.data.image || '');
         }
-        const statsRes = await api.get(`/products/${id}/stats?range=month`);
+        const statsRes = await catalogApi.stats(id, 'month');
         setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
-        const weekStatsRes = await api.get(`/products/${id}/stats?range=week`);
+        const weekStatsRes = await catalogApi.stats(id, 'week');
         setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
       } catch (err) {
         console.error('Error loading product details:', err);
@@ -172,7 +172,7 @@ const ProductDetails = () => {
       setSalesHistoryLoading(true);
       setSalesHistoryError('');
       try {
-        const { data } = await api.get(`/products/${id}/sales-history?limit=5`);
+        const { data } = await catalogApi.salesHistory(id, 5);
         setSalesHistory(data.sales || []);
       } catch {
         setSalesHistory([]);
@@ -188,11 +188,11 @@ const ProductDetails = () => {
   // Refresh product + stats after a stock movement (stock/profit change).
   const refreshProductAndStats = useCallback(async () => {
     try {
-      const res = await api.get(`/products/${id}`);
+      const res = await catalogApi.get(id);
       setProduct(res.data);
-      const statsRes = await api.get(`/products/${id}/stats?range=month`);
+      const statsRes = await catalogApi.stats(id, 'month');
       setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
-      const weekStatsRes = await api.get(`/products/${id}/stats?range=week`);
+      const weekStatsRes = await catalogApi.stats(id, 'week');
       setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
     } catch { /* ignore */ }
   }, [id]);
@@ -205,7 +205,7 @@ const ProductDetails = () => {
     if (!qty || qty <= 0) { toast.error('Quantité invalide.'); return; }
     setLossSubmitting(true);
     try {
-      await api.post('/products/stock-movement', {
+      await catalogApi.addStockMovement({
         productId: id, quantity: qty, reason: lossForm.reason, note: lossForm.note.trim(),
       });
       toast.success('Sortie de stock enregistrée.');
@@ -222,7 +222,7 @@ const ProductDetails = () => {
   const undoLoss = async (movementId) => {
     if (!(await confirmDialog('Annuler cette sortie ? Le stock sera restauré.'))) return;
     try {
-      await api.delete(`/products/stock-movement/${movementId}`);
+      await catalogApi.removeStockMovement(movementId);
       toast.success('Sortie annulée, stock restauré.');
       await Promise.all([fetchLossMovements(), refreshProductAndStats()]);
     } catch (err) {
@@ -246,40 +246,35 @@ const ProductDetails = () => {
       : null;
   const absoluteProfit = product?.costPrice && product?.price ? product.price - product.costPrice : 0;
   const showRealizedProfit = canSeeFinancials && showProfitSections;
-  const productUrl = `${window.location.origin}${productPath(product || id)}`;
   // Scan-to-sell: opens the sales page with this product preloaded in the form.
   const productSaleUrl = `${window.location.origin}/sales?addProduct=${product?._id || id}#sale-form`;
-  const qrValue = qrMode === 'sell' ? productSaleUrl : productUrl;
 
-  // Download the QR as a PNG (printable shelf/product label).
-  const downloadQRCode = () => {
-    const svg = qrCodeRef.current?.querySelector('svg');
-    if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
-    const svgUrl = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
-    const img = new Image();
-    img.onload = () => {
-      const size = 600;
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, size, size);
-      const pad = 40;
-      ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
-      URL.revokeObjectURL(svgUrl);
+  // Download the product label as PNG (printable shelf label with QR + summary).
+  const downloadProductLabel = async () => {
+    const labelEl = qrCodeRef.current;
+    if (!labelEl) return;
+
+    try {
+      const canvas = await html2canvas(labelEl, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
       canvas.toBlob((blob) => {
         if (!blob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         const safeName = (product?.name || 'produit').replace(/[^\w-]+/g, '-').slice(0, 40);
-        a.download = `qr-${safeName}-${qrMode === 'sell' ? 'vente' : 'fiche'}.png`;
+        a.download = `etiquette-${safeName}.png`;
         a.click();
         URL.revokeObjectURL(a.href);
+        toast.success('Étiquette téléchargée');
       }, 'image/png');
-    };
-    img.src = svgUrl;
+    } catch (err) {
+      console.error('Error downloading label:', err);
+      toast.error('Erreur lors du téléchargement');
+    }
   };
   const returnToProducts = location.state?.returnToProducts || '/products';
 
@@ -289,7 +284,7 @@ const ProductDetails = () => {
     setBuyersLoading(true);
     setBuyersError('');
     try {
-      const { data } = await api.get(`/products/${id}/sales-history?limit=200`);
+      const { data } = await catalogApi.salesHistory(id, 200);
       setBuyersSales(data.sales || []);
     } catch {
       setBuyersSales([]);
@@ -328,7 +323,7 @@ const ProductDetails = () => {
     }
     try {
       setRequestSubmitting(true);
-      await api.post('/admin-requests', { type, targetModel: 'Product', targetId: product._id, targetLabel, reason: requestReason.trim(), note, metadata });
+      await platformApi.requestChange({ type, targetModel: 'Product', targetId: product._id, targetLabel, reason: requestReason.trim(), note, metadata });
       setRequestModal(null);
       setRequestReason('');
       setRequestValue('');
@@ -471,7 +466,7 @@ const ProductDetails = () => {
               className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
             >
               <QrCode size={14} />
-              <span className="hidden sm:inline">QR Code</span>
+              <span className="hidden sm:inline">Étiquette</span>
             </button>
             {isAdmin && (
               <button
@@ -991,36 +986,40 @@ const ProductDetails = () => {
         </div>
       </Modal>
 
-      {/* ══ MODAL: QR CODE ══ */}
-      <Modal isOpen={showQRCode} onClose={() => setShowQRCode(false)} title="QR Code du produit" size="sm">
+      {/* ══ MODAL: ÉTIQUETTE PRODUIT ══ */}
+      <Modal isOpen={showQRCode} onClose={() => setShowQRCode(false)} title="Étiquette produit" size="sm">
         <div className="flex flex-col items-center gap-4 py-2">
-          {/* Mode toggle: scan-to-sell vs view product */}
-          <div className="grid w-full grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-1">
-            {[
-              { key: 'sell', label: 'Vente rapide' },
-              { key: 'view', label: 'Fiche produit' },
-            ].map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => setQrMode(m.key)}
-                className={`min-h-[36px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${qrMode === m.key ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'}`}
-              >
-                {m.label}
-              </button>
-            ))}
+          {/* Printable label preview */}
+          <div
+            ref={qrCodeRef}
+            className="w-full max-w-[280px] rounded-[var(--radiusLarge)] bg-white p-6 shadow-sm"
+            style={{ border: '2px solid var(--colorNeutralStroke2)' }}
+          >
+            {/* Product name */}
+            <h3 className="text-center text-lg font-bold mb-6" style={{ color: '#0F172A' }}>
+              {product?.name}
+            </h3>
+
+            {/* QR Code - centered, compact */}
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-white rounded-lg" style={{ border: '1px solid #E5E7EB' }}>
+                <QRCode value={productSaleUrl} size={140} />
+              </div>
+            </div>
+
+            {/* Footer instruction */}
+            <div className="mt-4 text-center text-xs" style={{ color: '#64748B' }}>
+              Scannez pour vendre ce produit
+            </div>
           </div>
-          <div ref={qrCodeRef} className="p-4 rounded-[var(--radiusXLarge)] bg-white" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
-            <QRCode value={qrValue} size={180} />
-          </div>
-          <p className="fui-caption1 text-center" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            {qrMode === 'sell'
-              ? 'Scannez pour démarrer une vente avec ce produit déjà ajouté.'
-              : 'Scannez pour ouvrir la fiche du produit.'}
+
+          <p className="fui-caption1 text-center px-4" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Cette étiquette affiche le nom du produit et un QR code pour l'ajouter automatiquement lors d'une vente.
           </p>
+
           <div className="flex w-full flex-col gap-2 sm:flex-row">
-            <button onClick={downloadQRCode} className="ms-button ms-button-primary ms-button-md flex-1 justify-center">
-              <FileDown size={16} /> Télécharger
+            <button onClick={downloadProductLabel} className="ms-button ms-button-primary ms-button-md flex-1 justify-center">
+              <FileDown size={16} /> Télécharger l'étiquette
             </button>
             <button onClick={() => setShowQRCode(false)} className="ms-button ms-button-secondary ms-button-md flex-1 justify-center">
               Fermer

@@ -23,18 +23,25 @@ export const salesApi = {
   paymentsDateRange: (params) => api.get('/sales/payments/date-range', { params }),
   stats: () => api.get('/sales/stats'),
   statsByStatus: () => api.get('/sales/stats/status'),
-  userStats: () => api.get('/sales/user-stats'),
-  dashboard: () => api.get('/sales/dashboard-sale'),
+  deliveryStats: () => api.get('/sales/stats/delivery'),
+  userStats: (params) => api.get('/sales/user-stats', { params }),
+  dashboard: (params) => api.get('/sales/dashboard-sale', { params }),
   bestDays: () => api.get('/sales/best-days'),
-  profitAnalytics: () => api.get('/sales/profit-analytics'),
+  profitAnalytics: (params) => api.get('/sales/profit-analytics', { params }),
   profitReport: () => api.get('/sales/profit-report'),
 
   // V2 — paiements, retours, reporting.
   returns: (saleId, data) => api.post(`/v2/sales/${saleId}/returns`, data),
   postReturn: (saleId, returnId, data) => api.post(`/v2/sales/${saleId}/returns/${returnId}/post`, data),
   cancelReturn: (saleId, returnId) => api.post(`/v2/sales/${saleId}/returns/${returnId}/cancel`),
+  listReturns: (saleId) => api.get(`/v2/sales/${saleId}/returns`),
   refunds: (data) => api.post('/v2/refunds', data),
+  listRefunds: (params) => api.get('/v2/refunds', { params }),
   salesReport: (params) => api.get('/v2/reports/sales', { params }),
+
+  // Caisse v1.
+  bankList: (params) => api.get('/bank', { params }),
+  bankCreate: (data) => api.post('/bank', data),
 };
 
 export default salesApi;

@@ -38,7 +38,9 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import api from "../services/api";
+import { salesApi } from "../features/sales/api";
+import { catalogApi } from "../features/catalog/api";
+import { customersApi } from "../features/customers/api";
 import toast from "react-hot-toast";
 import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
 import AuthContext from "../context/AuthContext";
@@ -430,17 +432,13 @@ const ProfitAnalysis = () => {
   });
 
   useEffect(() => {
-    api.get("/lookups/containers").then((r) => setContainers(r.data || [])).catch(() => {});
+    catalogApi.lookupContainers().then((r) => setContainers(r.data || [])).catch(() => {});
   }, []);
 
   const fetchProfitData = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
-      });
-      const { data } = await api.get(`/sales/profit-analytics?${params}`);
+      const { data } = await salesApi.profitAnalytics(filters);
       setProfitData(data?.data || null);
     } catch (e) {
       console.error("Erreur chargement bénéfices:", e);
@@ -656,30 +654,65 @@ const ProfitAnalysis = () => {
         {topProducts.length === 0 ? (
           <EmptyState title="Aucune donnée" description="Aucune vente détaillée sur la période." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead style={{ background: "var(--colorNeutralBackground2)" }}>
-                <tr>
-                  {["Produit", "Catégorie", "Qté", "CA", "Coût", "Bénéfice", "Marge"].map((h, i) => (
-                    <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? "text-right" : "text-left"}`} style={{ color: "var(--colorNeutralForeground3)", borderBottom: "1px solid var(--colorNeutralStroke2)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.map((p) => (
-                  <tr key={p._id} style={{ borderBottom: "1px solid var(--colorNeutralStroke3)" }}>
-                    <td className="px-3 py-2 fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{p.productName}</td>
-                    <td className="px-3 py-2 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>{p.category || "Non catégorisé"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{(p.totalQuantity || 0).toLocaleString("fr-FR")}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(p.totalRevenue)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(p.totalCost)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(p.totalProfit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(p.profitMargin)}</td>
+          <>
+            {/* Mobile cards */}
+            <div className="lg:hidden divide-y divide-[var(--colorNeutralStroke3)]">
+              {topProducts.map((p) => (
+                <div key={p._id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{p.productName}</p>
+                      <p className="fui-caption1 mt-0.5" style={{ color: "var(--colorNeutralForeground3)" }}>{p.category || "Non catégorisé"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(p.totalProfit)}</p>
+                      <p className="fui-caption1" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(p.profitMargin)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Qté</p>
+                      <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{(p.totalQuantity || 0).toLocaleString("fr-FR")}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>CA</p>
+                      <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(p.totalRevenue)}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Coût</p>
+                      <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(p.totalCost)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead style={{ background: "var(--colorNeutralBackground2)" }}>
+                  <tr>
+                    {["Produit", "Catégorie", "Qté", "CA", "Coût", "Bénéfice", "Marge"].map((h, i) => (
+                      <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? "text-right" : "text-left"}`} style={{ color: "var(--colorNeutralForeground3)", borderBottom: "1px solid var(--colorNeutralStroke2)" }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {topProducts.map((p) => (
+                    <tr key={p._id} style={{ borderBottom: "1px solid var(--colorNeutralStroke3)" }}>
+                      <td className="px-3 py-2 fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{p.productName}</td>
+                      <td className="px-3 py-2 fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>{p.category || "Non catégorisé"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{(p.totalQuantity || 0).toLocaleString("fr-FR")}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(p.totalRevenue)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(p.totalCost)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(p.totalProfit)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(p.profitMargin)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -689,7 +722,31 @@ const ProfitAnalysis = () => {
           <p className="fui-subtitle2 mb-4" style={{ color: "var(--colorNeutralForeground1)" }}>Bénéfices par catégorie <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>· encaissé</span></p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="h-64"><Doughnut data={categoryChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { font: CHART_LABEL_FONT } } } }} /></div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile cards */}
+            <div className="lg:hidden space-y-3">
+              {profitByCategory.map((c) => (
+                <div key={c._id} className="fluent-card-filled p-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{c._id || "Non catégorisé"}</p>
+                    <p className="fui-body2" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(c.profitMargin)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>CA</p>
+                      <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(c.totalRevenue)}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Bénéfice</p>
+                      <p className="fui-body2 tabular-nums" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(c.totalProfit)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead style={{ background: "var(--colorNeutralBackground2)" }}>
                   <tr>
@@ -720,7 +777,37 @@ const ProfitAnalysis = () => {
           <div className="px-4 py-3 border-b" style={{ borderColor: "var(--colorNeutralStroke2)" }}>
             <p className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Gains par conteneur <span className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>· encaissé</span></p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile cards */}
+          <div className="lg:hidden divide-y divide-[var(--colorNeutralStroke3)]">
+            {profitByContainer.map((c) => (
+              <div key={c._id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{c._id || "Non défini"}</p>
+                    <p className="fui-caption1 mt-0.5" style={{ color: "var(--colorNeutralForeground3)" }}>Qté: {(c.totalQuantity || 0).toLocaleString("fr-FR")}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="fui-body1-strong" style={{ color: "var(--colorStatusSuccessForeground1)" }}>{cfa(c.totalProfit)}</p>
+                    <p className="fui-caption1" style={{ color: "var(--colorBrandForeground1)" }}>{pctOf(c.profitMargin)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>CA</p>
+                    <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground2)" }}>{cfa(c.totalRevenue)}</p>
+                  </div>
+                  <div>
+                    <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Coût</p>
+                    <p className="fui-body2 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{cfa(c.totalCost)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead style={{ background: "var(--colorNeutralBackground2)" }}>
                 <tr>
@@ -1090,7 +1177,7 @@ const Sales = () => {
   /* ========= Récupération données ========= */
   const fetchClients = useCallback(async () => {
     try {
-      const res = await api.get("/clients");
+      const res = await customersApi.list();
       const list = normalizeCollection(res.data, ["clients", "data"]);
       setClients(list);
       return list;
@@ -1103,7 +1190,7 @@ const Sales = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await api.get("/products");
+      const res = await catalogApi.list();
       const list = normalizeCollection(res.data, ["products", "data"]);
       setProducts(list);
       return list;
@@ -1116,7 +1203,7 @@ const Sales = () => {
 
   const fetchContainers = useCallback(async () => {
     try {
-      const res = await api.get("/lookups/containers");
+      const res = await catalogApi.lookupContainers();
       setContainers(res.data || []);
     } catch {
       // silently ignore — container filter just won't show
@@ -1125,7 +1212,7 @@ const Sales = () => {
 
   const fetchSales = useCallback(async () => {
     try {
-      const res = await api.get("/sales", { params: { summary: "list" } });
+      const res = await salesApi.list({ summary: "list" });
       setSales(res.data || []);
       return res.data || [];
     } catch {
@@ -1140,9 +1227,7 @@ const Sales = () => {
       const { showLoading = true } = options;
       try {
         if (showLoading) setDashboardLoading(true);
-        const params = new URLSearchParams({ range });
-        if (dayFilter) params.append("summaryDate", dayFilter);
-        const { data } = await api.get(`/sales/dashboard-sale?${params.toString()}`);
+        const { data } = await salesApi.dashboard({ range, ...(dayFilter ? { summaryDate: dayFilter } : {}) });
         setDashboardData((prev) => ({ ...prev, ...data }));
       } catch (e) {
         setMessage("Erreur de chargement du tableau de bord");
@@ -1157,7 +1242,7 @@ const Sales = () => {
   const hydrateDeliveryStats = useCallback(
     async (salesArray) => {
       try {
-        const { data } = await api.get("/sales/stats/delivery");
+        const { data } = await salesApi.deliveryStats();
         // Back compat (si votre endpoint renvoie { delivered: {count,totalAmount}, ... })
         const delivered = data?.delivered?.count ?? 0;
         const pending = data?.pending?.count ?? 0;
@@ -1492,12 +1577,9 @@ const Sales = () => {
     setPaymentsDetailLoading(true);
     setShowPaymentsDetailModal(true);
     try {
-      const params = new URLSearchParams();
-      if (dateFilter) {
-        params.append('startDate', dateFilter);
-        params.append('endDate', dateFilter);
-      }
-      const { data } = await api.get(`/sales/payments/date-range?${params.toString()}`);
+      const { data } = await salesApi.paymentsDateRange(
+        dateFilter ? { startDate: dateFilter, endDate: dateFilter } : {}
+      );
       setPaymentsDetailData(data || []);
     } catch {
       setPaymentsDetailData([]);
@@ -1509,7 +1591,7 @@ const Sales = () => {
   const handleSubmitSale = async (saleData) => {
     try {
       setMessage("");
-      const { data } = await api.post("/sales", saleData);
+      const { data } = await salesApi.create(saleData);
       const nextSale = enrichSaleForState(data);
       const updatedSales = [nextSale, ...sales].sort(
         (a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime()
@@ -1527,7 +1609,7 @@ const Sales = () => {
   const handleAddPayment = async (paymentData) => {
     if (!selectedSale) return;
     try {
-      const { data } = await api.post(`/sales/${selectedSale._id}/payments`, paymentData);
+      const { data } = await salesApi.addPayment(selectedSale._id, paymentData);
       const nextSale = enrichSaleForState(data, selectedSale);
       const updatedSales = sales.map((sale) => (sale._id === selectedSale._id ? nextSale : sale));
       setSales(updatedSales);
@@ -1552,7 +1634,7 @@ const Sales = () => {
         deliveryNote: deliveryNote || "",
         deliveryDate: deliveryStatus === "delivered" ? new Date().toISOString() : null,
       };
-      const { data } = await api.put(`/sales/${selectedSale._id}/delivery`, payload);
+      const { data } = await salesApi.updateDelivery(selectedSale._id, payload);
       const nextDeliveryState = {
         deliveryStatus: data?.deliveryStatus ?? payload.deliveryStatus,
         deliveryNote: data?.deliveryNote ?? payload.deliveryNote,
@@ -2375,7 +2457,7 @@ const Sales = () => {
                       >
                         <div className="min-w-0">
                           <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                            Vente #{a._id?.slice(-6) || "N/A"}
+                            {a.reference || ("Vente #" + (a._id?.slice(-6) || "N/A"))}
                           </p>
                           <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
                             {a.client?.name || "Client inconnu"} · {formatDate(a.saleDate)} · {(a.totalAmount || 0).toLocaleString("fr-FR")} CFA

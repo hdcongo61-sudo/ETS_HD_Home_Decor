@@ -135,7 +135,9 @@ async function listJobs({ tenantId, page = 1, limit = 20 }) {
 }
 
 async function getJob({ tenantId, jobId }) {
-  const job = await ExportJob.findOne({ tenantId, _id: jobId }).select('-result.downloadToken').lean();
+  // Le jeton de téléchargement est inclus ici : l'appelant est authentifié
+  // et tenant-scopé (la liste reste, elle, sans jeton).
+  const job = await ExportJob.findOne({ tenantId, _id: jobId }).lean();
   if (!job) throw notFound('Export introuvable dans cette organisation.');
   return job;
 }

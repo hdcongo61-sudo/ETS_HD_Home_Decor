@@ -88,7 +88,6 @@ import {
 
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
-import { KPICard, ChartCard, PageHeader, Workspace } from "./business";
 import { useFeature, LockedFeatureButton } from "./FeatureGate";
 import { FEATURE_KEYS } from "../config/features";
 
@@ -165,7 +164,7 @@ const getClientName = (row) => {
 const Dashboard = () => {
   const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
-  const { overviewData, isCacheValid } = useDashboardData();
+  useDashboardData();
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk stats export — la facture de vente reste accessible à tous
   const currentYear = new Date().getFullYear();

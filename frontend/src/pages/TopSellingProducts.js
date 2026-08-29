@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import { productPath } from '../utils/paths';
 import { TrendingUp, Trophy, Wallet } from 'lucide-react';
 import {
@@ -21,7 +21,7 @@ const TopSellingProducts = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/products/dashboard?range=month');
+        const response = await catalogApi.dashboard({ range: 'month' });
         setData(response.data.topSellingProducts || []);
       } catch (err) {
         console.error(err);

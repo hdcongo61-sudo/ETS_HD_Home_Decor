@@ -67,17 +67,6 @@ const LoginActivityDetail = () => {
         }
     };
 
-    const getStatusBadge = (success) => (
-        <span
-            className={`px-3 py-1 inline-flex text-sm font-medium rounded-full ${success
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-                }`}
-        >
-            {success ? 'Réussi' : 'Échoué'}
-        </span>
-    );
-
     const getRiskLevel = () => {
         if (!loginActivity) return 'faible';
 
@@ -86,13 +75,6 @@ const LoginActivityDetail = () => {
         }
 
         return 'élevé';
-    };
-
-    const getRiskColor = () => {
-        const level = getRiskLevel();
-        return level === 'faible' ? 'bg-green-100 text-green-800'
-            : level === 'moyen' ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-red-100 text-red-800';
     };
 
   if (loading) {

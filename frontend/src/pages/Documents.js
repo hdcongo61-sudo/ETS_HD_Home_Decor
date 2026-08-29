@@ -1,6 +1,6 @@
 import { confirmDialog } from '../components/ConfirmProvider';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import api from '../services/api';
+import { documentsApi } from '../features/documents/api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import {
@@ -80,7 +80,7 @@ const Documents = () => {
 
   const fetchYears = async () => {
     try {
-      const res = await api.get('/documents/years');
+      const res = await documentsApi.years();
       setYears(res.data || []);
     } catch (err) {
       console.error('Error fetching years:', err);
@@ -91,8 +91,8 @@ const Documents = () => {
     try {
       setLoading(true);
       setError('');
-      const params = yearFilter ? `?year=${yearFilter}` : '';
-      const res = await api.get(`/documents${params}`);
+      const params = yearFilter ? { year: yearFilter } : {};
+      const res = await documentsApi.list(params);
       setDocuments(res.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur de chargement des documents.');
@@ -142,7 +142,7 @@ const Documents = () => {
       fd.append('type', form.type);
       fd.append('note', form.note);
       fd.append('date', form.date);
-      const { data } = await api.post('/documents', fd, {
+      const { data } = await documentsApi.upload(fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Document enregistré.');
@@ -175,7 +175,7 @@ const Documents = () => {
       }
     )) return;
     try {
-      await api.delete(`/documents/${id}`);
+      await documentsApi.remove(id);
       toast.success('Document supprimé.');
       const remainingDocuments = documents.filter((document) => document._id !== id);
       setDocuments(remainingDocuments);
@@ -226,7 +226,7 @@ const Documents = () => {
   const isFiltered = Boolean(typeFilter || search.trim());
 
   return (
-    <Workspace className="space-y-6 pb-10">
+    <Workspace className="space-y-6">
       <PageHeader
         eyebrow="Entreprise & conformité"
         title="Documents"

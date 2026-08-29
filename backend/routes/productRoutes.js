@@ -21,8 +21,10 @@ const {
   getProductsBySupplier,
   getProductsByContainer,
   getProductsByWarehouse,
+  getProductsByCategory,
   getProductSalesHistory,
-  importProducts
+  importProducts,
+  getProductFieldValues
 } = require('../controllers/productController');
 const { protect, admin, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
@@ -49,6 +51,12 @@ router.route('/by-container')
 
 router.route('/by-warehouse')
   .get(protect, requireTenant, admin, getProductsByWarehouse);
+
+router.route('/by-category')
+  .get(protect, requireTenant, admin, getProductsByCategory);
+
+router.route('/field-values')
+  .get(protect, requireTenant, getProductFieldValues);
 
 // Routes standard pour les produits
 router.route('/')

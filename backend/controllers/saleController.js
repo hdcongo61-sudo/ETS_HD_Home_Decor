@@ -17,6 +17,7 @@ const mongoose = require('mongoose');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 const { issueStock, receiveStock } = require('../services/inventoryService');
 const { recordPayment } = require('../services/paymentService');
+const { nextNumber } = require('../services/cashService');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -331,15 +332,28 @@ const getSales = asyncHandler(async (req, res) => {
       filter.saleType = normalizeSaleType(req.query.saleType);
     }
 
+    // Search by reference (or exact Mongo id)
+    if (req.query.search) {
+      const term = String(req.query.search).trim();
+      if (term) {
+        filter.$or = [
+          { reference: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }
+        ];
+        if (mongoose.Types.ObjectId.isValid(term)) {
+          filter.$or.push({ _id: term });
+        }
+      }
+    }
+
     let query = Sale.find(buildSaleAccessFilter(req.user, filter)).sort({ saleDate: -1 });
 
     if (isCompactSummary) {
       query = query
-        .select('_id client totalAmount payments saleDate status updatedAt createdAt lastRemindedAt reminderLog')
+        .select('_id reference client totalAmount payments saleDate status updatedAt createdAt lastRemindedAt reminderLog')
         .populate('client', 'name email phone');
     } else if (isListSummary) {
       query = query
-        .select('_id client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
+        .select('_id reference client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
         .populate('client', 'name email')
         .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
         .populate({
@@ -693,9 +707,24 @@ const createSale = asyncHandler(async (req, res) => {
       ? normalizeSaleType(saleType)
       : 'normal';
 
+    // Génère la référence de vente : V-AAAA-0001
+    let saleReference = null;
+    try {
+      const sequence = await nextNumber({
+        tenantId: req.tenantId,
+        locationId: req.locationId || null,
+        docType: 'VENTE',
+        fiscalPeriod: String(effectiveSaleDate.getFullYear())
+      });
+      saleReference = `V-${sequence.fiscalPeriod}-${String(sequence.seq).padStart(4, '0')}`;
+    } catch (seqError) {
+      console.error('⚠️ Échec de génération de référence de vente:', seqError.message);
+    }
+
     const saleData = {
       client,
       locationId: req.locationId || null,
+      reference: saleReference,
       products: populatedProducts,
       totalAmount,
       saleType: resolvedSaleType,

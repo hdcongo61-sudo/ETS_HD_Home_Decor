@@ -27,6 +27,14 @@ export const reportingApi = {
   cutoverReport: () => api.post('/v2/cutover/report'),
   cutoverReports: () => api.get('/v2/cutover/reports'),
   cutoverReportById: (id) => api.get(`/v2/cutover/reports/${id}`),
+  deprecations: () => api.get('/v2/deprecations'),
+
+  // Export Excel legacy (v1) — rapport hebdo administrateur (blob).
+  salesExport: (params) => api.get('/exports/sales-export', { params, responseType: 'blob' }),
+
+  // Comptabilité v1 (finance & pilotage).
+  comptabiliteSummary: (params) => api.get('/comptabilite/summary', { params }),
+  comptabiliteJournal: (params) => api.get('/comptabilite/journal', { params }),
 };
 
 export default reportingApi;

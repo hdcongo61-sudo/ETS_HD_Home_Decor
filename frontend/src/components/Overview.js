@@ -16,7 +16,6 @@ import {
   Receipt,
   ChevronRight,
   Wallet,
-  TrendingUp,
   BarChart3,
   Plus,
   AlertTriangle,
@@ -25,17 +24,13 @@ import {
   CalendarClock,
   BadgeAlert,
   HandCoins,
-  CheckCircle2,
   UsersRound,
   Calculator,
   FileText,
   Crown,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
   ArrowRight,
 } from "lucide-react";
-import api from "../services/api";
 import AuthContext from "../context/AuthContext";
 import { useDashboardData } from "../context/DashboardDataContext";
 import { KPICard, LoadingSkeleton } from "./business";
@@ -52,55 +47,6 @@ const TONES = {
   warning: { bg: "var(--colorStatusWarningBackground1)",  fg: "var(--colorStatusWarningForeground1)" },
   danger:  { bg: "var(--colorStatusDangerBackground1)",   fg: "var(--colorStatusDangerForeground1)" },
   neutral: { bg: "var(--colorNeutralBackground3)",        fg: "var(--colorNeutralForeground2)" },
-};
-
-/* ---------- Collapsible Section ---------- */
-const CollapsibleCard = ({ title, icon, defaultOpen = true, children }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <section className="ms-surface overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between gap-3 p-5 text-left transition-colors hover:bg-[var(--ms-bg-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ms-blue)]"
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: TONES.brand.bg, color: TONES.brand.fg }}>
-            {icon}
-          </span>
-          <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>{title}</h2>
-        </div>
-        {isOpen ? (
-          <ChevronUp className="h-5 w-5 shrink-0" style={{ color: "var(--colorNeutralForeground3)" }} />
-        ) : (
-          <ChevronDown className="h-5 w-5 shrink-0" style={{ color: "var(--colorNeutralForeground3)" }} />
-        )}
-      </button>
-      {isOpen && <div className="px-5 pb-5">{children}</div>}
-    </section>
-  );
-};
-
-/* ---------- Compact Module Card ---------- */
-const CompactModuleCard = ({ to, icon, tone = "brand", title, stat }) => {
-  const t = TONES[tone] || TONES.brand;
-  return (
-    <Link
-      to={to}
-      className="group ms-surface flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
-    >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: t.bg, color: t.fg }}>
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="fui-body1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{title}</h3>
-        {stat && (
-          <p className="mt-0.5 fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{stat}</p>
-        )}
-      </div>
-      <ArrowRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" style={{ color: "var(--colorNeutralForeground3)" }} />
-    </Link>
-  );
 };
 
 /* ---------- Bloc générique de section ---------- */
@@ -158,35 +104,6 @@ const ModuleCard = ({ to, icon, tone = "brand", title, stats }) => {
           ))}
         </dl>
       </div>
-    </Link>
-  );
-};
-
-/* ---------- Élément du centre d'actions « À traiter » ---------- */
-const ActionItem = ({ to, icon, tone, label, count, detail }) => {
-  const t = TONES[tone] || TONES.warning;
-  return (
-    <Link
-      to={to}
-      className="group flex items-center gap-3 rounded-[var(--radiusLarge)] border p-3 transition-shadow hover:shadow-[var(--ms-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
-      style={{ borderColor: "var(--ms-border)", background: "var(--ms-white)" }}
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: t.bg, color: t.fg }}>
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate fui-caption1-strong" style={{ color: "var(--colorNeutralForeground1)" }}>{label}</p>
-        {detail && (
-          <p className="truncate fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>{detail}</p>
-        )}
-      </div>
-      <span
-        className="inline-flex h-6 min-w-[24px] shrink-0 items-center justify-center rounded-full px-1.5 fui-caption1-strong tabular-nums"
-        style={{ background: t.bg, color: t.fg }}
-      >
-        {num(count)}
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: "var(--colorNeutralForeground3)" }} />
     </Link>
   );
 };
@@ -493,7 +410,6 @@ const Overview = () => {
   const outOfStockArr = products?.outOfStockProducts;
   const lowStock = Array.isArray(lowStockArr) ? lowStockArr.length : products?.lowStockCount;
   const outOfStock = Array.isArray(outOfStockArr) ? outOfStockArr.length : products?.outOfStockCount;
-  const stockValue = products?.totalStockValue;
 
   const cr = compta?.compteResultat || null;
   const treso = compta?.tresorerie || null;

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Workspace } from '../components/business';
+import { platformApi } from '../features/platform/api';
+import { catalogApi } from '../features/catalog/api';
 import AdvancedFilters from '../components/AdvancedFilters';
 import {
   SALES_FILTERS,
@@ -101,7 +103,6 @@ const UltimateFiltersPage = () => {
   const [activeTab, setActiveTab] = useState('sales');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({});
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -113,11 +114,11 @@ const UltimateFiltersPage = () => {
     const loadDynamicOptions = async () => {
       try {
         // Charger les utilisateurs
-        const usersRes = await api.get('/users');
+        const usersRes = await platformApi.users();
         setUsers(usersRes.data.map(u => ({ value: u._id, label: u.name })));
 
         // Charger les catégories de produits
-        const productsRes = await api.get('/products');
+        const productsRes = await catalogApi.list();
         const uniqueCategories = [...new Set(productsRes.data.map(p => p.category).filter(Boolean))];
         setCategories(uniqueCategories.map(c => ({ value: c, label: c })));
 
@@ -152,7 +153,7 @@ const UltimateFiltersPage = () => {
   }, [activeConfig, users, categories, suppliers]);
 
   // Charger les données
-  const loadData = async (appliedFilters) => {
+  const loadData = useCallback(async (appliedFilters) => {
     if (!activeConfig) return;
 
     setLoading(true);
@@ -166,7 +167,7 @@ const UltimateFiltersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeConfig]);
 
   // Construire les query params
   const buildQueryParams = (filters) => {
@@ -200,7 +201,6 @@ const UltimateFiltersPage = () => {
 
   // Gérer le changement de filtres
   const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
     loadData(newFilters);
   };
 
@@ -400,10 +400,9 @@ const UltimateFiltersPage = () => {
 
   // Charger les données au montage et changement d'onglet
   useEffect(() => {
-    setFilters({});
     setData([]);
     loadData({});
-  }, [activeTab]);
+  }, [activeTab, loadData]);
 
   return (
     <Workspace>

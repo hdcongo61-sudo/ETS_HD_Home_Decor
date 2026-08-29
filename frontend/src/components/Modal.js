@@ -85,9 +85,18 @@ const Modal = ({
     };
     document.addEventListener('keydown', handleKeyDown);
     const focusFrame = window.requestAnimationFrame(() => {
+      // Ne jamais voler une interaction déjà commencée : si l'utilisateur a
+      // déjà cliqué dans le panneau (focus déjà à l'intérieur), on ne déplace
+      // pas le focus — sinon le premier clic sur un champ est « avalé » (le
+      // focus saute vers le premier élément et il faut re-cliquer).
+      if (panelRef.current && panelRef.current.contains(document.activeElement)) return;
       const preferred = panelRef.current?.querySelector('[autofocus], [data-autofocus]');
       const first = panelRef.current?.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href]');
-      (preferred || first || panelRef.current)?.focus();
+      try {
+        (preferred || first || panelRef.current)?.focus({ preventScroll: true });
+      } catch (_) {
+        (preferred || first || panelRef.current)?.focus();
+      }
     });
     if (openModalCount === 0) {
       previousBodyOverflow = document.body.style.overflow;
@@ -103,7 +112,13 @@ const Modal = ({
       if (openModalCount === 0) {
         document.body.style.overflow = previousBodyOverflow;
       }
-      if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
+      if (previouslyFocusedRef.current?.isConnected) {
+        try {
+          previouslyFocusedRef.current.focus({ preventScroll: true });
+        } catch (_) {
+          previouslyFocusedRef.current.focus();
+        }
+      }
     };
   }, [open, suppressGlobalModals, suppressGlobal]);
 

@@ -9,7 +9,8 @@ import {
   ReceiptText,
   TrendingUp,
 } from 'lucide-react';
-import api from '../services/api';
+import { expensesApi } from '../features/expenses/api';
+import { salesApi } from '../features/sales/api';
 import {
   ChartCard,
   CommandBar,
@@ -74,14 +75,11 @@ const MonthlySpendingPlan = () => {
         setLoading(true);
         setError('');
 
-        const params = new URLSearchParams({
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
-        });
+        const query = { startDate: start.toISOString(), endDate: end.toISOString() };
 
         const [expensesRes, salesRes] = await Promise.all([
-          api.get(`/expenses?${params.toString()}`),
-          api.get(`/sales?${params.toString()}&summary=list`),
+          expensesApi.list(query),
+          salesApi.list({ ...query, summary: 'list' }),
         ]);
 
         setExpenses(expensesRes.data || []);
@@ -104,7 +102,7 @@ const MonthlySpendingPlan = () => {
   useEffect(() => {
     const fetchExpenseCategories = async () => {
       try {
-        const { data } = await api.get('/lookups/expense-categories');
+        const { data } = await expensesApi.categories();
         setExpenseCategories(Array.isArray(data) ? data : []);
       } catch {
         setExpenseCategories([]);

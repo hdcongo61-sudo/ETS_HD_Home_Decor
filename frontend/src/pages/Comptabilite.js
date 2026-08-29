@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import api from '../services/api';
+import { reportingApi } from '../features/reporting/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { useModal } from '../context/ModalContext';
 import {
@@ -78,8 +78,8 @@ const Comptabilite = () => {
         endDate: range.end.toISOString(),
       });
       const [summaryRes, journalRes] = await Promise.all([
-        api.get(`/comptabilite/summary?${params.toString()}`),
-        api.get(`/comptabilite/journal?${params.toString()}`),
+        reportingApi.comptabiliteSummary(params),
+        reportingApi.comptabiliteJournal(params),
       ]);
       setSummary(summaryRes.data?.data || null);
       setJournal(journalRes.data?.data || null);
@@ -110,7 +110,7 @@ const Comptabilite = () => {
   const hasReceivables = (summary?.creances?.clients ?? 0) > 0;
 
   return (
-    <Workspace className="space-y-6 pb-10">
+    <Workspace className="space-y-6">
       <PageHeader
         eyebrow="Finance & pilotage"
         title="Comptabilité"

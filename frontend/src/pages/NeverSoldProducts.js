@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '../services/api';
+import { catalogApi } from '../features/catalog/api';
 import {
   PieChart, Pie, Cell, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -39,7 +39,7 @@ const NeverSoldProducts = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/products/never-sold');
+        const res = await catalogApi.neverSold();
         const neverSold = res.data.products || [];
 
         setData(neverSold);

@@ -252,20 +252,31 @@ app.use('/api/*', (req, res, next) => {
   });
 });
 
-const port = process.env.PORT;
+const port = Number(process.env.PORT) || 5001;
+const MAX_PORT_ATTEMPTS = 20;
 let server = null;
 
 // Ne démarre le listener qu'en exécution directe (supertest importe `app`
-// sans écouter le port).
+// sans écouter le port). Si le port est occupé, essaie les suivants
+// (port, port+1, …) jusqu'à en trouver un libre.
 if (require.main === module) {
-  server = app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`Port ${port} is busy, trying port ${Number(port) + 1}`);
-      app.listen(Number(port) + 1);
-    }
-  });
+  const startServer = (attempt = 0) => {
+    const candidatePort = port + attempt;
+    server = app.listen(candidatePort)
+      .once('listening', () => {
+        console.log(`Server running on port ${candidatePort}`);
+      })
+      .once('error', (err) => {
+        if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+          console.log(`Port ${candidatePort} is busy, trying port ${candidatePort + 1}…`);
+          startServer(attempt + 1);
+        } else {
+          console.error(`Impossible de démarrer le serveur : ${err.message}`.red);
+          process.exit(1);
+        }
+      });
+  };
+  startServer();
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (err, promise) => {

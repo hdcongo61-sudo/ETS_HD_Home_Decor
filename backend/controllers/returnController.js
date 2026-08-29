@@ -59,4 +59,22 @@ const createRefund = asyncRoute(async (req, res) => {
   res.status(201).json(result.refund);
 });
 
-module.exports = { createReturn, postReturn, cancelReturn, createRefund };
+// @route   GET /api/v2/sales/:id/returns
+const listReturnsBySale = asyncRoute(async (req, res) => {
+  const returns = await returnService.listReturnsBySale({
+    tenantId: req.tenantId,
+    saleId: req.params.id,
+  });
+  res.json(returns);
+});
+
+// @route   GET /api/v2/refunds
+const listRefunds = asyncRoute(async (req, res) => {
+  const refunds = await returnService.listRefunds({
+    tenantId: req.tenantId,
+    saleId: req.query.saleId || null,
+  });
+  res.json(refunds);
+});
+
+module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listRefunds };

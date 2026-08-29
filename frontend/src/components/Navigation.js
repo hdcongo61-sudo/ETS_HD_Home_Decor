@@ -33,6 +33,12 @@ import {
   History,
   CreditCard,
   LifeBuoy,
+  Truck,
+  Boxes,
+  RotateCcw,
+  BarChart3,
+  Workflow,
+  Tag,
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -902,11 +908,12 @@ const QA_GROUPS = (auth, hasFeature = () => true) => ([
     items: [
       { to: '/products',        icon: Package,       label: 'Catalogue produits' },
       ...(auth.isAdmin ? [
-        { to: '/product-dashboard', icon: BarChart2, label: 'Dashboard produits' },
-        { to: '/products/top-sellers', icon: TrendingUp, label: 'Meilleures ventes' },
+        { to: '/attributes',           icon: Tag,           label: 'Attributs & variantes' },
+        { to: '/product-dashboard',    icon: BarChart2,     label: 'Dashboard produits' },
+        { to: '/products/top-sellers', icon: TrendingUp,    label: 'Meilleures ventes' },
         { to: '/products/critical',    icon: AlertTriangle, label: 'Stock critique' },
         { to: '/products/out-of-stock',icon: AlertTriangle, label: 'Rupture de stock' },
-        { to: '/products/by-supplier', icon: Building2, label: 'Par fournisseur' },
+        { to: '/products/by-supplier', icon: Building2,     label: 'Par fournisseur' },
       ] : []),
     ],
   },
@@ -944,6 +951,16 @@ const QA_GROUPS = (auth, hasFeature = () => true) => ([
         { to: '/admin-requests', icon: FileText,   label: 'Demandes admin' },
       ],
     },
+    {
+      label: 'V2 opérationnelle',
+      items: [
+        { to: '/purchasing',   icon: Truck,     label: 'Achats & fournisseurs', modules: ['purchasing'] },
+        { to: '/inventory-v2', icon: Boxes,     label: 'Inventaire',            modules: ['inventory'] },
+        { to: '/returns',      icon: RotateCcw, label: 'Retours & rembours.',   modules: ['returns'] },
+        { to: '/reporting',    icon: BarChart3, label: 'Rapports & exports' },
+        { to: '/cutover',      icon: Workflow,  label: 'Bascule v2' },
+      ],
+    },
   ] : [
     {
       label: 'Autres',
@@ -957,7 +974,35 @@ const QA_GROUPS = (auth, hasFeature = () => true) => ([
 
 const QuickAccessPanel = ({ auth, onClose }) => {
   const { hasFeature } = useContext(AuthContext);
-  const groups = QA_GROUPS(auth, hasFeature).filter(g => g.items.length > 0);
+  const [moduleStates, setModuleStates] = useState(null);
+
+  // Catalogue de modules serveur (Phase 7.2) : masque les entrées dont les
+  // modules requis sont désactivés ou interdits par le backend.
+  useEffect(() => {
+    let alive = true;
+    api.get('/v2/modules')
+      .then(({ data }) => {
+        if (!alive) return;
+        const map = {};
+        (data?.modules || []).forEach((m) => { map[m.key] = m; });
+        setModuleStates(map);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const isModuleVisible = (item) => {
+    if (!item.modules || item.modules.length === 0) return true;
+    if (!moduleStates) return true; // catalogue pas encore chargé → ne rien masquer
+    return item.modules.every((key) => {
+      const m = moduleStates[key];
+      return m && m.enabled !== false && m.allowed !== false;
+    });
+  };
+
+  const groups = QA_GROUPS(auth, hasFeature)
+    .map((g) => ({ ...g, items: g.items.filter(isModuleVisible) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <motion.div
@@ -1069,7 +1114,7 @@ const SEARCH_RESULT_META = {
 };
 
 const getResultTitle = (item) =>
-  item?.name || item?.clientName || item?.title || item?.saleNumber || "Résultat sans nom";
+  item?.name || item?.clientName || item?.reference || item?.title || item?.saleNumber || "Résultat sans nom";
 
 const getResultDescription = (item) => {
   if (!item) return "";
