@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { resolveAppLogo } from '../utils/appBranding';
 
 export const SIDEBAR_COLLAPSED_W = 64;
 export const SIDEBAR_EXPANDED_W  = 240;
@@ -61,11 +63,16 @@ const ADMIN_NAV = [
   { to: '/admin-modules',    icon: Blocks,           label: 'Modules' },
 ];
 
-const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0, highlight = false }) => (
+const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0, highlight = false, showTooltip, hideTooltip }) => (
   <Link
     to={to}
-    className={`fluent-nav-rail__item ${active ? 'fluent-nav-rail__item--active' : ''} ${highlight ? 'fluent-nav-rail__item--highlight' : ''}`}
-    title={!expanded ? label : undefined}
+    className={`fluent-nav-rail__item ${
+      active ? (expanded ? 'fluent-nav-rail__item--active-expanded' : 'fluent-nav-rail__item--active-collapsed') : ''
+    } ${highlight ? 'fluent-nav-rail__item--highlight' : ''}`}
+    onMouseEnter={(e) => { if (!expanded && showTooltip) showTooltip(e, label); }}
+    onMouseLeave={hideTooltip}
+    onFocus={(e) => { if (!expanded && showTooltip) showTooltip(e, label); }}
+    onBlur={hideTooltip}
     aria-label={badge > 0 ? `${label} (${badge} non lu${badge > 1 ? 's' : ''})` : label}
     aria-current={active ? 'page' : undefined}
     style={highlight && !active ? {
@@ -89,20 +96,17 @@ const NavItem = ({ to, icon: Icon, label, expanded, active, badge = 0, highlight
         </span>
       )}
     </span>
-    <AnimatePresence>
-      {expanded && (
-        <motion.span
-          key="label"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.12 }}
-          className="fluent-nav-rail__item-label"
-        >
-          {label}
-        </motion.span>
-      )}
-    </AnimatePresence>
+    {expanded && (
+      <motion.span
+        key="label"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.12 }}
+        className="fluent-nav-rail__item-label"
+      >
+        {label}
+      </motion.span>
+    )}
   </Link>
 );
 
@@ -116,7 +120,17 @@ const DesktopNavRail = () => {
   });
   const { auth, setAuth } = useContext(AuthContext);
   const location = useLocation();
+  const { appSettings } = useAppSettings();
+  const branding = appSettings?.branding || {};
+  const logoUrl = resolveAppLogo(branding.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const [tooltip, setTooltip] = useState(null);
+
+  const showTooltip = (event, label) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltip({ label, left: rect.right + 10, top: rect.top + rect.height / 2 });
+  };
+  const hideTooltip = () => setTooltip(null);
   const [supportUnread, setSupportUnread] = useState(0);
   const [moduleStates, setModuleStates] = useState(null);
 
@@ -196,13 +210,49 @@ const DesktopNavRail = () => {
 
   return (
     <motion.aside
-      className="fluent-nav-rail hidden md:flex"
+      className={`fluent-nav-rail fluent-nav-rail--${expanded ? 'expanded' : 'collapsed'} hidden md:flex`}
       animate={{ width: expanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W }}
       transition={{ type: 'spring', stiffness: 400, damping: 38 }}
       aria-label="Navigation principale"
     >
+      {/* ── Marque : logo + nom de l'application ── */}
+      <div className="fluent-nav-rail__brand">
+        <img
+          src={logoUrl}
+          alt={branding.shortName || branding.appName || 'Logo'}
+          className="fluent-nav-rail__brand-logo"
+          onError={(e) => {
+            const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
+            if (e.currentTarget.src !== window.location.origin + fallback && !e.currentTarget.dataset.fallback) {
+              e.currentTarget.dataset.fallback = '1';
+              e.currentTarget.src = fallback;
+            }
+          }}
+        />
+        {expanded && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12 }}
+            className="fluent-nav-rail__brand-name"
+          >
+            {branding.appName || 'HD Gestion'}
+          </motion.span>
+        )}
+      </div>
+
       {/* ── Primary nav ── */}
       <nav className="fluent-nav-rail__nav" aria-label="Navigation principale">
+        {expanded && primaryNavItems.length > 0 && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12 }}
+            className="fluent-nav-rail__group-label"
+          >
+            Menu
+          </motion.span>
+        )}
         {primaryNavItems.map(({ to, icon, label, exact }) => (
           <NavItem
             key={to}
@@ -211,6 +261,8 @@ const DesktopNavRail = () => {
             label={label}
             expanded={expanded}
             active={isActive(to, exact)}
+            showTooltip={showTooltip}
+            hideTooltip={hideTooltip}
           />
         ))}
 
@@ -242,6 +294,8 @@ const DesktopNavRail = () => {
                 active={isActive(to)}
                 badge={to === '/support' ? supportUnread : 0}
                 highlight={highlight}
+                showTooltip={showTooltip}
+                hideTooltip={hideTooltip}
               />
             ))}
           </>
@@ -272,6 +326,8 @@ const DesktopNavRail = () => {
               label="Boutiques"
               expanded={expanded}
               active={isActive('/super-admin')}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
             />
             <NavItem
               to="/register"
@@ -279,6 +335,8 @@ const DesktopNavRail = () => {
               label="Nouvelle boutique"
               expanded={expanded}
               active={isActive('/register')}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
             />
           </>
         )}
@@ -286,11 +344,47 @@ const DesktopNavRail = () => {
 
       {/* ── Footer: profile, settings, logout, toggle ── */}
       <div className="fluent-nav-rail__footer">
+        <Link
+          to="/profile"
+          className={`fluent-nav-rail__profile ${isActive('/profile') ? 'fluent-nav-rail__profile--active' : ''}`}
+          onMouseEnter={(e) => { if (!expanded) showTooltip(e, 'Mon profil'); }}
+          onMouseLeave={hideTooltip}
+          onFocus={(e) => { if (!expanded) showTooltip(e, 'Mon profil'); }}
+          onBlur={hideTooltip}
+          aria-label="Mon profil"
+        >
+          {auth.user?.photo ? (
+            <img
+              src={auth.user.photo}
+              alt={auth.user.name || 'Profil'}
+              className="fluent-nav-rail__profile-avatar object-cover"
+            />
+          ) : (
+            <span className="fluent-nav-rail__profile-avatar">{userInitial}</span>
+          )}
+          {expanded && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.12 }}
+              className="fluent-nav-rail__profile-meta"
+            >
+              <span className="fluent-nav-rail__profile-name">{auth.user?.name || 'Mon profil'}</span>
+              <span className="fluent-nav-rail__profile-role">
+                {auth.isSuperAdmin ? 'Super admin' : auth.isAdmin ? 'Administrateur' : 'Membre'}
+              </span>
+            </motion.span>
+          )}
+        </Link>
+
         {auth.isAdmin && (
           <Link
             to="/settings"
-            className={`fluent-nav-rail__item ${isActive('/settings') ? 'fluent-nav-rail__item--active' : ''}`}
-            title={!expanded ? 'Paramètres' : undefined}
+            className={`fluent-nav-rail__item ${isActive('/settings') ? (expanded ? 'fluent-nav-rail__item--active-expanded' : 'fluent-nav-rail__item--active-collapsed') : ''}`}
+            onMouseEnter={(e) => { if (!expanded) showTooltip(e, 'Paramètres'); }}
+            onMouseLeave={hideTooltip}
+            onFocus={(e) => { if (!expanded) showTooltip(e, 'Paramètres'); }}
+            onBlur={hideTooltip}
             aria-label="Paramètres"
           >
             <span className="fluent-nav-rail__item-icon"><Settings size={18} /></span>
@@ -304,44 +398,13 @@ const DesktopNavRail = () => {
           </Link>
         )}
 
-        <Link
-          to="/profile"
-          className={`fluent-nav-rail__item ${isActive('/profile') ? 'fluent-nav-rail__item--active' : ''}`}
-          title={!expanded ? 'Mon profil' : undefined}
-          aria-label="Mon profil"
-        >
-          <span className="fluent-nav-rail__item-icon">
-            {auth.user?.photo ? (
-              <img
-                src={auth.user.photo}
-                alt={auth.user.name || 'Profil'}
-                className="h-[18px] w-[18px] rounded-full object-cover"
-              />
-            ) : (
-              <span
-                className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[10px] font-bold"
-                style={{
-                  background: isActive('/profile') ? 'rgba(255,255,255,0.25)' : 'var(--colorNeutralBackground4)',
-                  color: isActive('/profile') ? '#fff' : 'var(--colorNeutralForeground1)',
-                }}
-              >
-                {userInitial}
-              </span>
-            )}
-          </span>
-          <AnimatePresence>
-            {expanded && (
-              <motion.span key="profile-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="fluent-nav-rail__item-label">
-                Mon profil
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </Link>
-
         <button
           onClick={handleLogout}
           className="fluent-nav-rail__item fluent-nav-rail__item--danger"
-          title={!expanded ? 'Déconnexion' : undefined}
+          onMouseEnter={(e) => { if (!expanded) showTooltip(e, 'Déconnexion'); }}
+          onMouseLeave={hideTooltip}
+          onFocus={(e) => { if (!expanded) showTooltip(e, 'Déconnexion'); }}
+          onBlur={hideTooltip}
           aria-label="Déconnexion"
         >
           <span className="fluent-nav-rail__item-icon"><LogOut size={18} /></span>
@@ -359,6 +422,9 @@ const DesktopNavRail = () => {
           onClick={() => setExpanded(e => !e)}
           className="fluent-nav-rail__toggle"
           aria-label={expanded ? 'Réduire le menu' : 'Développer le menu'}
+          onMouseEnter={(e) => { if (!expanded) showTooltip(e, 'Développer le menu'); }}
+          onMouseLeave={hideTooltip}
+          onBlur={hideTooltip}
         >
           <motion.span
             animate={{ rotate: expanded ? 180 : 0 }}
@@ -369,6 +435,24 @@ const DesktopNavRail = () => {
           </motion.span>
         </button>
       </div>
+
+      {/* Infobulle au survol (rail replié) */}
+      <AnimatePresence>
+        {tooltip && (
+          <motion.div
+            key="rail-tooltip"
+            role="tooltip"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.12 }}
+            className="fluent-nav-rail__tooltip"
+            style={{ top: tooltip.top, left: tooltip.left }}
+          >
+            {tooltip.label}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.aside>
   );
 };

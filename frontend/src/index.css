@@ -1429,11 +1429,47 @@ form input[type="radio"],
   z-index: 40;
   flex-direction: column;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.90);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-right: 1px solid var(--colorNeutralStroke2);
-  box-shadow: var(--shadow4);
+  box-shadow: var(--shadow2);
+}
+
+/* ── Marque (logo + nom de l'application) ── */
+.fluent-nav-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+  flex-shrink: 0;
+  min-height: 54px;
+}
+
+.fluent-nav-rail--collapsed .fluent-nav-rail__brand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.fluent-nav-rail__brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--colorNeutralStroke1);
+  background: #fff;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.fluent-nav-rail__brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fluent-nav-rail__nav {
@@ -1457,16 +1493,17 @@ form input[type="radio"],
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--colorNeutralForeground3);
-  padding: 12px 10px 4px;
+  padding: 12px 12px 4px;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .fluent-nav-rail__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-radius: var(--radiusLarge);
+  border-radius: var(--radiusXLarge);
   padding: 8px 10px;
   min-height: 40px;
   color: var(--colorNeutralForeground2);
@@ -1492,18 +1529,46 @@ form input[type="radio"],
   background: var(--colorNeutralBackground4);
 }
 
-.fluent-nav-rail__item--active {
+/* Actif — rail replié : pastille pleine, icône blanche */
+.fluent-nav-rail__item--active-collapsed {
   background: var(--colorBrandBackground);
   color: #ffffff;
 }
 
-.fluent-nav-rail__item--active:hover {
+.fluent-nav-rail__item--active-collapsed:hover {
   background: var(--colorBrandBackgroundHover);
   color: #ffffff;
 }
 
-.fluent-nav-rail__item--active:active {
-  background: var(--colorBrandBackgroundPressed);
+/* Actif — rail déplié : fond bleu doux + barre d'accent à gauche */
+.fluent-nav-rail__item--active-expanded {
+  background: var(--ms-blue-soft);
+  color: var(--colorBrandForeground1);
+}
+
+.fluent-nav-rail__item--active-expanded:hover {
+  background: #d9eafa;
+  color: var(--colorBrandForeground1);
+}
+
+.fluent-nav-rail__item--active-expanded::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--colorBrandBackground);
+}
+
+/* Rail replié : éléments centrés */
+.fluent-nav-rail--collapsed .fluent-nav-rail__item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  min-height: 44px;
 }
 
 .fluent-nav-rail__item--danger {
@@ -1534,8 +1599,8 @@ form input[type="radio"],
 
 .fluent-nav-rail__divider {
   height: 1px;
-  background: var(--colorNeutralStroke2);
-  margin: 6px 8px;
+  background: var(--colorNeutralStroke3);
+  margin: 6px 10px;
   flex-shrink: 0;
 }
 
@@ -1544,8 +1609,71 @@ form input[type="radio"],
   flex-direction: column;
   padding: 6px 6px 8px;
   gap: 2px;
-  border-top: 1px solid var(--colorNeutralStroke2);
+  border-top: 1px solid var(--colorNeutralStroke3);
   flex-shrink: 0;
+}
+
+/* ── Carte profil (pied du rail) ── */
+.fluent-nav-rail__profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radiusXLarge);
+  padding: 7px 10px;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--colorNeutralForeground2);
+  transition: background-color 120ms;
+}
+
+.fluent-nav-rail__profile:hover {
+  background: var(--colorNeutralBackground3);
+}
+
+.fluent-nav-rail__profile--active {
+  background: var(--ms-blue-soft);
+}
+
+.fluent-nav-rail--collapsed .fluent-nav-rail__profile {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.fluent-nav-rail__profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--colorNeutralBackground4);
+  color: var(--colorNeutralForeground1);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fluent-nav-rail__profile-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fluent-nav-rail__profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fluent-nav-rail__profile-role {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  white-space: nowrap;
 }
 
 .fluent-nav-rail__toggle {
@@ -1565,10 +1693,31 @@ form input[type="radio"],
   flex-shrink: 0;
 }
 
+.fluent-nav-rail--collapsed .fluent-nav-rail__toggle {
+  align-self: center;
+}
+
 .fluent-nav-rail__toggle:hover {
   background: var(--colorNeutralBackground3);
   color: var(--colorNeutralForeground1);
   border-color: var(--colorNeutralStroke1);
+}
+
+/* ── Infobulle au survol (rail replié) ── */
+.fluent-nav-rail__tooltip {
+  position: fixed;
+  z-index: 80;
+  transform: translateY(-50%);
+  background: #242424;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  box-shadow: var(--shadow8);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════════════════════

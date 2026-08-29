@@ -159,12 +159,19 @@ const SaleForm = ({
 
   /** Validation **/
   const validatePrices = () => {
+    // Totalise les quantités par produit : plusieurs lignes du même produit ne
+    // doivent pas dépasser le stock global (le backend les agrège).
+    const totals = new Map();
+    selectedProducts.forEach((item) => {
+      if (!item.product) return;
+      totals.set(item.product, (totals.get(item.product) || 0) + (Number(item.quantity) || 0));
+    });
     const newErrors = selectedProducts.map((item) => {
       if (!item.product) return 'Sélectionnez un produit';
       const product = products.find(p => p._id === item.product);
       if (!product) return 'Produit invalide';
       if (!item.quantity || item.quantity <= 0) return 'Quantité invalide';
-      if (item.quantity > product.stock) return `Stock insuffisant (${product.stock} disponibles)`;
+      if (totals.get(item.product) > Number(product.stock)) return `Stock insuffisant (${product.stock} disponibles au total)`;
       if (item.price < product.costPrice) return `Prix trop bas (min: ${product.costPrice} CFA)`;
       return null;
     });
@@ -350,8 +357,11 @@ const SaleForm = ({
       };
       await onSubmit(payload);
       resetForm();
-    } catch {
-      setFormError('Erreur lors de la création de la vente.');
+    } catch (error) {
+      setFormError(
+        error?.response?.data?.message ||
+        'Erreur lors de la création de la vente.'
+      );
     } finally {
       setIsSubmitting(false);
     }

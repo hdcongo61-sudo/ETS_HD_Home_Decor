@@ -129,16 +129,29 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX) || 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
+  // Le branding public est chargé très souvent (page de connexion, hot reload
+  // dev). Il dispose de son propre limiteur généreux juste en dessous.
+  skip: (req) => req.path === '/api/app-settings/public',
 });
 app.use(limiter);
+
+// Branding public : données non sensibles, lues à chaque chargement de l'app.
+const publicSettingsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+app.use('/api/app-settings/public', publicSettingsLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many login attempts. Please try again after 15 minutes',
+  message: { message: 'Too many login attempts. Please try again after 15 minutes' },
 });
 app.use('/api/users/login', authLimiter);
 app.use('/api/users/password-update-request', authLimiter);

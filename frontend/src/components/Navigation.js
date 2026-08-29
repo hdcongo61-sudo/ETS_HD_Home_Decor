@@ -205,7 +205,7 @@ const Navigation = () => {
           {/* === Logo === */}
           <Link
             to="/"
-            className="group flex shrink-0 items-center gap-2.5 rounded-md px-0.5 py-0.5 mr-1"
+            className="group flex shrink-0 items-center gap-2.5 rounded-md px-0.5 py-0.5 mr-1 md:hidden"
             onClick={closeMenu}
           >
             <img
@@ -245,16 +245,30 @@ const Navigation = () => {
             <LocationSwitcher />
           )}
 
+          {/* Nouvelle vente — desktop only (hidden for platform operators) */}
+          {auth.isAuthenticated && !(auth.isSuperAdmin && !sessionStorage.getItem('impersonating')) && (
+            <div className="hidden md:block shrink-0">
+              <Link
+                to="/sales#sale-form"
+                onClick={closeMenu}
+                className="ms-button ms-button-primary ms-button-sm"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden lg:inline">Nouvelle vente</span>
+              </Link>
+            </div>
+          )}
+
           {/* Quick Access button — desktop only (hidden for platform operators) */}
           {auth.isAuthenticated && !(auth.isSuperAdmin && !sessionStorage.getItem('impersonating')) && (
             <div className="relative hidden md:block">
               <button
                 type="button"
                 onClick={() => setQuickAccessOpen((o) => !o)}
-                className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 border text-[13px] font-medium transition-colors ${
+                className={`flex h-9 items-center gap-2 rounded-full px-3.5 border text-[13px] font-medium transition-all ${
                   quickAccessOpen
-                    ? 'bg-[var(--colorBrandBackground)] border-[var(--colorBrandBackground)] text-white'
-                    : 'border-[var(--colorNeutralStroke2)] bg-transparent text-[var(--colorNeutralForeground2)] hover:bg-[var(--colorNeutralBackground2)]'
+                    ? 'bg-[var(--colorBrandBackground)] border-[var(--colorBrandBackground)] text-white shadow-sm'
+                    : 'border-[var(--colorNeutralStroke1)] bg-[var(--colorNeutralBackground1)] text-[var(--colorNeutralForeground2)] shadow-[var(--shadow2)] hover:bg-[var(--colorNeutralBackground2)]'
                 }`}
                 aria-label="Accès rapide"
                 aria-expanded={quickAccessOpen}
@@ -289,7 +303,7 @@ const Navigation = () => {
               setQuery={setQuery}
               results={results}
               onSelectResult={handleSelectResult}
-              className="hidden w-52 shrink-0 md:block lg:w-60 xl:w-72"
+              className="hidden w-56 shrink-0 md:block lg:w-72 xl:w-80"
               compact
             />
           )}
@@ -312,7 +326,7 @@ const Navigation = () => {
             <Link
               to="/profile"
               onClick={closeMenu}
-              className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] hover:bg-[var(--ms-surface-muted)] transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] hover:bg-[var(--ms-surface-muted)] transition-colors xl:hidden"
               aria-label="Profil"
             >
               {auth.user?.photo ? (
@@ -320,6 +334,28 @@ const Navigation = () => {
               ) : (
                 <span className="text-[var(--ms-text)] font-semibold text-xs">{userInitial}</span>
               )}
+            </Link>
+            <Link
+              to="/profile"
+              onClick={closeMenu}
+              className="hidden xl:flex items-center gap-2.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] pl-1 pr-3 h-9 hover:bg-[var(--ms-bg-subtle)] transition-colors"
+              aria-label="Profil"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full overflow-hidden bg-[var(--ms-bg-subtle)]">
+                {auth.user?.photo ? (
+                  <img src={auth.user.photo} alt={auth.user.name || "Profil"} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[var(--ms-text)] font-semibold text-xs">{userInitial}</span>
+                )}
+              </span>
+              <span className="min-w-0 text-left leading-tight">
+                <span className="block max-w-[150px] truncate text-[13px] font-semibold text-[var(--ms-text-strong)]">
+                  {auth.user?.name || "Profil"}
+                </span>
+                <span className="block text-[11px] text-[var(--ms-text-muted)]">
+                  {auth.isSuperAdmin ? "Super admin" : auth.isAdmin ? "Administrateur" : "Membre"}
+                </span>
+              </span>
             </Link>
 
           </div>

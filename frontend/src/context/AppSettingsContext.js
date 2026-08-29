@@ -9,11 +9,48 @@ const AppSettingsContext = createContext({
   setAppSettings: () => {},
 });
 
+// Cache court (sessionStorage) : évite de re-frapper /app-settings/public à
+// chaque hot reload ou double-montage (StrictMode) et prévient le 429.
+const SETTINGS_CACHE_KEY = 'hd_app_settings_cache_v1';
+const SETTINGS_CACHE_TTL = 60 * 1000;
+
+const readSettingsCache = () => {
+  try {
+    if (typeof sessionStorage === 'undefined') return null;
+    const raw = sessionStorage.getItem(SETTINGS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.savedAt && Date.now() - parsed.savedAt < SETTINGS_CACHE_TTL) {
+      return parsed.settings;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const writeSettingsCache = (settings) => {
+  try {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ settings, savedAt: Date.now() }));
+  } catch {
+    // stockage indisponible : on ignore
+  }
+};
+
 export const AppSettingsProvider = ({ children }) => {
   const [appSettings, setAppSettingsState] = useState(DEFAULT_APP_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadAppSettings = async () => {
+  const loadAppSettings = async (force = false) => {
+    if (!force) {
+      const cached = readSettingsCache();
+      if (cached) {
+        setAppSettingsState(normalizeAppSettings(cached));
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       // When logged in, load THIS shop's settings (tenant-scoped). Otherwise
       // fall back to the public branding for the login page.
@@ -31,6 +68,7 @@ export const AppSettingsProvider = ({ children }) => {
         }
       }
       setAppSettingsState(normalizeAppSettings(data));
+      writeSettingsCache(data);
     } catch (error) {
       console.error('Unable to load app settings', error);
       setAppSettingsState(DEFAULT_APP_SETTINGS);
@@ -58,7 +96,7 @@ export const AppSettingsProvider = ({ children }) => {
     () => ({
       appSettings,
       isLoading,
-      refreshAppSettings: loadAppSettings,
+      refreshAppSettings: () => loadAppSettings(true),
       setAppSettings: (nextSettings) => setAppSettingsState(normalizeAppSettings(nextSettings)),
     }),
     [appSettings, isLoading]
