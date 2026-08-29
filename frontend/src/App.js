@@ -16,6 +16,7 @@ import PushNotificationManager from './components/PushNotificationManager';
 import AppLayout from './components/AppLayout';
 import BottomTabBar from './components/BottomTabBar';
 import AppLoader from './components/AppLoader';
+import RouteProgressBar from './components/RouteProgressBar';
 import ScrollToTop from './components/ScrollToTop';
 import { AppSettingsProvider } from './context/AppSettingsContext';
 import { DashboardDataProvider } from './context/DashboardDataContext';
@@ -101,6 +102,7 @@ function ApplicationShell() {
   return (
     <div className="app-root-shell min-h-screen flex flex-col">
       <ServerWakeup />
+      <RouteProgressBar />
       {showAuthenticatedShell && (
         <>
           <TrialBanner />

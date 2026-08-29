@@ -11,23 +11,33 @@ import { resolveAppLogo } from '../utils/appBranding';
 export default function AppLoader({ fullScreen = true, text = 'Chargement...', textClassName = 'text-gray-500' }) {
   const { appSettings } = useAppSettings();
   const logoUrl = resolveAppLogo(appSettings.branding.logoUrl);
+  const appName = appSettings.branding.appName || 'HD Gestion';
 
   const content = (
-    <div className="flex flex-col items-center justify-center gap-4">
-      <img
-        src={logoUrl}
-        alt={appSettings.branding.shortName || appSettings.branding.appName}
-        className="app-loader-logo w-14 h-14 md:w-16 md:h-16 rounded-xl object-contain border border-gray-200 shadow-md bg-white"
-      />
-      {text && (
-        <p className={`text-sm font-medium animate-pulse ${textClassName}`}>{text}</p>
-      )}
+    <div className="flex flex-col items-center justify-center gap-5">
+      <div className="relative">
+        <span className="app-loader-ring absolute -inset-3 rounded-[22px]" aria-hidden="true" />
+        <img
+          src={logoUrl}
+          alt={appSettings.branding.shortName || appName}
+          className="app-loader-logo relative h-16 w-16 rounded-2xl border border-gray-200 bg-white object-contain shadow-md"
+        />
+      </div>
+      <div className="flex flex-col items-center gap-1.5">
+        <p className="max-w-[240px] truncate text-sm font-semibold text-gray-700">{appName}</p>
+        {text && <p className={`text-xs font-medium ${textClassName}`}>{text}</p>}
+      </div>
+      <div className="app-loader-dots flex items-center gap-1.5" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] w-full p-8">
+      <div className="app-loader-screen flex w-full items-center justify-center p-8">
         {content}
       </div>
     );

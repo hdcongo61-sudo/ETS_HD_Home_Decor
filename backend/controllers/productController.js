@@ -6,6 +6,7 @@ const Supplier = require('../models/supplierModel');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
+const { issueStock, receiveStock } = require('../services/inventoryService');
 
 const STOCK_MOVEMENT_REASONS = ['casse', 'cadeau', 'vol', 'peremption', 'usage_personnel', 'correction', 'autre'];
 const PRODUCT_LIST_FIELDS =
@@ -830,6 +831,46 @@ const updateProduct = async (req, res) => {
         description: `Produit mis à jour par ${userName} sans changement de données`,
         user: userId,
       });
+    }
+
+    // 🔄 Dual-write inventaire : un ajustement manuel du stock doit aussi
+    // mettre à jour InventoryBalance (sinon les ventes échouent en 409 alors
+    // que le formulaire produit affiche du stock).
+    const stockChange = changes.find((change) => change.field === 'stock');
+    if (stockChange) {
+      const previousStock = Number(stockChange.oldValue) || 0;
+      const nextStock = Number(stockChange.newValue) || 0;
+      const delta = nextStock - previousStock;
+      if (delta !== 0) {
+        const base = {
+          tenantId: req.tenantId,
+          locationId: req.locationId || null,
+          productId: product._id,
+          userId: req.user ? req.user._id : null,
+          note: 'Ajustement manuel du stock',
+          idempotencyKey: `adjust:${product._id}:${Date.now()}`,
+        };
+        if (delta > 0) {
+          await receiveStock({
+            ...base,
+            quantity: delta,
+            unitCost: Number(product.costPrice) || 0,
+            type: 'adjustment_in',
+          });
+        } else {
+          const issued = await issueStock({
+            ...base,
+            quantity: -delta,
+            unitCost: Number(product.costPrice) || 0,
+            type: 'adjustment_out',
+          });
+          if (issued.insufficient) {
+            return res.status(409).json({
+              message: 'Stock insuffisant dans l’inventaire pour cet ajustement.',
+            });
+          }
+        }
+      }
     }
 
     const updatedProduct = await product.save();

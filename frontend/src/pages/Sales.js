@@ -31,6 +31,7 @@ import {
   Coins,
   Package,
   PackageMinus,
+  TrendingDown,
   Plus,
   Search,
   UserPlus,
@@ -226,6 +227,39 @@ const AdvancedMetricCard = ({ title, value, change, icon, description, tone = 'b
       <p className="ms-kpi-title mt-3">{title}</p>
       <p className="ms-kpi-value" style={{ fontSize: 22 }}>{value}</p>
       {description && <p className="ms-kpi-context">{description}</p>}
+    </div>
+  );
+};
+
+// Proportional breakdown bar (revenue → cost / losses / net) — same visual language as Comptabilite.
+const ProfitCompositionBar = ({ total, segments }) => {
+  const safeTotal = total > 0 ? total : 1;
+  const visible = segments.filter((s) => s.value > 0);
+  return (
+    <div>
+      <div className="flex h-3.5 w-full overflow-hidden rounded-full" style={{ background: "var(--ms-surface-muted)" }}>
+        {visible.map((s) => (
+          <div
+            key={s.label}
+            className="h-full transition-all duration-300"
+            style={{ width: `${(s.value / safeTotal) * 100}%`, background: s.color }}
+            title={`${s.label} : ${Math.round(Number(s.value) || 0).toLocaleString("fr-FR")} CFA`}
+          />
+        ))}
+      </div>
+      <ul className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {segments.map((s) => (
+          <li key={s.label} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+            <span className="min-w-0">
+              <span className="block fui-caption2 truncate" style={{ color: "var(--ms-text-muted)" }}>{s.label}</span>
+              <span className="block fui-caption1 font-semibold tabular-nums" style={{ color: "var(--ms-text-strong)" }}>
+                {Math.round((s.value / safeTotal) * 100)}%
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
@@ -560,7 +594,7 @@ const ProfitAnalysis = () => {
     ] : []),
     { title: "Coût des marchandises", value: cfa(gs.totalCost), icon: <Package className="h-4 w-4" />, tone: "neutral", ctx: "COGS sur la période" },
     { title: "Bénéfice brut attendu", value: cfa(gs.grossProfit != null ? gs.grossProfit : gs.totalProfit), icon: <TrendingUp className="h-4 w-4" />, tone: "success", ctx: "Ventes de la période (CA − coût)" },
-    { title: "Pertes casse/cadeau", value: lossCost ? `- ${cfa(lossCost)}` : cfa(0), icon: <PackageMinus className="h-4 w-4" />, tone: lossCost > 0 ? "danger" : "neutral", ctx: `Casse ${cfa(gs.lossCasse || 0)} · Cadeau ${cfa(gs.lossCadeau || 0)}` },
+    { title: "Pertes casse/cadeau", value: lossCost ? cfa(-lossCost) : cfa(0), icon: <PackageMinus className="h-4 w-4" />, tone: lossCost > 0 ? "danger" : "neutral", ctx: `Casse ${cfa(gs.lossCasse || 0)} · Cadeau ${cfa(gs.lossCadeau || 0)}${gs.lossOther > 0 ? ` · Autre ${cfa(gs.lossOther)}` : ''}` },
     { title: "Bénéfice net attendu", value: cfa(netProfit), icon: <Coins className="h-4 w-4" />, tone: netProfit >= 0 ? "success" : "danger", ctx: "Brut − pertes (à pleine encaisse)" },
     { title: "Marge nette", value: pctOf(gs.netMargin != null ? gs.netMargin : gs.averageMargin), icon: <Percent className="h-4 w-4" />, tone: (gs.netMargin ?? 0) >= 0 ? "success" : "danger", ctx: "Net ÷ CA" },
   ];
@@ -596,6 +630,64 @@ const ProfitAnalysis = () => {
           Le détail par produit/catégorie couvre {gs.detailCoverage}% du chiffre d'affaires (certaines anciennes ventes n'ont pas le détail de marge enregistré).
         </div>
       )}
+
+      {/* Hero: net result + revenue composition */}
+      <section
+        className="ms-surface overflow-hidden"
+        style={{ borderColor: netProfit >= 0 ? "var(--colorStatusSuccessStroke1)" : "var(--colorStatusDangerStroke1)" }}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
+          <div
+            className="p-6 flex flex-col justify-between gap-4"
+            style={{ background: netProfit >= 0 ? "var(--colorStatusSuccessBackground1)" : "var(--colorStatusDangerBackground1)" }}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="fui-caption1 font-semibold uppercase tracking-wide"
+                style={{ color: netProfit >= 0 ? "var(--colorStatusSuccessForeground1)" : "var(--colorStatusDangerForeground1)" }}
+              >
+                Bénéfice net attendu
+              </span>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+                style={{
+                  background: "var(--ms-white)",
+                  color: netProfit >= 0 ? "var(--colorStatusSuccessForeground1)" : "var(--colorStatusDangerForeground1)",
+                }}
+              >
+                {netProfit >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                {pctOf(gs.netMargin != null ? gs.netMargin : gs.averageMargin)} du CA
+              </span>
+            </div>
+            <div>
+              <p
+                className="fui-display tabular-nums leading-none"
+                style={{ color: netProfit >= 0 ? "var(--colorStatusSuccessForeground1)" : "var(--colorStatusDangerForeground1)" }}
+              >
+                {cfa(netProfit)}
+              </p>
+              <p className="fui-caption1 mt-2" style={{ color: "var(--ms-text-muted)" }}>
+                Brut − pertes (à pleine encaisse) · {(gs.saleCount || 0).toLocaleString("fr-FR")} vente(s)
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6 flex flex-col justify-center gap-4">
+            <div className="flex items-center justify-between">
+              <span className="ms-section-title">Où va le chiffre d'affaires</span>
+              <span className="fui-subtitle2 tabular-nums" style={{ color: "var(--ms-text-strong)" }}>{cfa(gs.totalRevenue)}</span>
+            </div>
+            <ProfitCompositionBar
+              total={gs.totalRevenue}
+              segments={[
+                { label: "Coût marchandises", value: gs.totalCost, color: "var(--ms-blue)" },
+                { label: "Pertes casse/cadeau", value: lossCost, color: "var(--ms-danger)" },
+                { label: "Bénéfice net attendu", value: Math.max(netProfit, 0), color: "var(--ms-success)" },
+              ]}
+            />
+          </div>
+        </div>
+      </section>
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">

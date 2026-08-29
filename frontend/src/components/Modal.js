@@ -134,7 +134,7 @@ const Modal = ({
       aria-describedby={subtitle ? subtitleId : undefined}
     >
       <motion.div
-        className="fixed inset-x-0 bottom-0 top-0 z-0 md:top-[var(--app-nav-offset,0px)] bg-[rgba(32,31,30,0.36)] backdrop-blur-sm"
+        className="fixed inset-x-0 bottom-0 top-0 z-0 md:top-[var(--app-nav-offset,0px)] bg-[rgba(32,31,30,0.42)] backdrop-blur-[3px]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -147,16 +147,16 @@ const Modal = ({
         <motion.div
           ref={panelRef}
           tabIndex={-1}
-          initial={{ opacity: 0, y: 28, scale: 0.985 }}
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 24, scale: reduceMotion ? 1 : 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 18, scale: 0.985 }}
-          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 }}
+          exit={{ opacity: 0, y: reduceMotion ? 0 : 12, scale: reduceMotion ? 1 : 0.985 }}
+          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 34, mass: 0.85 }}
           className={`
             pointer-events-auto relative flex w-full ${sizeClasses[size] || sizeClasses.md} flex-col overflow-hidden
             bg-[var(--ms-white)] text-[var(--ms-text)]
-            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-lg'}
-            border border-[var(--ms-border)] sm:max-h-[min(88dvh,860px)] sm:rounded-lg
-            shadow-[var(--ms-shadow-lg)]
+            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-2xl'}
+            border border-[var(--colorNeutralStroke1)] sm:max-h-[min(88dvh,860px)] sm:rounded-2xl
+            shadow-[var(--shadow16)]
             safe-area-bottom
             ${panelClassName}
           `}
@@ -166,22 +166,25 @@ const Modal = ({
             <div className="h-1 w-10 rounded-full bg-[var(--ms-border)]" aria-hidden />
           </div>
 
-          <div className="shrink-0 border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 pb-4 pt-0 sm:px-6 sm:pt-5">
+          <div className="shrink-0 border-b border-[var(--colorNeutralStroke3)] bg-[var(--ms-white)] px-4 pb-4 pt-0 sm:px-6 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 {icon && (
-                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[var(--ms-border)] bg-[var(--ms-white)] text-[var(--ms-text)]">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-[var(--colorBrandForeground1)]"
+                    style={{ background: 'var(--ms-blue-soft)' }}
+                  >
                     {icon}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   {title && (
-                    <h2 id={titleId} className="truncate text-[17px] font-semibold text-[var(--ms-text-strong)] sm:text-xl">
+                    <h2 id={titleId} className="truncate text-[17px] font-semibold tracking-tight text-[var(--ms-text-strong)] sm:text-lg">
                       {title}
                     </h2>
                   )}
                   {subtitle && (
-                    <p id={subtitleId} className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--ms-text-muted)] sm:text-[15px]">
+                    <p id={subtitleId} className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-[var(--ms-text-muted)]">
                       {subtitle}
                     </p>
                   )}
@@ -214,7 +217,7 @@ const Modal = ({
           </div>
 
           {footer && (
-            <div className={`shrink-0 border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3 sm:px-6 sm:py-4 ${footerClassName}`}>
+            <div className={`shrink-0 border-t border-[var(--colorNeutralStroke3)] bg-[var(--ms-white)] px-4 py-3 sm:px-6 sm:py-4 ${footerClassName}`}>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 {footer}
               </div>
