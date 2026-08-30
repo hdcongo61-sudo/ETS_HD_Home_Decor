@@ -31,6 +31,7 @@ export const reportingApi = {
 
   // Export Excel legacy (v1) — rapport hebdo administrateur (blob).
   salesExport: (params) => api.get('/exports/sales-export', { params, responseType: 'blob' }),
+  weeklyDashboardExport: () => api.get('/dashboard/export/weekly', { responseType: 'blob' }),
 
   // Comptabilité v1 (finance & pilotage).
   comptabiliteSummary: (params) => api.get('/comptabilite/summary', { params }),

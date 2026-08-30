@@ -398,3 +398,217 @@ async function getUserSales(tenantId, userId) {
     sales: sales.slice(0, 10)
   };
 }
+
+// @desc    Export weekly analytical summary
+// @route   GET /api/dashboard/export/weekly
+// @access  Private/Admin
+exports.exportWeeklySummary = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const now = new Date();
+    const startWeek = new Date(now);
+    startWeek.setDate(now.getDate() - 7);
+    startWeek.setHours(0, 0, 0, 0);
+
+    // Récupérer les ventes de la semaine
+    const sales = await Sale.find({
+      tenantId,
+      saleDate: { $gte: startWeek },
+      status: { $nin: ['deleted', 'cancelled'] }
+    })
+      .populate('client', 'name')
+      .populate('products.product', 'name price')
+      .populate('createdBy', 'name email')
+      .lean();
+
+    // Agrégation par utilisateur
+    const userStats = {};
+    sales.forEach(sale => {
+      const userId = sale.createdBy?._id?.toString() || 'unknown';
+      if (!userStats[userId]) {
+        userStats[userId] = {
+          userName: sale.createdBy?.name || 'Utilisateur inconnu',
+          userEmail: sale.createdBy?.email || '',
+          totalAmount: 0,
+          totalProfit: 0,
+          totalPaid: 0,
+          salesCount: 0
+        };
+      }
+
+      const totalPaid = (sale.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+      const profit = (sale.profitData && sale.profitData.totalProfit) || sale.profit || 0;
+
+      userStats[userId].totalAmount += sale.totalAmount || 0;
+      userStats[userId].totalProfit += profit;
+      userStats[userId].totalPaid += totalPaid;
+      userStats[userId].salesCount += 1;
+    });
+
+    // Conversion en tableau et calculs
+    const ranking = Object.values(userStats).map(entry => ({
+      ...entry,
+      balance: entry.totalAmount - entry.totalPaid,
+      collectionRate: entry.totalAmount > 0 ? (entry.totalPaid / entry.totalAmount) * 100 : 0,
+      averageSale: entry.salesCount > 0 ? entry.totalAmount / entry.salesCount : 0
+    })).sort((a, b) => b.totalAmount - a.totalAmount);
+
+    // Calculs globaux
+    const totals = ranking.reduce(
+      (acc, curr) => {
+        acc.revenue += curr.totalAmount;
+        acc.profit += curr.totalProfit;
+        acc.paid += curr.totalPaid;
+        acc.balance += curr.balance;
+        acc.sales += curr.salesCount;
+        return acc;
+      },
+      { revenue: 0, profit: 0, paid: 0, balance: 0, sales: 0 }
+    );
+
+    const excel = require('exceljs');
+    const workbook = new excel.Workbook();
+    const worksheet = workbook.addWorksheet('Résumé hebdomadaire');
+
+    // Titre et période
+    worksheet.mergeCells('A1:G1');
+    const titleRow = worksheet.getCell('A1');
+    titleRow.value = 'Résumé analytique hebdomadaire';
+    titleRow.font = { bold: true, size: 16, color: { argb: 'FF0F172A' } };
+    titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('A2:G2');
+    const periodRow = worksheet.getCell('A2');
+    periodRow.value = `Période: ${startWeek.toLocaleDateString('fr-FR')} - ${now.toLocaleDateString('fr-FR')}`;
+    periodRow.font = { size: 12, color: { argb: 'FF64748B' } };
+    periodRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.addRow([]);
+
+    // Section : Indicateurs globaux
+    worksheet.addRow(['INDICATEURS GLOBAUX']);
+    const globalHeaderRow = worksheet.lastRow;
+    globalHeaderRow.font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
+    globalHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2E8F0' }
+    };
+
+    worksheet.addRow(['Vendeurs actifs', ranking.length]);
+    worksheet.addRow(['Nombre de ventes', totals.sales]);
+    worksheet.addRow(['Chiffre d\'affaires', totals.revenue, 'CFA']);
+    worksheet.addRow(['Bénéfice total', totals.profit, 'CFA']);
+    worksheet.addRow(['Encaissements', totals.paid, 'CFA']);
+    worksheet.addRow(['Reste à encaisser', totals.balance, 'CFA']);
+    worksheet.addRow(['Taux de recouvrement', totals.revenue > 0 ? ((totals.paid / totals.revenue) * 100).toFixed(1) : 0, '%']);
+    worksheet.addRow(['Panier moyen', totals.sales > 0 ? (totals.revenue / totals.sales).toFixed(0) : 0, 'CFA']);
+
+    worksheet.addRow([]);
+
+    // Section : Classement par vendeur
+    worksheet.addRow(['CLASSEMENT PAR VENDEUR']);
+    const rankingHeaderRow = worksheet.lastRow;
+    rankingHeaderRow.font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
+    rankingHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2E8F0' }
+    };
+
+    worksheet.addRow([]);
+
+    // En-têtes du tableau
+    const tableHeaders = [
+      'Vendeur',
+      'Email',
+      'Ventes',
+      'CA (CFA)',
+      'Bénéfice (CFA)',
+      'Encaissement (%)',
+      'Solde (CFA)',
+      'Panier moyen (CFA)'
+    ];
+    worksheet.addRow(tableHeaders);
+    const headerRow = worksheet.lastRow;
+    headerRow.eachCell(cell => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0F766E' }
+      };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Données des vendeurs
+    ranking.forEach((entry, index) => {
+      const row = worksheet.addRow([
+        entry.userName,
+        entry.userEmail,
+        entry.salesCount,
+        entry.totalAmount,
+        entry.totalProfit,
+        entry.collectionRate.toFixed(1),
+        entry.balance,
+        entry.averageSale.toFixed(0)
+      ]);
+
+      // Mise en forme
+      row.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+
+        // Highlight du meilleur vendeur
+        if (index === 0) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF0FDF4' }
+          };
+        }
+
+        // Formatage des montants
+        if ([4, 5, 7, 8].includes(colNumber)) {
+          cell.numFmt = '#,##0';
+        }
+        if (colNumber === 6) {
+          cell.numFmt = '0.0';
+        }
+      });
+    });
+
+    // Ajuster les largeurs de colonnes
+    worksheet.columns = [
+      { width: 25 },
+      { width: 30 },
+      { width: 12 },
+      { width: 18 },
+      { width: 18 },
+      { width: 18 },
+      { width: 18 },
+      { width: 20 }
+    ];
+
+    // Générer le fichier
+    const filename = `resume-analytique-hebdo-${now.toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Erreur export résumé hebdomadaire:', err);
+    res.status(500).json({ message: 'Erreur lors de l\'export du résumé hebdomadaire' });
+  }
+};

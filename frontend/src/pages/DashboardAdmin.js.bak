@@ -508,38 +508,17 @@ const DashboardAdmin = () => {
     }
   };
 
-  const exportCurrentWeekSummary = async () => {
-    try {
-      setReportActionLoading('weekly-summary');
-      const response = await reportingApi.weeklyDashboardExport();
-      const blob = new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `resume-analytique-hebdo-${new Date().toISOString().split('T')[0]}.xlsx`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      setAdminMessage('Export du résumé hebdomadaire généré avec succès.');
-    } catch (err) {
-      setAdminMessage(err.response?.data?.message || "Impossible de générer l'export du résumé hebdomadaire.");
-    } finally {
-      setReportActionLoading('');
-    }
-  };
-
   const exportWeeklyPdf = async () => {
     try {
-      setReportActionLoading('pdf');
+      setReportActionLoading(‘pdf’);
       const weeklySummary = await fetchWeeklySummary();
       const [jsPDFModule, autoTableModule] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable'),
+        import(‘jspdf’),
+        import(‘jspdf-autotable’),
       ]);
       const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default?.jsPDF || jsPDFModule.default;
       const autoTable = autoTableModule.default || autoTableModule;
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const doc = new jsPDF({ orientation: ‘landscape’, unit: ‘pt’, format: ‘a4’ });
 
       doc.setFontSize(18);
       doc.text(`${company.name} — Rapport hebdomadaire`, 40, 40);
@@ -548,20 +527,20 @@ const DashboardAdmin = () => {
 
       autoTable(doc, {
         startY: 80,
-        head: [['Indicateur', 'Valeur']],
+        head: [[‘Indicateur’, ‘Valeur’]],
         body: [
-          ['Vendeurs actifs', `${weeklySummary.sellersCount}`],
-          ['Chiffre d’affaires', formatCFA(weeklySummary.totalRevenue)],
-          ['Bénéfice', formatCFA(weeklySummary.totalProfit)],
-          ['Encaissements', formatCFA(weeklySummary.totalPaid)],
-          ['Reste à encaisser', formatCFA(weeklySummary.totalBalance)],
-          ['Taux de recouvrement', formatPercent(weeklySummary.collectionRate)],
+          [‘Vendeurs actifs’, `${weeklySummary.sellersCount}`],
+          [‘Chiffre d\’affaires’, formatCFA(weeklySummary.totalRevenue)],
+          [‘Bénéfice’, formatCFA(weeklySummary.totalProfit)],
+          [‘Encaissements’, formatCFA(weeklySummary.totalPaid)],
+          [‘Reste à encaisser’, formatCFA(weeklySummary.totalBalance)],
+          [‘Taux de recouvrement’, formatPercent(weeklySummary.collectionRate)],
         ],
       });
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 20,
-        head: [['Vendeur', 'CA', 'Bénéfice', 'Encaissement', 'Solde']],
+        head: [[‘Vendeur’, ‘CA’, ‘Bénéfice’, ‘Encaissement’, ‘Solde’]],
         body: weeklySummary.ranking.slice(0, 8).map((entry) => [
           entry.userName,
           formatCFA(entry.totalAmount),
@@ -571,11 +550,32 @@ const DashboardAdmin = () => {
         ]),
       });
 
-      doc.save(`rapport-admin-hebdo-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`rapport-admin-hebdo-${new Date().toISOString().split(‘T’)[0]}.pdf`);
     } catch (err) {
-      setAdminMessage(err.response?.data?.message || "Impossible de générer l'export PDF.");
+      setAdminMessage(err.response?.data?.message || ‘Impossible de générer l\’export PDF.’);
     } finally {
-      setReportActionLoading('');
+      setReportActionLoading(‘’);
+    }
+  };
+
+  const exportCurrentWeekSummary = async () => {
+    try {
+      setReportActionLoading(‘weekly-summary’);
+      const response = await reportingApi.weeklyDashboardExport();
+      const blob = new Blob([response.data], {
+        type: ‘application/vnd.openxmlformats-officedocument.spreadsheetml.sheet’,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement(‘a’);
+      link.href = url;
+      link.download = `resume-analytique-hebdo-${new Date().toISOString().split(‘T’)[0]}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setAdminMessage(‘Export du résumé hebdomadaire généré avec succès.’);
+    } catch (err) {
+      setAdminMessage(err.response?.data?.message || ‘Impossible de générer l\’export du résumé hebdomadaire.’);
+    } finally {
+      setReportActionLoading(‘’);
     }
   };
 
@@ -869,10 +869,26 @@ const DashboardAdmin = () => {
               </div>
 
               <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 shadow-[var(--ms-shadow-sm)] sm:p-5">
-                <h2 className="text-xl font-semibold text-[var(--ms-text)]">Pouls commercial</h2>
-                <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
-                  Chargement séparé pour garder l’ouverture de page rapide.
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold text-[var(--ms-text)]">Pouls commercial</h2>
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">
+                      Chargement séparé pour garder l’ouverture de page rapide.
+                    </p>
+                  </div>
+                  {!salesLoading && !salesError && canExport && (
+                    <button
+                      type="button"
+                      onClick={exportCurrentWeekSummary}
+                      disabled={reportActionLoading === ‘weekly-summary’}
+                      className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 hover:bg-[var(--ms-bg-subtle)] disabled:opacity-50"
+                      title="Exporter le résumé analytique de la semaine courante"
+                    >
+                      <Download className="h-4 w-4" />
+                      {reportActionLoading === ‘weekly-summary’ ? ‘Export...’ : ‘Exporter’}
+                    </button>
+                  )}
+                </div>
 
                 {salesError ? (
                   <div className="mt-4 rounded-lg border border-red-200 bg-[var(--ms-danger)]/10 p-4 text-sm text-[var(--ms-danger)]">
