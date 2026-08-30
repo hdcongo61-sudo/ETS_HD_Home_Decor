@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Images, Search } from 'lucide-react';
+import { ArrowLeft, Save, Images, Search, Palette } from 'lucide-react';
 import api from '../services/api';
 import {
   Button,
@@ -420,6 +420,22 @@ const EditProductForm = () => {
       {/* Variant Manager Section */}
       {product && (
         <Surface className="max-w-5xl p-4 sm:p-6 mt-4">
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="rounded-lg bg-blue-100 p-2">
+              <Palette className="h-5 w-5 text-blue-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900">Gérer les variantes de ce produit</h3>
+              <p className="mt-1 text-sm text-blue-700">
+                Les variantes permettent de vendre le même produit avec différentes options (tailles, couleurs, etc.).
+                {' '}
+                <Link to="/attributes" className="font-medium underline hover:no-underline">
+                  Configurez d'abord les attributs
+                </Link>
+                {' '}dans Paramètres → Listes de référence → Attributs de variantes, puis revenez ici pour générer les combinaisons.
+              </p>
+            </div>
+          </div>
           <VariantManager productId={product._id} productName={product.name} />
         </Surface>
       )}

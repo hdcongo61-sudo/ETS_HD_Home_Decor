@@ -21,6 +21,7 @@ const TABS = [
   { key: 'containers', label: 'Conteneurs', endpoint: '/lookups/containers', icon: Boxes },
   { key: 'warehouses', label: 'Entrepôts', endpoint: '/lookups/warehouses', icon: Warehouse },
   { key: 'suppliers', label: 'Fournisseurs', endpoint: '/lookups/suppliers', icon: Truck },
+  { key: 'attributes', label: 'Attributs de variantes', endpoint: '/attributes', icon: Palette, isLink: true },
 ];
 
 // Top-level settings sections — drive the desktop sidebar and the mobile pill switcher.
@@ -1972,11 +1973,24 @@ const Settings = () => {
         <div className="px-4 pt-4 sm:px-6">
           <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Listes de référence</h2>
           <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            Catégories, conteneurs, entrepôts et fournisseurs utilisés dans toute l'application.
+            Catégories, conteneurs, entrepôts, fournisseurs et attributs de variantes utilisés dans toute l'application.
           </p>
           <div className="fui-pivot mt-3">
             {TABS.map((tab) => {
               const Icon = tab.icon;
+              if (tab.isLink) {
+                return (
+                  <a
+                    key={tab.key}
+                    href={tab.endpoint}
+                    className="fui-pivot__tab inline-flex items-center gap-2"
+                  >
+                    <Icon size={15} />
+                    {tab.label}
+                    <ArrowUpRight size={14} />
+                  </a>
+                );
+              }
               return (
                 <button
                   key={tab.key}

@@ -762,7 +762,8 @@ const renderLossChip = (lossMap, p) => {
   const parts = [];
   if (l.casse) parts.push(`${l.casse} cassé${l.casse > 1 ? 's' : ''}`);
   if (l.cadeau) parts.push(`${l.cadeau} offert${l.cadeau > 1 ? 's' : ''}`);
-  if (l.autres) parts.push(`${l.autres} sortie${l.autres > 1 ? 's' : ''}`);
+  // Note: l.autres (autres sorties) retiré car cumulatif historique, confusant vs stock actuel
+  if (parts.length === 0) return null;
   return (
     <span className="ms-status-badge ms-status-warning mt-1 inline-flex items-center gap-1" title="Sorties hors vente (casse / cadeau)">
       <PackageMinus className="h-3 w-3" /> {parts.join(' · ')}
