@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
+
+const cfaFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 
 const AuthContext = createContext();
 
@@ -38,6 +41,14 @@ export const AuthProvider = ({ children }) => {
           tenant: data.tenant || null,
           isLoading: false,
         });
+
+        // Congratulate once per renewal — covers the reactivation flow (paying
+        // from /access-restricted reloads the app straight into this check).
+        const congrats = data?.tenant?.renewalCongrats;
+        if (congrats) {
+          const amountLabel = congrats.amount ? ` de ${cfaFormatter.format(congrats.amount)} F CFA` : '';
+          toast.success(`Paiement${amountLabel} reçu, merci ! Votre abonnement est actif.`, { duration: 6000 });
+        }
       } catch (error) {
         if (error.response?.status === 403) {
           const code = error.response.data?.code;

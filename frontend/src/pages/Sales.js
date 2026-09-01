@@ -47,7 +47,6 @@ import { Bar, Line, Pie, Doughnut } from "react-chartjs-2";
 import AuthContext from "../context/AuthContext";
 import ChartSetup from "../components/ChartSetup";
 import useAutoClearMessage from "../hooks/useAutoClearMessage";
-import useResponsiveTable from "../hooks/useResponsiveTable";
 import {
   calculateSaleTotals,
   calculateSaleProfit,
@@ -689,8 +688,8 @@ const ProfitAnalysis = () => {
         </div>
       </section>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      {/* KPI strip — 3 columns max so big CFA amounts have room to breathe */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {kpis.map((k) => (
           <KPICard key={k.title} title={k.title} value={k.value} context={k.ctx} icon={k.icon} tone={k.tone} />
         ))}
@@ -1931,8 +1930,6 @@ const Sales = () => {
     },
   ];
 
-  const statusTableRef = useRef(null);
-  useResponsiveTable(statusTableRef, [dashboardData?.statusStats]);
 
   /* ========= Barre de filtres rapides ========= */
   const quickFilterConfig = [
@@ -2889,80 +2886,42 @@ const Sales = () => {
                       </div>
                     </div>
                   </GlassCard>
-
-                  {/* Statut des ventes */}
-                  <GlassCard>
-                    <section className="p-5" aria-labelledby="status-sales-heading">
-                      <p id="status-sales-heading" className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                        Statut des ventes
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex justify-center md:justify-start">
-                          <div className="w-full max-w-[260px] h-[220px] sm:h-[260px] mx-auto md:max-w-none md:w-full md:h-[200px]">
-                            <Pie
-                              data={statusChart}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: true,
-                                plugins: { legend: { position: "top" } },
-                              }}
-                            />
-                          </div>
-                        </div>
-                        {/* Desktop: table */}
-                        <div className="hidden md:block overflow-visible">
-                          <table ref={statusTableRef} className="w-full text-left">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-sm font-medium text-gray-600 rounded-tl-xl">Statut</th>
-                                <th className="px-4 py-2 text-sm font-medium text-gray-600 text-right">Nombre</th>
-                                <th className="px-4 py-2 text-sm font-medium text-gray-600 text-right rounded-tr-xl">Montant</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {[
-                                ["Payée", "completed"],
-                                ["Partiellement payée", "partially_paid"],
-                                ["En attente", "pending"],
-                                ["Annulée", "cancelled"],
-                              ].map(([label, key]) => (
-                                <tr key={key}>
-                                  <td className="px-4 py-3 text-sm text-gray-900">{label}</td>
-                                  <td className="px-4 py-3 text-sm text-right tabular-nums">{dashboardData.statusStats?.[key]?.count || 0}</td>
-                                  <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-600">{(dashboardData.statusStats?.[key]?.totalAmount || 0).toLocaleString("fr-FR")} CFA</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        {/* Mobile: status cards list */}
-                        <div className="md:hidden space-y-3">
-                          {[
-                            ["Payée", "completed", "bg-green-50 border-green-200/80", "text-green-800"],
-                            ["Partiellement payée", "partially_paid", "bg-amber-50 border-amber-200/80", "text-amber-800"],
-                            ["En attente", "pending", "bg-[var(--ms-blue-soft)] border-[var(--ms-blue-soft)]", "text-[var(--ms-blue-dark)]"],
-                            ["Annulée", "cancelled", "bg-gray-100 border-gray-200/80", "text-gray-700"],
-                          ].map(([label, key, cardClass, textClass]) => {
-                            const count = dashboardData.statusStats?.[key]?.count || 0;
-                            const amount = dashboardData.statusStats?.[key]?.totalAmount || 0;
-                            return (
-                              <div
-                                key={key}
-                                className={`rounded-xl border p-4 ${cardClass}`}
-                              >
-                                <p className={`text-sm font-semibold ${textClass}`}>{label}</p>
-                                <div className="mt-2 flex items-baseline justify-between gap-2 text-sm text-gray-600">
-                                  <span>{count} vente{count !== 1 ? "s" : ""}</span>
-                                  <span className="tabular-nums font-medium text-gray-900">{amount.toLocaleString("fr-FR")} CFA</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </section>
-                  </GlassCard>
                 </div>
+
+                {/* Statut des ventes — pleine largeur : tuiles colorées + graphique */}
+                <GlassCard>
+                  <section className="p-5 sm:p-6" aria-labelledby="status-sales-heading">
+                    <p id="status-sales-heading" className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                      Statut des ventes
+                    </p>
+                    <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:items-center">
+                      <div className="mx-auto w-full max-w-[220px] h-[220px]">
+                        <Pie
+                          data={statusChart}
+                          options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom" } } }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          { label: "Payée", key: "completed", bg: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)', border: '1px solid var(--colorStatusSuccessStroke1)' },
+                          { label: "Partiellement payée", key: "partially_paid", bg: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)', border: '1px solid var(--colorStatusWarningStroke1)' },
+                          { label: "En attente", key: "pending", bg: 'var(--colorStatusInfoBackground1)', color: 'var(--colorStatusInfoForeground1)', border: '1px solid rgba(15,108,189,0.15)' },
+                          { label: "Annulée", key: "cancelled", bg: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', border: '1px solid var(--colorStatusDangerStroke1)' },
+                        ].map(({ label, key, bg, color, border }) => {
+                          const count = dashboardData.statusStats?.[key]?.count || 0;
+                          const amount = dashboardData.statusStats?.[key]?.totalAmount || 0;
+                          return (
+                            <div key={key} className="rounded-[var(--radiusLarge)] p-4" style={{ background: bg, border }}>
+                              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+                              <p className="fui-title3 mt-1 tabular-nums" style={{ color }}>{count}</p>
+                              <p className="fui-caption1 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{amount.toLocaleString("fr-FR")} CFA</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </section>
+                </GlassCard>
               </>
             )}
           </>

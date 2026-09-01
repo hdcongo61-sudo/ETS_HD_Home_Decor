@@ -14,8 +14,33 @@ import {
   TrendingDown,
   LineChart,
   FileText,
+  Truck,
+  Trophy,
+  Wallet,
 } from "lucide-react";
 import { Button, StatusBadge } from "./business";
+
+/* ------------------- Sale status / delivery labels ------------------- */
+const SALE_STATUS = {
+  completed: { label: "Payée", tone: "success" },
+  partially_paid: { label: "Partiel", tone: "warning" },
+  pending: { label: "En attente", tone: "neutral" },
+  cancelled: { label: "Annulée", tone: "danger" },
+  partially_returned: { label: "Retour partiel", tone: "warning" },
+  returned: { label: "Retournée", tone: "danger" },
+};
+
+const DELIVERY_STATUS = {
+  delivered: { label: "Livrée", tone: "success" },
+  not_delivered: { label: "Non livrée", tone: "danger" },
+  pending: null, // default state, not worth a badge
+};
+
+const PAYMENT_METHOD_LABELS = {
+  cash: "Espèces",
+  MobileMoney: "Mobile Money",
+  credit: "Crédit",
+};
 
 /* ------------------- Tone helpers ------------------- */
 const TONE_COLORS = {
@@ -104,6 +129,35 @@ const DayDetailsModal = ({
 
   const transactionCount = sales.length + expenses.length + payments.length;
 
+  const averageBasket = sales.length ? totals.totalSales / sales.length : 0;
+
+  const bestSale = useMemo(() => {
+    if (!sales.length) return null;
+    return sales.reduce((best, s) =>
+      Number(s?.totalAmount || 0) > Number(best?.totalAmount || 0) ? s : best
+    , sales[0]);
+  }, [sales]);
+
+  // Payment method split across the day's payments — surfaces cash vs Mobile Money vs credit balance.
+  const methodBreakdown = useMemo(() => {
+    const map = {};
+    payments.forEach((p) => {
+      const key = p?.method || "cash";
+      map[key] = (map[key] || 0) + Number(p?.amount || 0);
+      map.__total = (map.__total || 0) + Number(p?.amount || 0);
+    });
+    const total = map.__total || 0;
+    delete map.__total;
+    return Object.entries(map)
+      .map(([method, amount]) => ({
+        method,
+        label: PAYMENT_METHOD_LABELS[method] || method,
+        amount,
+        pct: total > 0 ? (amount / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [payments]);
+
   /* ------------------- Performance Summary ------------------- */
   const summary = useMemo(() => {
     const { totalSales, profit, profitMargin } = totals;
@@ -127,6 +181,7 @@ const DayDetailsModal = ({
 
   const metrics = [
     { label: "Ventes", value: formatCurrency(totals.totalSales), tone: "success", sub: `${sales.length} vente${sales.length > 1 ? "s" : ""}` },
+    { label: "Panier moyen", value: formatCurrency(averageBasket), tone: "neutral", sub: sales.length ? "Par vente" : "Aucune vente" },
     { label: "Encaissements", value: formatCurrency(totals.totalPayments), tone: "blue", sub: `${payments.length} paiement${payments.length > 1 ? "s" : ""}` },
     { label: "Dépenses", value: formatCurrency(totals.totalExpenses), tone: "danger", sub: `${expenses.length} dépense${expenses.length > 1 ? "s" : ""}` },
     { label: "Profit (caisse)", value: formatCurrency(totals.cashProfit), tone: totals.cashProfit >= 0 ? "success" : "danger", sub: "Encaissements − dépenses" },
@@ -194,6 +249,40 @@ const DayDetailsModal = ({
             ))}
           </div>
 
+          {/* Insight row — meilleure vente + répartition des encaissements */}
+          {(bestSale || methodBreakdown.length > 0) && (
+            <div className="grid grid-cols-1 gap-2.5 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-3 sm:grid-cols-2 sm:px-6 sm:py-4">
+              {bestSale && (
+                <div className="flex items-center gap-3 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(255,185,0,0.16)", color: "#835B00" }} aria-hidden>
+                    <Trophy size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Meilleure vente</p>
+                    <p className="truncate text-sm font-bold text-[var(--ms-text-strong)]">
+                      {formatCurrency(bestSale.totalAmount)} <span className="font-normal text-[var(--ms-text-muted)]">— {bestSale.client?.name || "Client non spécifié"}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+              {methodBreakdown.length > 0 && (
+                <div className="rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2.5">
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">
+                    <Wallet size={13} /> Encaissements par méthode
+                  </p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {methodBreakdown.map((m) => (
+                      <span key={m.method} className="text-xs font-semibold text-[var(--ms-text)]">
+                        {m.label}: <span className="tabular-nums text-[var(--ms-blue)]">{formatCurrency(m.amount)}</span>{" "}
+                        <span className="font-normal text-[var(--ms-text-muted)]">({m.pct.toFixed(0)}%)</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Mobile section tabs */}
           <div className="sm:hidden flex gap-1 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 shrink-0">
             {[
@@ -229,23 +318,38 @@ const DayDetailsModal = ({
                 link={`/sales?date=${formatDateForLink(date)}`}
                 emptyText="Aucune vente pour cette journée"
               >
-                {sales.map((s, i) => (
-                  <TxnCard
-                    key={s._id || i}
-                    accent={ACCENTS.sales}
-                    icon={<ShoppingBag size={16} />}
-                    title={`Vente #${s.saleNumber || `T${i + 1}`}`}
-                    subtitle={s.client?.name || "Client non spécifié"}
-                    time={safeFormatTime(s.createdAt)}
-                    amount={formatCurrency(s.totalAmount)}
-                    amountTone="success"
-                    badges={
-                      (s.saleType || "normal") === "wholesale" ? (
-                        <StatusBadge tone="warning">Gros</StatusBadge>
-                      ) : null
-                    }
-                  />
-                ))}
+                {sales.map((s, i) => {
+                  const statusInfo = SALE_STATUS[s.status];
+                  const deliveryInfo = DELIVERY_STATUS[s.deliveryStatus];
+                  return (
+                    <TxnCard
+                      key={s._id || i}
+                      accent={ACCENTS.sales}
+                      icon={<ShoppingBag size={16} />}
+                      title={`Vente #${s.saleNumber || `T${i + 1}`}`}
+                      subtitle={s.client?.name || "Client non spécifié"}
+                      time={safeFormatTime(s.createdAt)}
+                      amount={formatCurrency(s.totalAmount)}
+                      amountTone="success"
+                      badges={
+                        <>
+                          {(s.saleType || "normal") === "wholesale" && <StatusBadge tone="warning">Gros</StatusBadge>}
+                          {statusInfo && <StatusBadge tone={statusInfo.tone}>{statusInfo.label}</StatusBadge>}
+                          {deliveryInfo && (
+                            <StatusBadge tone={deliveryInfo.tone}>
+                              <Truck size={11} className="inline -mt-0.5 mr-0.5" />{deliveryInfo.label}
+                            </StatusBadge>
+                          )}
+                        </>
+                      }
+                      footer={
+                        <Link to={`/sales/${s._id}`} className="inline-flex items-center gap-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
+                          Voir la vente <ChevronRight size={13} />
+                        </Link>
+                      }
+                    />
+                  );
+                })}
               </Section>
             </div>
 
@@ -259,19 +363,26 @@ const DayDetailsModal = ({
                 link={isAdmin ? `/expenses?date=${formatDateForLink(date)}` : null}
                 emptyText="Aucune dépense pour cette journée"
               >
-                {expenses.map((e, i) => (
-                  <TxnCard
-                    key={e._id || i}
-                    accent={ACCENTS.expenses}
-                    icon={<Receipt size={16} />}
-                    title={e.description || "Dépense sans description"}
-                    subtitle={e.supplier ? `Fourn.: ${e.supplier}` : null}
-                    time={safeFormatTime(e.createdAt)}
-                    amount={`- ${formatCurrency(e.amount)}`}
-                    amountTone="danger"
-                    badges={<StatusBadge tone="neutral">{e.category || "Non catégorisé"}</StatusBadge>}
-                  />
-                ))}
+                {expenses.map((e, i) => {
+                  const subtitle = e.employee?.name
+                    ? `Salaire: ${e.employee.name}`
+                    : e.supplier
+                    ? `Fourn.: ${e.supplier}`
+                    : null;
+                  return (
+                    <TxnCard
+                      key={e._id || i}
+                      accent={ACCENTS.expenses}
+                      icon={<Receipt size={16} />}
+                      title={e.description || "Dépense sans description"}
+                      subtitle={subtitle}
+                      time={safeFormatTime(e.createdAt)}
+                      amount={`- ${formatCurrency(e.amount)}`}
+                      amountTone="danger"
+                      badges={<StatusBadge tone="neutral">{e.category || "Non catégorisé"}</StatusBadge>}
+                    />
+                  );
+                })}
               </Section>
             </div>
 
@@ -295,7 +406,7 @@ const DayDetailsModal = ({
                       title={`Paiement #${i + 1}`}
                       subtitle={p.client?.name || "Client non spécifié"}
                       time={safeFormatTime(p.paymentDate)}
-                      meta={p.method ? <span className="capitalize">{p.method}</span> : null}
+                      meta={p.method ? <span>{PAYMENT_METHOD_LABELS[p.method] || p.method}</span> : null}
                       amount={formatCurrency(p.amount)}
                       amountTone="blue"
                       profit={hasProfit ? p.profit : undefined}

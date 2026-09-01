@@ -1072,6 +1072,10 @@ video {
   margin-bottom: 1rem;
 }
 
+.-mt-0\.5 {
+  margin-top: -0.125rem;
+}
+
 .-mt-7 {
   margin-top: -1.75rem;
 }
@@ -1142,6 +1146,10 @@ video {
 
 .ml-auto {
   margin-left: auto;
+}
+
+.mr-0\.5 {
+  margin-right: 0.125rem;
 }
 
 .mr-1 {
@@ -1647,10 +1655,6 @@ video {
   width: 5rem;
 }
 
-.w-24 {
-  width: 6rem;
-}
-
 .w-3 {
   width: 0.75rem;
 }
@@ -1703,8 +1707,16 @@ video {
   width: 2.25rem;
 }
 
+.w-\[100px\] {
+  width: 100px;
+}
+
 .w-\[120px\] {
   width: 120px;
+}
+
+.w-\[140px\] {
+  width: 140px;
 }
 
 .w-\[16px\] {
@@ -1878,12 +1890,12 @@ video {
   max-width: 200px;
 }
 
-.max-w-\[240px\] {
-  max-width: 240px;
+.max-w-\[220px\] {
+  max-width: 220px;
 }
 
-.max-w-\[260px\] {
-  max-width: 260px;
+.max-w-\[240px\] {
+  max-width: 240px;
 }
 
 .max-w-\[280px\] {
@@ -2060,16 +2072,12 @@ video {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.grid-cols-\[2fr_1fr_1fr_1fr_1\.5fr_auto\] {
-  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr auto;
+.grid-cols-\[2fr_1fr_1fr_1fr_1fr_1\.5fr_auto\] {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr auto;
 }
 
-.grid-cols-\[2fr_1fr_1fr_1fr_1fr_2fr\] {
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
-}
-
-.grid-cols-\[2fr_1fr_1fr_1fr_1fr_auto\] {
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+.grid-cols-\[2fr_1fr_1fr_1fr_1fr_1fr_auto\] {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto;
 }
 
 .grid-cols-\[auto_2fr_1\.5fr_1\.5fr_1fr_1fr_auto\] {
@@ -2493,14 +2501,6 @@ video {
   border-top-right-radius: var(--radiusMedium);
 }
 
-.rounded-tl-xl {
-  border-top-left-radius: 0.75rem;
-}
-
-.rounded-tr-xl {
-  border-top-right-radius: 0.75rem;
-}
-
 .border {
   border-width: 1px;
 }
@@ -2624,10 +2624,6 @@ video {
   border-color: rgb(253 230 138 / var(--tw-border-opacity, 1));
 }
 
-.border-amber-200\/80 {
-  border-color: rgb(253 230 138 / 0.8);
-}
-
 .border-blue-200 {
   --tw-border-opacity: 1;
   border-color: rgb(191 219 254 / var(--tw-border-opacity, 1));
@@ -2678,10 +2674,6 @@ video {
 .border-green-200 {
   --tw-border-opacity: 1;
   border-color: rgb(187 247 208 / var(--tw-border-opacity, 1));
-}
-
-.border-green-200\/80 {
-  border-color: rgb(187 247 208 / 0.8);
 }
 
 .border-green-300 {
@@ -3139,6 +3131,11 @@ video {
 .bg-slate-50 {
   --tw-bg-opacity: 1;
   background-color: rgb(248 250 252 / var(--tw-bg-opacity, 1));
+}
+
+.bg-slate-900 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(15 23 42 / var(--tw-bg-opacity, 1));
 }
 
 .bg-transparent {
@@ -5903,6 +5900,19 @@ form input[type="radio"],
   .ms-kpi-title {
     overflow-wrap: anywhere;
   }
+
+  /* 2 colonnes dès le petit écran : l'icône cède la place au chiffre */
+
+  .ms-kpi-icon {
+    display: none;
+  }
+
+  /* KPI grids : 2 cartes par ligne sur petit écran. Cible toute grille dont
+     les enfants directs sont exclusivement des cartes KPI. */
+
+  .grid:has(> .ms-kpi-card):not(:has(> :not(.ms-kpi-card))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -6352,8 +6362,8 @@ form input[type="radio"],
 }
 
 .fui-display        {
-  font-size: 60px;
-  line-height: 80px;
+  font-size: clamp(20px, 6vw, 60px);
+  line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -6562,14 +6572,6 @@ form input[type="radio"],
   color: var(--colorStatusDangerForeground1);
 }
 
-.app-page-frame .file\:rounded-xl::-webkit-file-upload-button {
-  border-radius: var(--apple-radius);
-}
-
-.app-page-frame .file\:rounded-xl::file-selector-button {
-  border-radius: var(--apple-radius);
-}
-
 .app-page-frame .after\:bg-white::after {
   content: var(--tw-content);
   border-color: var(--app-border);
@@ -6621,14 +6623,6 @@ form input[type="radio"],
   margin-bottom: 0.5rem;
 }
 
-.file\:mr-4::-webkit-file-upload-button {
-  margin-right: 1rem;
-}
-
-.file\:mr-4::file-selector-button {
-  margin-right: 1rem;
-}
-
 .file\:block::-webkit-file-upload-button {
   display: block;
 }
@@ -6661,28 +6655,12 @@ form input[type="radio"],
   border-radius: var(--radiusMedium);
 }
 
-.file\:rounded-xl::-webkit-file-upload-button {
-  border-radius: 0.75rem;
-}
-
-.file\:rounded-xl::file-selector-button {
-  border-radius: 0.75rem;
-}
-
 .file\:border::-webkit-file-upload-button {
   border-width: 1px;
 }
 
 .file\:border::file-selector-button {
   border-width: 1px;
-}
-
-.file\:border-0::-webkit-file-upload-button {
-  border-width: 0px;
-}
-
-.file\:border-0::file-selector-button {
-  border-width: 0px;
 }
 
 .file\:border-\[var\(--ms-border\)\]::-webkit-file-upload-button {
@@ -6701,16 +6679,6 @@ form input[type="radio"],
   background-color: var(--ms-white);
 }
 
-.file\:bg-slate-100::-webkit-file-upload-button {
-  --tw-bg-opacity: 1;
-  background-color: rgb(241 245 249 / var(--tw-bg-opacity, 1));
-}
-
-.file\:bg-slate-100::file-selector-button {
-  --tw-bg-opacity: 1;
-  background-color: rgb(241 245 249 / var(--tw-bg-opacity, 1));
-}
-
 .file\:px-3::-webkit-file-upload-button {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
@@ -6719,16 +6687,6 @@ form input[type="radio"],
 .file\:px-3::file-selector-button {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
-}
-
-.file\:px-4::-webkit-file-upload-button {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.file\:px-4::file-selector-button {
-  padding-left: 1rem;
-  padding-right: 1rem;
 }
 
 .file\:py-2::-webkit-file-upload-button {
@@ -6741,16 +6699,6 @@ form input[type="radio"],
   padding-bottom: 0.5rem;
 }
 
-.file\:py-2\.5::-webkit-file-upload-button {
-  padding-top: 0.625rem;
-  padding-bottom: 0.625rem;
-}
-
-.file\:py-2\.5::file-selector-button {
-  padding-top: 0.625rem;
-  padding-bottom: 0.625rem;
-}
-
 .file\:text-sm::-webkit-file-upload-button {
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -6759,14 +6707,6 @@ form input[type="radio"],
 .file\:text-sm::file-selector-button {
   font-size: 0.875rem;
   line-height: 1.25rem;
-}
-
-.file\:font-medium::-webkit-file-upload-button {
-  font-weight: 500;
-}
-
-.file\:font-medium::file-selector-button {
-  font-weight: 500;
 }
 
 .file\:font-semibold::-webkit-file-upload-button {
@@ -6783,33 +6723,6 @@ form input[type="radio"],
 
 .file\:text-\[var\(--colorNeutralForeground1\)\]::file-selector-button {
   color: var(--colorNeutralForeground1);
-}
-
-.file\:text-slate-700::-webkit-file-upload-button {
-  --tw-text-opacity: 1;
-  color: rgb(51 65 85 / var(--tw-text-opacity, 1));
-}
-
-.file\:text-slate-700::file-selector-button {
-  --tw-text-opacity: 1;
-  color: rgb(51 65 85 / var(--tw-text-opacity, 1));
-}
-
-.file\:transition-colors::-webkit-file-upload-button {
-  -webkit-transition-property: color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;
-  transition-property: color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.file\:transition-colors::file-selector-button {
-  transition-property: color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
 }
 
 .placeholder\:text-\[var\(--ms-text-muted\)\]::placeholder {
@@ -6930,6 +6843,11 @@ form input[type="radio"],
 .hover\:border-slate-300:hover {
   --tw-border-opacity: 1;
   border-color: rgb(203 213 225 / var(--tw-border-opacity, 1));
+}
+
+.hover\:border-slate-400:hover {
+  --tw-border-opacity: 1;
+  border-color: rgb(148 163 184 / var(--tw-border-opacity, 1));
 }
 
 .hover\:bg-\[\#FDF3F4\]:hover {
@@ -7058,6 +6976,11 @@ form input[type="radio"],
 .hover\:bg-sky-100:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(224 242 254 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-slate-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(241 245 249 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-slate-200:hover {
@@ -7207,16 +7130,6 @@ form input[type="radio"],
 .hover\:brightness-\[0\.98\]:hover {
   --tw-brightness: brightness(0.98);
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
-}
-
-.hover\:file\:bg-slate-200::-webkit-file-upload-button:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(226 232 240 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:file\:bg-slate-200::file-selector-button:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(226 232 240 / var(--tw-bg-opacity, 1));
 }
 
 .focus\:border-\[var\(--ms-blue\)\]:focus {
@@ -7521,10 +7434,6 @@ form input[type="radio"],
     height: 6rem;
   }
 
-  .sm\:h-28 {
-    height: 7rem;
-  }
-
   .sm\:h-52 {
     height: 13rem;
   }
@@ -7535,10 +7444,6 @@ form input[type="radio"],
 
   .sm\:h-72 {
     height: 18rem;
-  }
-
-  .sm\:h-\[260px\] {
-    height: 260px;
   }
 
   .sm\:max-h-\[42vh\] {
@@ -7575,10 +7480,6 @@ form input[type="radio"],
 
   .sm\:w-24 {
     width: 6rem;
-  }
-
-  .sm\:w-28 {
-    width: 7rem;
   }
 
   .sm\:w-40 {
@@ -8035,10 +7936,6 @@ form input[type="radio"],
     height: 1rem;
   }
 
-  .md\:h-\[200px\] {
-    height: 200px;
-  }
-
   .md\:w-1\/2 {
     width: 50%;
   }
@@ -8053,14 +7950,6 @@ form input[type="radio"],
 
   .md\:w-auto {
     width: auto;
-  }
-
-  .md\:w-full {
-    width: 100%;
-  }
-
-  .md\:max-w-none {
-    max-width: none;
   }
 
   .md\:grid-cols-12 {
@@ -8113,10 +8002,6 @@ form input[type="radio"],
 
   .md\:items-center {
     align-items: center;
-  }
-
-  .md\:justify-start {
-    justify-content: flex-start;
   }
 
   .md\:justify-between {
@@ -8290,16 +8175,16 @@ form input[type="radio"],
     grid-template-columns: 1.4fr 0.9fr;
   }
 
+  .lg\:grid-cols-\[220px_1fr\] {
+    grid-template-columns: 220px 1fr;
+  }
+
   .lg\:grid-cols-\[220px_minmax\(0\2c 1fr\)\] {
     grid-template-columns: 220px minmax(0,1fr);
   }
 
-  .lg\:grid-cols-\[2fr_1fr_1fr_1fr_1fr_2fr\] {
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
-  }
-
-  .lg\:grid-cols-\[2fr_1fr_1fr_1fr_1fr_auto\] {
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+  .lg\:grid-cols-\[2fr_1fr_1fr_1fr_1fr_1\.5fr_auto\] {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr auto;
   }
 
   .lg\:grid-cols-\[minmax\(0\2c 0\.92fr\)_minmax\(0\2c 1\.08fr\)\] {
@@ -8487,10 +8372,6 @@ form input[type="radio"],
 
   .xl\:grid-cols-5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-
-  .xl\:grid-cols-6 {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .xl\:grid-cols-7 {

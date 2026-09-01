@@ -50,6 +50,7 @@ export const platformApi = {
   respondPlanRequest: (id, action) => api.put(`/tenants/${id}/plan-request`, { action }),
   createTenant: (form) => api.post('/tenants', form),
   tenantPayment: (id, form) => api.post(`/tenants/${id}/payment`, form),
+  tenantPaymentInvoice: (id, paymentId) => api.get(`/tenants/${id}/payment/${paymentId}/invoice`, { responseType: 'blob' }),
   updateTenant: (id, data) => api.put(`/tenants/${id}`, data),
   impersonateTenant: (id, payload) => api.post(`/tenants/${id}/impersonate`, payload),
   tenantsOverview: () => api.get('/tenants/stats/overview'),

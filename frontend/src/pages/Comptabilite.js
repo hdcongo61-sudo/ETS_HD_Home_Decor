@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { reportingApi } from '../features/reporting/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { useModal } from '../context/ModalContext';
+import { MODAL_IDS } from '../config/modals';
+import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import {
   DataTable,
   EmptyState,
@@ -19,10 +23,10 @@ import {
   Calculator,
   CheckCircle2,
   CreditCard,
+  FileSpreadsheet,
   FileText,
   Landmark,
   Plus,
-  Printer,
   RefreshCw,
   Scale,
   TrendingDown,
@@ -58,6 +62,155 @@ const PRESETS = [
   { key: 'year', label: 'Cette année' },
 ];
 
+// ── Export Excel du rapport comptable ───────────────────────────────
+// Construit un classeur Excel (.xlsx) multi-feuilles à partir des données
+// réelles chargées dans la page (synthèse + journal) pour la période
+// sélectionnée.
+const num = (v) => Number(v || 0);
+
+const appendSheet = (workbook, name, rows, cols = []) => {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = cols;
+  XLSX.utils.book_append_sheet(workbook, ws, name);
+  return ws;
+};
+
+const buildAccountingWorkbook = ({ summary, journal, periodLabel }) => {
+  const cr = summary.compteResultat || {};
+  const tr = summary.tresorerie || {};
+  const bilan = summary.bilan || {};
+  const paie = summary.paie || {};
+  const creances = summary.creances || {};
+  const bilanActif = bilan.actif || {};
+  const bilanPassif = bilan.passif || {};
+  const totals = journal?.totals || { credit: 0, debit: 0, solde: 0 };
+  const entries = journal?.entries || [];
+  const cats = cr.depensesParCategorie || [];
+
+  const wb = XLSX.utils.book_new();
+
+  appendSheet(
+    wb,
+    'Synthèse',
+    [
+      ['Rapport comptable'],
+      ['Période', periodLabel],
+      ['Généré le', new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })],
+      [],
+      ['Indicateur', 'Montant (CFA)'],
+      ['Résultat net', num(cr.resultatNet)],
+      ['Résultat net (% du CA)', num(cr.resultatNetPct)],
+      ['CA encaissé', num(cr.chiffreAffaires)],
+      ['Ventes encaissées', num(cr.nbVentes)],
+      ['Marge brute', num(cr.margeBrute)],
+      ['Marge brute (% du CA)', num(cr.margeBrutePct)],
+      ['Dépenses', num(cr.depenses)],
+      ['Pertes & casses', num(cr.pertes)],
+      ['Flux de trésorerie', num(tr.flux)],
+      ['Encaissements', num(tr.encaissements)],
+      ['Décaissements', num(tr.decaissements)],
+      ['Créances clients', num(creances.clients)],
+      ['Factures impayées', num(creances.nbFactures)],
+      ['Masse salariale (payée)', num(paie.masseSalariale)],
+      ['Bulletins payés', num(paie.nbBulletins)],
+    ],
+    [{ wch: 32 }, { wch: 18 }],
+  );
+
+  appendSheet(
+    wb,
+    'Compte de résultat',
+    [
+      ['Libellé', 'Montant (CFA)'],
+      ["Chiffre d'affaires encaissé", num(cr.chiffreAffaires)],
+      ['Coût des marchandises vendues', -num(cr.coutMarchandises)],
+      ['Marge brute', num(cr.margeBrute)],
+      ["Dépenses d'exploitation", -num(cr.depenses)],
+      ['Pertes & casses', -num(cr.pertes)],
+      ['Résultat net', num(cr.resultatNet)],
+    ],
+    [{ wch: 34 }, { wch: 18 }],
+  );
+
+  appendSheet(
+    wb,
+    'Trésorerie',
+    [
+      ['Libellé', 'Montant (CFA)'],
+      ['Encaissements', num(tr.encaissements)],
+      ['Décaissements', -num(tr.decaissements)],
+      ['Flux net de trésorerie', num(tr.flux)],
+    ],
+    [{ wch: 28 }, { wch: 18 }],
+  );
+
+  appendSheet(
+    wb,
+    'Bilan',
+    [
+      ['Libellé', 'Montant (CFA)'],
+      ['Stock (valeur au coût)', num(bilanActif.stock)],
+      ['Créances clients', num(bilanActif.creancesClients)],
+      ['Total actif', num(bilanActif.total)],
+      ['Dettes fournisseurs', -num(bilanPassif.total)],
+      ['Situation nette', num(bilan.situationNette)],
+      [],
+      ['Références en stock', num(bilan.nbReferences)],
+      ['Valeur de revente du stock', num(bilan.valeurStockVente)],
+    ],
+    [{ wch: 34 }, { wch: 18 }],
+  );
+
+  const depRows = cats.length
+    ? [
+        ...cats.map((c) => [
+          c.categorie || 'Non catégorisé',
+          num(c.count),
+          num(c.total),
+          cr.depenses ? Math.round((c.total / cr.depenses) * 100) : 0,
+        ]),
+        ['Total dépenses', cats.reduce((s, c) => s + (c.count || 0), 0), num(cr.depenses), 100],
+      ]
+    : [['Aucune dépense sur la période', '', '', '']];
+
+  appendSheet(
+    wb,
+    'Dépenses',
+    [
+      ['Catégorie', 'Nombre', 'Total (CFA)', 'Part (%)'],
+      ...depRows,
+    ],
+    [{ wch: 32 }, { wch: 10 }, { wch: 16 }, { wch: 10 }],
+  );
+
+  const jRows = entries.length
+    ? [
+        ...entries.map((e) => [
+          e.date ? new Date(e.date).toLocaleDateString('fr-FR') : '',
+          e.libelle || '',
+          e.type === 'vente' ? 'Produit' : 'Charge',
+          num(e.credit) || '',
+          num(e.debit) || '',
+        ]),
+        [],
+        ['Totaux de la période', '', '', num(totals.credit), num(totals.debit)],
+        ['Balance nette', '', '', '', num(totals.solde ?? (totals.credit - totals.debit))],
+      ]
+    : [['Aucune écriture sur la période', '', '', '', '']];
+
+  appendSheet(
+    wb,
+    'Journal',
+    [
+      ['Date', 'Libellé', 'Type', 'Produit (CFA)', 'Charge (CFA)'],
+      ...jRows,
+    ],
+    [{ wch: 12 }, { wch: 46 }, { wch: 12 }, { wch: 16 }, { wch: 16 }],
+  );
+
+  return wb;
+};
+
 const Comptabilite = () => {
   const journalRef = useRef(null);
   const { openModal } = useModal();
@@ -83,9 +236,9 @@ const Comptabilite = () => {
       ]);
       setSummary(summaryRes.data?.data || null);
       setJournal(journalRes.data?.data || null);
+      setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors du chargement de la comptabilité');
-    } finally {
       setLoading(false);
     }
   }, [range]);
@@ -109,6 +262,24 @@ const Comptabilite = () => {
   const positive = (cr?.resultatNet ?? 0) >= 0;
   const hasReceivables = (summary?.creances?.clients ?? 0) > 0;
 
+  // Génère un classeur Excel multi-feuilles à partir des données réelles
+  // chargées (synthèse + journal) puis déclenche le téléchargement.
+  const handleExport = useCallback(() => {
+    if (!summary || !journal) return;
+    try {
+      const workbook = buildAccountingWorkbook({ summary, journal, periodLabel });
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const iso = (d) => d.toISOString().slice(0, 10);
+      saveAs(blob, `Comptabilite_${iso(range.start)}_${iso(range.end)}.xlsx`);
+      toast.success('Export Excel généré avec succès');
+    } catch (err) {
+      toast.error("Erreur lors de la génération de l'export Excel");
+    }
+  }, [summary, journal, periodLabel, range]);
+
   return (
     <Workspace className="space-y-6">
       <PageHeader
@@ -119,14 +290,14 @@ const Comptabilite = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => openModal('payment')}
+              onClick={() => openModal(MODAL_IDS.PAYMENT)}
               className="ms-button ms-button-secondary ms-button-md"
             >
               <CreditCard className="h-4 w-4" /> Encaisser
             </button>
             <button
               type="button"
-              onClick={() => openModal('expense')}
+              onClick={() => openModal(MODAL_IDS.EXPENSE)}
               className="ms-button ms-button-primary ms-button-md"
             >
               <Plus className="h-4 w-4" /> Dépense
@@ -160,10 +331,11 @@ const Comptabilite = () => {
               </button>
             <button
               type="button"
-              onClick={() => window.print()}
-                className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
+              onClick={handleExport}
+              disabled={loading || !summary}
+              className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
             >
-              <Printer className="h-4 w-4" /> Imprimer
+              <FileSpreadsheet className="h-4 w-4" /> Exporter
             </button>
             </div>
           </div>
@@ -328,7 +500,7 @@ const Comptabilite = () => {
                 </div>
               </div>
               {hasReceivables && (
-                <button type="button" onClick={() => openModal('payment')} className="ms-button ms-button-secondary ms-button-md shrink-0">
+                <button type="button" onClick={() => openModal(MODAL_IDS.PAYMENT)} className="ms-button ms-button-secondary ms-button-md shrink-0">
                   <CreditCard className="h-4 w-4" /> Enregistrer un paiement
                 </button>
               )}
@@ -443,13 +615,36 @@ const Comptabilite = () => {
           </section>
 
           {/* ── Journal comptable ───────────────────────────────────── */}
-          <section id="journal" className="ms-surface scroll-mt-24">
-            <div className="ms-command-bar">
-              <SectionTitle icon={<FileText className="h-4 w-4" />}>Journal comptable</SectionTitle>
+          <section id="journal" className="ms-surface scroll-mt-24 overflow-hidden">
+            <div
+              className="ms-command-bar border-b"
+              style={{ borderColor: 'var(--ms-border)', position: 'static', top: 'auto', zIndex: 'auto' }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--ms-blue)]">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <h2 className="ms-section-title">Journal comptable</h2>
+                {journal && (
+                  <span className="fui-caption1 font-medium text-[var(--ms-text-muted)]">
+                    {journal.entries.length} écriture(s)
+                  </span>
+                )}
+              </div>
               {journal && (
-                <div className="flex items-center gap-2 text-xs">
-                  <StatusBadge tone="success">Produits {fmt(journal.totals.credit)}</StatusBadge>
-                  <StatusBadge tone="danger">Charges {fmt(journal.totals.debit)}</StatusBadge>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full" style={{ background: 'var(--colorStatusSuccessForeground1)' }} />
+                    <span className="fui-caption1 font-medium tabular-nums text-[var(--ms-text)]">
+                      {fmt(journal.totals.credit)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full" style={{ background: 'var(--colorStatusDangerForeground1)' }} />
+                    <span className="fui-caption1 font-medium tabular-nums text-[var(--ms-text)]">
+                      {fmt(journal.totals.debit)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -459,58 +654,82 @@ const Comptabilite = () => {
               </div>
             ) : (
               <>
-                {/* Mobile card layout */}
-                <div className="lg:hidden space-y-3 p-3">
-                  {journal.entries.map((e, i) => (
-                    <div key={`${e.type}-${i}`} className="fluent-card-filled p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="fui-body1-strong">{e.libelle}</p>
-                          <p className="fui-caption1 text-[var(--colorNeutralForeground3)] mt-0.5">
-                            {new Date(e.date).toLocaleDateString('fr-FR', {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </p>
+                {/* Mobile timeline layout */}
+                <div className="lg:hidden">
+                  <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
+                    {journal.entries.map((e, i) => (
+                      <div key={`${e.type}-${i}`} className="p-4 hover:bg-[var(--ms-bg-subtle)] transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                            style={{
+                              background: e.type === 'vente' ? 'var(--colorStatusSuccessBackground1)' : 'var(--colorStatusDangerBackground1)',
+                              color: e.type === 'vente' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+                            }}
+                          >
+                            {e.type === 'vente' ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3 mb-1">
+                              <p className="fui-body1-strong text-[var(--ms-text-strong)]">{e.libelle}</p>
+                              <p
+                                className="fui-subtitle2 tabular-nums shrink-0"
+                                style={{
+                                  color: e.type === 'vente' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+                                }}
+                              >
+                                {e.type === 'vente' ? '+' : '−'}{fmt(e.credit || e.debit)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <time className="fui-caption1 text-[var(--ms-text-muted)]">
+                                {new Date(e.date).toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </time>
+                              <span className="fui-caption1 text-[var(--ms-text-muted)]">•</span>
+                              <span className="fui-caption1 font-medium" style={{
+                                color: e.type === 'vente' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+                              }}>
+                                {e.type === 'vente' ? 'Produit' : 'Charge'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <StatusBadge tone={e.type === 'vente' ? 'success' : 'danger'}>
-                          {e.type === 'vente' ? 'Vente' : 'Dépense'}
-                        </StatusBadge>
                       </div>
+                    ))}
+                  </div>
 
-                      <div className="grid grid-cols-2 gap-3 pt-3 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-                        <div>
-                          <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Produit</p>
-                          <p className="fui-body1-strong tabular-nums" style={{ color: e.credit ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorNeutralForeground3)' }}>
-                            {e.credit ? fmt(e.credit) : '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Charge</p>
-                          <p className="fui-body1-strong tabular-nums" style={{ color: e.debit ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)' }}>
-                            {e.debit ? fmt(e.debit) : '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Mobile totals card */}
-                  <div className="fluent-card-filled p-4 bg-[var(--colorNeutralBackground2)]">
-                    <p className="fui-subtitle2 mb-3">Totaux</p>
-                    <div className="grid grid-cols-2 gap-3">
+                  {/* Mobile balance footer */}
+                  <div className="border-t-2 p-4" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="fui-caption1 text-[var(--colorNeutralForeground3)]">Total Produits</p>
+                        <p className="fui-caption1 mb-1 text-[var(--ms-text-muted)]">Total produits</p>
                         <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
                           {fmt(journal.totals.credit)}
                         </p>
                       </div>
                       <div>
-                        <p className="fui-caption1 text-[var(--colorNeutralForeground3)]">Total Charges</p>
+                        <p className="fui-caption1 mb-1 text-[var(--ms-text-muted)]">Total charges</p>
                         <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
                           {fmt(journal.totals.debit)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--ms-border)' }}>
+                      <div className="flex items-center justify-between">
+                        <p className="fui-subtitle2 text-[var(--ms-text-strong)]">Balance</p>
+                        <p
+                          className="fui-title2 tabular-nums font-bold"
+                          style={{
+                            color: (journal.totals.credit - journal.totals.debit) >= 0
+                              ? 'var(--colorStatusSuccessForeground1)'
+                              : 'var(--colorStatusDangerForeground1)',
+                          }}
+                        >
+                          {fmtSigned(journal.totals.credit - journal.totals.debit)}
                         </p>
                       </div>
                     </div>
@@ -523,39 +742,97 @@ const Comptabilite = () => {
                     <table ref={journalRef} className="responsive-table w-full">
                       <thead>
                         <tr>
-                          <th>Date</th>
+                          <th className="w-[120px]">Date</th>
                           <th>Libellé</th>
-                          <th>Type</th>
-                          <th className="text-right">Produit</th>
-                          <th className="text-right">Charge</th>
+                          <th className="w-[100px]">Type</th>
+                          <th className="w-[140px] text-right">Produit</th>
+                          <th className="w-[140px] text-right">Charge</th>
                         </tr>
                       </thead>
                       <tbody>
                         {journal.entries.map((e, i) => (
-                          <tr key={`${e.type}-${i}`}>
-                            <td className="text-[var(--ms-text-muted)] text-xs whitespace-nowrap">
-                              {new Date(e.date).toLocaleDateString('fr-FR')}
-                            </td>
-                            <td className="font-medium">{e.libelle}</td>
+                          <tr key={`${e.type}-${i}`} className="hover:bg-[var(--ms-bg-subtle)] transition-colors">
                             <td>
-                              <StatusBadge tone={e.type === 'vente' ? 'success' : 'danger'}>
-                                {e.type === 'vente' ? 'Vente' : 'Dépense'}
-                              </StatusBadge>
+                              <time className="fui-caption1 font-medium text-[var(--ms-text-muted)]">
+                                {new Date(e.date).toLocaleDateString('fr-FR', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </time>
                             </td>
-                            <td className="text-right font-semibold tabular-nums text-[var(--ms-success)]">
-                              {e.credit ? fmt(e.credit) : '—'}
+                            <td>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radiusSmall)]"
+                                  style={{
+                                    background: e.type === 'vente' ? 'var(--colorStatusSuccessBackground1)' : 'var(--colorStatusDangerBackground1)',
+                                    color: e.type === 'vente' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+                                  }}
+                                >
+                                  {e.type === 'vente' ? <ArrowDownRight className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+                                </div>
+                                <span className="fui-body1 font-medium text-[var(--ms-text)]">{e.libelle}</span>
+                              </div>
                             </td>
-                            <td className="text-right font-semibold tabular-nums text-[var(--ms-danger)]">
-                              {e.debit ? fmt(e.debit) : '—'}
+                            <td>
+                              <span
+                                className="inline-flex items-center rounded-full px-2 py-0.5 fui-caption1 font-semibold"
+                                style={{
+                                  background: e.type === 'vente' ? 'var(--colorStatusSuccessBackground2)' : 'var(--colorStatusDangerBackground2)',
+                                  color: e.type === 'vente' ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)',
+                                }}
+                              >
+                                {e.type === 'vente' ? 'Produit' : 'Charge'}
+                              </span>
+                            </td>
+                            <td className="text-right">
+                              <span
+                                className="fui-body1-strong tabular-nums"
+                                style={{ color: e.credit ? 'var(--colorStatusSuccessForeground1)' : 'var(--ms-text-muted)' }}
+                              >
+                                {e.credit ? fmt(e.credit) : '—'}
+                              </span>
+                            </td>
+                            <td className="text-right">
+                              <span
+                                className="fui-body1-strong tabular-nums"
+                                style={{ color: e.debit ? 'var(--colorStatusDangerForeground1)' : 'var(--ms-text-muted)' }}
+                              >
+                                {e.debit ? fmt(e.debit) : '—'}
+                              </span>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr style={{ borderTop: '2px solid var(--ms-border)' }}>
-                          <td colSpan={3} className="font-semibold">Totaux</td>
-                          <td className="text-right font-bold tabular-nums text-[var(--ms-success)]">{fmt(journal.totals.credit)}</td>
-                          <td className="text-right font-bold tabular-nums text-[var(--ms-danger)]">{fmt(journal.totals.debit)}</td>
+                        <tr style={{ borderTop: '2px solid var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                          <td colSpan={3} className="fui-subtitle2">Totaux de la période</td>
+                          <td className="text-right">
+                            <span className="fui-subtitle1 font-bold tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                              {fmt(journal.totals.credit)}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <span className="fui-subtitle1 font-bold tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
+                              {fmt(journal.totals.debit)}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr style={{ background: 'var(--colorNeutralBackground2)' }}>
+                          <td colSpan={3} className="fui-subtitle2 text-[var(--ms-text-strong)]">Balance nette</td>
+                          <td colSpan={2} className="text-right">
+                            <span
+                              className="fui-title2 font-bold tabular-nums"
+                              style={{
+                                color: (journal.totals.credit - journal.totals.debit) >= 0
+                                  ? 'var(--colorStatusSuccessForeground1)'
+                                  : 'var(--colorStatusDangerForeground1)',
+                              }}
+                            >
+                              {fmtSigned(journal.totals.credit - journal.totals.debit)}
+                            </span>
+                          </td>
                         </tr>
                       </tfoot>
                     </table>

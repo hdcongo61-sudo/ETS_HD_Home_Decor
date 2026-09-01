@@ -606,6 +606,27 @@ const getCurrentUser = async (req, res) => {
       if (t.status === 'trial' && t.trialEndsAt) {
         daysLeft = Math.ceil((new Date(t.trialEndsAt) - new Date()) / 86400000);
       }
+
+      // Congratulate the shop once per renewal payment (PawaPay or cash), the
+      // first time anyone from the shop connects after it clears.
+      let renewalCongrats = null;
+      if (
+        t.status === 'active' &&
+        t.lastPaymentAt &&
+        (!t.lastPaymentNotifiedAt || new Date(t.lastPaymentNotifiedAt) < new Date(t.lastPaymentAt))
+      ) {
+        const lastPayment = Array.isArray(t.payments) && t.payments.length
+          ? t.payments[t.payments.length - 1]
+          : null;
+        renewalCongrats = {
+          lastPaymentAt: t.lastPaymentAt,
+          nextPaymentDue: t.nextPaymentDue || null,
+          amount: lastPayment?.amount || null,
+        };
+        const Tenant = require('../models/tenantModel');
+        Tenant.findByIdAndUpdate(t._id, { lastPaymentNotifiedAt: t.lastPaymentAt }).catch(() => {});
+      }
+
       payload.tenant = {
         name: t.name || '',
         plan: t.plan || 'trial',
@@ -619,6 +640,7 @@ const getCurrentUser = async (req, res) => {
           status: t.planRequest.status,
           requestedAt: t.planRequest.requestedAt,
         } : null,
+        renewalCongrats,
       };
     }
 

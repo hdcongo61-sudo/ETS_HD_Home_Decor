@@ -1,9 +1,12 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { authApi } from '../features/auth/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
+
+const cfaFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 
 const Login = () => {
   const [loginId, setLoginId] = useState(''); // téléphone ou email
@@ -93,6 +96,14 @@ const Login = () => {
 
       // Reload branding so the menu/app immediately reflect THIS shop.
       if (refreshAppSettings) refreshAppSettings();
+
+      // Congratulate the shop once per renewal — the backend only sends this
+      // the first time anyone connects after a payment clears.
+      const congrats = userData?.tenant?.renewalCongrats;
+      if (congrats) {
+        const amountLabel = congrats.amount ? ` de ${cfaFormatter.format(congrats.amount)} F CFA` : '';
+        toast.success(`Paiement${amountLabel} reçu, merci ! Votre abonnement est actif.`, { duration: 6000 });
+      }
 
       // Redirect based on role
       if (userData.isSuperAdmin) {

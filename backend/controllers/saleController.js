@@ -1175,7 +1175,7 @@ const getSalesByDateRange = asyncHandler(async (req, res) => {
 
     if (isDashboardSummary) {
       query = query
-        .select('_id saleNumber client products totalAmount saleType saleDate createdAt profitData')
+        .select('_id saleNumber client products totalAmount saleType saleDate createdAt profitData status deliveryStatus paymentMethod')
         .populate('client', 'name')
         .populate('products.product', 'name price');
     } else {

@@ -35,19 +35,23 @@ import {
   AlertTriangle,
   BarChart3,
   ChevronRight,
+  ImagePlus,
   Layers3,
+  Loader2,
   Plus,
   RefreshCw,
   RotateCcw,
   Search,
   SlidersHorizontal,
   Trash2,
+  Truck,
   X,
 } from 'lucide-react';
 import ProductImportModal from '../components/ProductImportModal';
 import Modal from '../components/Modal';
 import FeatureGate, { LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
+import { compressImage, formatBytes } from '../utils/imageCompression';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
@@ -352,7 +356,7 @@ const Products = () => {
         )}
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <button type="button" onClick={() => navigate({ pathname: '/products', search: '?stockOperator=gte&stock=1' })} className="text-left fluent-card-interactive">
           <KPICard
             title="Articles en stock"
@@ -536,6 +540,34 @@ const Products = () => {
 /* ===================================================== */
 /* 🧾 FORMULAIRE PRODUIT */
 /* ===================================================== */
+const FORM_SECTION_COLS = {
+  1: 'grid-cols-1',
+  2: 'sm:grid-cols-2',
+  4: 'sm:grid-cols-2 lg:grid-cols-4',
+};
+
+// Numbered, icon-led section used to give the create/edit form a clear visual
+// hierarchy (step → what it's for → fields), instead of a flat list of inputs.
+const FormSection = ({ step, icon, title, description, columns = 4, children }) => (
+  <section className="rounded-2xl border border-slate-200 bg-white">
+    <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+        {step}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+          <span className="text-slate-400">{icon}</span>
+          {title}
+        </h3>
+        {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+      </div>
+    </div>
+    <div className={`grid grid-cols-1 gap-4 p-4 sm:p-5 ${FORM_SECTION_COLS[columns] || FORM_SECTION_COLS[4]}`}>
+      {children}
+    </div>
+  </section>
+);
+
 const getProductFormDefaults = (product) => ({
   name: product?.name || '',
   description: product?.description || '',
@@ -556,10 +588,14 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
   const [profitMargin, setProfitMargin] = useState(0);
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(product?.image || '');
+  const [imageSizeLabel, setImageSizeLabel] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
 
   useEffect(() => {
     setFormData(getProductFormDefaults(product));
     setImageFile(null);
+    setImageSizeLabel('');
     setPreviewUrl(product?.image || '');
   }, [product]);
 
@@ -600,8 +636,41 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
     }));
   };
 
+  // Resizes/compresses the picked image client-side so uploads stay fast on
+  // mobile connections — most phone photos are 3-8 Mo, we bring them under ~300 Ko.
+  const processImageFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const originalSize = file.size;
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(file);
+      setImageFile(compressed);
+      setFormData((prev) => ({ ...prev, image: '' }));
+      setImageSizeLabel(
+        compressed.size < originalSize
+          ? `${formatBytes(originalSize)} → ${formatBytes(compressed.size)}`
+          : formatBytes(compressed.size)
+      );
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
   const handleFileChange = (e) => {
-    setImageFile(e.target.files?.[0] || null);
+    processImageFile(e.target.files?.[0] || null);
+    e.target.value = '';
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    setIsDraggingImage(false);
+    processImageFile(e.dataTransfer.files?.[0] || null);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImageSizeLabel('');
+    setFormData((prev) => ({ ...prev, image: '' }));
   };
 
   const handleSubmit = (e) => {
@@ -616,72 +685,94 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
   };
 
   return (
-    <form id="product-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
+    <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
       {/* Section: Informations générales */}
-      <section className="space-y-4">
-        <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-950 uppercase">
-          Informations générales
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required />
-          <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} emptyHint="Catégories produits" />
-          <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} emptyHint="Conteneurs" />
-          <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} emptyHint="Entrepôts" />
-        </div>
-        <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} />
-      </section>
+      <FormSection step={1} icon={<Package className="h-4 w-4" />} title="Informations générales" description="Identité du produit dans le catalogue">
+        <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required className="sm:col-span-2 lg:col-span-4" />
+        <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} emptyHint="Catégories produits" />
+        <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} emptyHint="Conteneurs" />
+        <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} emptyHint="Entrepôts" />
+        <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} className="sm:col-span-2 lg:col-span-4" />
+      </FormSection>
 
       {/* Section: Prix & stock */}
-      <section className="space-y-4">
-        <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-950 uppercase">
-          Prix & stock
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Input label="Prix de revient (CFA)" name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
-          <Input label="Prix de vente (CFA)" name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
-          <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-col justify-center">
-            <p className="text-xs font-medium text-slate-500 uppercase">Marge</p>
-            <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-emerald-700' : profitMargin < 0 ? 'text-rose-700' : 'text-slate-700'}`}>
-              {Number(profitMargin).toFixed(1)}%
-            </p>
-          </div>
+      <FormSection step={2} icon={<Wallet className="h-4 w-4" />} title="Prix & stock" description="Marge et disponibilité">
+        <Input label="Prix de revient (CFA)" name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
+        <Input label="Prix de vente (CFA)" name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
+        <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-col justify-center">
+          <p className="text-xs font-medium text-slate-500 uppercase">Marge</p>
+          <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-emerald-700' : profitMargin < 0 ? 'text-rose-700' : 'text-slate-700'}`}>
+            {Number(profitMargin).toFixed(1)}%
+          </p>
         </div>
-      </section>
+      </FormSection>
 
       {/* Section: Fournisseur */}
-      <section className="space-y-4">
-        <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-950 uppercase">
-          Fournisseur
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} emptyHint="Fournisseurs" />
-          <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
-        </div>
-      </section>
+      <FormSection step={3} icon={<Truck className="h-4 w-4" />} title="Fournisseur" description="Origine et contact d'approvisionnement" columns={2}>
+        <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} emptyHint="Fournisseurs" />
+        <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
+      </FormSection>
 
       {/* Section: Image */}
-      <section className="space-y-4">
-        <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold text-slate-950 uppercase">
-          Image
-        </h3>
-        <Input label="URL de l'image" name="image" value={formData.image} onChange={handleChange} placeholder="https://..." />
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Importer une image</label>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-[var(--ms-text-muted)] file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 file:transition-colors"
-            />
-            {previewUrl && (
-              <img src={previewUrl} alt="Aperçu" className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0" />
-            )}
+      <FormSection step={4} icon={<ImagePlus className="h-4 w-4" />} title="Image" description="Visuel affiché dans le catalogue" columns={1}>
+        {previewUrl ? (
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <img src={previewUrl} alt="Aperçu" className="h-16 w-16 shrink-0 rounded-xl object-cover border border-slate-200 shadow-sm" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-700 truncate">
+                {imageFile ? imageFile.name : 'Image actuelle'}
+              </p>
+              {imageSizeLabel && (
+                <p className="text-xs text-slate-500 mt-0.5">Compressée · {imageSizeLabel}</p>
+              )}
+            </div>
+            <label
+              htmlFor="product-image-input"
+              className="ms-button ms-button-secondary ms-button-sm cursor-pointer shrink-0"
+            >
+              Changer
+            </label>
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+              aria-label="Retirer l'image"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5">Upload déclenche un envoi automatique vers Cloudinary.</p>
-        </div>
-      </section>
+        ) : (
+          <label
+            htmlFor="product-image-input"
+            onDragOver={(e) => { e.preventDefault(); setIsDraggingImage(true); }}
+            onDragLeave={() => setIsDraggingImage(false)}
+            onDrop={handleImageDrop}
+            className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-center cursor-pointer transition-colors ${
+              isDraggingImage ? 'border-[var(--ms-blue)] bg-[var(--ms-blue-soft)]' : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            {isCompressing ? (
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            ) : (
+              <ImagePlus className="h-6 w-6 text-slate-400" />
+            )}
+            <p className="text-sm font-medium text-slate-700">
+              {isCompressing ? 'Compression en cours…' : 'Glissez une image ou cliquez pour choisir'}
+            </p>
+            <p className="text-xs text-slate-500">JPG, PNG ou WebP · compressée automatiquement</p>
+          </label>
+        )}
+        <input
+          id="product-image-input"
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        <Input label="Ou une URL d'image" name="image" value={formData.image} onChange={handleChange} placeholder="https://..." />
+      </FormSection>
     </form>
   );
 };

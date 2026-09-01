@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const PDFDocument = require('pdfkit');
 const Tenant = require('../models/tenantModel');
 const { PLAN_CATALOG } = require('../models/tenantModel');
 const User = require('../models/userModel');
@@ -635,6 +636,94 @@ const recordPayment = asyncHandler(async (req, res) => {
   res.status(201).json(tenant);
 });
 
+// ── Super-admin: PDF invoice for a single recorded payment ──
+// GET /api/tenants/:id/payment/:paymentId/invoice
+const PAYMENT_METHOD_LABELS = { cash: 'Espèces', mobile_money: 'Mobile Money', transfer: 'Virement' };
+const PLATFORM_ISSUER = { name: 'HD Gestion', site: 'www.hdgestion.co', email: 'contact@hdgestion.co', color: '#0f6cbd' };
+
+const getPaymentInvoicePdf = asyncHandler(async (req, res) => {
+  const tenant = await Tenant.findById(req.params.id).lean();
+  if (!tenant) {
+    res.status(404);
+    throw new Error('Boutique introuvable.');
+  }
+  const payment = (tenant.payments || []).find((p) => String(p._id) === String(req.params.paymentId));
+  if (!payment) {
+    res.status(404);
+    throw new Error('Paiement introuvable.');
+  }
+
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  const invoiceNumber = `INV-${tenant.code || 'TEN'}-${String(payment._id).slice(-6).toUpperCase()}`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=Facture_${invoiceNumber}.pdf`);
+  doc.pipe(res);
+
+  const M = 50;
+  const W = doc.page.width - M * 2;
+  const color = PLATFORM_ISSUER.color;
+
+  // ── Header: platform (issuer) identity ──
+  doc.fillColor(color).font('Helvetica-Bold').fontSize(22).text(PLATFORM_ISSUER.name, M, 50);
+  doc.fillColor('#666').font('Helvetica').fontSize(9)
+    .text(`${PLATFORM_ISSUER.site}   |   ${PLATFORM_ISSUER.email}`, M, doc.y + 2);
+
+  doc.fillColor('#111').font('Helvetica-Bold').fontSize(18).text('FACTURE', M, 50, { width: W, align: 'right' });
+  doc.fillColor('#666').font('Helvetica').fontSize(9).text(`N° ${invoiceNumber}`, M, doc.y + 2, { width: W, align: 'right' });
+  doc.text(`Date : ${new Date(payment.paidAt).toLocaleDateString('fr-FR')}`, M, doc.y + 2, { width: W, align: 'right' });
+
+  let ry = Math.max(doc.y + 12, 110);
+  doc.moveTo(M, ry).lineTo(M + W, ry).lineWidth(1.5).strokeColor(color).stroke();
+  doc.y = ry + 16;
+
+  // ── Bill to: tenant identity ──
+  doc.fillColor('#111').font('Helvetica-Bold').fontSize(10).text('FACTURÉ À', M, doc.y);
+  doc.moveDown(0.3);
+  doc.fillColor('#222').font('Helvetica-Bold').fontSize(12).text(tenant.name, M, doc.y);
+  doc.fillColor('#555').font('Helvetica').fontSize(9.5);
+  if (tenant.code) doc.text(`Code boutique : ${tenant.code}`, M, doc.y + 2);
+  if (tenant.ownerName) doc.text(tenant.ownerName, M, doc.y + 2);
+  if (tenant.ownerEmail) doc.text(tenant.ownerEmail, M, doc.y + 2);
+  if (tenant.ownerPhone) doc.text(tenant.ownerPhone, M, doc.y + 2);
+
+  doc.moveDown(1.5);
+
+  // ── Payment detail table ──
+  const tableY = doc.y;
+  doc.rect(M, tableY, W, 24).fill(color);
+  doc.fillColor('#fff').font('Helvetica-Bold').fontSize(9.5)
+    .text('DESCRIPTION', M + 10, tableY + 7, { width: W * 0.45 })
+    .text('MÉTHODE', M + W * 0.45, tableY + 7, { width: W * 0.2 })
+    .text('PÉRIODE', M + W * 0.65, tableY + 7, { width: W * 0.15 })
+    .text('MONTANT', M, tableY + 7, { width: W - 10, align: 'right' });
+
+  const rowY = tableY + 24 + 10;
+  const planLabel = { trial: 'Essai', basic: 'Basique', pro: 'Pro', enterprise: 'Entreprise' }[tenant.plan] || tenant.plan;
+  doc.fillColor('#222').font('Helvetica').fontSize(10)
+    .text(`Abonnement ${planLabel}${payment.note ? ` — ${payment.note}` : ''}`, M + 10, rowY, { width: W * 0.45 })
+    .text(PAYMENT_METHOD_LABELS[payment.method] || payment.method, M + W * 0.45, rowY, { width: W * 0.2 })
+    .text(payment.period || '—', M + W * 0.65, rowY, { width: W * 0.15 })
+    .font('Helvetica-Bold')
+    .text(`${Number(payment.amount).toLocaleString('fr-FR')} CFA`, M, rowY, { width: W - 10, align: 'right' });
+
+  doc.moveTo(M, rowY + 22).lineTo(M + W, rowY + 22).strokeColor('#ddd').lineWidth(1).stroke();
+
+  // ── Total ──
+  const totalY = rowY + 34;
+  doc.fillColor('#111').font('Helvetica-Bold').fontSize(12)
+    .text('TOTAL PAYÉ', M, totalY, { width: W * 0.7 })
+    .fillColor(color)
+    .text(`${Number(payment.amount).toLocaleString('fr-FR')} CFA`, M, totalY, { width: W - 10, align: 'right' });
+
+  // ── Footer ──
+  doc.fillColor('#999').font('Helvetica').fontSize(8.5)
+    .text('Merci pour votre confiance.', M, doc.page.height - 90, { width: W, align: 'center' })
+    .text(`${PLATFORM_ISSUER.name} — ${PLATFORM_ISSUER.site}`, M, doc.page.height - 78, { width: W, align: 'center' })
+    .text(`Facture générée le ${new Date().toLocaleString('fr-FR')}`, M, doc.page.height - 66, { width: W, align: 'center' });
+
+  doc.end();
+});
+
 // ── Super-admin: platform audit log ──
 // GET /api/tenants/audit?limit=100
 const getAuditLog = asyncHandler(async (req, res) => {
@@ -917,6 +1006,7 @@ module.exports = {
   exportTenantsCsv,
   getOverviewStats,
   recordPayment,
+  getPaymentInvoicePdf,
   getAuditLog,
   getPlans,
   updatePlans,

@@ -87,6 +87,9 @@ const tenantSchema = new mongoose.Schema(
     monthlyPrice: { type: Number, default: 0, min: 0 },
     nextPaymentDue: { type: Date, default: null },
     lastPaymentAt: { type: Date, default: null },
+    // Tracks the last payment the shop's users have already been congratulated
+    // for on connection, so the renewal toast fires once per payment.
+    lastPaymentNotifiedAt: { type: Date, default: null },
     payments: [
       {
         amount: { type: Number, required: true, min: 0 },

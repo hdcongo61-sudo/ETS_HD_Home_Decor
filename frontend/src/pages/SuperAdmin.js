@@ -104,6 +104,19 @@ const downloadDocPdf = async (type) => {
   URL.revokeObjectURL(url);
 };
 
+// Downloads the PDF invoice for a single recorded tenant payment.
+const downloadPaymentInvoice = async (tenantId, paymentId, tenantName) => {
+  const res = await platformApi.tenantPaymentInvoice(tenantId, paymentId);
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Facture_${(tenantName || 'boutique').replace(/[^a-zA-Z0-9]+/g, '_')}_${paymentId.slice(-6)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 const EditorDocs = () => {
   const [busy, setBusy] = useState('');
   const download = async (type) => {
@@ -649,7 +662,6 @@ const TABS = [
   { id: 'tenants',  label: 'Boutiques',      icon: Building2 },
   { id: 'users',    label: 'Utilisateurs',   icon: Users },
   { id: 'plans',    label: 'Forfaits',       icon: Layers },
-  { id: 'subscriptions', label: 'Abonnements', icon: CreditCard },
   { id: 'billing',  label: 'Facturation',    icon: Wallet },
   { id: 'payments', label: 'Paiements',      icon: Receipt },
   { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -797,7 +809,6 @@ const SuperAdmin = () => {
       {tab === 'tenants'        && <TenantsTab tenants={tenants} loading={loading} updating={updating} onReload={fetchTenants} onStatus={handleStatusChange} onPlan={handlePlanChange} onImpersonate={handleImpersonate} setTenants={setTenants} />}
       {tab === 'users'          && <UsersTab />}
       {tab === 'plans'          && <PlansTab />}
-      {tab === 'subscriptions'  && <SubscriptionsTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
       {tab === 'billing'        && <BillingTab tenants={tenants} loading={loading} onReload={fetchTenants} />}
       {tab === 'payments'       && <PaymentHistoryTab tenants={tenants} />}
       {tab === 'notifications'  && <NotificationsTab tenants={tenants} />}
@@ -1548,11 +1559,13 @@ const LimitField = ({ label, used, editing, value, onChange }) => (
 const BillingTab = ({ tenants, loading, onReload }) => {
   const [payTarget, setPayTarget] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const now = Date.now();
 
   // Metrics
   const activeTenants = tenants.filter((t) => t.status === 'active');
+  const trialTenants = tenants.filter((t) => t.plan === 'trial');
   const totalMRR = activeTenants.reduce((s, t) => s + (t.monthlyPrice || 0), 0);
   const overdue = tenants.filter((t) => t.status === 'active' && t.nextPaymentDue && new Date(t.nextPaymentDue) < now);
   const upcoming = tenants.filter((t) => {
@@ -1581,15 +1594,33 @@ const BillingTab = ({ tenants, loading, onReload }) => {
     return sum + payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   }, 0);
 
+  const getDaysRemaining = (dueDate) => {
+    if (!dueDate) return null;
+    return Math.ceil((new Date(dueDate) - now) / 86400000);
+  };
+
+  const getStatusColor = (tenant) => {
+    if (tenant.status !== 'active' || !tenant.nextPaymentDue) return 'var(--colorNeutralForeground3)';
+    const dl = getDaysRemaining(tenant.nextPaymentDue);
+    if (dl === null) return 'var(--colorNeutralForeground3)';
+    if (dl < 0) return 'var(--colorStatusDangerForeground1)';
+    if (dl <= 7) return 'var(--colorStatusWarningForeground1)';
+    return 'var(--colorStatusSuccessForeground1)';
+  };
+
   // Filter tenants
   const filtered = tenants.filter((t) => {
     if (searchTerm && !t.name.toLowerCase().includes(searchTerm.toLowerCase()) && !t.ownerEmail?.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
+    if (planFilter !== 'all' && t.plan !== planFilter) return false;
     if (statusFilter === 'overdue') return overdue.includes(t);
     if (statusFilter === 'upcoming') return upcoming.includes(t);
     if (statusFilter === 'never-paid') return neverPaid.includes(t);
     if (statusFilter === 'active') return t.status === 'active';
+    if (statusFilter === 'trial') return t.plan === 'trial';
+    if (statusFilter === 'suspended') return t.status === 'suspended';
+    if (statusFilter === 'expired') return t.status === 'expired';
     return true;
   });
 
@@ -1598,9 +1629,10 @@ const BillingTab = ({ tenants, loading, onReload }) => {
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <Kpi label="MRR" value={money(totalMRR)} sub={`${fmt(activeTenants.length)} boutiques actives`} accent="var(--colorStatusSuccessForeground1)" icon={Wallet} />
         <Kpi label="Encaisse ce mois" value={money(revenueThisMonth)} sub="Paiements enregistres" accent="var(--colorBrandForeground1)" icon={Receipt} />
+        <Kpi label="Essais gratuits" value={fmt(trialTenants.length)} sub="Plan trial" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
         <Kpi label="En retard" value={fmt(overdue.length)} sub={`${money(agingTotal)} en souffrance`} accent={overdue.length ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={AlertCircle} />
         <Kpi label="A venir (7j)" value={fmt(upcoming.length)} sub="Echeances cette semaine" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
         <Kpi label="Jamais paye" value={fmt(neverPaid.length)} sub="Boutiques sans historique" accent="var(--colorNeutralForeground3)" icon={AlertTriangle} />
@@ -1641,13 +1673,22 @@ const BillingTab = ({ tenants, loading, onReload }) => {
             className="form-control w-64 text-sm"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
             <option value="all">Toutes ({tenants.length})</option>
             <option value="active">Actives ({activeTenants.length})</option>
+            <option value="trial">Essai ({trialTenants.length})</option>
+            <option value="suspended">Suspendues</option>
+            <option value="expired">Expirees</option>
             <option value="overdue">En retard ({overdue.length})</option>
             <option value="upcoming">Echeances 7j ({upcoming.length})</option>
             <option value="never-paid">Jamais paye ({neverPaid.length})</option>
+          </select>
+          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="form-control w-auto text-sm min-h-[36px]">
+            <option value="all">Tous les plans</option>
+            {PLAN_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </div>
         <p className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
@@ -1655,23 +1696,23 @@ const BillingTab = ({ tenants, loading, onReload }) => {
         </p>
       </div>
 
-      {/* Tenants table */}
-      <div className="fluent-card-filled overflow-hidden">
-        <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-          <span>Boutique</span><span>Plan</span><span>Prix/mois</span><span>Prochaine echeance</span><span>Dernier paiement</span><span>Action</span>
+      {/* Tenants table — desktop */}
+      <div className="hidden lg:block fluent-card-filled overflow-hidden">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+          <span>Boutique</span><span>Plan</span><span>Prix/mois</span><span>Prochaine echeance</span><span>Jours restants</span><span>Dernier paiement</span><span>Action</span>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           {filtered.length === 0 ? (
             <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune boutique trouvee.</div>
           ) : (
             filtered.map((t) => {
-              const isOverdue = t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
-              const daysUntilDue = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
-              const isUpcoming = daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= 7;
               const hasNeverPaid = !t.lastPaymentAt && t.monthlyPrice > 0;
+              const daysUntilDue = getDaysRemaining(t.nextPaymentDue);
+              const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
+              const isExpiringSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
 
               return (
-                <div key={t._id} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+                <div key={t._id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
@@ -1679,21 +1720,31 @@ const BillingTab = ({ tenants, loading, onReload }) => {
                     </div>
                     <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</span>
                   </div>
-                  <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground2)' }}>{PLAN_LABELS[t.plan]}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded w-fit" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
+                    {PLAN_LABELS[t.plan] || t.plan}
+                  </span>
                   <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</span>
-                  <div className="flex flex-col">
-                    <span className="fui-caption1 tabular-nums" style={{ color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isUpcoming ? 'var(--colorStatusWarningForeground1)' : 'var(--colorNeutralForeground3)' }}>
-                      {isOverdue && '⚠ '}{isUpcoming && '⏰ '}{fmtDate(t.nextPaymentDue)}
-                    </span>
-                    {isOverdue && (
-                      <span className="fui-caption2" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
-                        {Math.abs(daysUntilDue)} j de retard
+                  <span className="fui-body1 tabular-nums" style={{ color: getStatusColor(t) }}>
+                    {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
+                  </span>
+                  <div>
+                    {daysUntilDue !== null ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium tabular-nums" style={{
+                        background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
+                        color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
+                      }}>
+                        {isOverdue ? (
+                          <><AlertCircle size={12} /> {Math.abs(daysUntilDue)} j retard</>
+                        ) : daysUntilDue === 0 ? (
+                          <><AlertTriangle size={12} /> Aujourd hui</>
+                        ) : daysUntilDue <= 7 ? (
+                          <><Clock size={12} /> {daysUntilDue} j</>
+                        ) : (
+                          <><CheckCircle2 size={12} /> {daysUntilDue} j</>
+                        )}
                       </span>
-                    )}
-                    {isUpcoming && (
-                      <span className="fui-caption2" style={{ color: 'var(--colorStatusWarningForeground1)' }}>
-                        Dans {daysUntilDue} j
-                      </span>
+                    ) : (
+                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>—</span>
                     )}
                   </div>
                   <span className="fui-caption1 tabular-nums" style={{ color: hasNeverPaid ? 'var(--colorNeutralForeground3)' : 'var(--colorNeutralForeground2)' }}>
@@ -1708,6 +1759,97 @@ const BillingTab = ({ tenants, loading, onReload }) => {
           )}
         </div>
       </div>
+
+      {/* Tenants — mobile cards */}
+      <div className="lg:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="fluent-card-filled p-6 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Aucune boutique trouvee.
+          </div>
+        ) : (
+          filtered.map((t) => {
+            const hasNeverPaid = !t.lastPaymentAt && t.monthlyPrice > 0;
+            const daysUntilDue = getDaysRemaining(t.nextPaymentDue);
+            const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
+            const isExpiringSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
+
+            return (
+              <div key={t._id} className="fluent-card-filled p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</p>
+                    <p className="fui-caption1 mt-1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.ownerEmail}</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs whitespace-nowrap" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
+                    {PLAN_LABELS[t.plan] || t.plan}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={t.status} />
+                  {daysUntilDue !== null && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium tabular-nums" style={{
+                      background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
+                      color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
+                    }}>
+                      {isOverdue ? (
+                        <><AlertCircle size={12} /> {Math.abs(daysUntilDue)} j retard</>
+                      ) : daysUntilDue === 0 ? (
+                        <><AlertTriangle size={12} /> Aujourd hui</>
+                      ) : daysUntilDue <= 7 ? (
+                        <><Clock size={12} /> {daysUntilDue} j</>
+                      ) : (
+                        <><CheckCircle2 size={12} /> {daysUntilDue} j</>
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+                  <div>
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix mensuel</p>
+                    <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</p>
+                  </div>
+                  <div>
+                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Dernier paiement</p>
+                    <p className="fui-body1-strong" style={{ color: hasNeverPaid ? 'var(--colorNeutralForeground3)' : 'var(--colorNeutralForeground1)' }}>
+                      {hasNeverPaid ? '—' : fmtDate(t.lastPaymentAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <button onClick={() => setPayTarget(t)} className="ms-button ms-button-primary ms-button-sm w-full justify-center flex items-center gap-1">
+                  <CreditCard size={13} /> Paiement
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {filtered.length > 0 && (
+        <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke1)' }}>
+          <p className="fui-caption1-strong mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>Legende</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusSuccessForeground1)' }} />
+              Plus de 7 jours
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusWarningForeground1)' }} />
+              Expire dans 7 jours ou moins
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusDangerForeground1)' }} />
+              Paiement en retard
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorNeutralForeground3)' }} />
+              Pas d echeance
+            </div>
+          </div>
+        </div>
+      )}
 
       {payTarget && <PaymentModal tenant={payTarget} onClose={() => setPayTarget(null)} onRecorded={() => onReload()} />}
     </div>
@@ -1771,15 +1913,15 @@ const PaymentHistoryTab = ({ tenants }) => {
       </div>
 
       <div className="fluent-card-filled overflow-hidden">
-        <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-          <span>Boutique</span><span>Date</span><span>Période</span><span>Montant</span><span>Méthode</span><span>Note</span>
+        <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
+          <span>Boutique</span><span>Date</span><span>Période</span><span>Montant</span><span>Méthode</span><span>Note</span><span>Facture</span>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           {filtered.length === 0 ? (
             <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun paiement trouvé.</div>
           ) : (
             filtered.map((p, i) => (
-              <div key={i} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
+              <div key={i} className="grid lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
                 <div className="min-w-0">
                   <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{p.tenantName}</span>
                   <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{PLAN_LABELS[p.tenantPlan]}</span>
@@ -1802,6 +1944,13 @@ const PaymentHistoryTab = ({ tenants }) => {
                   {!['mobile_money', 'cash', 'transfer'].includes(p.method) && <span style={{ color: 'var(--colorNeutralForeground3)' }}>{p.method}</span>}
                 </span>
                 <span className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.note || '—'}</span>
+                <button
+                  onClick={() => downloadPaymentInvoice(p.tenantId, p._id, p.tenantName).catch(() => toast.error('Erreur lors de la génération de la facture.'))}
+                  className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1"
+                  title="Télécharger la facture"
+                >
+                  <Download size={13} /> Facture
+                </button>
               </div>
             ))
           )}
@@ -3177,284 +3326,6 @@ const PlansTab = () => {
         Le prix et les limites changent au prochain changement de plan d'une boutique (ou manuellement depuis l'onglet Boutiques).
         Les <strong>fonctionnalités</strong>, elles, s'appliquent immédiatement à toutes les boutiques du forfait concerné.
       </p>
-    </div>
-  );
-};
-
-/* ─── TAB: Subscriptions Management ──────────────────────── */
-const SubscriptionsTab = ({ tenants, loading, onReload }) => {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [planFilter, setPlanFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('nextDue');
-
-  const now = new Date();
-
-  // Filter tenants
-  const filtered = tenants.filter((t) => {
-    if (search && !t.name?.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-    if (planFilter !== 'all' && t.plan !== planFilter) return false;
-    return true;
-  });
-
-  // Sort tenants
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'nextDue') {
-      const aDate = a.nextPaymentDue ? new Date(a.nextPaymentDue) : new Date('2099-12-31');
-      const bDate = b.nextPaymentDue ? new Date(b.nextPaymentDue) : new Date('2099-12-31');
-      return aDate - bDate;
-    }
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    if (sortBy === 'plan') return (a.plan || '').localeCompare(b.plan || '');
-    return 0;
-  });
-
-  // Statistics
-  const stats = {
-    total: tenants.length,
-    active: tenants.filter(t => t.status === 'active').length,
-    trial: tenants.filter(t => t.plan === 'trial').length,
-    expiringSoon: tenants.filter(t => {
-      if (!t.nextPaymentDue || t.status !== 'active') return false;
-      const due = new Date(t.nextPaymentDue);
-      const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-      return daysLeft > 0 && daysLeft <= 7;
-    }).length,
-    overdue: tenants.filter(t => {
-      if (!t.nextPaymentDue || t.status !== 'active') return false;
-      return new Date(t.nextPaymentDue) < now;
-    }).length,
-  };
-
-  const getDaysRemaining = (dueDate) => {
-    if (!dueDate) return null;
-    const due = new Date(dueDate);
-    return Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-  };
-
-  const getStatusColor = (tenant) => {
-    if (tenant.status !== 'active') return 'var(--colorNeutralForeground3)';
-    if (!tenant.nextPaymentDue) return 'var(--colorNeutralForeground3)';
-    const daysLeft = getDaysRemaining(tenant.nextPaymentDue);
-    if (daysLeft === null) return 'var(--colorNeutralForeground3)';
-    if (daysLeft < 0) return 'var(--colorStatusDangerForeground1)';
-    if (daysLeft <= 7) return 'var(--colorStatusWarningForeground1)';
-    return 'var(--colorStatusSuccessForeground1)';
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Kpi label="Total abonnements" value={fmt(stats.total)} sub="Toutes boutiques" accent="var(--colorBrandForeground1)" icon={Building2} />
-        <Kpi label="Actifs" value={fmt(stats.active)} sub="Abonnements actifs" accent="var(--colorStatusSuccessForeground1)" icon={CheckCircle2} />
-        <Kpi label="Essais gratuits" value={fmt(stats.trial)} sub="Plan trial" accent="var(--colorStatusWarningForeground1)" icon={Clock} />
-        <Kpi label="Expire bientot" value={fmt(stats.expiringSoon)} sub="Dans les 7 jours" accent="var(--colorStatusWarningForeground1)" icon={AlertTriangle} />
-        <Kpi label="En retard" value={fmt(stats.overdue)} sub="Paiement en retard" accent={stats.overdue ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground3)'} icon={XCircle} />
-      </div>
-
-      <div className="ms-command-bar flex-wrap gap-y-2">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Search size={16} style={{ color: 'var(--colorNeutralForeground3)' }} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher..."
-            className="form-control flex-1 sm:w-64 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
-            <option value="all">Tous les statuts</option>
-            <option value="active">Actifs ({stats.active})</option>
-            <option value="trial">Essai</option>
-            <option value="suspended">Suspendus</option>
-            <option value="expired">Expires</option>
-          </select>
-          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
-            <option value="all">Tous les plans</option>
-            <option value="trial">Trial</option>
-            <option value="basic">Basic</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="form-control flex-1 sm:w-auto text-sm min-h-[36px]">
-            <option value="nextDue">Echeance</option>
-            <option value="name">Nom</option>
-            <option value="plan">Plan</option>
-          </select>
-        </div>
-      </div>
-
-      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-        <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(sorted.length)}</span> abonnement{sorted.length > 1 ? 's' : ''}
-      </p>
-
-      {/* Desktop table view */}
-      <div className="hidden lg:block fluent-card-filled overflow-hidden">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-2.5 fui-caption1-strong uppercase border-b" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>
-          <span>Boutique</span><span>Plan</span><span>Statut</span><span>Prix mensuel</span><span>Prochaine echeance</span><span>Jours restants</span>
-        </div>
-        <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-          {loading ? (
-            <div className="px-4 py-10 text-center">Chargement...</div>
-          ) : sorted.length === 0 ? (
-            <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucun abonnement trouve.</div>
-          ) : (
-            sorted.map((t) => {
-              const daysLeft = getDaysRemaining(t.nextPaymentDue);
-              const statusColor = getStatusColor(t);
-              const isOverdue = daysLeft !== null && daysLeft < 0;
-              const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
-
-              return (
-                <div key={t._id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
-                  <div className="min-w-0">
-                    <span className="fui-body1-strong truncate block" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</span>
-                    <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.users?.length || 0} utilisateur{(t.users?.length || 0) > 1 ? 's' : ''}</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded w-fit" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
-                    {PLAN_LABELS[t.plan] || t.plan}
-                  </span>
-                  <StatusBadge status={t.status} />
-                  <span className="fui-body1 tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{money(t.monthlyPrice || 0)}</span>
-                  <span className="fui-body1 tabular-nums" style={{ color: statusColor }}>
-                    {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {daysLeft !== null && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium tabular-nums`} style={{
-                        background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
-                        color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
-                      }}>
-                        {isOverdue ? (
-                          <>
-                            <AlertCircle size={12} /> {Math.abs(daysLeft)} j retard
-                          </>
-                        ) : daysLeft === 0 ? (
-                          <>
-                            <AlertTriangle size={12} /> Aujourd hui
-                          </>
-                        ) : daysLeft <= 7 ? (
-                          <>
-                            <Clock size={12} /> {daysLeft} j
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 size={12} /> {daysLeft} j
-                          </>
-                        )}
-                      </span>
-                    )}
-                    {!t.nextPaymentDue && t.status === 'active' && (
-                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Pas d echeance</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Mobile card view */}
-      <div className="lg:hidden space-y-3">
-        {loading ? (
-          <div className="fluent-card-filled p-6 text-center">Chargement...</div>
-        ) : sorted.length === 0 ? (
-          <div className="fluent-card-filled p-6 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            Aucun abonnement trouve.
-          </div>
-        ) : (
-          sorted.map((t) => {
-            const daysLeft = getDaysRemaining(t.nextPaymentDue);
-            const isOverdue = daysLeft !== null && daysLeft < 0;
-            const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
-
-            return (
-              <div key={t._id} className="fluent-card-filled p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{t.name}</p>
-                    <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                      {t.users?.length || 0} utilisateur{(t.users?.length || 0) > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs whitespace-nowrap" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
-                    {PLAN_LABELS[t.plan] || t.plan}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={t.status} />
-                  {daysLeft !== null && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium tabular-nums`} style={{
-                      background: isOverdue ? 'var(--colorStatusDangerBackground1)' : isExpiringSoon ? 'var(--colorStatusWarningBackground1)' : 'var(--colorStatusSuccessBackground1)',
-                      color: isOverdue ? 'var(--colorStatusDangerForeground1)' : isExpiringSoon ? 'var(--colorStatusWarningForeground1)' : 'var(--colorStatusSuccessForeground1)',
-                    }}>
-                      {isOverdue ? (
-                        <>
-                          <AlertCircle size={12} /> {Math.abs(daysLeft)} j retard
-                        </>
-                      ) : daysLeft === 0 ? (
-                        <>
-                          <AlertTriangle size={12} /> Aujourd hui
-                        </>
-                      ) : daysLeft <= 7 ? (
-                        <>
-                          <Clock size={12} /> {daysLeft} j
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={12} /> {daysLeft} j
-                        </>
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-                  <div>
-                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix mensuel</p>
-                    <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice || 0)}</p>
-                  </div>
-                  <div>
-                    <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prochaine echeance</p>
-                    <p className="fui-body1-strong" style={{ color: getStatusColor(t) }}>
-                      {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {sorted.length > 0 && (
-        <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke1)' }}>
-          <p className="fui-caption1-strong mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>Legende</p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusSuccessForeground1)' }} />
-              Plus de 7 jours
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusWarningForeground1)' }} />
-              Expire dans 7 jours ou moins
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorStatusDangerForeground1)' }} />
-              Paiement en retard
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded" style={{ background: 'var(--colorNeutralForeground3)' }} />
-              Pas d echeance
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -16,6 +16,7 @@ const {
   exportTenantsCsv,
   getOverviewStats,
   recordPayment,
+  getPaymentInvoicePdf,
   getAuditLog,
   getPlans,
   updatePlans,
@@ -59,5 +60,6 @@ router.put('/:id',       protect, superAdmin, updateTenant);
 router.delete('/:id',    protect, superAdmin, deleteTenant);
 router.post('/:id/impersonate', protect, superAdmin, impersonateTenant);
 router.post('/:id/payment',     protect, superAdmin, recordPayment);
+router.get('/:id/payment/:paymentId/invoice', protect, superAdmin, getPaymentInvoicePdf);
 
 module.exports = router;

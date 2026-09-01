@@ -1465,6 +1465,17 @@ form input[type="radio"],
   .ms-kpi-title {
     overflow-wrap: anywhere;
   }
+
+  /* 2 colonnes dès le petit écran : l'icône cède la place au chiffre */
+  .ms-kpi-icon {
+    display: none;
+  }
+
+  /* KPI grids : 2 cartes par ligne sur petit écran. Cible toute grille dont
+     les enfants directs sont exclusivement des cartes KPI. */
+  .grid:has(> .ms-kpi-card):not(:has(> :not(.ms-kpi-card))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1836,7 +1847,7 @@ form input[type="radio"],
 .fui-title2         { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: 0; }
 .fui-title1         { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: 0; }
 .fui-large-title    { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: 0; }
-.fui-display        { font-size: 60px; line-height: 80px; font-weight: 600; letter-spacing: 0; }
+.fui-display        { font-size: clamp(20px, 6vw, 60px); line-height: 1.2; font-weight: 600; letter-spacing: 0; }
 
 /* ═══════════════════════════════════════════════════════
    FLUENT 2 — PIVOT (Tab navigation)

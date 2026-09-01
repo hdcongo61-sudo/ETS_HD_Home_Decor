@@ -1,28 +1,32 @@
 import React, { useContext, useEffect, useRef } from 'react';
-import GlobalSaleModal from './GlobalSaleModal';
-import GlobalPaymentModal from './GlobalPaymentModal';
-import GlobalExpenseModal from './GlobalExpenseModal';
 import FloatingActionButton from './FloatingActionButton';
 import AuthContext from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
+import { GLOBAL_MODALS } from '../config/modals';
 
+/**
+ * Rendu de la pile des modales globales à partir du registre `config/modals.js`.
+ * Les composants restent montés et dérivent leur état de `isModalOpen(id)` :
+ * plusieurs modales peuvent donc être empilées, et l'ordre du DOM suit l'ordre
+ * de la pile (la plus récente au-dessus).
+ */
 const GlobalModals = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
-  const { areGlobalModalsSuppressed, activeModal, closeModal } = useModal();
+  const { areGlobalModalsSuppressed, modalStack, closeAllModals } = useModal();
   const wasSuppressedRef = useRef(areGlobalModalsSuppressed);
 
   useEffect(() => {
     const suppressionJustStarted = areGlobalModalsSuppressed && !wasSuppressedRef.current;
     wasSuppressedRef.current = areGlobalModalsSuppressed;
 
-    // Close a global modal when a page-level dialog opens over it. If a global
-    // action is clicked while an existing dialog is finishing its close cycle,
-    // keep that intent: the modal will render as soon as suppression is released.
-    if (suppressionJustStarted && activeModal) {
-      closeModal();
+    // Une boîte de dialogue de page s'ouvre par-dessus une modale globale :
+    // on vide la pile. Plus de course possible avec une modale « en cours
+    // de fermeture » : la pile est la seule source de vérité.
+    if (suppressionJustStarted && modalStack.length > 0) {
+      closeAllModals();
     }
-  }, [activeModal, areGlobalModalsSuppressed, closeModal]);
+  }, [areGlobalModalsSuppressed, closeAllModals, modalStack.length]);
 
   if (!auth?.isAuthenticated || areGlobalModalsSuppressed) {
     return null;
@@ -31,9 +35,12 @@ const GlobalModals = () => {
   return (
     <>
       <FloatingActionButton isAdmin={isAdmin} />
-      <GlobalSaleModal />
-      <GlobalPaymentModal />
-      {isAdmin && <GlobalExpenseModal />}
+      {Object.entries(GLOBAL_MODALS).map(([modalId, definition]) => {
+        if (definition.adminOnly && !isAdmin) return null;
+        const Component = definition.component;
+        const entry = modalStack.find((stackEntry) => stackEntry.id === modalId);
+        return <Component key={modalId} {...(entry?.props || {})} />;
+      })}
     </>
   );
 };

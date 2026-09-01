@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Images, Search, Palette } from 'lucide-react';
+import { ArrowLeft, Save, Images, Search, Palette, Package, Wallet, Truck, ImagePlus } from 'lucide-react';
 import api from '../services/api';
 import {
   Button,
@@ -19,6 +19,34 @@ const LookupHint = ({ label }) => (
   <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
     Aucun élément. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → {label}</Link>
   </p>
+);
+
+const FORM_SECTION_COLS = {
+  1: 'grid-cols-1',
+  2: 'sm:grid-cols-2',
+  4: 'sm:grid-cols-2 lg:grid-cols-4',
+};
+
+// Numbered, icon-led section — mirrors the create-product panel (Products.js)
+// so both the create and edit surfaces share the same visual hierarchy.
+const FormSection = ({ step, icon, title, description, columns = 4, children }) => (
+  <section className="rounded-2xl border border-[var(--ms-border)] bg-[var(--ms-white)]">
+    <div className="flex items-start gap-3 border-b border-[var(--ms-border)] px-4 py-3 sm:px-5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+        {step}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+          <span className="text-slate-400">{icon}</span>
+          {title}
+        </h2>
+        {description && <p className="mt-0.5 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>{description}</p>}
+      </div>
+    </div>
+    <div className={`grid grid-cols-1 gap-4 p-4 sm:p-5 ${FORM_SECTION_COLS[columns] || FORM_SECTION_COLS[4]}`}>
+      {children}
+    </div>
+  </section>
 );
 
 const EditProductForm = () => {
@@ -271,14 +299,10 @@ const EditProductForm = () => {
             </div>
           )}
 
-          <form id="product-edit-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+          <form id="product-edit-form" onSubmit={handleSubmit} className="space-y-5">
             {/* Section: Informations générales */}
-            <section className="space-y-4">
-              <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
-                Informations générales
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
+            <FormSection step={1} icon={<Package className="h-4 w-4" />} title="Informations générales" description="Identité du produit dans le catalogue">
+                <div className="sm:col-span-2 lg:col-span-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du produit</label>
                   <input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClass('name')} />
                   {validationErrors.name && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.name}</p>}
@@ -314,20 +338,15 @@ const EditProductForm = () => {
                   </select>
                   {lookups.warehouses.length === 0 && <LookupHint label="Entrepôts" />}
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className={`${inputClass('description')} resize-y min-h-[80px]`} />
-                {validationErrors.description && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.description}</p>}
-              </div>
-            </section>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                  <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className={`${inputClass('description')} resize-y min-h-[80px]`} />
+                  {validationErrors.description && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.description}</p>}
+                </div>
+            </FormSection>
 
             {/* Section: Prix & stock */}
-            <section className="space-y-4">
-              <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
-                Prix & stock
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <FormSection step={2} icon={<Wallet className="h-4 w-4" />} title="Prix & stock" description="Marge et disponibilité">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix de revient (CFA)</label>
                   <input type="number" inputMode="decimal" name="costPrice" value={formData.costPrice} onChange={handleChange} min="0" step="0.01" className={inputClass('costPrice')} />
@@ -349,15 +368,10 @@ const EditProductForm = () => {
                     {profitMargin}%
                   </p>
                 </div>
-              </div>
-            </section>
+            </FormSection>
 
             {/* Section: Fournisseur */}
-            <section className="space-y-4">
-              <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
-                Fournisseur
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormSection step={3} icon={<Truck className="h-4 w-4" />} title="Fournisseur" description="Origine et contact d'approvisionnement" columns={2}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Fournisseur</label>
                   <select name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} className={selectClass('supplierName')}>
@@ -374,15 +388,10 @@ const EditProductForm = () => {
                   <input type="text" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} className={inputClass('supplierPhone')} readOnly />
                   {validationErrors.supplierPhone && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.supplierPhone}</p>}
                 </div>
-              </div>
-            </section>
+            </FormSection>
 
             {/* Section: Image */}
-            <section className="space-y-4">
-              <h2 className="ms-section-title border-b border-[var(--ms-border)] pb-2">
-                Image
-              </h2>
-
+            <FormSection step={4} icon={<ImagePlus className="h-4 w-4" />} title="Image" description="Visuel affiché dans le catalogue" columns={1}>
               <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-start">
                 {/* Current image preview */}
                 <div className="flex flex-col items-center gap-1.5">
@@ -412,8 +421,7 @@ const EditProductForm = () => {
                   </p>
                 </div>
               </div>
-            </section>
-
+            </FormSection>
           </form>
       </Surface>
 

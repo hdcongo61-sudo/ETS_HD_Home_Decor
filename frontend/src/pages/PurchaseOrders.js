@@ -179,6 +179,11 @@ const PurchaseOrders = () => {
     }
   };
 
+  const cancelPoForm = () => {
+    setPoForm({ supplierId: '', note: '', expectedDate: '', lines: [{ product: '', orderedQuantity: 1, unitCost: 0 }] });
+    setShowPoForm(false);
+  };
+
   const createShipment = async (e) => {
     e.preventDefault();
     if (!shipForm.reference.trim() || !shipForm.destinationLocationId) {
@@ -401,7 +406,8 @@ const PurchaseOrders = () => {
               >
                 <Plus size={16} /> Ajouter une ligne
               </button>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" className="btn-ghost" onClick={cancelPoForm}>Annuler</button>
                 <button type="submit" className="btn-primary"><Send size={16} /> Créer le bon de commande</button>
               </div>
             </form>
