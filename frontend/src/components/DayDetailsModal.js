@@ -193,7 +193,7 @@ const DayDetailsModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.36)] p-0 backdrop-blur-sm sm:items-center sm:p-4"
+        className="sa-overlay-sheet fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.36)] backdrop-blur-sm sm:items-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -204,7 +204,7 @@ const DayDetailsModal = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] shadow-[var(--ms-shadow-lg)] sm:max-h-[calc(100dvh-4.5rem)] sm:max-w-6xl sm:rounded-2xl"
+          className="sa-sheet-panel flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] shadow-[var(--ms-shadow-lg)] sm:max-h-[calc(100dvh-4.5rem)] sm:max-w-6xl sm:rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Mobile header */}

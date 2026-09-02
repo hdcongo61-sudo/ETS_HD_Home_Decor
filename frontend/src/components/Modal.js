@@ -143,7 +143,7 @@ const Modal = ({
         aria-hidden
       />
 
-      <div className="pointer-events-none relative z-10 flex h-full min-h-full items-end justify-center px-0 pt-[env(safe-area-inset-top)] sm:items-center sm:p-4">
+      <div className="sa-overlay-sheet pointer-events-none relative z-10 flex h-full min-h-full items-end justify-center sm:items-center">
         <motion.div
           ref={panelRef}
           tabIndex={-1}
@@ -154,10 +154,10 @@ const Modal = ({
           className={`
             pointer-events-auto relative flex w-full ${sizeClasses[size] || sizeClasses.md} flex-col overflow-hidden
             bg-[var(--ms-white)] text-[var(--ms-text)]
-            ${mobileFullscreen ? 'h-[100dvh] rounded-none' : 'max-h-[92dvh] rounded-t-2xl'}
+            ${mobileFullscreen ? 'h-full rounded-none' : 'max-h-[92dvh] rounded-t-2xl'}
             border border-[var(--colorNeutralStroke1)] sm:max-h-[min(88dvh,860px)] sm:rounded-2xl
             shadow-[var(--shadow16)]
-            safe-area-bottom
+            sa-sheet-panel
             ${panelClassName}
           `}
           onClick={(e) => e.stopPropagation()}

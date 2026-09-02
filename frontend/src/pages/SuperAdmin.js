@@ -546,7 +546,7 @@ const PlanRequests = () => {
 const ConfirmDialog = ({ open, title, description, confirmLabel = 'Confirmer', danger = false, onConfirm, onCancel }) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+    <div className="sa-overlay fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
       <div className="fluent-card-filled p-6 w-full max-w-sm" style={{ boxShadow: 'var(--shadow28)' }}>
         <h3 className="fui-subtitle1 mb-2" style={{ color: 'var(--colorNeutralForeground1)' }}>{title}</h3>
         <p className="fui-body1 mb-5" style={{ color: 'var(--colorNeutralForeground3)' }}>{description}</p>
@@ -579,7 +579,7 @@ const CreateTenantModal = ({ open, onClose, onCreated }) => {
   };
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+    <div className="sa-overlay fixed inset-0 z-[200] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
       <div className="fluent-card-filled w-full max-w-lg" style={{ boxShadow: 'var(--shadow28)' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Nouvelle boutique</h2>
@@ -626,7 +626,7 @@ const PaymentModal = ({ tenant, onClose, onRecorded }) => {
     finally { setSubmitting(false); }
   };
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+    <div className="sa-overlay fixed inset-0 z-[200] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
       <div className="fluent-card-filled w-full max-w-md" style={{ boxShadow: 'var(--shadow28)' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Paiement — {tenant.name}</h2>
@@ -2294,7 +2294,7 @@ const AddUserModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="sa-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-lg w-full max-h-[90vh] overflow-y-auto" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
         <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           <div className="flex items-center justify-between">
@@ -2401,7 +2401,7 @@ const EditUserModal = ({ user, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="sa-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-lg w-full" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
         <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           <div className="flex items-center justify-between">
@@ -2501,7 +2501,7 @@ const EmailUsersModal = ({ users, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="sa-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-[var(--colorNeutralBackground1)] rounded-[var(--radiusXLarge)] max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ border: '1px solid var(--colorNeutralStroke2)' }}>
         <div className="p-5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
           <div className="flex items-center justify-between">
@@ -3360,7 +3360,7 @@ const TenantStatsModal = ({ tenant, onClose }) => {
   const growthUp = stats && stats.sales.growthPct >= 0;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto p-4" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+    <div className="sa-overlay fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
       <div className="fluent-card-filled w-full max-w-3xl my-4" style={{ boxShadow: 'var(--shadow28)' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>

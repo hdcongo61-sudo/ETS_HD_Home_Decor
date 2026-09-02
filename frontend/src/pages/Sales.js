@@ -2292,7 +2292,7 @@ const Sales = () => {
 
           {showDeliveryModal && selectedSale && (
             <div
-              className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+              className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md"
               onClick={() => setShowDeliveryModal(false)}
             >
               <div
@@ -3144,7 +3144,7 @@ const Sales = () => {
             {/* Modal Export */}
             {isAdmin && showExportModal && (
               <div
-              className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+              className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md"
                 onClick={() => setShowExportModal(false)}
               >
                 <div
@@ -3183,7 +3183,7 @@ const Sales = () => {
             {/* Modal Livraison */}
             {showDeliveryModal && selectedSale && (
               <div
-                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+                className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md"
                 onClick={() => setShowDeliveryModal(false)}
               >
                 <div
@@ -3290,14 +3290,14 @@ const Sales = () => {
                 : 'Toutes périodes';
               return (
                 <div
-                  className="fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.45)] backdrop-blur-sm p-0 sm:items-center sm:p-4"
+                  className="sa-overlay-sheet fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.45)] backdrop-blur-sm sm:items-center"
                   onClick={() => setShowPaymentsDetailModal(false)}
                   role="dialog"
                   aria-modal="true"
                   aria-label="Paiements encaissés"
                 >
                   <div
-                    className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[88vh] sm:max-w-2xl sm:rounded-lg"
+                    className="sa-sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[88vh] sm:max-w-2xl sm:rounded-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Grabber (mobile) */}
@@ -3403,7 +3403,7 @@ const Sales = () => {
             {/* Modal Historique (sales/all) */}
             {showHistoryModal && (
               <div
-                className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md p-4"
+                className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md"
                 onClick={() => setShowHistoryModal(false)}
               >
                 <div

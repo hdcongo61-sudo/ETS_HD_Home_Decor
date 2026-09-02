@@ -118,14 +118,27 @@
   --app-warning:           var(--ms-warning);
 }
 
-/* === PWA safe area (viewport-fit=cover in index.html) === */
-@supports (padding: env(safe-area-inset-top)) {
-  :root {
-    --safe-area-inset-top: env(safe-area-inset-top);
-    --safe-area-inset-right: env(safe-area-inset-right);
-    --safe-area-inset-bottom: env(safe-area-inset-bottom);
-    --safe-area-inset-left: env(safe-area-inset-left);
-  }
+/* === PWA safe area (viewport-fit=cover in index.html) ===
+   Source unique de vérité pour les encoches / barre d'accueil. Les `env()`
+   valent 0px sur navigateur desktop, donc ces variables sont sûres partout et
+   n'ont pas besoin de garde `@supports`.
+
+   Règle : `body` porte déjà les insets pour le contenu en flux normal. Tout
+   élément `position: fixed` (modales, feuilles, nav, toasts) sort de ce flux
+   et doit donc consommer les insets lui-même — d'où les utilitaires plus bas.
+   Les paddings « confort » utilisent `max()` pour ne jamais descendre sous
+   l'espacement visuel minimal sur écran sans encoche. */
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+
+  /* Alias historiques (conservés : utilisés hors de ce fichier) */
+  --safe-area-inset-top: var(--sa-top);
+  --safe-area-inset-right: var(--sa-right);
+  --safe-area-inset-bottom: var(--sa-bottom);
+  --safe-area-inset-left: var(--sa-left);
 }
 
 /* === Apple HIG: Clarity & Deference (typography, base) === */
@@ -161,8 +174,11 @@ body {
 }
 
 #root {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* `body` porte déjà les insets safe-area (padding-top/bottom). Sans cette
+     correction, `min-height: 100dvh` + ces paddings dépassent le viewport sur
+     un appareil à encoche : la page « respire » et scrolle en permanence. */
+  min-height: calc(100vh - var(--sa-top) - var(--sa-bottom));
+  min-height: calc(100dvh - var(--sa-top) - var(--sa-bottom));
 }
 
 /* Mobile-first: reserve space for the fixed bottom tab bar so page content is
@@ -212,17 +228,75 @@ body {
 
 /* Safe area utilities for fixed/sticky elements (mobile PWA) */
 .safe-area-padding {
-  padding-left: max(1rem, env(safe-area-inset-left, 0px));
-  padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1rem, var(--sa-left));
+  padding-right: max(1rem, var(--sa-right));
+  padding-bottom: max(1.25rem, var(--sa-bottom));
 }
 
 .safe-area-top {
-  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+  padding-top: max(0.5rem, var(--sa-top));
 }
 
 .safe-area-bottom {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(0.5rem, var(--sa-bottom));
+}
+
+/* ===================================================================
+   Safe area — surfaces en overlay (modales, feuilles, boîtes de dialogue)
+   ===================================================================
+   Un élément `position: fixed` ignore le padding de `body`, donc il doit
+   consommer les insets lui-même. Ces classes sont conçues pour être posées
+   directement sur les conteneurs d'overlay existants.
+*/
+
+/* Important : ces classes sont déclarées après `@tailwind utilities`, donc à
+   spécificité égale elles gagnent sur `p-4` / `p-0`. Elles remplacent donc
+   complètement le padding Tailwind du conteneur — ne pas cumuler les deux.
+   Les valeurs de base (1rem) reproduisent `p-4` sur écran sans encoche, pour
+   ne rien changer visuellement au rendu desktop existant. */
+
+/* Conteneur de centrage d'un overlay plein écran : garantit que le panneau
+   ne peut jamais être poussé sous l'encoche ni sous la barre d'accueil.
+   À poser sur le wrapper `fixed inset-0 flex items-center justify-center`. */
+.sa-overlay {
+  padding-top: max(1rem, var(--sa-top));
+  padding-right: max(1rem, var(--sa-right));
+  padding-bottom: max(1rem, var(--sa-bottom));
+  padding-left: max(1rem, var(--sa-left));
+}
+
+/* Variante feuille (bottom sheet) : sur mobile le panneau est collé en bas et
+   pleine largeur, donc aucun padding latéral ni bas sur le conteneur — c'est
+   le panneau qui absorbe l'inset bas via `.sa-sheet-panel`. On garde une marge
+   haute pour que la feuille ne touche jamais l'encoche. */
+.sa-overlay-sheet {
+  padding-top: max(0.75rem, var(--sa-top));
+  padding-right: var(--sa-right);
+  padding-bottom: 0;
+  padding-left: var(--sa-left);
+}
+
+@media (min-width: 640px) {
+  /* Sur ≥sm la feuille redevient une carte centrée : padding complet. */
+  .sa-overlay-sheet {
+    padding-top: max(1rem, var(--sa-top));
+    padding-right: max(1rem, var(--sa-right));
+    padding-bottom: max(1rem, var(--sa-bottom));
+    padding-left: max(1rem, var(--sa-left));
+  }
+}
+
+/* Panneau d'une feuille ancrée en bas. Le padding bas protège le dernier
+   élément (liste, footer d'actions) de la barre d'accueil iOS. Sur ≥sm le
+   panneau flotte, l'inset n'est plus nécessaire. */
+.sa-sheet-panel {
+  padding-bottom: var(--sa-bottom);
+}
+
+@media (min-width: 640px) {
+  .sa-sheet-panel {
+    padding-bottom: 0;
+  }
 }
 
 /* Main content when bottom tab bar is visible (mobile): reserve space + safe area */
@@ -1362,6 +1436,9 @@ form input[type="radio"],
   border-bottom: 0;
   border-top: 1px solid var(--ms-border);
   justify-content: flex-end;
+  /* Le footer est le dernier élément d'un panneau plein écran sur mobile :
+     sans cet inset il passe sous la barre d'accueil iOS. */
+  padding-bottom: calc(16px + var(--sa-bottom));
 }
 
 .ms-panel-title {

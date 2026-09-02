@@ -618,7 +618,11 @@ function App() {
               <DashboardDataProvider>
                 <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                   <ScrollToTop />
-                  <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+                  <Toaster
+                    position="top-right"
+                    containerStyle={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}
+                    toastOptions={{ duration: 4000 }}
+                  />
                   <ConfirmProvider />
                   <ApplicationShell />
                 </Router>

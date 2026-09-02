@@ -210,14 +210,14 @@ const ProductImportModal = ({ isOpen, onClose, onImported }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.45)] p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="sa-overlay-sheet fixed inset-0 z-[260] flex items-end justify-center bg-[rgba(32,31,30,0.45)] backdrop-blur-sm sm:items-center"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Importer des produits"
     >
       <div
-        className="flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[90vh] sm:max-w-5xl sm:rounded-lg"
+        className="sa-sheet-panel flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-[var(--ms-shadow-lg)] sm:max-h-[90vh] sm:max-w-5xl sm:rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Grabber (mobile) */}

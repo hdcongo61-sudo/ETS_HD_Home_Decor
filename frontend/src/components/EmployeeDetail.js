@@ -189,7 +189,7 @@ const EmployeeDetail = () => {
     <div className="p-6">
       {isPhotoOpen && employee.photo && (
         <div
-          className="fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-md"
+          className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/70 backdrop-blur-md"
           onClick={() => setIsPhotoOpen(false)}
         >
           <div
