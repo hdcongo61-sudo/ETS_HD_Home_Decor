@@ -52,6 +52,13 @@ const TONE_COLORS = {
   neutral: "var(--ms-text-strong)",
 };
 
+/* Badge de tendance — teinté selon le niveau de performance */
+const TREND_CHIP_STYLES = {
+  success: { background: "rgba(16,124,16,0.10)", color: "var(--ms-success)" },
+  stable: { background: "rgba(0,120,212,0.10)", color: "var(--ms-blue)" },
+  weak: { background: "rgba(209,52,56,0.10)", color: "var(--ms-danger)" },
+};
+
 const ACCENTS = {
   sales: { bg: "rgba(16,124,16,0.12)", fg: "var(--ms-success)" },
   expenses: { bg: "rgba(209,52,56,0.10)", fg: "var(--ms-danger)" },
@@ -129,7 +136,8 @@ const DayDetailsModal = ({
 
   const transactionCount = sales.length + expenses.length + payments.length;
 
-  const averageBasket = sales.length ? totals.totalSales / sales.length : 0;
+  // Arrondi pour éviter des montants illisibles type « 118333,333 CFA ».
+  const averageBasket = sales.length ? Math.round(totals.totalSales / sales.length) : 0;
 
   const bestSale = useMemo(() => {
     if (!sales.length) return null;
@@ -137,6 +145,16 @@ const DayDetailsModal = ({
       Number(s?.totalAmount || 0) > Number(best?.totalAmount || 0) ? s : best
     , sales[0]);
   }, [sales]);
+
+  // Nom du client de la meilleure vente — ignore les libellés génériques.
+  const bestSaleClient = useMemo(() => {
+    const raw = bestSale?.client?.name;
+    if (!raw) return null;
+    const clean = String(raw).trim().toLowerCase();
+    return ["inconnu", "client inconnu", "client non spécifié"].includes(clean)
+      ? null
+      : String(raw).trim();
+  }, [bestSale]);
 
   // Payment method split across the day's payments — surfaces cash vs Mobile Money vs credit balance.
   const methodBreakdown = useMemo(() => {
@@ -164,10 +182,10 @@ const DayDetailsModal = ({
 
     const trend =
       profitMargin >= 30
-        ? { text: "Excellente performance", icon: <TrendingUp className="text-green-500" /> }
+        ? { text: "Excellente performance", tone: "success", icon: <TrendingUp className="text-green-500" /> }
         : profitMargin >= 15
-        ? { text: "Performance stable", icon: <LineChart className="text-[var(--ms-blue)]" /> }
-        : { text: "Marge faible", icon: <TrendingDown className="text-red-500" /> };
+        ? { text: "Performance stable", tone: "stable", icon: <LineChart className="text-[var(--ms-blue)]" /> }
+        : { text: "Marge faible", tone: "weak", icon: <TrendingDown className="text-red-500" /> };
 
     return {
       text: `Ce jour, vous avez réalisé ${formatCurrency(
@@ -179,14 +197,19 @@ const DayDetailsModal = ({
     };
   }, [totals]);
 
-  const metrics = [
+  // Statistiques de premier plan — toujours visibles, en 3 colonnes.
+  const primaryMetrics = [
     { label: "Ventes", value: formatCurrency(totals.totalSales), tone: "success", sub: `${sales.length} vente${sales.length > 1 ? "s" : ""}` },
     { label: "Panier moyen", value: formatCurrency(averageBasket), tone: "neutral", sub: sales.length ? "Par vente" : "Aucune vente" },
     { label: "Encaissements", value: formatCurrency(totals.totalPayments), tone: "blue", sub: `${payments.length} paiement${payments.length > 1 ? "s" : ""}` },
+  ];
+
+  // Statistiques secondaires — compactes, défilables sur mobile.
+  const secondaryMetrics = [
     { label: "Dépenses", value: formatCurrency(totals.totalExpenses), tone: "danger", sub: `${expenses.length} dépense${expenses.length > 1 ? "s" : ""}` },
-    { label: "Profit (caisse)", value: formatCurrency(totals.cashProfit), tone: totals.cashProfit >= 0 ? "success" : "danger", sub: "Encaissements − dépenses" },
-    { label: "Bénéfice encaissé", value: formatCurrency(totals.realizedProfit), tone: "brand", sub: "Marge collectée" },
-    { label: "Profit net", value: formatCurrency(totals.profit), tone: totals.profit >= 0 ? "success" : "danger", sub: "Marge − dépenses" },
+    { label: "Profit caisse", value: formatCurrency(totals.cashProfit), tone: totals.cashProfit >= 0 ? "success" : "danger", sub: "Encaiss. − dép." },
+    { label: "Profit net", value: formatCurrency(totals.profit), tone: totals.profit >= 0 ? "success" : "danger", sub: "Marge − dép." },
+    { label: "Marge encaissée", value: formatCurrency(totals.realizedProfit), tone: "brand", sub: "Sur paiements" },
     { label: "Vente en gros", value: formatCurrency(wholesaleStats.totalAmount), tone: "warning", sub: `${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}` },
   ];
 
@@ -215,7 +238,10 @@ const DayDetailsModal = ({
               </h2>
               <button type="button" onClick={onClose} className="ms-icon-button shrink-0" aria-label="Fermer"><X size={22} /></button>
             </div>
-            <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--ms-text-muted)]">
+            <span
+              className="mt-1.5 inline-flex max-w-full items-center gap-1.5 truncate rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={TREND_CHIP_STYLES[summary.trend.tone]}
+            >
               {React.cloneElement(summary.trend.icon, { size: 14 })}
               {summary.trend.text}
             </span>
@@ -231,7 +257,7 @@ const DayDetailsModal = ({
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-end gap-x-4 gap-y-2">
                   <h2 className="text-2xl font-bold text-[var(--ms-text-strong)]">{safeFormatDate(date)}</h2>
-                  <div className="flex items-center gap-2 rounded-full bg-[var(--ms-bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--ms-text)]">
+                  <div className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" style={TREND_CHIP_STYLES[summary.trend.tone]}>
                     {summary.trend.icon}
                     <span>{summary.trend.text}</span>
                   </div>
@@ -242,46 +268,73 @@ const DayDetailsModal = ({
             </div>
           </div>
 
-          {/* Metric strip — compact, professional */}
-          <div className="grid grid-cols-2 gap-2.5 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-3 sm:grid-cols-3 sm:px-6 sm:py-4 lg:grid-cols-4">
-            {metrics.map((m) => (
-              <MetricTile key={m.label} {...m} />
-            ))}
-          </div>
+          {/* Summary card — chiffres clés du jour, un seul bloc cohérent */}
+          <div className="shrink-0 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-4 py-3.5 sm:px-6 sm:py-5">
+            <div className="overflow-hidden rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] shadow-sm">
+              {/* Stats primaires — 3 colonnes égales séparées par des traits */}
+              <div className="grid grid-cols-3 divide-x divide-[var(--ms-border)]">
+                {primaryMetrics.map((m) => (
+                  <div key={m.label} className="min-w-0 px-2 py-3 text-center sm:px-4 sm:py-4">
+                    <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)] sm:text-[11px]">{m.label}</p>
+                    <p className="mt-1 truncate text-[15px] font-bold tabular-nums sm:text-lg" style={{ color: TONE_COLORS[m.tone] }}>{m.value}</p>
+                    <p className="truncate text-[11px] text-[var(--ms-text-muted)]">{m.sub}</p>
+                  </div>
+                ))}
+              </div>
 
-          {/* Insight row — meilleure vente + répartition des encaissements */}
-          {(bestSale || methodBreakdown.length > 0) && (
-            <div className="grid grid-cols-1 gap-2.5 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-3 sm:grid-cols-2 sm:px-6 sm:py-4">
-              {bestSale && (
-                <div className="flex items-center gap-3 rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2.5">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(255,185,0,0.16)", color: "#835B00" }} aria-hidden>
-                    <Trophy size={16} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Meilleure vente</p>
-                    <p className="truncate text-sm font-bold text-[var(--ms-text-strong)]">
-                      {formatCurrency(bestSale.totalAmount)} <span className="font-normal text-[var(--ms-text-muted)]">— {bestSale.client?.name || "Client non spécifié"}</span>
-                    </p>
+              {/* Stats secondaires — puces défilables sur mobile, ligne de 5 sur desktop */}
+              <div className="scrollbar-none flex snap-x gap-2 overflow-x-auto border-t border-[var(--ms-border)] px-3 py-3 sm:grid sm:grid-cols-5 sm:gap-0 sm:divide-x sm:divide-[var(--ms-border)] sm:overflow-visible sm:px-0 sm:py-0">
+                {secondaryMetrics.map((m) => (
+                  <div
+                    key={m.label}
+                    className="w-28 min-w-28 shrink-0 snap-start rounded-lg bg-[var(--ms-bg-subtle)] px-2.5 py-2 sm:w-auto sm:min-w-0 sm:rounded-none sm:bg-transparent sm:px-3 sm:py-3.5 sm:text-center"
+                  >
+                    <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">{m.label}</p>
+                    <p className="mt-0.5 truncate text-[13px] font-bold tabular-nums sm:text-sm" style={{ color: TONE_COLORS[m.tone] }}>{m.value}</p>
+                    <p className="truncate text-[10px] text-[var(--ms-text-muted)]">{m.sub}</p>
                   </div>
-                </div>
-              )}
-              {methodBreakdown.length > 0 && (
-                <div className="rounded-xl border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2.5">
-                  <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">
-                    <Wallet size={13} /> Encaissements par méthode
-                  </p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    {methodBreakdown.map((m) => (
-                      <span key={m.method} className="text-xs font-semibold text-[var(--ms-text)]">
-                        {m.label}: <span className="tabular-nums text-[var(--ms-blue)]">{formatCurrency(m.amount)}</span>{" "}
-                        <span className="font-normal text-[var(--ms-text-muted)]">({m.pct.toFixed(0)}%)</span>
+                ))}
+              </div>
+
+              {/* Meilleure vente + répartition des encaissements */}
+              {(bestSale || methodBreakdown.length > 0) && (
+                <div className="grid grid-cols-1 divide-y divide-[var(--ms-border)] border-t border-[var(--ms-border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                  {bestSale && (
+                    <div className={`flex items-center gap-3 px-3.5 py-3 sm:px-4 ${bestSale && methodBreakdown.length > 0 ? "" : "sm:col-span-2"}`}>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(255,185,0,0.16)", color: "#835B00" }} aria-hidden>
+                        <Trophy size={17} />
                       </span>
-                    ))}
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Meilleure vente</p>
+                        <p className="truncate text-sm font-bold tabular-nums text-[var(--ms-text-strong)]">
+                          {formatCurrency(bestSale.totalAmount)}
+                          {bestSaleClient && (
+                            <span className="ml-1.5 font-normal text-[var(--ms-text-muted)]">— {bestSaleClient}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {methodBreakdown.length > 0 && (
+                    <div className={`px-3.5 py-3 sm:px-4 ${bestSale && methodBreakdown.length > 0 ? "" : "sm:col-span-2"}`}>
+                      <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">
+                        <Wallet size={13} /> Encaissements par méthode
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {methodBreakdown.map((m) => (
+                          <span key={m.method} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--ms-text)]">
+                            <span>{m.label}</span>
+                            <span className="tabular-nums text-[var(--ms-blue)]">{formatCurrency(m.amount)}</span>
+                            <span className="font-normal text-[var(--ms-text-muted)]">{m.pct.toFixed(0)}%</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
 
           {/* Mobile section tabs */}
           <div className="sm:hidden flex gap-1 border-b border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2 shrink-0">
@@ -343,7 +396,7 @@ const DayDetailsModal = ({
                         </>
                       }
                       footer={
-                        <Link to={`/sales/${s._id}`} className="inline-flex items-center gap-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
+                        <Link to={`/sales/${s._id}`} className="inline-flex items-center gap-1 py-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
                           Voir la vente <ChevronRight size={13} />
                         </Link>
                       }
@@ -412,7 +465,7 @@ const DayDetailsModal = ({
                       profit={hasProfit ? p.profit : undefined}
                       footer={
                         p.saleId ? (
-                          <Link to={`/sales/${p.saleId}`} className="inline-flex items-center gap-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
+                          <Link to={`/sales/${p.saleId}`} className="inline-flex items-center gap-1 py-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
                             Voir la vente <ChevronRight size={13} />
                           </Link>
                         ) : null
@@ -430,11 +483,11 @@ const DayDetailsModal = ({
               {transactionCount} transaction{transactionCount !== 1 ? "s" : ""} au total
             </p>
             <div className="order-1 grid w-full grid-cols-3 gap-2 sm:order-2 sm:flex sm:w-auto sm:gap-3">
-              <Link to={`/sales?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center"><FileText size={14} /> Ventes</Link>
+              <Link to={`/sales?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center px-2"><FileText size={14} className="hidden sm:block" /> Ventes</Link>
               {isAdmin ? (
-                <Link to={`/expenses?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center"><FileText size={14} /> Dépenses</Link>
+                <Link to={`/expenses?date=${formatDateForLink(date)}`} className="ms-button ms-button-secondary ms-button-sm justify-center px-2"><FileText size={14} className="hidden sm:block" /> Dépenses</Link>
               ) : (
-                <span className="ms-button ms-button-sm justify-center opacity-40 cursor-not-allowed"><FileText size={14} /> Dépenses</span>
+                <span className="ms-button ms-button-sm justify-center px-2 opacity-40 cursor-not-allowed"><FileText size={14} className="hidden sm:block" /> Dépenses</span>
               )}
               <Button variant="primary" size="sm" onClick={onClose}>Fermer</Button>
             </div>
@@ -442,21 +495,6 @@ const DayDetailsModal = ({
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
-};
-
-/* ------------------- Metric tile ------------------- */
-const MetricTile = ({ label, value, sub, tone = "neutral" }) => {
-  const color = TONE_COLORS[tone] || TONE_COLORS.neutral;
-  return (
-    <div
-      className="rounded-xl border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2.5"
-      style={{ boxShadow: "inset 3px 0 0 0 " + color }}
-    >
-      <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">{label}</p>
-      <p className="mt-0.5 truncate text-[15px] font-bold tabular-nums sm:text-base" style={{ color }}>{value}</p>
-      {sub && <p className="truncate text-[11px] text-[var(--ms-text-muted)]">{sub}</p>}
-    </div>
   );
 };
 

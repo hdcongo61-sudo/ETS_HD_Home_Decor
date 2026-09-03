@@ -308,6 +308,16 @@ body {
   padding-bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Masque la barre de défilement des rangées horizontales défilables
+   (ex. bandeau de stats du modal Détails du jour sur mobile). */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @media (min-width: 768px) {
   :root {
     --app-nav-offset: calc(56px + env(safe-area-inset-top, 0px));

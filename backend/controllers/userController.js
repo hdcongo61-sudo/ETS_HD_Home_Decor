@@ -137,6 +137,8 @@ const ALLOWED_PERMISSIONS = new Set([
   'view_sensitive_financials',
   'view_supplier_contacts',
   'approve_admin_requests',
+  'use_expenses',
+  'view_dashboard',
 ]);
 
 const normalizePermissions = (value) => {

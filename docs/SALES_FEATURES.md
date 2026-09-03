@@ -35,7 +35,7 @@ Les éléments suivants ont été centralisés pour éviter la duplication :
 |-------------------|----------|
 | Options de filtre **Statut** (Tous, Payée, Partiellement payée, En attente, Annulée) | `pages/sales/constants.js` → `STATUS_OPTIONS` |
 | Options **Livraison** (Tous, Livré, En attente, Non livré) | `constants.js` → `DELIVERY_OPTIONS_MAIN` / `DELIVERY_OPTIONS_ARCHIVE` |
-| Options **Date** (Aujourd'hui, Cette semaine, Ce mois, etc.) | `constants.js` → `DATE_FILTER_OPTIONS` |
+| Filtre **Date** (sélecteur de date libre, n'importe quel jour) | `SalesFiltersBar` → `input type="date"` |
 | Barre de filtres (Statut, Client, Date, Livraison, Réinitialiser) | Composant `SalesFiltersBar` (`pages/sales/SalesFiltersBar.js`) |
 | Carte d’une vente (en-tête, client, total/payé/solde, produits, actions) | Composant `SaleCard` (`pages/sales/SaleCard.js`) |
 

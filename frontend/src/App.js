@@ -157,7 +157,7 @@ function ApplicationRoutes() {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute permission="view_dashboard">
                       <Dashboard />
                     </ProtectedRoute>
                   }
@@ -462,7 +462,7 @@ function ApplicationRoutes() {
                 <Route
                   path="/expenses"
                   element={
-                    <ProtectedRoute adminOnly>
+                    <ProtectedRoute permission="use_expenses">
                       <Expenses />
                     </ProtectedRoute>
                   }

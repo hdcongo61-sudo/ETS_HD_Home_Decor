@@ -48,6 +48,10 @@ import LocationSwitcher from "./LocationSwitcher";
 
 const Navigation = () => {
   const { auth } = useContext(AuthContext);
+  // Permissions individuelles accordées par un admin aux membres.
+  const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
+  const canUseExpenses = auth.isAdmin || permissions.includes('use_expenses');
+  const canViewDashboard = auth.isAdmin || permissions.includes('view_dashboard');
   const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
@@ -480,7 +484,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
             isMobile={isMobile}
           />
           {/* Desktop: Dépenses then Autres dropdown */}
-          {!isMobile && auth.isAdmin && (
+          {!isMobile && canUseExpenses && (
             <NavIcon
               to="/expenses"
               icon={
@@ -548,6 +552,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
                           <div className="space-y-0.5">
                             <Link to="/sales#sale-form" className="block py-1.5 text-sm text-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)] rounded-md px-2 -mx-2 font-medium" onClick={() => { closeMenu(); setAutresOpen(false); }}>Enregistrer une vente</Link>
                             <Link to="/sales" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Liste des ventes</Link>
+                            {canViewDashboard && <Link to="/dashboard" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Analyse détaillée</Link>}
                             <Link to="/sales/all" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Archives ventes</Link>
                             <Link to="/sales/all?history=1&paymentStructure=full_payment" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiement complet</Link>
                             <Link to="/sales/all?history=1&paymentStructure=multiple_payments" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Paiements multiples</Link>
@@ -581,7 +586,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
                           <div className="text-[10px] font-semibold text-[var(--ms-text-muted)] uppercase tracking-wider pt-0.5">Autres</div>
                           <div className="space-y-0.5">
                             <Link to="/bank" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Caisse</Link>
-                            {auth.isAdmin && <Link to="/expenses" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>}
+                            {canUseExpenses && <Link to="/expenses" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Dépenses</Link>}
                             {auth.isAdmin && <Link to="/expenses/monthly-plan" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>Objectif mensuel</Link>}
                             <Link to="/admin-requests" className="block py-1.5 text-sm text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] rounded-md px-2 -mx-2" onClick={() => { closeMenu(); setAutresOpen(false); }}>{auth.isAdmin ? 'Demandes admin' : 'Mes demandes'}</Link>
                           </div>
@@ -629,7 +634,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
           </MobileMenuSection>
           <MobileMenuSection title="Caisse & Dépenses">
             <NavIcon to="/bank" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M5 10V7l7-4 7 4v3M5 10v8m4-8v8m4-8v8m4-8v8M3 18h18" /></svg>} label="Caisse" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
-            {auth.isAdmin && <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
+            {canUseExpenses && <NavIcon to="/expenses" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>} label="Dépenses" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
             {auth.isAdmin && <NavIcon to="/expenses/monthly-plan" icon={<svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 3a1 1 0 012 0v1.07A8.001 8.001 0 112.07 15H1a1 1 0 110-2h2a1 1 0 011 1 6 6 0 106-6 1 1 0 01-1-1V3zm1 5a1 1 0 011 1v3.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0112 13V9a1 1 0 011-1z" /></svg>} label="Objectif mensuel" className={linkClass} onClick={closeMenu} isMobile={isMobile} />}
           </MobileMenuSection>
           <MobileMenuSection title="Clients">
@@ -853,6 +858,8 @@ const NavIcon = ({ to, icon, label, className, onClick, isMobile, openInNewTab =
 };
 
 const CompactMobileNavigation = ({ auth, onClose, onLogout, linkClass, iconClass }) => {
+  const canUseExpenses = auth.isAdmin || (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('use_expenses'));
+  const canViewDashboard = auth.isAdmin || (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('view_dashboard'));
   const item = (to, Icon, label) => (
     <NavIcon
       key={to}
@@ -876,12 +883,13 @@ const CompactMobileNavigation = ({ auth, onClose, onLogout, linkClass, iconClass
       <MobileMenuSection title="Ventes">
         {item('/sales/all', Archive, 'Archives')}
         {item('/sales/partially-paid', CreditCard, 'Paiements partiels')}
+        {canViewDashboard && item('/dashboard', BarChart2, 'Analyse détaillée')}
       </MobileMenuSection>
 
       <MobileMenuSection title="Gestion">
         {item('/bank', Landmark, 'Caisse')}
         {item('/clients', Users, 'Clients')}
-        {auth.isAdmin && item('/expenses', Receipt, 'Dépenses')}
+        {canUseExpenses && item('/expenses', Receipt, 'Dépenses')}
         {auth.isAdmin && item('/employees', BriefcaseBusiness, 'Employés')}
       </MobileMenuSection>
 

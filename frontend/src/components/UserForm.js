@@ -34,6 +34,16 @@ const PERMISSION_OPTIONS = [
         value: 'approve_admin_requests',
         label: 'Valider les demandes admin',
         description: 'Autorise le traitement des demandes sans donner tous les accès administrateur.'
+    },
+    {
+        value: 'use_expenses',
+        label: 'Utiliser le module dépenses',
+        description: 'Autorise la saisie et la gestion des dépenses sans accès administrateur complet.'
+    },
+    {
+        value: 'view_dashboard',
+        label: 'Voir la synthèse (jour / semaine / mois)',
+        description: 'Autorise l’analyse détaillée des ventes et encaissements par période.'
     }
 ];
 

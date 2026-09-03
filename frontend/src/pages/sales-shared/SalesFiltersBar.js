@@ -3,7 +3,6 @@ import {
   STATUS_OPTIONS,
   DELIVERY_OPTIONS_MAIN,
   DELIVERY_OPTIONS_ARCHIVE,
-  DATE_FILTER_OPTIONS,
 } from "./constants";
 import { Button, StatusBadge } from "../../components/business";
 
@@ -26,6 +25,14 @@ const ICON_DOT_CLASS = {
   slate: "bg-[var(--ms-text-muted)]",
 };
 
+const formatFrDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+};
+
 const FilterCard = ({ label, accent = "indigo", helper, className = "", children }) => (
   <div className={`${FIELD_PANEL_CLASS} ${className}`}>
     <div className={LABEL_CLASS}>
@@ -39,7 +46,8 @@ const FilterCard = ({ label, accent = "indigo", helper, className = "", children
 
 /**
  * Reusable filter bar for Sales list (status, client, date, delivery, reset).
- * variant: "main" = date as select with DATE_FILTER_OPTIONS; "archive" = date as input type="date"
+ * Date filter: a native date input — the user picks any day.
+ * variant: "main" = sales history; "archive" = deleted sales (extra delivery options).
  */
 const SalesFiltersBar = ({
   statusFilter,
@@ -85,7 +93,7 @@ const SalesFiltersBar = ({
     dateFilter
       ? {
           key: "date",
-          label: variant === "archive" ? `Date précise` : `Période active`,
+          label: `Date: ${formatFrDate(dateFilter)}`,
         }
       : null,
     deliveryFilter
@@ -227,38 +235,22 @@ const SalesFiltersBar = ({
         <FilterCard
           label="Date"
           accent="sky"
-          helper={variant === "archive" ? "Choisissez une date précise." : "Choisissez une période rapide."}
+          helper="Choisissez la date des ventes à afficher."
         >
-          {variant === "archive" ? (
-            <label
-              htmlFor="filter-date"
-              className="flex min-h-[38px] items-center rounded-md border border-[var(--ms-border)] bg-white px-2.5 focus-within:border-[var(--ms-blue)] focus-within:ring-2 focus-within:ring-[rgba(0,120,212,0.16)]"
-            >
-              <input
-                id="filter-date"
-                type="date"
-                value={dateFilter}
-                onChange={(e) => onDateChange(e.target.value)}
-                className="w-full border-0 bg-transparent p-0 text-sm text-[var(--ms-text)] focus:outline-none focus:ring-0 [color-scheme:light]"
-                style={{ fontSize: "16px" }}
-                aria-label="Filtrer par date"
-              />
-            </label>
-          ) : (
-            <select
+          <label
+            htmlFor="filter-date"
+            className="flex min-h-[38px] items-center rounded-md border border-[var(--ms-border)] bg-white px-2.5 focus-within:border-[var(--ms-blue)] focus-within:ring-2 focus-within:ring-[rgba(0,120,212,0.16)]"
+          >
+            <input
               id="filter-date"
+              type="date"
               value={dateFilter}
               onChange={(e) => onDateChange(e.target.value)}
-              className={INPUT_CLASS}
-              aria-label="Filtrer par période"
-            >
-              {DATE_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value || "all"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          )}
+              className="w-full border-0 bg-transparent p-0 text-sm text-[var(--ms-text)] focus:outline-none focus:ring-0 [color-scheme:light]"
+              style={{ fontSize: "16px" }}
+              aria-label="Filtrer par date"
+            />
+          </label>
         </FilterCard>
 
         {containers.length > 0 && (

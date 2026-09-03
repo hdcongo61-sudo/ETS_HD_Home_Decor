@@ -702,7 +702,7 @@ const SaleForm = ({
           </section>
         )}
 
-        {documentMode === 'sale' && isAdmin && (
+        {documentMode === 'sale' && (
           <section className="space-y-3" aria-labelledby="sale-form-type">
             <h4 id="sale-form-type" className={sectionTitleClass}>
               Type de vente

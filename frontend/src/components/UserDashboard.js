@@ -53,6 +53,8 @@ const PERMISSION_LABELS = {
     view_sensitive_financials: 'Données sensibles',
     view_supplier_contacts: 'Contacts fournisseurs',
     approve_admin_requests: 'Validation demandes',
+    use_expenses: 'Module dépenses',
+    view_dashboard: 'Synthèse jour/semaine/mois',
 };
 
 const formatDateTime = (value) => {

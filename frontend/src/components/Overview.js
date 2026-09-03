@@ -175,6 +175,9 @@ const Overview = () => {
   const { openModal } = useModal();
   const { fetchOverviewData } = useDashboardData();
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
+  const canViewDashboard = isAdmin || permissions.includes('view_dashboard');
+  const canUseExpenses = isAdmin || permissions.includes('use_expenses');
   const userId = auth?.user?._id;
   const userName = auth?.user?.name || "";
   const shopName = auth?.tenant?.name || "";
@@ -185,6 +188,7 @@ const Overview = () => {
   const [clients, setClients] = useState(null);
   const [bankTx, setBankTx] = useState(null);
   const [paymentsToday, setPaymentsToday] = useState(null);
+  const [todaySales, setTodaySales] = useState(null);
   const [compta, setCompta] = useState(null);
   const [reminders, setReminders] = useState(null);
   const [delivery, setDelivery] = useState(null);
@@ -217,6 +221,8 @@ const Overview = () => {
           setLoadIssues(data.errors || 0);
         } else {
           setUserSales(data.userSales);
+          setPaymentsToday(data.paymentsToday || null);
+          setTodaySales(data.todaySales || null);
           setLoadIssues(data.errors || 0);
         }
       } catch (err) {
@@ -235,7 +241,6 @@ const Overview = () => {
 
   // Recharge silencieuse quand une vente/paiement/dépense est créée via le FAB.
   useEffect(() => {
-    if (!isAdmin) return undefined;
     let timeoutId = null;
     const refresh = () => {
       // léger debounce : plusieurs événements peuvent arriver d'affilée
@@ -243,11 +248,17 @@ const Overview = () => {
       timeoutId = window.setTimeout(async () => {
         try {
           const data = await fetchOverviewData('30days', true); // force refresh
-          setSales((prev) => data.sales || prev);
-          setBankTx((prev) => data.bank || prev);
-          setCompta((prev) => data.compta?.data || prev);
-          setReminders((prev) => data.reminders || prev);
-          setPaymentsToday((prev) => data.paymentsToday || prev);
+          if (isAdmin) {
+            setSales((prev) => data.sales || prev);
+            setBankTx((prev) => data.bank || prev);
+            setCompta((prev) => data.compta?.data || prev);
+            setReminders((prev) => data.reminders || prev);
+            setPaymentsToday((prev) => data.paymentsToday || prev);
+          } else {
+            setUserSales((prev) => data.userSales || prev);
+            setPaymentsToday((prev) => data.paymentsToday || prev);
+            setTodaySales((prev) => data.todaySales || prev);
+          }
         } catch (err) {
           console.error('Dashboard refresh error:', err);
         }
@@ -312,7 +323,7 @@ const Overview = () => {
         <button type="button" onClick={() => openModal("sale")} className="ms-button ms-button-primary ms-button-md">
           <Plus className="h-4 w-4" /> Nouvelle vente
         </button>
-        {isAdmin && (
+        {canViewDashboard && (
           <Link to="/dashboard" className="ms-button ms-button-secondary ms-button-md">
             <BarChart3 className="h-4 w-4" /> Analyse détaillée
           </Link>
@@ -344,7 +355,11 @@ const Overview = () => {
   if (!isAdmin) {
     const totalAmount = userSales?.totalAmount ?? userSales?.revenue;
     const totalSales = userSales?.totalSales ?? userSales?.salesCount;
+    const todaySalesCount = Number(todaySales?.count) || 0;
+    const paymentsCountToday = Number(paymentsToday?.count) || 0;
     const sellerStats = [
+      { title: "CA du jour", value: todaySales != null ? cfa(todaySales.total) : "—", context: `${todaySalesCount} vente${todaySalesCount > 1 ? "s" : ""} aujourd'hui`, icon: <Receipt className="h-4 w-4" />, tone: "success" },
+      { title: "Encaissements du jour", value: paymentsToday != null ? cfa(paymentsToday.total) : "—", context: `${paymentsCountToday} encaissement${paymentsCountToday > 1 ? "s" : ""} aujourd'hui`, icon: <HandCoins className="h-4 w-4" />, tone: "brand" },
       isFiniteNumber(totalSales) && { title: "Mes ventes", value: num(totalSales), context: "Total enregistré", icon: <ShoppingCart className="h-4 w-4" />, tone: "brand" },
       isFiniteNumber(totalAmount) && { title: "Chiffre d'affaires", value: cfa(totalAmount), context: "Cumulé", icon: <Wallet className="h-4 w-4" />, tone: "success" },
     ].filter(Boolean);
@@ -374,6 +389,15 @@ const Overview = () => {
             title="Mes ventes"
             stats={[{ label: "Historique & encaissements", value: "Ouvrir" }]}
           />
+          {canUseExpenses && (
+            <ModuleCard
+              to="/expenses"
+              icon={<Receipt className="h-5 w-5" />}
+              tone="warning"
+              title="Dépenses"
+              stats={[{ label: "Saisie & suivi", value: "Ouvrir" }]}
+            />
+          )}
         </div>
       </>
     );

@@ -78,10 +78,25 @@ exports.getOverview = async (req, res) => {
         salesData, productsData, clientsData, bankData, comptaData, remindersData, deliveryData, paymentsTodayData
       ].filter(r => r.status === 'rejected').length;
     } else {
-      // Regular user gets only their sales data
-      const userSales = await getUserSales(tenantId, userId);
-      response.userSales = userSales;
-      response.errors = 0;
+      // Regular user: their own sales + the store-wide daily figures shown on
+      // the home page for sellers (CA du jour, encaissements du jour).
+      const [userSales, paymentsTodayData, todaySalesData] = await Promise.allSettled([
+        getUserSales(tenantId, userId),
+        getPaymentsToday(tenantId),
+        getTodaySales(tenantId)
+      ]);
+
+      response.userSales = userSales.status === 'fulfilled'
+        ? userSales.value
+        : { total: 0, count: 0, sales: [] };
+      response.paymentsToday = paymentsTodayData.status === 'fulfilled'
+        ? paymentsTodayData.value
+        : { total: 0, count: 0 };
+      response.todaySales = todaySalesData.status === 'fulfilled'
+        ? todaySalesData.value
+        : { total: 0, count: 0 };
+      response.errors = [userSales, paymentsTodayData, todaySalesData]
+        .filter((r) => r.status === 'rejected').length;
     }
 
     res.json(response);
@@ -367,6 +382,36 @@ async function getPaymentsToday(tenantId) {
       $group: {
         _id: null,
         total: { $sum: '$payments.amount' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  return {
+    total: (agg && agg.total) || 0,
+    count: (agg && agg.count) || 0
+  };
+}
+
+// CA du jour : total et nombre de ventes dont la date de vente est aujourd'hui.
+async function getTodaySales(tenantId) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const [agg] = await Sale.aggregate([
+    {
+      $match: {
+        tenantId,
+        status: { $nin: ['deleted', 'cancelled'] },
+        saleDate: { $gte: start, $lte: end }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$totalAmount' },
         count: { $sum: 1 }
       }
     }

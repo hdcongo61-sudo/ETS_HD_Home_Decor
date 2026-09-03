@@ -11,7 +11,7 @@ const storeRestrictionInfo = (payload) => {
   }
 };
 
-const ProtectedRoute = ({ children, adminOnly = false, feature = null }) => {
+const ProtectedRoute = ({ children, adminOnly = false, feature = null, permission = null }) => {
   const { auth, hasFeature } = useContext(AuthContext);
 
   const restrictedPayload = (() => {
@@ -48,6 +48,15 @@ const ProtectedRoute = ({ children, adminOnly = false, feature = null }) => {
 
   if (adminOnly && !auth.isAdmin) {
     return <Navigate to="/" replace />;
+  }
+
+  // Permission individuelle accordée par un admin à un membre
+  // (ex. use_expenses, view_dashboard) — admins et super-admins passent toujours.
+  if (permission && !auth.isAdmin && !auth.isSuperAdmin) {
+    const permissions = Array.isArray(auth.user?.permissions) ? auth.user.permissions : [];
+    if (!permissions.includes(permission)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   // Plan/feature gating — show an in-place upgrade page instead of the feature.

@@ -1645,8 +1645,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                     </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <p className="font-medium text-[var(--ms-text)]">
-                      Stock : <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                    <p className="flex flex-wrap items-center gap-1.5 font-medium text-[var(--ms-text)]">
+                      Stock : <span className="font-bold tabular-nums">{(Number(p.stock) || 0).toLocaleString('fr-FR')}</span>
+                      <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
                     </p>
                     <p className="text-right font-semibold text-slate-950 tabular-nums">
                       {p.price?.toLocaleString('fr-FR')} CFA
