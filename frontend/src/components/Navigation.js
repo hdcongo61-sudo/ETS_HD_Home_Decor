@@ -393,6 +393,10 @@ const MobileMenuSection = ({ title, children }) => (
 
 // === Liens du menu (desktop + mobile) ===
 export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = false, hidePrimaryTabsOnMobile = false, autresOpen = false, setAutresOpen = () => {}) => {
+  // Permissions individuelles accordées par un admin aux membres.
+  const canUseExpenses = auth?.isAdmin || (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('use_expenses'));
+  const canViewDashboard = auth?.isAdmin || (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('view_dashboard'));
+
   const linkClass = isMobile
     ? "group/nav flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 py-2.5 text-[14px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] active:bg-[var(--ms-surface-muted)] touch-manipulation"
     : "group/nav relative flex h-[36px] items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-[var(--ms-text)] transition-colors hover:bg-[var(--ms-bg-subtle)] hover:text-[var(--ms-text-strong)]";

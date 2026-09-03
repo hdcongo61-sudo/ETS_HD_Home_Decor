@@ -1651,6 +1651,10 @@ video {
   width: 5rem;
 }
 
+.w-28 {
+  width: 7rem;
+}
+
 .w-3 {
   width: 0.75rem;
 }
@@ -1767,6 +1771,10 @@ video {
 
 .min-w-0 {
   min-width: 0px;
+}
+
+.min-w-28 {
+  min-width: 7rem;
 }
 
 .min-w-5 {
@@ -2025,6 +2033,14 @@ video {
 
 .resize-y {
   resize: vertical;
+}
+
+.snap-x {
+  scroll-snap-type: x var(--tw-scroll-snap-strictness);
+}
+
+.snap-start {
+  scroll-snap-align: start;
 }
 
 .scroll-mt-20 {
@@ -4843,6 +4859,18 @@ body {
   padding-bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Masque la barre de défilement des rangées horizontales défilables
+   (ex. bandeau de stats du modal Détails du jour sur mobile). */
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @media (min-width: 768px) {
   :root {
     --app-nav-offset: calc(56px + env(safe-area-inset-top, 0px));
@@ -7565,6 +7593,10 @@ form input[type="radio"],
     width: auto;
   }
 
+  .sm\:min-w-0 {
+    min-width: 0px;
+  }
+
   .sm\:min-w-\[390px\] {
     min-width: 390px;
   }
@@ -7729,8 +7761,28 @@ form input[type="radio"],
     margin-bottom: calc(2rem * var(--tw-space-y-reverse));
   }
 
+  .sm\:divide-x > :not([hidden]) ~ :not([hidden]) {
+    --tw-divide-x-reverse: 0;
+    border-right-width: calc(1px * var(--tw-divide-x-reverse));
+    border-left-width: calc(1px * calc(1 - var(--tw-divide-x-reverse)));
+  }
+
+  .sm\:divide-y-0 > :not([hidden]) ~ :not([hidden]) {
+    --tw-divide-y-reverse: 0;
+    border-top-width: calc(0px * calc(1 - var(--tw-divide-y-reverse)));
+    border-bottom-width: calc(0px * var(--tw-divide-y-reverse));
+  }
+
+  .sm\:divide-\[var\(--ms-border\)\] > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--ms-border);
+  }
+
   .sm\:self-start {
     align-self: flex-start;
+  }
+
+  .sm\:overflow-visible {
+    overflow: visible;
   }
 
   .sm\:rounded-2xl {
@@ -7745,12 +7797,20 @@ form input[type="radio"],
     border-radius: 0.5rem;
   }
 
+  .sm\:rounded-none {
+    border-radius: 0px;
+  }
+
   .sm\:rounded-xl {
     border-radius: 0.75rem;
   }
 
   .sm\:border-t-0 {
     border-top-width: 0px;
+  }
+
+  .sm\:bg-transparent {
+    background-color: transparent;
   }
 
   .sm\:p-0 {
@@ -7781,6 +7841,11 @@ form input[type="radio"],
     padding: 2rem;
   }
 
+  .sm\:px-0 {
+    padding-left: 0px;
+    padding-right: 0px;
+  }
+
   .sm\:px-3 {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
@@ -7806,6 +7871,11 @@ form input[type="radio"],
     padding-right: 2rem;
   }
 
+  .sm\:py-0 {
+    padding-top: 0px;
+    padding-bottom: 0px;
+  }
+
   .sm\:py-12 {
     padding-top: 3rem;
     padding-bottom: 3rem;
@@ -7819,6 +7889,11 @@ form input[type="radio"],
   .sm\:py-2\.5 {
     padding-top: 0.625rem;
     padding-bottom: 0.625rem;
+  }
+
+  .sm\:py-3\.5 {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
   }
 
   .sm\:py-4 {
@@ -7851,6 +7926,10 @@ form input[type="radio"],
     text-align: left;
   }
 
+  .sm\:text-center {
+    text-align: center;
+  }
+
   .sm\:text-right {
     text-align: right;
   }
@@ -7863,6 +7942,10 @@ form input[type="radio"],
   .sm\:text-3xl {
     font-size: 1.875rem;
     line-height: 2.25rem;
+  }
+
+  .sm\:text-\[11px\] {
+    font-size: 11px;
   }
 
   .sm\:text-base {
