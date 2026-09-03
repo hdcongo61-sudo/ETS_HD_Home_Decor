@@ -227,7 +227,9 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false, linkedEmployeeId
             email: formData.email,
             phone: trimmedPhone,
             employee: formData.employee || '',
-            isAdmin: formData.isAdmin,
+            // isAdmin n'est volontairement pas envoyé : le backend refuse les
+            // changements de rôle côté client (403). Le rôle admin se gère
+            // hors formulaire.
             isActive: formData.isActive,
             accessControlEnabled: formData.accessControlEnabled,
             accessStart: formData.accessControlEnabled ? toIsoStringOrNull(formData.accessStart) : null,
@@ -335,10 +337,17 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false, linkedEmployeeId
                 </div>
             )}
 
-            <div className="form-panel flex items-center min-h-[48px] p-3">
-                <input type="checkbox" id="isAdmin" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="form-check rounded" />
-                <label htmlFor="isAdmin" className="ml-3 text-sm font-medium text-[var(--ms-text)] cursor-pointer">Accès administrateur</label>
-            </div>
+            {formData.isAdmin ? (
+                <div className="form-panel flex items-center min-h-[48px] gap-2 p-3">
+                    <span className="text-sm font-semibold text-[var(--ms-text-strong)]">Accès administrateur</span>
+                    <span className="text-xs text-[var(--ms-text-muted)]">Le rôle administrateur ne peut pas être modifié depuis ce formulaire.</span>
+                </div>
+            ) : (
+                <div className="form-panel flex items-center min-h-[48px] gap-2 p-3">
+                    <span className="text-sm font-semibold text-[var(--ms-text-strong)]">Compte utilisateur simple</span>
+                    <span className="text-xs text-[var(--ms-text-muted)]">Attribuez des permissions ci-dessous si nécessaire.</span>
+                </div>
+            )}
 
             {user && (
                 <div className="form-panel flex items-center min-h-[48px] p-3">

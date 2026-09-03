@@ -13,6 +13,8 @@ import { GLOBAL_MODALS } from '../config/modals';
 const GlobalModals = () => {
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
+  const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
+  const hasPermission = (permission) => isAdmin || permissions.includes(permission);
   const { areGlobalModalsSuppressed, modalStack, closeAllModals } = useModal();
   const wasSuppressedRef = useRef(areGlobalModalsSuppressed);
 
@@ -34,9 +36,10 @@ const GlobalModals = () => {
 
   return (
     <>
-      <FloatingActionButton isAdmin={isAdmin} />
+      <FloatingActionButton canAddExpense={hasPermission('use_expenses')} />
       {Object.entries(GLOBAL_MODALS).map(([modalId, definition]) => {
         if (definition.adminOnly && !isAdmin) return null;
+        if (definition.permission && !hasPermission(definition.permission)) return null;
         const Component = definition.component;
         const entry = modalStack.find((stackEntry) => stackEntry.id === modalId);
         return <Component key={modalId} {...(entry?.props || {})} />;

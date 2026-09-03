@@ -18,6 +18,8 @@ const adminRequestSchema = mongoose.Schema(
         'payment.edit',
         'discount.request',
         'expense.create',
+        'expense.update',
+        'expense.delete',
         'product.price_change',
         'stock.adjustment',
         'user.password_update',

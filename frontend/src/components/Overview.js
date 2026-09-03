@@ -30,6 +30,7 @@ import {
   Crown,
   RefreshCw,
   ArrowRight,
+  LineChart,
 } from "lucide-react";
 import AuthContext from "../context/AuthContext";
 import { useDashboardData } from "../context/DashboardDataContext";
@@ -189,6 +190,7 @@ const Overview = () => {
   const [bankTx, setBankTx] = useState(null);
   const [paymentsToday, setPaymentsToday] = useState(null);
   const [todaySales, setTodaySales] = useState(null);
+  const [todayExpenses, setTodayExpenses] = useState(null);
   const [compta, setCompta] = useState(null);
   const [reminders, setReminders] = useState(null);
   const [delivery, setDelivery] = useState(null);
@@ -223,6 +225,7 @@ const Overview = () => {
           setUserSales(data.userSales);
           setPaymentsToday(data.paymentsToday || null);
           setTodaySales(data.todaySales || null);
+          setTodayExpenses(data.todayExpenses || null);
           setLoadIssues(data.errors || 0);
         }
       } catch (err) {
@@ -258,6 +261,7 @@ const Overview = () => {
             setUserSales((prev) => data.userSales || prev);
             setPaymentsToday((prev) => data.paymentsToday || prev);
             setTodaySales((prev) => data.todaySales || prev);
+            setTodayExpenses((prev) => data.todayExpenses || prev);
           }
         } catch (err) {
           console.error('Dashboard refresh error:', err);
@@ -316,7 +320,11 @@ const Overview = () => {
           Bonjour{userName ? `, ${userName}` : ""}
         </h1>
         <p className="mt-1 fui-body1" style={{ color: "var(--colorNeutralForeground3)" }}>
-          {isAdmin ? "Voici la situation de votre boutique en un coup d'œil." : "Prêt à enregistrer vos ventes ?"}
+          {isAdmin
+            ? "Voici la situation de votre boutique en un coup d'œil."
+            : canUseExpenses || canViewDashboard
+            ? "Voici l'activité de la boutique aujourd'hui."
+            : "Prêt à enregistrer vos ventes ?"}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -357,48 +365,101 @@ const Overview = () => {
     const totalSales = userSales?.totalSales ?? userSales?.salesCount;
     const todaySalesCount = Number(todaySales?.count) || 0;
     const paymentsCountToday = Number(paymentsToday?.count) || 0;
-    const sellerStats = [
-      { title: "CA du jour", value: todaySales != null ? cfa(todaySales.total) : "—", context: `${todaySalesCount} vente${todaySalesCount > 1 ? "s" : ""} aujourd'hui`, icon: <Receipt className="h-4 w-4" />, tone: "success" },
-      { title: "Encaissements du jour", value: paymentsToday != null ? cfa(paymentsToday.total) : "—", context: `${paymentsCountToday} encaissement${paymentsCountToday > 1 ? "s" : ""} aujourd'hui`, icon: <HandCoins className="h-4 w-4" />, tone: "brand" },
-      isFiniteNumber(totalSales) && { title: "Mes ventes", value: num(totalSales), context: "Total enregistré", icon: <ShoppingCart className="h-4 w-4" />, tone: "brand" },
-      isFiniteNumber(totalAmount) && { title: "Chiffre d'affaires", value: cfa(totalAmount), context: "Cumulé", icon: <Wallet className="h-4 w-4" />, tone: "success" },
+    const todayExpensesCount = Number(todayExpenses?.count) || 0;
+
+    // Pouls de la journée — colonnes divisées par des traits fins.
+    const todayStats = [
+      { label: "CA du jour", value: todaySales != null ? cfa(todaySales.total) : "—", sub: `${todaySalesCount} vente${todaySalesCount > 1 ? "s" : ""}`, color: "var(--ms-success)" },
+      { label: "Encaissements", value: paymentsToday != null ? cfa(paymentsToday.total) : "—", sub: `${paymentsCountToday} encaissement${paymentsCountToday > 1 ? "s" : ""}`, color: "var(--ms-blue)" },
+      ...(canUseExpenses
+        ? [{ label: "Dépenses", value: todayExpenses != null ? cfa(todayExpenses.total) : "—", sub: `${todayExpensesCount} dépense${todayExpensesCount > 1 ? "s" : ""}`, color: "var(--ms-danger)" }]
+        : []),
+    ];
+
+    // Mon activité — 30 derniers jours.
+    const myStats = [
+      isFiniteNumber(totalSales) && { title: "Mes ventes", value: num(totalSales), context: "30 derniers jours", icon: <ShoppingCart className="h-4 w-4" />, tone: "brand" },
+      isFiniteNumber(totalAmount) && { title: "Chiffre d'affaires", value: cfa(totalAmount), context: "30 derniers jours · cumulé", icon: <Wallet className="h-4 w-4" />, tone: "success" },
     ].filter(Boolean);
 
     return (
       <>
         {greeting}
-        {sellerStats.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sellerStats.map((k) => (
-              <KPICard key={k.title} title={k.title} value={k.value} context={k.context} icon={k.icon} tone={k.tone} />
+
+        {/* Aujourd'hui — pouls de la journée */}
+        <section className="ms-surface overflow-hidden rounded-xl border border-[var(--ms-border)]">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--ms-border)] px-4 py-3 sm:px-5">
+            <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Aujourd'hui</h2>
+            <span className="fui-caption1 capitalize" style={{ color: "var(--colorNeutralForeground3)" }}>{today}</span>
+          </div>
+          <div className={`grid ${todayStats.length === 3 ? "grid-cols-3" : "grid-cols-2"} divide-x divide-[var(--ms-border)]`}>
+            {todayStats.map((s) => (
+              <div key={s.label} className="min-w-0 px-3 py-4 text-center sm:py-5">
+                <p className="fui-caption2 font-semibold uppercase tracking-wide" style={{ color: "var(--colorNeutralForeground3)" }}>{s.label}</p>
+                <p className="mt-1 truncate fui-title3 tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                <p className="fui-caption1 truncate" style={{ color: "var(--colorNeutralForeground3)" }}>{s.sub}</p>
+              </div>
             ))}
           </div>
+        </section>
+
+        {/* Mon activité — 30 derniers jours */}
+        {myStats.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Mon activité</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {myStats.map((k) => (
+                <KPICard key={k.title} title={k.title} value={k.value} context={k.context} icon={k.icon} tone={k.tone} />
+              ))}
+            </div>
+          </section>
         )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ModuleCard
-            to="/sales#sale-form"
-            icon={<ShoppingCart className="h-5 w-5" />}
-            tone="brand"
-            title="Enregistrer une vente"
-            stats={[{ label: "Accès rapide", value: "Vendre" }]}
-          />
-          <ModuleCard
-            to={userId ? `/sales/user/${userId}` : "/sales"}
-            icon={<BarChart3 className="h-5 w-5" />}
-            tone="success"
-            title="Mes ventes"
-            stats={[{ label: "Historique & encaissements", value: "Ouvrir" }]}
-          />
-          {canUseExpenses && (
+
+        {/* Accès rapides */}
+        <section className="space-y-3">
+          <h2 className="fui-subtitle2" style={{ color: "var(--colorNeutralForeground1)" }}>Accès rapides</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
             <ModuleCard
-              to="/expenses"
-              icon={<Receipt className="h-5 w-5" />}
-              tone="warning"
-              title="Dépenses"
-              stats={[{ label: "Saisie & suivi", value: "Ouvrir" }]}
+              to="/sales#sale-form"
+              icon={<ShoppingCart className="h-5 w-5" />}
+              tone="brand"
+              title="Enregistrer une vente"
+              stats={[{ label: "Nouvelle commande", value: "Commencer" }]}
             />
-          )}
-        </div>
+            <ModuleCard
+              to={userId ? `/sales/user/${userId}` : "/sales"}
+              icon={<BarChart3 className="h-5 w-5" />}
+              tone="success"
+              title="Mes ventes"
+              stats={[{ label: "Historique & encaissements", value: "Ouvrir" }]}
+            />
+            <ModuleCard
+              to="/bank"
+              icon={<Landmark className="h-5 w-5" />}
+              tone="neutral"
+              title="Caisse"
+              stats={[{ label: "Dépôts & retraits", value: "Ouvrir" }]}
+            />
+            {canUseExpenses && (
+              <ModuleCard
+                to="/expenses"
+                icon={<Receipt className="h-5 w-5" />}
+                tone="warning"
+                title="Dépenses"
+                stats={[{ label: "Saisie & suivi", value: "Ouvrir" }]}
+              />
+            )}
+            {canViewDashboard && (
+              <ModuleCard
+                to="/dashboard"
+                icon={<LineChart className="h-5 w-5" />}
+                tone="brand"
+                title="Analyse détaillée"
+                stats={[{ label: "Synthèse jour / semaine / mois", value: "Ouvrir" }]}
+              />
+            )}
+          </div>
+        </section>
       </>
     );
   }

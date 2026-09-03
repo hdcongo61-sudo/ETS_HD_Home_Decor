@@ -20,6 +20,8 @@ const REQUEST_LABELS = {
   'payment.edit': 'Modification paiement',
   'discount.request': 'Remise spéciale',
   'expense.create': 'Création dépense',
+  'expense.update': 'Modification dépense',
+  'expense.delete': 'Suppression dépense',
   'product.price_change': 'Changement prix',
   'stock.adjustment': 'Ajustement stock',
   'user.password_update': 'Mise à jour mot de passe',

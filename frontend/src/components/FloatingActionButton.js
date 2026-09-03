@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, CreditCard, Receipt, Coins, Users, Package, Plus } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-const FloatingActionButton = ({ isAdmin = false }) => {
+const FloatingActionButton = ({ canAddExpense = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hidden, setHidden] = useState(false);
   const containerRef = useRef(null);
@@ -158,7 +158,7 @@ const FloatingActionButton = ({ isAdmin = false }) => {
                 <CreditCard className="h-5 w-5" strokeWidth={2} />
               </span>
             </button>
-            {isAdmin && (
+            {canAddExpense && (
               <button
                 role="menuitem"
                 type="button"

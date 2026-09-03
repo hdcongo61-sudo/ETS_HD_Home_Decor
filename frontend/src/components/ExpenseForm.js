@@ -80,6 +80,17 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   }, []);
 
   useEffect(() => {
+    // La liste des employés est réservée aux admins et aux membres avec la
+    // permission `use_expenses` : on évite tout appel voué à un 401 (qui
+    // déconnecterait l'utilisateur via l'intercepteur global).
+    const canSeeEmployees =
+      Boolean(auth?.user?.isAdmin) ||
+      (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('use_expenses'));
+    if (!canSeeEmployees) {
+      setEmployees([]);
+      return;
+    }
+
     const fetchEmployees = async () => {
       try {
         const { data } = await api.get('/employees');
@@ -90,7 +101,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     };
 
     fetchEmployees();
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
     if (initialData) {

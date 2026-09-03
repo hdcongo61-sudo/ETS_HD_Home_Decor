@@ -188,14 +188,18 @@ const DayDetailsModal = ({
         : { text: "Marge faible", tone: "weak", icon: <TrendingDown className="text-red-500" /> };
 
     return {
-      text: `Ce jour, vous avez réalisé ${formatCurrency(
-        totalSales
-      )} de ventes, avec ${formatCurrency(
-        profit
-      )} de profit net (${profitMargin}% de marge).`,
+      // Le profit net et la marge sont des données sensibles : les membres
+      // ne voient qu'un résumé en chiffre d'affaires.
+      text: isAdmin
+        ? `Ce jour, vous avez réalisé ${formatCurrency(
+            totalSales
+          )} de ventes, avec ${formatCurrency(
+            profit
+          )} de profit net (${profitMargin}% de marge).`
+        : `Ce jour, vous avez réalisé ${formatCurrency(totalSales)} de ventes.`,
       trend,
     };
-  }, [totals]);
+  }, [totals, isAdmin]);
 
   // Statistiques de premier plan — toujours visibles, en 3 colonnes.
   const primaryMetrics = [
@@ -205,13 +209,14 @@ const DayDetailsModal = ({
   ];
 
   // Statistiques secondaires — compactes, défilables sur mobile.
+  // Profit net et marge encaissée sont des données sensibles réservées aux admins.
   const secondaryMetrics = [
     { label: "Dépenses", value: formatCurrency(totals.totalExpenses), tone: "danger", sub: `${expenses.length} dépense${expenses.length > 1 ? "s" : ""}` },
     { label: "Profit caisse", value: formatCurrency(totals.cashProfit), tone: totals.cashProfit >= 0 ? "success" : "danger", sub: "Encaiss. − dép." },
-    { label: "Profit net", value: formatCurrency(totals.profit), tone: totals.profit >= 0 ? "success" : "danger", sub: "Marge − dép." },
-    { label: "Marge encaissée", value: formatCurrency(totals.realizedProfit), tone: "brand", sub: "Sur paiements" },
+    { label: "Profit net", value: formatCurrency(totals.profit), tone: totals.profit >= 0 ? "success" : "danger", sub: "Marge − dép.", adminOnly: true },
+    { label: "Marge encaissée", value: formatCurrency(totals.realizedProfit), tone: "brand", sub: "Sur paiements", adminOnly: true },
     { label: "Vente en gros", value: formatCurrency(wholesaleStats.totalAmount), tone: "warning", sub: `${wholesaleStats.count} vente${wholesaleStats.count > 1 ? "s" : ""}` },
-  ];
+  ].filter((m) => isAdmin || !m.adminOnly);
 
   return (
     <AnimatePresence>

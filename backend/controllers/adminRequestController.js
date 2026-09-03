@@ -204,6 +204,12 @@ const executeApprovedRequest = async (request, user) => {
     case 'payment.edit':
     case 'discount.request':
     case 'expense.create':
+    case 'expense.update':
+    case 'expense.delete':
+      return {
+        executionStatus: 'action_required',
+        executionMessage: 'Demande approuvée. Modifiez ou supprimez la dépense concernée.',
+      };
     case 'other':
     default:
       return {

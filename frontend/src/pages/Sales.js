@@ -132,8 +132,8 @@ const getSaleSellerName = (sale) => {
 /* ===============================
    Sous-composants UI
    =============================== */
-const GlassCard = ({ children, className = "" }) => (
-  <div className={`fluent-card-filled ${className}`}>{children}</div>
+const GlassCard = ({ children, className = "", id = undefined }) => (
+  <div id={id} className={`fluent-card-filled ${className}`}>{children}</div>
 );
 
 // One focused task at a time: creating and reviewing sales both need the full
@@ -2099,7 +2099,13 @@ const Sales = () => {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setMobilePanel("history")}
+                onClick={() => {
+                  const el = document.getElementById("history-section");
+                  if (el) {
+                    const navOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-nav-offset")) || 72;
+                    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - navOffset - 12, behavior: "smooth" });
+                  }
+                }}
                 className="ms-button ms-button-secondary ms-button-md"
               >
                 <ReceiptText className="h-4 w-4" />
@@ -2118,10 +2124,9 @@ const Sales = () => {
             </Suspense>
           )}
 
-          <SalesWorkspaceToggle value={mobilePanel} onChange={setMobilePanel} />
-
-          <div>
-            <div id="sale-form" className={`scroll-mt-[var(--app-nav-offset)] ${mobilePanel === "form" ? "block" : "hidden"}`}>
+          {/* Une seule page : création de vente puis suivi, empilés verticalement. */}
+          <div className="space-y-6">
+            <div id="sale-form" className="scroll-mt-[var(--app-nav-offset)]">
               <GlassCard>
                 <div className="p-5 sm:p-6">
                   <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} text="Chargement du formulaire…" /></div>}>
@@ -2131,7 +2136,7 @@ const Sales = () => {
               </GlassCard>
             </div>
 
-            <GlassCard className={`${mobilePanel === "history" ? "block" : "hidden"}`}>
+            <GlassCard id="history-section" className="scroll-mt-[var(--app-nav-offset)]">
               <section className="p-5 sm:p-6" aria-labelledby="history-heading-main">
                 <div className="ms-command-bar mb-5 flex-wrap gap-y-2">
                   <h2 id="history-heading-main" className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>

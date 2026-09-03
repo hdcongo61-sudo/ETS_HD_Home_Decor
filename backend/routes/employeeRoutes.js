@@ -15,11 +15,13 @@ const {
   getEmployeePaySlips,
   getFinancialSummary,
 } = require('../controllers/payrollController');
-const { protect, admin, requireTenant } = require('../middlewares/authMiddleware');
+const { protect, admin, adminOrPermission, requireTenant } = require('../middlewares/authMiddleware');
 const { imageUpload } = require('../middlewares/uploadMiddleware');
 
+// Liste des employés : admin ou membre avec la permission `use_expenses`
+// (nécessaire pour rattacher une dépense de salaire à un employé).
 router.route('/')
-  .get(protect, requireTenant, admin, getEmployees)
+  .get(protect, requireTenant, adminOrPermission('use_expenses'), getEmployees)
   .post(protect, requireTenant, admin, imageUpload.single('photoFile'), createEmployee);
 
 router.route('/:id')

@@ -18,5 +18,7 @@ export const MODAL_IDS = {
 export const GLOBAL_MODALS = {
   [MODAL_IDS.SALE]: { component: GlobalSaleModal },
   [MODAL_IDS.PAYMENT]: { component: GlobalPaymentModal },
-  [MODAL_IDS.EXPENSE]: { component: GlobalExpenseModal, adminOnly: true },
+  // Ouverte aux admins et aux membres avec la permission `use_expenses`
+  // (attribuée par un admin depuis la gestion des utilisateurs).
+  [MODAL_IDS.EXPENSE]: { component: GlobalExpenseModal, permission: 'use_expenses' },
 };

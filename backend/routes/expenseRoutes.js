@@ -7,10 +7,10 @@ const {
   deleteExpense,
   getExpensesByDateRange
 } = require('../controllers/expenseController');
-const { protect, adminOrPermission, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
+const { protect, admin, adminOrPermission, requireTenant, resolveLocation } = require('../middlewares/authMiddleware');
 
 // Admins et membres avec la permission `use_expenses` (attribuée par un admin
-// depuis la gestion des utilisateurs) peuvent gérer les dépenses.
+// depuis la gestion des utilisateurs) peuvent consulter et saisir des dépenses.
 router.route('/')
   .get(protect, requireTenant, adminOrPermission('use_expenses'), getExpenses)
   .post(protect, requireTenant, adminOrPermission('use_expenses'), resolveLocation, createExpense);
@@ -18,8 +18,9 @@ router.route('/')
 router.route('/date-range')
   .get(protect, requireTenant, getExpensesByDateRange);
 
+// Modification et suppression : réservées aux administrateurs.
 router.route('/:id')
-  .delete(protect, requireTenant, adminOrPermission('use_expenses'), deleteExpense)
-  .put(protect, requireTenant, adminOrPermission('use_expenses'), updateExpense);
+  .delete(protect, requireTenant, admin, deleteExpense)
+  .put(protect, requireTenant, admin, updateExpense);
 
 module.exports = router;

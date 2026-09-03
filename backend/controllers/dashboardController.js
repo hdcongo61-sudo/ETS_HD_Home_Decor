@@ -80,10 +80,11 @@ exports.getOverview = async (req, res) => {
     } else {
       // Regular user: their own sales + the store-wide daily figures shown on
       // the home page for sellers (CA du jour, encaissements du jour).
-      const [userSales, paymentsTodayData, todaySalesData] = await Promise.allSettled([
+      const [userSales, paymentsTodayData, todaySalesData, todayExpensesData] = await Promise.allSettled([
         getUserSales(tenantId, userId),
         getPaymentsToday(tenantId),
-        getTodaySales(tenantId)
+        getTodaySales(tenantId),
+        getTodayExpenses(tenantId)
       ]);
 
       response.userSales = userSales.status === 'fulfilled'
@@ -95,7 +96,10 @@ exports.getOverview = async (req, res) => {
       response.todaySales = todaySalesData.status === 'fulfilled'
         ? todaySalesData.value
         : { total: 0, count: 0 };
-      response.errors = [userSales, paymentsTodayData, todaySalesData]
+      response.todayExpenses = todayExpensesData.status === 'fulfilled'
+        ? todayExpensesData.value
+        : { total: 0, count: 0 };
+      response.errors = [userSales, paymentsTodayData, todaySalesData, todayExpensesData]
         .filter((r) => r.status === 'rejected').length;
     }
 
@@ -412,6 +416,35 @@ async function getTodaySales(tenantId) {
       $group: {
         _id: null,
         total: { $sum: '$totalAmount' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  return {
+    total: (agg && agg.total) || 0,
+    count: (agg && agg.count) || 0
+  };
+}
+
+// Dépenses du jour : total et nombre de dépenses datées d'aujourd'hui.
+async function getTodayExpenses(tenantId) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const [agg] = await Expense.aggregate([
+    {
+      $match: {
+        tenantId,
+        date: { $gte: start, $lte: end }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amount' },
         count: { $sum: 1 }
       }
     }

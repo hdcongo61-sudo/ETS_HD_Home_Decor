@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, Plus, ReceiptText, RefreshCcw, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../services/api';
 import { expensesApi } from '../features/expenses/api';
 import ExpenseForm from '../components/ExpenseForm';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { confirmAlert } from 'react-confirm-alert';
+import AuthContext from '../context/AuthContext';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import {
   Button,
@@ -50,6 +53,8 @@ const formatSalaryPeriod = (expense) => {
 };
 
 const Expenses = () => {
+  const { auth } = useContext(AuthContext);
+  const isAdmin = Boolean(auth?.user?.isAdmin);
   const tableRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
@@ -64,6 +69,13 @@ const Expenses = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Demandes admin (membres) : modifier/supprimer passe par une demande.
+  const [requestExpense, setRequestExpense] = useState(null);
+  const [requestAction, setRequestAction] = useState('update'); // 'update' | 'delete'
+  const [requestReason, setRequestReason] = useState('');
+  const [requestNote, setRequestNote] = useState('');
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
@@ -166,6 +178,10 @@ const Expenses = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!isAdmin) {
+      setError("Seul un administrateur peut supprimer une dépense.");
+      return;
+    }
     confirmAlert({
       title: 'Confirmer la suppression',
       message: 'Êtes-vous sûr de vouloir supprimer cette dépense ?',
@@ -193,8 +209,66 @@ const Expenses = () => {
   };
 
   const handleEdit = (expense) => {
+    if (!isAdmin) {
+      setError("Seul un administrateur peut modifier une dépense.");
+      return;
+    }
     setEditingExpense(expense);
     setFormPanelOpen(true);
+  };
+
+  // ---- Demandes de modification/suppression (membres) ----
+  const openUpdateRequest = (expense) => {
+    setRequestAction('update');
+    setRequestExpense(expense);
+    setRequestReason('');
+    setRequestNote('');
+    setError('');
+  };
+
+  const openDeleteRequest = (expense) => {
+    setRequestAction('delete');
+    setRequestExpense(expense);
+    setRequestReason('');
+    setRequestNote('');
+    setError('');
+  };
+
+  const closeRequestModal = () => {
+    if (requestSubmitting) return;
+    setRequestExpense(null);
+  };
+
+  const submitExpenseRequest = async () => {
+    if (!requestReason.trim()) {
+      setError('Une raison est requise pour envoyer la demande.');
+      return;
+    }
+    setRequestSubmitting(true);
+    try {
+      await api.post('/admin-requests', {
+        type: requestAction === 'delete' ? 'expense.delete' : 'expense.update',
+        reason: requestReason.trim(),
+        note: requestNote.trim(),
+        targetModel: 'Expense',
+        targetId: requestExpense._id,
+        targetLabel: requestExpense.description,
+        metadata: {
+          amount: requestExpense.amount,
+          category: requestExpense.category,
+          paymentMethod: requestExpense.paymentMethod,
+          date: requestExpense.date,
+        },
+      });
+      setRequestExpense(null);
+      setRequestReason('');
+      setRequestNote('');
+      toast.success("Demande envoyée à l'administrateur.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Erreur lors de l'envoi de la demande.");
+    } finally {
+      setRequestSubmitting(false);
+    }
   };
 
   const handleCreate = () => {
@@ -312,30 +386,35 @@ const Expenses = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total dépensé"
-          value={`${dashboardData.total.toLocaleString('fr-FR')} CFA`}
-          tone="info"
-          icon={<ReceiptText className="h-5 w-5" />}
-        />
-        <KPICard title="Nombre de dépenses" value={dashboardData.count} tone="success" />
-        <KPICard
-          title="Dépense moyenne"
-          value={`${dashboardData.average.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} CFA`}
-          tone="neutral"
-        />
-        <KPICard
-          title="Dépense max"
-          value={dashboardData.mostExpensive ? `${dashboardData.mostExpensive.amount.toLocaleString('fr-FR')} CFA` : 'Aucune'}
-          tone="danger"
-        />
-      </div>
+      {/* KPIs financiers — réservés aux administrateurs ; les membres voient la liste. */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <KPICard
+            title="Total dépensé"
+            value={`${dashboardData.total.toLocaleString('fr-FR')} CFA`}
+            tone="info"
+            icon={<ReceiptText className="h-5 w-5" />}
+          />
+          <KPICard title="Nombre de dépenses" value={dashboardData.count} tone="success" />
+          <KPICard
+            title="Dépense moyenne"
+            value={`${dashboardData.average.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} CFA`}
+            tone="neutral"
+          />
+          <KPICard
+            title="Dépense max"
+            value={dashboardData.mostExpensive ? `${dashboardData.mostExpensive.amount.toLocaleString('fr-FR')} CFA` : 'Aucune'}
+            tone="danger"
+          />
+        </div>
+      )}
 
-      <ChartCard
-        title="Répartition par catégorie"
-        description="Vue rapide des dépenses correspondant aux filtres actifs."
-      >
+      {/* Répartition par catégorie — réservée aux administrateurs. */}
+      {isAdmin && (
+        <ChartCard
+          title="Répartition par catégorie"
+          description="Vue rapide des dépenses correspondant aux filtres actifs."
+        >
         {dashboardData.total > 0 ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="flex justify-center">
@@ -397,7 +476,8 @@ const Expenses = () => {
         ) : (
           <EmptyState title="Aucune donnée à répartir" description="Ajoutez une dépense ou élargissez vos filtres." />
         )}
-      </ChartCard>
+        </ChartCard>
+      )}
 
       <ChartCard
         title="Historique des dépenses"
@@ -473,20 +553,41 @@ const Expenses = () => {
                         )}
 
                         <div className="flex gap-2 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(expense)}
-                            className="flex-1 ms-button ms-button-secondary ms-button-sm"
-                          >
-                            <Pencil className="h-4 w-4" /> Modifier
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(expense._id)}
-                            className="flex-1 ms-button ms-button-secondary ms-button-sm"
-                          >
-                            <Trash2 className="h-4 w-4" /> Supprimer
-                          </button>
+                          {isAdmin ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(expense)}
+                                className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                              >
+                                <Pencil className="h-4 w-4" /> Modifier
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(expense._id)}
+                                className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                              >
+                                <Trash2 className="h-4 w-4" /> Supprimer
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openUpdateRequest(expense)}
+                                className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                              >
+                                <Pencil className="h-4 w-4" /> Modifier
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openDeleteRequest(expense)}
+                                className="flex-1 ms-button ms-button-secondary ms-button-sm"
+                              >
+                                <Trash2 className="h-4 w-4" /> Supprimer
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -542,20 +643,41 @@ const Expenses = () => {
                               </td>
                               <td data-title="Actions">
                                 <div className="flex gap-2 flex-wrap">
-                                  <IconButton
-                                    type="button"
-                                    onClick={() => handleEdit(expense)}
-                                    label="Modifier"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </IconButton>
-                                  <IconButton
-                                    type="button"
-                                    onClick={() => handleDelete(expense._id)}
-                                    label="Supprimer"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
-                                  </IconButton>
+                                  {isAdmin ? (
+                                    <>
+                                      <IconButton
+                                        type="button"
+                                        onClick={() => handleEdit(expense)}
+                                        label="Modifier"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </IconButton>
+                                      <IconButton
+                                        type="button"
+                                        onClick={() => handleDelete(expense._id)}
+                                        label="Supprimer"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
+                                      </IconButton>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IconButton
+                                        type="button"
+                                        onClick={() => openUpdateRequest(expense)}
+                                        label="Demander une modification"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </IconButton>
+                                      <IconButton
+                                        type="button"
+                                        onClick={() => openDeleteRequest(expense)}
+                                        label="Demander la suppression"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
+                                      </IconButton>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -583,6 +705,96 @@ const Expenses = () => {
           initialData={editingExpense}
         />
       </RightDetailPanel>
+
+      {/* Demande de modification/suppression (membres) — validée par un admin */}
+      {requestExpense && (
+        <div
+          className="sa-overlay fixed inset-0 z-[260] flex items-center justify-center bg-gray-950/45 backdrop-blur-md"
+          onClick={closeRequestModal}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_28px_90px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 text-amber-600">
+                  {requestAction === 'delete' ? <Trash2 className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+                </span>
+                {requestAction === 'delete' ? 'Demander la suppression' : 'Demander une modification'}
+              </h3>
+              <button
+                type="button"
+                onClick={closeRequestModal}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)]"
+                aria-label="Fermer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 sm:p-6 space-y-4">
+              <p className="text-sm text-gray-600">
+                {requestAction === 'delete' ? 'Suppression' : 'Modification'} de la dépense{' '}
+                <span className="font-semibold text-gray-900">« {requestExpense.description} »</span>{' '}
+                ({Number(requestExpense.amount || 0).toLocaleString('fr-FR')} CFA).
+              </p>
+              <div>
+                <label htmlFor="expense-request-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                  Raison *
+                </label>
+                <textarea
+                  id="expense-request-reason"
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  placeholder="Expliquez pourquoi cette dépense doit être modifiée ou supprimée…"
+                  className="w-full min-h-[88px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)] resize-y"
+                  rows={3}
+                  maxLength={1000}
+                />
+              </div>
+              <div>
+                <label htmlFor="expense-request-note" className="block text-sm font-medium text-gray-700 mb-2">
+                  Note (optionnelle)
+                </label>
+                <textarea
+                  id="expense-request-note"
+                  value={requestNote}
+                  onChange={(e) => setRequestNote(e.target.value)}
+                  placeholder="Précisions utiles pour l'administrateur…"
+                  className="w-full min-h-[72px] px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue)] focus:border-[var(--ms-blue)] resize-y"
+                  rows={2}
+                  maxLength={1000}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Un administrateur examinera la demande et effectuera l'action. Suivez son statut dans « Mes demandes ».
+              </p>
+              {error && <p className="text-sm font-medium text-[var(--ms-danger)]">{error}</p>}
+            </div>
+            <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/30">
+              <button
+                type="button"
+                onClick={closeRequestModal}
+                disabled={requestSubmitting}
+                className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={submitExpenseRequest}
+                disabled={requestSubmitting}
+                className="min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] text-white rounded-xl hover:bg-[var(--ms-blue-dark)] flex items-center gap-2 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] focus-visible:ring-offset-2"
+              >
+                {requestSubmitting && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Envoyer la demande
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Workspace>
   );
 };

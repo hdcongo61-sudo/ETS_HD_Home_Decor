@@ -1,15 +1,33 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import api from '../services/api';
+import AuthContext from './AuthContext';
 
 const DashboardDataContext = createContext();
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const DashboardDataProvider = ({ children }) => {
+  const { auth } = useContext(AuthContext);
   const [overviewData, setOverviewData] = useState(null);
   const [loading, setLoading] = useState(false);
   const cacheTimestamp = useRef(null);
   const loadingPromise = useRef(null);
+  const cacheOwnerRef = useRef(null);
+
+  // Le cache est propre à chaque utilisateur : un vendeur ne doit jamais
+  // recevoir les données (admin) d'un utilisateur précédemment connecté,
+  // sinon ses cartes « CA du jour » resteraient vides.
+  const cacheOwner = auth?.user?._id
+    ? `${auth.user._id}:${auth?.isAdmin ? 'admin' : 'member'}`
+    : 'anon';
+
+  useEffect(() => {
+    if (cacheOwnerRef.current !== cacheOwner) {
+      cacheOwnerRef.current = cacheOwner;
+      setOverviewData(null);
+      cacheTimestamp.current = null;
+    }
+  }, [cacheOwner]);
 
   const isCacheValid = useCallback(() => {
     if (!cacheTimestamp.current || !overviewData) return false;

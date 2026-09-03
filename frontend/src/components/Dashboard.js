@@ -166,6 +166,10 @@ const Dashboard = () => {
   const { appSettings } = useAppSettings();
   useDashboardData();
   const isAdmin = Boolean(auth?.user?.isAdmin);
+  // Membres autorisés à manipuler les dépenses : ils voient les dépenses et le
+  // profit net dans les synthèses (comme les admins).
+  const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
+  const canUseExpenses = isAdmin || permissions.includes('use_expenses');
   const canExport = useFeature(FEATURE_KEYS.DATA_EXPORT); // bulk stats export — la facture de vente reste accessible à tous
   const currentYear = new Date().getFullYear();
 
@@ -433,7 +437,7 @@ const Dashboard = () => {
           `/sales/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
         // Sellers never see expenses/profit — skip the fetch entirely for them.
-        isAdmin
+        canUseExpenses
           ? api.get(`/expenses/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`)
           : Promise.resolve({ data: [] }),
         api.get(
@@ -475,7 +479,7 @@ const Dashboard = () => {
         api.get(
           `/sales/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`
         ),
-        isAdmin
+        canUseExpenses
           ? api.get(`/expenses/date-range?startDate=${prev.start.toISOString()}&endDate=${prev.end.toISOString()}&summary=dashboard`)
           : Promise.resolve({ data: [] }),
         api.get(
@@ -636,6 +640,9 @@ const Dashboard = () => {
   // Net profit = realized gross profit − expenses (cash-basis).
   const profit = totalPaidProfit - totalExpenses;
 
+  // Encaissé net = encaissements − dépenses (synthèse simplifiée des membres).
+  const netCollected = totalPaid - totalExpenses;
+
   // Totaux de la période comparée, sur toute sa durée
   const prevPeriodTotals = useMemo(() => {
     const s = prevCombinedData.reduce((sum, d) => sum + (d.sales || 0), 0);
@@ -761,6 +768,12 @@ const Dashboard = () => {
   const paidTrend = pct(totalPaid, trendBase.paid);
   const expenseTrend = pct(totalExpenses, trendBase.expenses);
   const profitTrend = pct(profit, trendBase.profit);
+  const netCollectedTrend = pct(
+    netCollected,
+    trendBase.paid != null && trendBase.expenses != null
+      ? trendBase.paid - trendBase.expenses
+      : null
+  );
 
   // ===== EXPORT principal (tableau combiné) =====
   const exportToExcel = async () => {
@@ -1643,7 +1656,8 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* ===== PAGES RATTACHÉES ===== */}
+        {/* ===== PAGES RATTACHÉES (admin uniquement) ===== */}
+        {isAdmin && (
         <section className="fluent-card-filled p-4 sm:p-5 lg:p-6">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
@@ -1674,6 +1688,7 @@ const Dashboard = () => {
             ))}
           </div>
         </section>
+        )}
 
         {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
         <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
@@ -1686,7 +1701,7 @@ const Dashboard = () => {
           )}
 
           <motion.section
-            className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'xl:grid-cols-4' : ''} gap-3 sm:gap-4 transition-opacity ${
+            className={`grid grid-cols-1 sm:grid-cols-2 ${canUseExpenses ? 'xl:grid-cols-4' : ''} gap-3 sm:gap-4 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
             }`}
             initial={{ opacity: 0, y: 12 }}
@@ -1711,7 +1726,7 @@ const Dashboard = () => {
                 trend: paidTrend,
                 style: CARD_STYLES[1],
               },
-              {
+              canUseExpenses && {
                 title: "Dépenses",
                 value: totalExpenses,
                 prevValue: trendBase.expenses,
@@ -1721,15 +1736,29 @@ const Dashboard = () => {
                 invertTrendColor: true,
                 style: CARD_STYLES[2],
               },
-              {
-                title: "Profit net",
-                value: profit,
-                prevValue: trendBase.profit,
-                icon: <PieIcon size={22} />,
-                trend: profitTrend,
-                style: CARD_STYLES[3],
-              },
-            ].filter((stat) => isAdmin || !["Dépenses", "Profit net"].includes(stat.title)).map((stat, i) => {
+              // Admins : profit net (marge encaissée − dépenses).
+              // Membres : encaissé net (encaissements − dépenses), sans marge.
+              isAdmin
+                ? {
+                    title: "Profit net",
+                    value: profit,
+                    prevValue: trendBase.profit,
+                    icon: <PieIcon size={22} />,
+                    trend: profitTrend,
+                    style: CARD_STYLES[3],
+                  }
+                : canUseExpenses && {
+                    title: "Encaissé net",
+                    value: netCollected,
+                    prevValue:
+                      trendBase.paid != null && trendBase.expenses != null
+                        ? trendBase.paid - trendBase.expenses
+                        : null,
+                    icon: <Landmark size={22} />,
+                    trend: netCollectedTrend,
+                    style: CARD_STYLES[3],
+                  },
+            ].filter(Boolean).map((stat, i) => {
               const trendIsUp = String(stat.trend).startsWith('+');
               const trendIsGood = stat.invertTrendColor ? !trendIsUp : trendIsUp;
               return (
@@ -1945,8 +1974,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-          {/* ===== GRAPHIQUE FINANCIER — carte professionnelle (admin only) ===== */}
-          {isAdmin && (
+          {/* ===== GRAPHIQUE FINANCIER — carte professionnelle ===== */}
           <section
             className={`relative overflow-hidden fluent-card-filled p-4 sm:p-5 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
@@ -2065,6 +2093,7 @@ const Dashboard = () => {
                   dot={false}
                   activeDot={{ r: 4 }}
                   cursor="pointer"
+                  hide={!canUseExpenses}
                 />
 
                 {/* Période comparée : mêmes métriques, même teinte, en pointillé
@@ -2097,7 +2126,6 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           </section>
-          )}
 
           {encaissementHighlights && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-label="Extremes des encaissements">

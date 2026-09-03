@@ -356,39 +356,42 @@ const Products = () => {
         )}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <button type="button" onClick={() => navigate({ pathname: '/products', search: '?stockOperator=gte&stock=1' })} className="text-left fluent-card-interactive">
+      {/* KPIs du stock — réservés aux administrateurs ; les membres voient le catalogue. */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <button type="button" onClick={() => navigate({ pathname: '/products', search: '?stockOperator=gte&stock=1' })} className="text-left fluent-card-interactive">
+            <KPICard
+              title="Articles en stock"
+              value={loading ? '...' : inStockCount.toLocaleString('fr-FR')}
+              context={`${products.length.toLocaleString('fr-FR')} au catalogue · Voir →`}
+              icon={<PackageCheck className="h-4 w-4" />}
+              tone="success"
+            />
+          </button>
           <KPICard
-            title="Articles en stock"
-            value={loading ? '...' : inStockCount.toLocaleString('fr-FR')}
-            context={`${products.length.toLocaleString('fr-FR')} au catalogue · Voir →`}
-            icon={<PackageCheck className="h-4 w-4" />}
-            tone="success"
+            title="Stock total"
+            value={loading ? '...' : totalStock.toLocaleString('fr-FR')}
+            context="Unités disponibles"
+            icon={<Boxes className="h-4 w-4" />}
           />
-        </button>
-        <KPICard
-          title="Stock total"
-          value={loading ? '...' : totalStock.toLocaleString('fr-FR')}
-          context="Unités disponibles"
-          icon={<Boxes className="h-4 w-4" />}
-        />
-        <button type="button" onClick={() => navigate('/products/critical')} className="text-left fluent-card-interactive">
+          <button type="button" onClick={() => navigate('/products/critical')} className="text-left fluent-card-interactive">
+            <KPICard
+              title="À surveiller"
+              value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')}
+              context={`${lowStockCount} bas · ${outOfStockCount} rupture · Traiter →`}
+              icon={<AlertTriangle className="h-4 w-4" />}
+              tone="warning"
+            />
+          </button>
           <KPICard
-            title="À surveiller"
-            value={loading ? '...' : (lowStockCount + outOfStockCount).toLocaleString('fr-FR')}
-            context={`${lowStockCount} bas · ${outOfStockCount} rupture · Traiter →`}
-            icon={<AlertTriangle className="h-4 w-4" />}
-            tone="warning"
+            title="Valeur du stock"
+            value={loading ? '...' : formatCfa(stockValue)}
+            context="Prix de vente potentiel"
+            icon={<Wallet className="h-4 w-4" />}
+            tone="brand"
           />
-        </button>
-        <KPICard
-          title="Valeur du stock"
-          value={loading ? '...' : formatCfa(stockValue)}
-          context="Prix de vente potentiel"
-          icon={<Wallet className="h-4 w-4" />}
-          tone="brand"
-        />
-      </div>
+        </div>
+      )}
 
       {isAdmin && (
         <nav className="grid gap-2 sm:grid-cols-3" aria-label="Outils du catalogue">
