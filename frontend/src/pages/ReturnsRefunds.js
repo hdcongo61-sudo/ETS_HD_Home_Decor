@@ -40,6 +40,7 @@ const ReturnsRefunds = () => {
   const [sales, setSales] = useState([]);
   const [sale, setSale] = useState(null);
   const [returns, setReturns] = useState([]);
+  const [allReturns, setAllReturns] = useState([]);
   const [refunds, setRefunds] = useState([]);
 
   const [showReturnForm, setShowReturnForm] = useState(false);
@@ -52,12 +53,14 @@ const ReturnsRefunds = () => {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [sRes, rRes] = await Promise.all([
+      const [sRes, rRes, aRes] = await Promise.all([
         salesApi.list({ limit: 50 }),
         salesApi.listRefunds({ limit: 50 }),
+        salesApi.allReturns({ limit: 200 }),
       ]);
       setSales(asList(sRes.data, 'sales'));
       setRefunds(asList(rRes.data, 'refunds'));
+      setAllReturns(asList(aRes.data, 'returns'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Impossible de charger retours et remboursements.');
     } finally {
@@ -82,7 +85,10 @@ const ReturnsRefunds = () => {
   };
 
   const saleProductLabel = (id) => {
-    const line = (sale?.products || []).find((p) => String(p.product) === String(id));
+    const line = (sale?.products || []).find((p) => {
+      const productId = p.product?._id || p.product;
+      return String(productId) === String(id);
+    });
     const name = line?.name || line?.productName || (line?.product && line.product.name) || String(id).slice(-6);
     return `${name}${line?.sku ? ` (${line.sku})` : ''}`;
   };
@@ -106,6 +112,7 @@ const ReturnsRefunds = () => {
       setReturnForm({ note: '', lines: [{ product: '', quantity: 1, disposition: 'restocked' }] });
       setShowReturnForm(false);
       selectSale(sale._id);
+      load(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Retour impossible.');
     }
@@ -123,6 +130,7 @@ const ReturnsRefunds = () => {
       }
       toast.success('Action effectuée.');
       selectSale(sale._id);
+      load(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -187,7 +195,7 @@ const ReturnsRefunds = () => {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KPICard title="Ventes récentes" value={sales.length} context="Chargées pour sélection" />
-        <KPICard title="Retours (vente)" value={returns.length} context="Sur la vente sélectionnée" tone="info" />
+        <KPICard title="Retours" value={sale ? returns.length : allReturns.length} context={sale ? 'Sur la vente sélectionnée' : 'Tous les retours'} tone="info" />
         <KPICard title="Quantité retournable" value={returnableTotal} context="Unités sur la vente" />
         <KPICard title="Remboursements" value={cfa(refundedTotal)} context={`${refunds.length} enregistrés`} tone="warning" />
       </div>
@@ -237,9 +245,13 @@ const ReturnsRefunds = () => {
                   required
                 >
                   <option value="">— Produit —</option>
-                  {(sale.products || []).map((p) => (
-                    <option key={p.product} value={p.product}>{saleProductLabel(p.product)}</option>
-                  ))}
+                  {(sale.products || []).map((p) => {
+                    // `p.product` peut être un objet peuplé : on envoie l'id réel.
+                    const productId = p.product?._id || p.product;
+                    return (
+                      <option key={productId} value={productId}>{saleProductLabel(productId)}</option>
+                    );
+                  })}
                 </select>
                 <input
                   type="number" min="1" className="form-control col-span-2" placeholder="Qté"
@@ -278,51 +290,89 @@ const ReturnsRefunds = () => {
           </form>
         )}
 
-        {returns.length === 0 ? (
-          <EmptyState title={sale ? 'Aucun retour sur cette vente' : 'Sélectionnez une vente'} description={sale ? 'Enregistrez un retour de produit.' : 'Choisissez une vente ci-dessus pour gérer ses retours.'} />
-        ) : (
-          <DataTable>
-            <table className="ms-table">
-              <thead>
-                <tr>
-                  <th>Date</th><th>Lignes</th><th>Note</th><th>Statut</th><th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {returns.map((ret) => {
-                  const st = RETURN_STATUS[ret.status] || { label: ret.status, tone: 'neutral' };
-                  return (
-                    <tr key={ret._id}>
-                      <td>{formatDate(ret.createdAt)}</td>
-                      <td>
-                        {(ret.lines || []).map((l, i) => (
-                          <span key={i} className="mr-2 inline-flex items-center gap-1">
-                            <StatusBadge tone="neutral">
-                              {saleProductLabel(l.product)} × {l.quantity}
-                            </StatusBadge>
-                            <span className="fui-caption1">
-                              {DISPOSITIONS.find((d) => d.value === l.disposition)?.label || l.disposition}
+        {sale ? (
+          returns.length === 0 ? (
+            <EmptyState title="Aucun retour sur cette vente" description="Enregistrez un retour de produit." />
+          ) : (
+            <DataTable>
+              <table className="ms-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Lignes</th><th>Note</th><th>Statut</th><th className="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {returns.map((ret) => {
+                    const st = RETURN_STATUS[ret.status] || { label: ret.status, tone: 'neutral' };
+                    return (
+                      <tr key={ret._id}>
+                        <td>{formatDate(ret.createdAt)}</td>
+                        <td>
+                          {(ret.lines || []).map((l, i) => (
+                            <span key={i} className="mr-2 inline-flex items-center gap-1">
+                              <StatusBadge tone="neutral">
+                                {saleProductLabel(l.product)} × {l.quantity}
+                              </StatusBadge>
+                              <span className="fui-caption1">
+                                {DISPOSITIONS.find((d) => d.value === l.disposition)?.label || l.disposition}
+                              </span>
                             </span>
-                          </span>
-                        ))}
-                      </td>
-                      <td className="max-w-[200px] truncate">{ret.note || '—'}</td>
-                      <td><StatusBadge tone={st.tone}>{st.label}</StatusBadge></td>
-                      <td className="text-right whitespace-nowrap">
-                        {ret.status === 'pending' && (
-                          <>
-                            <button type="button" className="btn-ghost" disabled={busyId === ret._id} onClick={() => returnAction(ret, 'post')}><Check size={14} /> Passer</button>
-                            <button type="button" className="btn-ghost-danger" disabled={busyId === ret._id} onClick={() => returnAction(ret, 'cancel')}><Ban size={14} /></button>
-                          </>
-                        )}
-                        {ret.status !== 'pending' && <span className="fui-caption1">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </DataTable>
+                          ))}
+                        </td>
+                        <td className="max-w-[200px] truncate">{ret.note || '—'}</td>
+                        <td><StatusBadge tone={st.tone}>{st.label}</StatusBadge></td>
+                        <td className="text-right whitespace-nowrap">
+                          {ret.status === 'pending' && (
+                            <>
+                              <button type="button" className="btn-ghost" disabled={busyId === ret._id} onClick={() => returnAction(ret, 'post')}><Check size={14} /> Passer</button>
+                              <button type="button" className="btn-ghost-danger" disabled={busyId === ret._id} onClick={() => returnAction(ret, 'cancel')}><Ban size={14} /></button>
+                            </>
+                          )}
+                          {ret.status !== 'pending' && <span className="fui-caption1">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </DataTable>
+          )
+        ) : allReturns.length === 0 ? (
+          <EmptyState title="Aucun retour enregistré" description="Sélectionnez une vente ci-dessus pour créer un retour." />
+        ) : (
+          <>
+            <DataTable>
+              <table className="ms-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Code</th><th>Vente</th><th>Lignes</th><th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allReturns.map((ret) => {
+                    const st = RETURN_STATUS[ret.status] || { label: ret.status, tone: 'neutral' };
+                    return (
+                      <tr key={ret._id}>
+                        <td>{formatDate(ret.createdAt)}</td>
+                        <td className="font-mono">{ret.code || String(ret._id).slice(-6)}</td>
+                        <td className="font-mono">{String(ret.saleId || '—').slice(-6)}</td>
+                        <td>
+                          {(ret.lines || []).map((l, i) => (
+                            <span key={i} className="mr-2 inline-flex items-center gap-1">
+                              <StatusBadge tone="neutral">{saleProductLabel(l.product)} × {l.quantity}</StatusBadge>
+                              <span className="fui-caption1">{DISPOSITIONS.find((d) => d.value === l.disposition)?.label || l.disposition}</span>
+                            </span>
+                          ))}
+                        </td>
+                        <td><StatusBadge tone={st.tone}>{st.label}</StatusBadge></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </DataTable>
+            <p className="fui-caption1 mt-2">Sélectionnez une vente ci-dessus pour passer ou annuler un retour.</p>
+          </>
         )}
       </Surface>
 

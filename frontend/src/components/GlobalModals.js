@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import FloatingActionButton from './FloatingActionButton';
+import BackToTopButton from './BackToTopButton';
 import AuthContext from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import { GLOBAL_MODALS } from '../config/modals';
@@ -36,6 +37,7 @@ const GlobalModals = () => {
 
   return (
     <>
+      <BackToTopButton />
       <FloatingActionButton canAddExpense={hasPermission('use_expenses')} />
       {Object.entries(GLOBAL_MODALS).map(([modalId, definition]) => {
         if (definition.adminOnly && !isAdmin) return null;

@@ -2,6 +2,7 @@
 const Sale = require('../models/saleModel');
 const Product = require('../models/productModel');
 const StockMovement = require('../models/stockMovementModel');
+const Refund = require('../models/refundModel');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
 // @desc    Obtenir les analyses de bénéfices
@@ -21,7 +22,8 @@ const getProfitAnalytics = async (req, res) => {
     // Single base match, explicitly tenant-scoped (belt-and-suspenders with the plugin).
     const baseMatch = {
       ...tenantFilter(req),
-      status: { $ne: 'cancelled' },
+      // Une vente entièrement retournée n'apporte plus ni CA ni bénéfice.
+      status: { $nin: ['cancelled', 'returned'] },
       ...((startDate || endDate) ? {
         saleDate: {
           ...(startDate ? { $gte: new Date(startDate) } : {}),
@@ -148,7 +150,7 @@ const getProfitAnalytics = async (req, res) => {
 
     const realizedBaseMatch = {
       ...tenantFilter(req),
-      status: { $ne: 'cancelled' },
+      status: { $nin: ['cancelled', 'returned'] },
       ...(containerProductIds ? { 'products.product': { $in: containerProductIds } } : {}),
     };
 
@@ -191,14 +193,79 @@ const getProfitAnalytics = async (req, res) => {
       { realizedProfit: 0, collected: 0 },
     );
 
+    // ── 2c) Remboursements : sortie de trésorerie retranchée de l'encaissé ──
+    const refundMatch = {
+      ...tenantFilter(req),
+      status: { $ne: 'reversed' },
+      ...((startDate || endDate) ? {
+        processedAt: {
+          ...(startDate ? { $gte: new Date(startDate) } : {}),
+          ...(endDate ? { $lte: new Date(endDate) } : {}),
+        },
+      } : {}),
+    };
+    const refundDocs = await Refund.find(refundMatch).select('amount processedAt saleId').lean();
+    const refundSaleIds = [...new Set(refundDocs.map((r) => String(r.saleId || '')).filter(Boolean))];
+    const refundSales = refundSaleIds.length
+      ? await Sale.find({ _id: { $in: refundSaleIds } }).select('_id totalAmount profitData').lean()
+      : [];
+    const refundRatioBySale = new Map(refundSales.map((s) => [
+      String(s._id),
+      Number(s.totalAmount) > 0 ? (Number(s.profitData?.totalProfit) || 0) / Number(s.totalAmount) : 0,
+    ]));
+
+    const formatPeriodKey = (date, p) => {
+      const d = new Date(date);
+      if (Number.isNaN(d.getTime())) return null;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      if (p === 'day') return `${y}-${m}-${day}`;
+      if (p === 'month') return `${y}-${m}`;
+      if (p === 'year') return String(y);
+      if (p === 'week') {
+        const dt = new Date(Date.UTC(y, d.getMonth(), d.getDate()));
+        const dayNum = (dt.getUTCDay() + 6) % 7;
+        dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+        const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+        const fstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+        firstThursday.setUTCDate(firstThursday.getUTCDate() - fstDayNum + 3);
+        const week = 1 + Math.round((dt - firstThursday) / (7 * 24 * 3600 * 1000));
+        return `${dt.getUTCFullYear()}-S${String(week).padStart(2, '0')}`;
+      }
+      return `${y}-${m}`;
+    };
+
+    let refundedAmount = 0;
+    let refundedProfit = 0;
+    const refundByPeriod = new Map();
+    for (const r of refundDocs) {
+      const value = Number(r.amount) || 0;
+      const profit = value * (refundRatioBySale.get(String(r.saleId)) || 0);
+      refundedAmount += value;
+      refundedProfit += profit;
+      const key = formatPeriodKey(r.processedAt, period);
+      if (key) {
+        const cur = refundByPeriod.get(key) || { realizedProfit: 0, collected: 0 };
+        cur.realizedProfit -= profit;
+        cur.collected -= value;
+        refundByPeriod.set(key, cur);
+      }
+    }
+
+    const realizedProfitAfterRefunds = realizedTotals.realizedProfit - refundedProfit;
+    const collectedAfterRefunds = realizedTotals.collected - refundedAmount;
+
     // Cash-basis headline figures (encaissé), kept alongside the accrual ones.
     Object.assign(generalStats, {
       expectedProfit: totalProfit,                                  // accrual (sales in range)
-      realizedProfit: Math.round(realizedTotals.realizedProfit),   // encaissé (payments in range)
-      collectedRevenue: Math.round(realizedTotals.collected),
-      realizedNetProfit: Math.round(realizedTotals.realizedProfit - lossCost),
-      realizedMargin: realizedTotals.collected
-        ? Number(((realizedTotals.realizedProfit / realizedTotals.collected) * 100).toFixed(2))
+      refundedAmount: Math.round(refundedAmount),
+      refundedProfit: Math.round(refundedProfit),
+      realizedProfit: Math.round(realizedProfitAfterRefunds),       // encaissé net de remboursements
+      collectedRevenue: Math.round(collectedAfterRefunds),
+      realizedNetProfit: Math.round(realizedProfitAfterRefunds - lossCost),
+      realizedMargin: collectedAfterRefunds > 0
+        ? Number(((realizedProfitAfterRefunds / collectedAfterRefunds) * 100).toFixed(2))
         : 0,
     });
 
@@ -220,6 +287,24 @@ const getProfitAnalytics = async (req, res) => {
           margin: 0,
           realizedProfit: Math.round(r.realizedProfit || 0),
           collected: Math.round(r.collected || 0),
+        });
+      }
+    });
+    refundByPeriod.forEach((delta, key) => {
+      const existing = periodMap.get(key);
+      if (existing) {
+        existing.realizedProfit = Math.round((existing.realizedProfit || 0) + delta.realizedProfit);
+        existing.collected = Math.round((existing.collected || 0) + delta.collected);
+      } else {
+        periodMap.set(key, {
+          _id: key,
+          totalSales: 0,
+          totalProfit: 0,
+          totalCost: 0,
+          saleCount: 0,
+          margin: 0,
+          realizedProfit: Math.round(delta.realizedProfit),
+          collected: Math.round(delta.collected),
         });
       }
     });
@@ -256,7 +341,7 @@ const getProfitAnalytics = async (req, res) => {
       {
         $match: {
           ...tenantFilter(req),
-          status: { $ne: 'cancelled' },
+          status: { $nin: ['cancelled', 'returned'] },
           ...(containerProductIds ? { 'products.product': { $in: containerProductIds } } : {}),
         },
       },
@@ -371,8 +456,8 @@ const getProfitAnalytics = async (req, res) => {
     // Detail coverage: share of COLLECTED revenue that has line-level snapshot
     // detail (breakdowns are cash-basis, so compare against amount collected).
     const categoryRevenue = profitByCategory.reduce((s, c) => s + (c.totalRevenue || 0), 0);
-    generalStats.detailCoverage = realizedTotals.collected > 0
-      ? Number(((categoryRevenue / realizedTotals.collected) * 100).toFixed(0))
+    generalStats.detailCoverage = collectedAfterRefunds > 0
+      ? Number(((categoryRevenue / collectedAfterRefunds) * 100).toFixed(0))
       : 100;
 
     res.json({
@@ -414,7 +499,7 @@ const getProfitReport = async (req, res) => {
       { 
         $match: { 
           ...dateFilter, 
-          status: { $ne: 'cancelled' } 
+          status: { $nin: ['cancelled', 'returned'] } 
         } 
       },
       { $unwind: '$products' },

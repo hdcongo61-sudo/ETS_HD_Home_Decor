@@ -68,6 +68,15 @@ const listReturnsBySale = asyncRoute(async (req, res) => {
   res.json(returns);
 });
 
+// @route   GET /api/v2/returns — tous les retours de la boutique
+const listAllReturns = asyncRoute(async (req, res) => {
+  const returns = await returnService.listAllReturns({
+    tenantId: req.tenantId,
+    limit: Number(req.query.limit) || 200,
+  });
+  res.json(returns);
+});
+
 // @route   GET /api/v2/refunds
 const listRefunds = asyncRoute(async (req, res) => {
   const refunds = await returnService.listRefunds({
@@ -77,4 +86,4 @@ const listRefunds = asyncRoute(async (req, res) => {
   res.json(refunds);
 });
 
-module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listRefunds };
+module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listAllReturns, listRefunds };

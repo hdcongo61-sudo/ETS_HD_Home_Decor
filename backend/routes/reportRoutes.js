@@ -12,6 +12,7 @@ router.get('/reports/inventory', protect, requireTenant, resolveLocation, invent
 router.post('/exports', protect, requireTenant, requirePermission('reporting.view'), createExport);
 router.get('/exports', protect, requireTenant, listExports);
 router.get('/exports/:id', protect, requireTenant, getExport);
-router.get('/exports/:id/download', protect, requireTenant, downloadExport);
+// Téléchargement par jeton aléatoire — pas d'en-tête Bearer nécessaire.
+router.get('/exports/:id/download', downloadExport);
 
 module.exports = router;

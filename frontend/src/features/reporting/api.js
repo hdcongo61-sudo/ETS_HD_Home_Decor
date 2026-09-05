@@ -12,7 +12,9 @@ export const reportingApi = {
   createExport: (type, filters) => api.post('/v2/exports', { type, filters }),
   listExports: (params) => api.get('/v2/exports', { params }),
   exportJob: (id) => api.get(`/v2/exports/${id}`),
-  downloadUrl: (id, token) => `/v2/exports/${id}/download?token=${encodeURIComponent(token)}`,
+  // URL absolue vers l'API (le lien s'ouvre dans un nouvel onglet sans en-tête
+  // d'authentification — seul le jeton de téléchargement est exigé).
+  downloadUrl: (id, token) => `${api.defaults.baseURL}/v2/exports/${id}/download?token=${encodeURIComponent(token)}`,
 
   // Imports en étapes (7.8).
   uploadProducts: (payload) => api.post('/v2/imports/products', payload),

@@ -25,7 +25,6 @@ import {
   Truck,
   Boxes,
   RotateCcw,
-  BarChart3,
   Workflow,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
@@ -51,7 +50,6 @@ const ADMIN_NAV = [
   { to: '/purchasing',       icon: Truck,           label: 'Achats', modules: ['purchasing'] },
   { to: '/inventory-v2',     icon: Boxes,           label: 'Inventaire', modules: ['inventory'] },
   { to: '/returns',          icon: RotateCcw,       label: 'Retours', modules: ['returns'] },
-  { to: '/reporting',        icon: BarChart3,       label: 'Rapports' },
   { to: '/expenses',         icon: Receipt,         label: 'Dépenses' },
   { to: '/employees',        icon: BriefcaseBusiness,label: 'Employés' },
   { to: '/product-dashboard',icon: BarChart2,        label: 'Analytics' },

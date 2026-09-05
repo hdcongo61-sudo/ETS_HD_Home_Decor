@@ -1,6 +1,6 @@
 import { confirmDialog } from '../components/ConfirmProvider';
 // src/pages/Products.jsx
-import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../features/catalog/api';
 import AuthContext from '../context/AuthContext';
@@ -101,6 +101,24 @@ const buildSearchFromProductFilters = (currentSearch, filters) => {
   return next ? `?${next}` : '';
 };
 
+// ── Préservation de la position de défilement (mobile) ──────────────
+// La liste mobile est une longue colonne de cartes : après duplication ou
+// suppression (re-tri / re-rendu) et après un rechargement de la page, on
+// revient exactement là où l'utilisateur se trouvait.
+const SCROLL_STORAGE_KEY = 'hd-products-scroll-y';
+
+const isMobileViewport = () => typeof window !== 'undefined' && window.innerWidth < 768;
+
+const restoreScrollTo = (y) => {
+  if (typeof window === 'undefined' || !y) return;
+  // Double RAF : attendre que React ait committé le nouveau DOM.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+    })
+  );
+};
+
 const Products = () => {
   const { auth } = useContext(AuthContext);
   const location = useLocation();
@@ -119,6 +137,39 @@ const Products = () => {
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkOpen, setBulkOpen] = useState(false);
+  // Position de défilement à rétablir après une mutation de la liste.
+  const savedScrollRef = useRef(0);
+  const scrollRestoredRef = useRef(false);
+
+  // Rechargement de la page (mobile) : restaure la position une fois la liste chargée.
+  useEffect(() => {
+    if (scrollRestoredRef.current || !isMobileViewport()) return;
+    if (loading) return;
+    scrollRestoredRef.current = true;
+    const saved = Number(sessionStorage.getItem(SCROLL_STORAGE_KEY) || 0);
+    if (saved > 0) window.scrollTo(0, saved);
+  }, [loading]);
+
+  // Rechargement de la page (mobile) : mémorise la position pendant le défilement.
+  useEffect(() => {
+    if (!isMobileViewport()) return;
+    let timer = null;
+    const save = () => {
+      if (window.scrollY > 0) sessionStorage.setItem(SCROLL_STORAGE_KEY, String(window.scrollY));
+    };
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(save, 150);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pagehide', save);
+    return () => {
+      clearTimeout(timer);
+      save();
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pagehide', save);
+    };
+  }, []);
 
   const fetchLookups = useCallback(async () => {
     try {
@@ -250,9 +301,11 @@ const Products = () => {
       }
     )) {
       try {
+        savedScrollRef.current = window.scrollY;
         await catalogApi.remove(productId);
         setProducts((prev) => prev.filter((product) => product._id !== productId));
         toast.success('Produit supprimé ✅');
+        restoreScrollTo(savedScrollRef.current);
       } catch (error) {
         console.error('Error deleting product:', error);
         toast.error('Erreur lors de la suppression ❌');
@@ -265,6 +318,7 @@ const Products = () => {
     if (!(await confirmDialog(`Dupliquer le produit « ${product.name} » ?`))) return;
 
     try {
+      savedScrollRef.current = window.scrollY;
       const { data } = await catalogApi.duplicate(product._id);
       if (data) {
         setProducts((prev) => sortProductsByName([data, ...prev]));
@@ -272,6 +326,7 @@ const Products = () => {
         fetchProducts({ showLoading: false });
       }
       toast.success('Produit dupliqué ✅');
+      restoreScrollTo(savedScrollRef.current);
     } catch (error) {
       console.error('Error duplicating product:', error);
       toast.error(error.response?.data?.message || 'Erreur lors de la duplication ❌');

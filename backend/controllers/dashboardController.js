@@ -4,6 +4,7 @@ const Client = require('../models/clientModel');
 const BankTransaction = require('../models/bankTransactionModel');
 const Expense = require('../models/expenseModel');
 const Employee = require('../models/employeeModel');
+const Refund = require('../models/refundModel');
 const { computeAccountingSummary } = require('./comptabiliteController');
 
 // @desc    Get consolidated dashboard overview data
@@ -391,8 +392,27 @@ async function getPaymentsToday(tenantId) {
     }
   ]);
 
+  // Les remboursements sortent de la trésorerie : on les retranche du jour.
+  const [refundAgg] = await Refund.aggregate([
+    {
+      $match: {
+        tenantId,
+        status: { $ne: 'reversed' },
+        processedAt: { $gte: start, $lte: end }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amount' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  const refundTotal = (refundAgg && refundAgg.total) || 0;
+
   return {
-    total: (agg && agg.total) || 0,
+    total: ((agg && agg.total) || 0) - refundTotal,
     count: (agg && agg.count) || 0
   };
 }

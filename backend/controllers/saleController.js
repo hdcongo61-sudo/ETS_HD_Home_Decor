@@ -8,6 +8,7 @@ const User = require('../models/userModel');
 const Expense = require('../models/expenseModel');
 const DeletedSale = require('../models/deletedSaleModel');
 const Employee = require('../models/employeeModel');
+const Refund = require('../models/refundModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -1308,7 +1309,44 @@ const getPaymentsByDateRange = asyncHandler(async (req, res) => {
           ])
     ]);
 
-    res.json(payments);
+    // Les remboursements sortent de la trésorerie : on les ajoute en lignes
+    // négatives pour que les encaissements nets soient corrects partout
+    // (dashboard, accueil, détail du jour). Le bénéfice perdu est reporté au
+    // prorata de la marge de chaque vente.
+    const refunds = await Refund.find({
+      tenantId: req.tenantId,
+      processedAt: { $gte: start, $lte: end },
+      status: { $ne: 'reversed' }
+    }).select('amount method processedAt saleId reason').lean();
+
+    const refundSaleIds = [...new Set(refunds.map((r) => String(r.saleId || '')).filter(Boolean))];
+    const relatedSales = refundSaleIds.length
+      ? await Sale.find({ _id: { $in: refundSaleIds } }).select('_id totalAmount profitData').lean()
+      : [];
+    const ratioBySale = new Map(relatedSales.map((s) => [
+      String(s._id),
+      Number(s.totalAmount) > 0 ? (Number(s.profitData?.totalProfit) || 0) / Number(s.totalAmount) : 0,
+    ]));
+
+    const refundRows = refunds.map((r) => {
+      const value = Number(r.amount) || 0;
+      const ratio = ratioBySale.get(String(r.saleId)) || 0;
+      return {
+        _id: r._id,
+        amount: -value,
+        profit: -(value * ratio),
+        method: r.method || 'cash',
+        paymentDate: r.processedAt,
+        saleId: r.saleId,
+        saleNumber: null,
+        client: { _id: null, name: 'Remboursement' },
+        createdAt: r.processedAt,
+        isRefund: true,
+        reason: r.reason || '',
+      };
+    });
+
+    res.json([...payments, ...refundRows]);
   } catch (error) {
     console.error('Erreur getPaymentsByDateRange:', error);
     res.status(500).json({
@@ -1428,7 +1466,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1446,7 +1484,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1462,7 +1500,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         { $unwind: "$products" },
@@ -1490,7 +1528,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1518,7 +1556,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
                 paymentDate: { $gte: startDate, $lte: endDate }
               }
             },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         { $unwind: "$payments" },
@@ -1541,7 +1579,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1558,7 +1596,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1618,7 +1656,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1677,7 +1715,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1694,7 +1732,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: summaryStart, $lte: summaryEnd },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1737,7 +1775,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
                 }
               }
             },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         { $unwind: "$payments" },
@@ -1767,7 +1805,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
                 paymentDate: { $gte: startDate, $lte: endDate }
               }
             },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         { $unwind: "$payments" },
@@ -1790,7 +1828,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
         {
           $match: {
             saleDate: { $gte: startDate, $lte: endDate },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         {
@@ -1813,7 +1851,7 @@ const getDashboardData = asyncHandler(async (req, res) => {
                 paymentDate: { $gte: startDate, $lte: endDate }
               }
             },
-            status: { $ne: "cancelled" }
+            status: { $nin: ["cancelled", "returned"] }
           }
         },
         { $unwind: "$payments" },

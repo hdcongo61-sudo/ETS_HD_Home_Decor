@@ -479,11 +479,6 @@ export const PAGE_GUIDES = [
     ['Sélectionnez la vente concernée dans la liste.', 'Créez un retour en choisissant produit, quantité et disposition (remise en stock, endommagé, jeté).', 'Passez le retour pour réintégrer le stock.', 'Enregistrez un remboursement avec montant, méthode et motif.'],
     ['Seules les quantités réellement vendues peuvent être retournées.', 'Un retour « remise en stock » réintègre automatiquement le stock v2.']),
 
-  // ── Rapports ──
-  GUIDE('/reporting', 'Rapports, exports & imports', 'Agrégats de ventes, exports asynchrones et imports par lots.',
-    ['Onglet Rapport ventes : regroupez par jour, semaine, mois ou année.', 'Onglet Rapport inventaire : filtrez sous le seuil minimal si besoin.', 'Onglet Exports : lancez un export ventes ou inventaire puis téléchargez-le une fois prêt.', 'Onglet Imports : collez un CSV (name, description, category, price), vérifiez les erreurs, confirmez puis exécutez.'],
-    ['Les exports sont générés en arrière-plan : actualisez pour voir leur statut.', 'Un import ne crée que les lignes valides ; les erreurs sont listées avant exécution.']),
-
   // ── Bascule ──
   GUIDE('/cutover', 'Bascule v2', 'Drapeaux de lecture v2 et rapports de rapprochement archivés.',
     ['Activez ou désactivez la lecture v2 par domaine avec les interrupteurs.', 'Générez un rapport de rapprochement pour figer l’état de vos données.', 'Consultez un rapport archivé pour comparer avant/après.'],

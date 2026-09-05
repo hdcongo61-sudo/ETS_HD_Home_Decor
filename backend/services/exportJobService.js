@@ -142,8 +142,10 @@ async function getJob({ tenantId, jobId }) {
   return job;
 }
 
-async function download({ tenantId, jobId, token }) {
-  const job = await ExportJob.findOne({ tenantId, _id: jobId }).lean();
+async function download({ jobId, token }) {
+  // Accès par jeton aléatoire (48 hex) uniquement : le lien peut être ouvert
+  // dans un nouvel onglet sans en-tête d'authentification.
+  const job = await ExportJob.findOne({ _id: jobId }).lean();
   if (!job) throw notFound('Export introuvable dans cette organisation.');
   if (job.status !== 'completed' || !job.result || !job.result.downloadToken) {
     throw notFound('Export non disponible au téléchargement.');

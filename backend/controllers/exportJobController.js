@@ -35,9 +35,9 @@ const getExport = asyncHandler(async (req, res) => {
 });
 
 // @route   GET /api/v2/exports/:id/download?token=...
+// Accès par jeton de téléchargement (lien ouvrable sans en-tête Bearer).
 const downloadExport = asyncHandler(async (req, res) => {
   const result = await exportJobService.download({
-    tenantId: req.tenantId,
     jobId: req.params.id,
     token: req.query.token || null,
   });

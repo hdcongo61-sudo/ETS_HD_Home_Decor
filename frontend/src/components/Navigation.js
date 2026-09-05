@@ -36,7 +36,6 @@ import {
   Truck,
   Boxes,
   RotateCcw,
-  BarChart3,
   Workflow,
   Tag,
 } from "lucide-react";
@@ -1005,7 +1004,6 @@ const QA_GROUPS = (auth, hasFeature = () => true) => ([
         { to: '/purchasing',   icon: Truck,     label: 'Achats & fournisseurs', modules: ['purchasing'] },
         { to: '/inventory-v2', icon: Boxes,     label: 'Inventaire',            modules: ['inventory'] },
         { to: '/returns',      icon: RotateCcw, label: 'Retours & rembours.',   modules: ['returns'] },
-        { to: '/reporting',    icon: BarChart3, label: 'Rapports & exports' },
         { to: '/cutover',      icon: Workflow,  label: 'Bascule v2' },
       ],
     },

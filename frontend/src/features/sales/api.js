@@ -35,6 +35,7 @@ export const salesApi = {
   postReturn: (saleId, returnId, data) => api.post(`/v2/sales/${saleId}/returns/${returnId}/post`, data),
   cancelReturn: (saleId, returnId) => api.post(`/v2/sales/${saleId}/returns/${returnId}/cancel`),
   listReturns: (saleId) => api.get(`/v2/sales/${saleId}/returns`),
+  allReturns: (params) => api.get('/v2/returns', { params }),
   refunds: (data) => api.post('/v2/refunds', data),
   listRefunds: (params) => api.get('/v2/refunds', { params }),
   salesReport: (params) => api.get('/v2/reports/sales', { params }),

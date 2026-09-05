@@ -33,7 +33,6 @@ const Security = lazy(() => import('./pages/Security'));
 const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'));
 const InventoryV2 = lazy(() => import('./pages/InventoryV2'));
 const ReturnsRefunds = lazy(() => import('./pages/ReturnsRefunds'));
-const Reporting = lazy(() => import('./pages/Reporting'));
 const Cutover = lazy(() => import('./pages/Cutover'));
 const EmployeeList = lazy(() => import('./components/EmployeeList'));
 const EmployeeForm = lazy(() => import('./components/EmployeeForm'));
@@ -384,14 +383,6 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <ReturnsRefunds />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reporting"
-                  element={
-                    <ProtectedRoute adminOnly>
-                      <Reporting />
                     </ProtectedRoute>
                   }
                 />

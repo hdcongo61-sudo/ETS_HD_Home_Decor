@@ -60,7 +60,7 @@ const FEATURES = [
   {
     key: 'reporting',
     label: 'Rapports & exports',
-    routes: ['/comptabilite', '/admin-modules', '/reporting', '/cutover'],
+    routes: ['/comptabilite', '/admin-modules', '/cutover'],
     api: () => import('./reporting/api'),
     modules: [],
   },

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { protect, requireTenant, resolveLocation, requirePermission } = require('../middlewares/authMiddleware');
-const { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listRefunds } = require('../controllers/returnController');
+const { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listAllReturns, listRefunds } = require('../controllers/returnController');
 
 // Retours de vente (Phase 5.5).
+router.get('/returns', protect, requireTenant, listAllReturns);
 router.get('/sales/:id/returns', protect, requireTenant, listReturnsBySale);
 router.post('/sales/:id/returns', protect, requireTenant, resolveLocation, requirePermission('sales.return'), createReturn);
 router.post('/sales/:id/returns/:returnId/post', protect, requireTenant, requirePermission('sales.return'), postReturn);

@@ -14,6 +14,7 @@ const Sale = require('../models/saleModel');
 const SaleReturn = require('../models/saleReturnModel');
 const Refund = require('../models/refundModel');
 const Payment = require('../models/paymentModel');
+const BankTransaction = require('../models/bankTransactionModel');
 const { receiveStock } = require('./inventoryService');
 const { reversePayment } = require('./paymentService');
 
@@ -119,16 +120,22 @@ async function createRefund({
   const sale = await Sale.findOne({ tenantId, _id: saleId }).select('_id').session(externalSession).lean();
   if (!sale) throw notFound('Vente introuvable dans cette organisation.');
 
+  // Les agrégations ne castent pas les ObjectId : on normalise l'id de vente
+  // (le frontend l'envoie en chaîne), sinon le plafond remboursable serait 0.
+  const saleIdForMatch = mongoose.Types.ObjectId.isValid(saleId)
+    ? new mongoose.Types.ObjectId(saleId)
+    : saleId;
+
   // Total payé = paiements completed + reversed (l'argent reçu puis remboursé
   // compte toujours dans l'enveloppe ; les Refund réduisent le plafond).
   const paidRows = await Payment.aggregate([
-    { $match: { tenantId, saleId, status: { $in: ['completed', 'reversed'] } } },
+    { $match: { tenantId, saleId: saleIdForMatch, status: { $in: ['completed', 'reversed'] } } },
     { $group: { _id: null, total: { $sum: '$amount' } } },
   ]).session(externalSession);
   const paidTotal = paidRows.length ? paidRows[0].total : 0;
 
   const refundedRows = await Refund.aggregate([
-    { $match: { tenantId, saleId, status: { $ne: 'reversed' } } },
+    { $match: { tenantId, saleId: saleIdForMatch, status: { $ne: 'reversed' } } },
     { $group: { _id: null, total: { $sum: '$amount' } } },
   ]).session(externalSession);
   const alreadyRefunded = refundedRows.length ? refundedRows[0].total : 0;
@@ -159,6 +166,21 @@ async function createRefund({
     processedAt: new Date(),
     idempotencyKey,
   }], externalSession ? { session: externalSession } : {});
+
+  // Sortie de caisse : l'argent repart physiquement (sauf avoir).
+  // Idempotent via la clé du Refund : en cas de rejeu, `alreadyApplied`
+  // coupe court avant cette écriture.
+  if (method !== 'credit' && userId) {
+    const saleRef = sale._id ? String(sale._id).slice(-6).toUpperCase() : '';
+    await BankTransaction.create([{
+      tenantId,
+      locationId,
+      user: userId,
+      type: 'withdraw',
+      amount: value,
+      label: `Remboursement ${saleRef ? `vente ${saleRef}` : ''}${reason ? ` — ${String(reason).slice(0, 120)}` : ''}`.trim(),
+    }], externalSession ? { session: externalSession } : {});
+  }
 
   for (const paymentId of paymentIds || []) {
     await reversePayment({
@@ -275,6 +297,11 @@ async function listReturnsBySale({ tenantId, saleId }) {
   return SaleReturn.find({ tenantId, saleId }).sort({ createdAt: -1 }).lean();
 }
 
+// Liste globale des retours (lecture, tenant-scopée) — affichage d'ensemble.
+async function listAllReturns({ tenantId, limit = 200 }) {
+  return SaleReturn.find({ tenantId }).sort({ createdAt: -1 }).limit(limit).lean();
+}
+
 // Liste des remboursements (lecture, tenant-scopée).
 async function listRefunds({ tenantId, saleId = null }) {
   const filter = { tenantId };
@@ -282,4 +309,4 @@ async function listRefunds({ tenantId, saleId = null }) {
   return Refund.find(filter).sort({ createdAt: -1 }).lean();
 }
 
-module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listRefunds };
+module.exports = { createReturn, postReturn, cancelReturn, createRefund, listReturnsBySale, listAllReturns, listRefunds };

@@ -1,17 +1,14 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { catalogApi } from '../features/catalog/api';
-import AuthContext from '../context/AuthContext';
-import useResponsiveTable from '../hooks/useResponsiveTable';
 import { formatCfa as cfa } from '../utils/format';
 import {
-  KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton, StatusBadge,
+  KPICard, PageHeader, Workspace, EmptyState, LoadingSkeleton,
 } from '../components/business';
 import {
-  ArrowLeft, Phone, MessageCircle, Building2, Search, Copy,
-  TrendingUp, Wallet, Coins, PackageX, Star, Boxes, AlertTriangle, ClipboardList, Crown,
-  LayoutDashboard,
+  ArrowLeft, Search,
+  TrendingUp, Wallet, Coins, PackageX, Star, Boxes, AlertTriangle, Crown,
+  BarChart3,
 } from 'lucide-react';
 
 const RANGE_OPTIONS = [
@@ -34,7 +31,7 @@ const LOW_STOCK_THRESHOLD = 5; // convention app : « moins de 5 unités »
 
 const num = (v) => Number(v || 0).toLocaleString('fr-FR');
 const pct = (v) => `${Number(v || 0).toFixed(1)} %`;
-const initials = (s) => (s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+const initialsOf = (s) => (s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 const matchesStockFilter = (p, filter) => {
   if (filter === 'out') return (p.stock || 0) === 0;
@@ -64,11 +61,45 @@ const SupplierViewButton = ({ active, onClick, icon, label, badge }) => (
   </button>
 );
 
+// Pastille d'état du stock : rupture / bas / normal
+const StockPill = ({ p }) => {
+  const stock = Number(p.stock) || 0;
+  const tone = stock === 0 ? 'danger' : stock < LOW_STOCK_THRESHOLD ? 'warning' : 'success';
+  const [bg, fg] = {
+    danger: ['var(--colorStatusDangerBackground1)', 'var(--colorStatusDangerForeground1)'],
+    warning: ['var(--colorStatusWarningBackground1)', 'var(--colorStatusWarningForeground1)'],
+    success: ['var(--colorStatusSuccessBackground1)', 'var(--colorStatusSuccessForeground1)'],
+  }[tone];
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 fui-caption1-strong"
+      style={{ background: bg, color: fg }}
+      title={stock === 0 ? 'Rupture de stock' : stock < LOW_STOCK_THRESHOLD ? 'Stock bas' : 'En stock'}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: fg }} />
+      {stock === 0 ? 'Rupture' : num(stock)}
+    </span>
+  );
+};
+
+// Marge en % + jauge de progression
+const MarginCell = ({ p }) => {
+  const m = Number(p.margin) || 0;
+  const clamped = Math.min(Math.max(m, 0), 100);
+  const color = m < 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorBrandForeground1)';
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className="fui-caption1-strong shrink-0 tabular-nums" style={{ color }}>{pct(p.margin)}</span>
+      <div className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full" style={{ background: 'var(--colorNeutralBackground3)' }}>
+        <div className="h-full rounded-full" style={{ width: `${clamped}%`, background: color }} />
+      </div>
+    </div>
+  );
+};
+
 const SupplierProfile = () => {
   const { name } = useParams();
   const navigate = useNavigate();
-  const { auth } = useContext(AuthContext);
-  const shopName = auth?.tenant?.name || '';
 
   const [range, setRange] = useState('all');
   const [supplier, setSupplier] = useState(null);
@@ -78,10 +109,7 @@ const SupplierProfile = () => {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('revenue');
   const [stockFilter, setStockFilter] = useState('');
-  const [activeView, setActiveView] = useState('overview');
-  // Commande fournisseur : sélection + quantités saisies
-  const [orderSelection, setOrderSelection] = useState({}); // { productId: true }
-  const [orderQty, setOrderQty] = useState({}); // { productId: "12" }
+  const [activeView, setActiveView] = useState('analytics');
 
   const supplierName = useMemo(() => {
     if (!name) return '';
@@ -114,54 +142,6 @@ const SupplierProfile = () => {
 
   const allProducts = useMemo(() => supplier?.products || [], [supplier]);
 
-  // ----- Produits à recommander : ruptures d'abord, puis meilleurs vendeurs -----
-  const restockCandidates = useMemo(
-    () =>
-      allProducts
-        .filter((p) => (p.stock || 0) < LOW_STOCK_THRESHOLD)
-        .sort((a, b) => ((a.stock || 0) === (b.stock || 0) ? (b.sold || 0) - (a.sold || 0) : (a.stock || 0) - (b.stock || 0))),
-    [allProducts]
-  );
-
-  // Pré-sélectionne les ruptures quand la liste change
-  useEffect(() => {
-    const next = {};
-    restockCandidates.forEach((p) => {
-      if ((p.stock || 0) === 0) next[p._id] = true;
-    });
-    setOrderSelection(next);
-    setOrderQty({});
-  }, [restockCandidates]);
-
-  const selectedForOrder = restockCandidates.filter((p) => orderSelection[p._id]);
-
-  const buildOrderMessage = () => {
-    const lines = selectedForOrder.map((p) => {
-      const qty = (orderQty[p._id] || '').trim();
-      return `• ${p.name}${p.sku ? ` (réf. ${p.sku})` : ''}${qty ? ` × ${qty}` : ' (quantité à confirmer)'}`;
-    });
-    return [
-      `Bonjour ${supplier?.name || supplierName},`,
-      '',
-      'Nous souhaitons passer la commande suivante :',
-      ...lines,
-      '',
-      `Merci de confirmer la disponibilité et le délai.${shopName ? ` — ${shopName}` : ''}`,
-    ].join('\n');
-  };
-
-  const phoneDigits = (supplier?.supplierPhone || '').replace(/\D/g, '');
-
-  const sendOrderWhatsApp = () => {
-    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(buildOrderMessage())}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const copyOrder = () => {
-    navigator.clipboard?.writeText(buildOrderMessage())
-      .then(() => toast.success('Commande copiée'))
-      .catch(() => toast.error('Copie impossible'));
-  };
-
   // ----- Top produits par revenu (part du revenu total) -----
   const topByRevenue = useMemo(
     () => [...allProducts].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 5),
@@ -183,9 +163,6 @@ const SupplierProfile = () => {
     }[sortKey] || ((p) => p.revenue);
     return [...filtered].sort((a, b) => acc(b) - acc(a));
   }, [allProducts, search, sortKey, stockFilter]);
-
-  const tableRef = useRef(null);
-  useResponsiveTable(tableRef, [products]);
 
   const metaLabel = generatedAt
     ? `Actualisé le ${new Date(generatedAt).toLocaleDateString('fr-FR')} à ${new Date(generatedAt).toLocaleTimeString('fr-FR').slice(0, 5)}`
@@ -209,6 +186,14 @@ const SupplierProfile = () => {
   const outCount = Number(supplier?.outOfStockCount) || 0;
   const lowCount = Number(supplier?.lowStockCount) || 0;
   const deadCount = Number(supplier?.deadStockCount) || 0;
+
+  // Statistique compacte de composition du portefeuille
+  const Stat = ({ label, value }) => (
+    <div className="min-w-0">
+      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
+      <p className="fui-subtitle1 truncate tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</p>
+    </div>
+  );
 
   // Tuile santé cliquable — sert de filtre au tableau des produits
   const HealthTile = ({ filterKey, icon, iconBg, iconFg, label, value }) => {
@@ -240,7 +225,7 @@ const SupplierProfile = () => {
       <PageHeader
         eyebrow="Partenaires & approvisionnement"
         title={supplier?.name || supplier?.supplierName || supplierName}
-        description="Pilotez la performance, les stocks et les commandes de ce fournisseur."
+        description="Ses produits et la performance de ce fournisseur, période par période."
         meta={metaLabel}
         actions={
           <button onClick={() => navigate('/products/by-supplier')} className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5">
@@ -249,69 +234,25 @@ const SupplierProfile = () => {
         }
       />
 
-      {/* Identity + period */}
-      <section className="fluent-card-filled overflow-hidden">
-        <div className="p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radiusLarge)] fui-title3"
-              style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
-              {initials(supplier?.name || supplierName)}
-            </div>
-            <div className="min-w-0">
-              <p className="fui-subtitle1 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                {supplier?.name || supplierName}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="ms-status-badge ms-status-neutral flex items-center gap-1"><Building2 size={11} /> {num(supplier?.totalProducts)} produits</span>
-                {supplier?.categoryCount > 0 && <span className="ms-status-badge ms-status-neutral">{num(supplier.categoryCount)} catégories</span>}
-                {deadCount > 0 && <span className="ms-status-badge ms-status-warning">{num(deadCount)} stock mort</span>}
-              </div>
-            </div>
-          </div>
-          {supplier?.supplierPhone && (
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <a href={`tel:${supplier.supplierPhone}`} className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"><Phone size={16} /> Appeler</a>
-              {phoneDigits && (
-                <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener noreferrer" className="ms-button ms-button-primary ms-button-md flex-1 sm:flex-none"><MessageCircle size={16} /> WhatsApp</a>
-              )}
-            </div>
-          )}
+      {/* Période d'analyse */}
+      <section className="fluent-card-filled flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="fui-subtitle2 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+            <TrendingUp size={15} /> Période d'analyse
+          </p>
+          <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Les analyses et le tableau des produits reflètent la période sélectionnée.
+          </p>
         </div>
-
-        {(outCount > 0 || lowCount > 0) && (
-          <button
-            type="button"
-            onClick={() => setActiveView('restock')}
-            className="mt-5 flex w-full items-center justify-between gap-3 rounded-[var(--radiusLarge)] border p-3.5 text-left transition hover:shadow-[var(--ms-shadow-sm)]"
-            style={{ background: 'var(--colorStatusWarningBackground1)', borderColor: 'var(--colorStatusWarningStroke1)' }}
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 text-[var(--colorStatusWarningForeground1)]"><AlertTriangle size={18} /></span>
-              <span>
-                <span className="fui-body1-strong block text-[var(--ms-text-strong)]">Réassort recommandé</span>
-                <span className="fui-caption1 text-[var(--ms-text-muted)]">{num(outCount)} rupture(s) et {num(lowCount)} stock(s) bas à traiter.</span>
-              </span>
-            </span>
-            <span className="fui-caption1-strong shrink-0 text-[var(--colorStatusWarningForeground1)]">Préparer →</span>
-          </button>
-        )}
-        </div>
-
-        {/* Period chips */}
-        <div className="flex flex-col gap-3 border-t border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <span className="fui-caption1-strong uppercase mr-1" style={{ color: 'var(--colorNeutralForeground3)', letterSpacing: '0.06em' }}>Période</span>
-          <div className="grid grid-cols-5 gap-1 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white p-1" role="group" aria-label="Période d'analyse">
-            {RANGE_OPTIONS.map((o) => (
-              <button key={o.value} onClick={() => setRange(o.value)} aria-pressed={range === o.value} className={`min-h-[36px] rounded-[var(--radiusSmall,4px)] px-2 text-xs font-semibold transition sm:px-3 ${range === o.value ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]'}`}>{o.label}</button>
-            ))}
-          </div>
+        <div className="grid grid-cols-5 gap-1 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white p-1" role="group" aria-label="Période d'analyse">
+          {RANGE_OPTIONS.map((o) => (
+            <button key={o.value} onClick={() => setRange(o.value)} aria-pressed={range === o.value} className={`min-h-[36px] rounded-[var(--radiusSmall,4px)] px-2 text-xs font-semibold transition sm:px-3 ${range === o.value ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]'}`}>{o.label}</button>
+          ))}
         </div>
       </section>
 
-      <nav className="grid grid-cols-3 gap-2 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-1.5" aria-label="Sections du fournisseur">
-        <SupplierViewButton active={activeView === 'overview'} onClick={() => setActiveView('overview')} icon={<LayoutDashboard size={16} />} label="Aperçu" />
-        <SupplierViewButton active={activeView === 'restock'} onClick={() => setActiveView('restock')} icon={<ClipboardList size={16} />} label="Réassort" badge={restockCandidates.length} />
+      <nav className="grid grid-cols-2 gap-2 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-1.5" aria-label="Sections du fournisseur">
+        <SupplierViewButton active={activeView === 'analytics'} onClick={() => setActiveView('analytics')} icon={<BarChart3 size={16} />} label="Analyses" />
         <SupplierViewButton
           active={activeView === 'products'}
           onClick={() => {
@@ -325,15 +266,22 @@ const SupplierProfile = () => {
         />
       </nav>
 
-      {/* KPI strip */}
-      {activeView === 'overview' && (<>
+      {/* ===== Analyses ===== */}
+      {activeView === 'analytics' && (<>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard title="Revenu (période)" value={cfa(supplier?.totalRevenue)} context={`Bénéfice: ${cfa(supplier?.totalProfit)}`} icon={<TrendingUp className="h-4 w-4" />} tone="success" />
+        <KPICard title="Bénéfice (période)" value={cfa(supplier?.totalProfit)} context={`${num(supplier?.totalUnitsSold)} unités vendues`} icon={<Coins className="h-4 w-4" />} tone="success" />
         <KPICard title="Valeur du stock" value={cfa(supplier?.stockValue)} context={`Coût: ${cfa(supplier?.stockCostValue)}`} icon={<Wallet className="h-4 w-4" />} />
-        <KPICard title="Marge moyenne" value={pct(supplier?.averageMargin)} context={`Écoulement: ${pct(supplier?.sellThroughRate)}`} icon={<Coins className="h-4 w-4" />} tone="success" />
-        <KPICard title="Profit potentiel" value={cfa(supplier?.potentialProfit)} context={`${num(supplier?.totalUnitsSold)} unités vendues`} icon={<Star className="h-4 w-4" />} tone="neutral" />
+        <KPICard title="Marge moyenne" value={pct(supplier?.averageMargin)} context={`Écoulement: ${pct(supplier?.sellThroughRate)}`} icon={<Star className="h-4 w-4" />} tone="neutral" />
       </div>
-      </>)}
+
+      {/* Composition du portefeuille */}
+      <div className="fluent-card-filled grid grid-cols-2 gap-x-4 gap-y-4 p-4 sm:grid-cols-4">
+        <Stat label="Produits" value={num(supplier?.totalProducts)} />
+        <Stat label="Unités en stock" value={num(supplier?.totalStock)} />
+        <Stat label="Profit potentiel" value={cfa(supplier?.potentialProfit)} />
+        <Stat label="Catégories" value={num(supplier?.categoryCount)} />
+      </div>
 
       {/* Santé du stock — tuiles cliquables (filtrent le tableau) + top produit */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -370,92 +318,8 @@ const SupplierProfile = () => {
         </div>
       </div>
 
-      {/* ===== Commande de réassort ===== */}
-      {activeView === 'restock' && restockCandidates.length > 0 && (
-        <div className="fluent-card-filled p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                <ClipboardList size={16} /> Commande de réassort
-              </p>
-              <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                Produits en rupture ou sous {LOW_STOCK_THRESHOLD} unités — cochez, précisez les quantités, envoyez la commande.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {phoneDigits && (
-                <button
-                  type="button"
-                  onClick={sendOrderWhatsApp}
-                  disabled={selectedForOrder.length === 0}
-                  className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <MessageCircle size={14} /> Envoyer sur WhatsApp ({selectedForOrder.length})
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={copyOrder}
-                disabled={selectedForOrder.length === 0}
-                className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <Copy size={14} /> Copier la commande
-              </button>
-            </div>
-          </div>
-
-          <ul className="mt-4 divide-y" style={{ borderColor: 'var(--colorNeutralStroke3)' }}>
-            {restockCandidates.map((p) => {
-              const checked = Boolean(orderSelection[p._id]);
-              const isOut = (p.stock || 0) === 0;
-              return (
-                <li key={p._id} className="flex flex-wrap items-center gap-3 py-2.5">
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => setOrderSelection((prev) => ({ ...prev, [p._id]: !prev[p._id] }))}
-                      className="h-4 w-4 shrink-0 accent-[var(--ms-blue)]"
-                      aria-label={`Inclure ${p.name} dans la commande`}
-                    />
-                    <span className="min-w-0">
-                      <span className="fui-body1-strong block truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{p.name}</span>
-                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                        {num(p.sold)} vendus sur la période{p.sku ? ` · réf. ${p.sku}` : ''}
-                      </span>
-                    </span>
-                  </label>
-                  <StatusBadge tone={isOut ? 'danger' : 'warning'}>
-                    {isOut ? 'Rupture' : `Stock : ${num(p.stock)}`}
-                  </StatusBadge>
-                  <label className="flex items-center gap-1.5">
-                    <span className="sr-only">Quantité à commander pour {p.name}</span>
-                    <input
-                      type="number"
-                      min="1"
-                      inputMode="numeric"
-                      placeholder="Qté"
-                      value={orderQty[p._id] || ''}
-                      onChange={(e) => setOrderQty((prev) => ({ ...prev, [p._id]: e.target.value }))}
-                      className="form-control w-20 text-sm"
-                      disabled={!checked}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      {activeView === 'restock' && restockCandidates.length === 0 && (
-        <div className="fluent-card-filled p-6">
-          <EmptyState title="Aucun réassort nécessaire" description={`Tous les produits disposent d'au moins ${LOW_STOCK_THRESHOLD} unités en stock.`} />
-        </div>
-      )}
-
       {/* ===== Top produits — part du revenu ===== */}
-      {activeView === 'overview' && topByRevenue.length > 0 && (supplier?.totalRevenue || 0) > 0 && (
+      {topByRevenue.length > 0 && (supplier?.totalRevenue || 0) > 0 && (
         <div className="fluent-card-filled p-5">
           <p className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Top produits — revenu</p>
           <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
@@ -495,6 +359,7 @@ const SupplierProfile = () => {
           </div>
         </div>
       )}
+      </>)}
 
       {/* ===== Tableau des produits ===== */}
       {activeView === 'products' && <div className="fluent-card-filled overflow-hidden">
@@ -551,35 +416,94 @@ const SupplierProfile = () => {
             description={stockFilter || search ? 'Aucun produit ne correspond aux filtres actifs.' : 'Aucun produit pour ce fournisseur sur la période.'}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table ref={tableRef} className="responsive-table w-full text-sm">
-              <thead style={{ background: 'var(--colorNeutralBackground2)' }}>
-                <tr>
-                  {['Produit', 'Catégorie', 'Stock', 'Valeur', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (
-                    <th key={h} className={`px-3 py-2 fui-caption1-strong ${i >= 2 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--colorNeutralForeground3)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((p) => (
-                  <tr key={p._id} style={{ borderBottom: '1px solid var(--colorNeutralStroke3)', background: p.isDead ? 'var(--colorStatusWarningBackground1)' : 'transparent' }}>
-                    <td className="px-3 py-2">
-                      <Link to={`/products/${p._id}`} className="fui-body1-strong hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>{p.name}</Link>
-                      {p.isDead && <span className="ml-2 ms-status-badge ms-status-warning">mort</span>}
-                      {p.sku && <span className="ml-2 fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.sku}</span>}
-                    </td>
-                    <td className="px-3 py-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{p.category || 'Non catégorisé'}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: p.stock === 0 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorNeutralForeground2)' }}>{num(p.stock)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{cfa(p.stockValue)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{num(p.sold)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>{pct(p.margin)}</td>
-                  </tr>
+          <>
+            {/* ── Cartes mobile ── */}
+            <div className="space-y-3 p-3 sm:hidden">
+              {products.map((p) => (
+                <Link key={p._id} to={`/products/${p._id}`} className="fluent-card-filled block space-y-3 p-4 transition hover:shadow-[var(--ms-shadow-sm)]">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusMedium)] fui-caption1-strong"
+                      style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                      {initialsOf(p.name)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="fui-body1-strong truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>{p.name}</p>
+                        {p.isDead && <span className="ms-status-badge ms-status-warning">mort</span>}
+                      </div>
+                      <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        {p.category || 'Non catégorisé'}{p.sku ? ` · ${p.sku}` : ''}
+                      </p>
+                    </div>
+                    <StockPill p={p} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix unitaire</p>
+                      <p className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{cfa(p.price)}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Vendus</p>
+                      <p className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{num(p.sold)}</p>
+                    </div>
+                    <div>
+                      <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Revenu</p>
+                      <p className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--colorNeutralStroke3)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Bénéfice</span>
+                      <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</span>
+                    </div>
+                    <MarginCell p={p} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* ── Grille desktop ── */}
+            <div className="hidden sm:block">
+              <div className="grid grid-cols-[minmax(0,1.6fr)_100px_100px_72px_108px_108px_96px] items-center gap-3 px-4 py-2.5"
+                style={{ background: 'var(--colorNeutralBackground2)', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+                {['Produit', 'Stock', 'Prix', 'Vendus', 'Revenu', 'Bénéfice', 'Marge'].map((h, i) => (
+                  <span key={h} className={`fui-caption1-strong ${i > 0 ? 'text-right' : 'text-left'}`}
+                    style={{ color: 'var(--colorNeutralForeground3)', fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {h}
+                  </span>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+              <div>
+                {products.map((p) => (
+                  <Link key={p._id} to={`/products/${p._id}`}
+                    className="group grid grid-cols-[minmax(0,1.6fr)_100px_100px_72px_108px_108px_96px] items-center gap-3 px-4 py-3 transition hover:bg-[var(--ms-bg-subtle)]"
+                    style={{ borderBottom: '1px solid var(--colorNeutralStroke3)', background: p.isDead ? 'var(--colorStatusWarningBackground1)' : 'transparent' }}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusMedium)] fui-caption1-strong transition-transform group-hover:scale-105"
+                        style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+                        {initialsOf(p.name)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="fui-body1-strong truncate group-hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>{p.name}</span>
+                          {p.isDead && <span className="ms-status-badge ms-status-warning shrink-0">mort</span>}
+                        </div>
+                        <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          {p.category || 'Non catégorisé'}{p.sku ? ` · ${p.sku}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right"><StockPill p={p} /></div>
+                    <div className="text-right tabular-nums fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>{cfa(p.price)}</div>
+                    <div className="text-right tabular-nums fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>{num(p.sold)}</div>
+                    <div className="text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{cfa(p.revenue)}</div>
+                    <div className="text-right tabular-nums fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>{cfa(p.profit)}</div>
+                    <MarginCell p={p} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>}
     </Workspace>

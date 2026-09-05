@@ -378,7 +378,8 @@ const DayDetailsModal = ({
               >
                 {sales.map((s, i) => {
                   const statusInfo = SALE_STATUS[s.status];
-                  const deliveryInfo = DELIVERY_STATUS[s.deliveryStatus];
+                  // Une vente entièrement retournée n'a plus de livraison à suivre.
+                  const deliveryInfo = s.status === "returned" ? null : DELIVERY_STATUS[s.deliveryStatus];
                   return (
                     <TxnCard
                       key={s._id || i}
@@ -456,20 +457,21 @@ const DayDetailsModal = ({
                 {payments.map((p, i) => {
                   // Margin per payment is sensitive — only admins see it.
                   const hasProfit = isAdmin && p?.profit !== undefined && p?.profit !== null;
+                  const isRefund = Boolean(p?.isRefund);
                   return (
                     <TxnCard
                       key={p._id || i}
-                      accent={ACCENTS.payments}
-                      icon={<CreditCard size={16} />}
-                      title={`Paiement #${i + 1}`}
-                      subtitle={p.client?.name || "Client non spécifié"}
+                      accent={isRefund ? ACCENTS.expenses : ACCENTS.payments}
+                      icon={isRefund ? <TrendingDown size={16} /> : <CreditCard size={16} />}
+                      title={isRefund ? "Remboursement" : `Paiement #${i + 1}`}
+                      subtitle={isRefund ? (p.reason ? `Motif : ${p.reason}` : null) : (p.client?.name || "Client non spécifié")}
                       time={safeFormatTime(p.paymentDate)}
-                      meta={p.method ? <span>{PAYMENT_METHOD_LABELS[p.method] || p.method}</span> : null}
-                      amount={formatCurrency(p.amount)}
-                      amountTone="blue"
+                      meta={isRefund ? <span>Sortie de caisse</span> : (p.method ? <span>{PAYMENT_METHOD_LABELS[p.method] || p.method}</span> : null)}
+                      amount={isRefund ? `- ${formatCurrency(Math.abs(Number(p.amount) || 0))}` : formatCurrency(p.amount)}
+                      amountTone={isRefund ? "danger" : "blue"}
                       profit={hasProfit ? p.profit : undefined}
                       footer={
-                        p.saleId ? (
+                        !isRefund && p.saleId ? (
                           <Link to={`/sales/${p.saleId}`} className="inline-flex items-center gap-1 py-1 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] text-xs font-semibold">
                             Voir la vente <ChevronRight size={13} />
                           </Link>
@@ -533,9 +535,9 @@ const TxnCard = ({ accent, icon, title, subtitle, time, meta, amount, amountTone
                     background: profitPositive ? "rgba(16,124,16,0.12)" : "rgba(209,52,56,0.10)",
                     color: profitPositive ? "var(--ms-success)" : "var(--ms-danger)",
                   }}
-                  title="Marge réalisée sur ce paiement"
+                  title={profitPositive ? "Marge réalisée sur ce paiement" : "Marge retirée par ce remboursement"}
                 >
-                  {profitPositive ? "+" : ""}{Number(profit).toLocaleString("fr-FR")} <span className="opacity-70">marge</span>
+                  {profitPositive ? "+" : "− "}{Math.abs(Number(profit)).toLocaleString("fr-FR", { maximumFractionDigits: 0 })} <span className="opacity-70">marge</span>
                 </span>
               )}
             </div>
