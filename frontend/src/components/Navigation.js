@@ -1069,17 +1069,18 @@ const QuickAccessPanel = ({ auth, onClose }) => {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.97 }}
       transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-      className="absolute left-0 top-[calc(100%+6px)] z-[60] w-[min(96vw,640px)] overflow-hidden rounded-[var(--radiusXLarge)]"
+      className="absolute left-0 top-[calc(100%+6px)] z-[60] flex w-[min(96vw,680px)] flex-col overflow-hidden rounded-[var(--radiusXLarge)]"
       style={{
         background: 'rgba(255,255,255,0.96)',
         backdropFilter: 'saturate(180%) blur(16px)',
         WebkitBackdropFilter: 'saturate(180%) blur(16px)',
         border: '1px solid var(--colorNeutralStroke2)',
         boxShadow: 'var(--shadow28)',
+        maxHeight: 'calc(100dvh - 84px)',
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+      <div className="flex shrink-0 items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
         <span className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>
           Accès rapide
         </span>
@@ -1096,11 +1097,12 @@ const QuickAccessPanel = ({ auth, onClose }) => {
         </button>
       </div>
 
-      {/* Groups grid */}
-      <div
-        className="grid p-4 gap-x-6 gap-y-4"
-        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}
-      >
+      {/* Groups grid — scrollable pour que tous les menus restent accessibles */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div
+          className="grid p-4 gap-x-6 gap-y-4"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' }}
+        >
         {groups.map((group) => (
           <div key={group.label} className="space-y-1">
             <p
@@ -1114,7 +1116,7 @@ const QuickAccessPanel = ({ auth, onClose }) => {
                 key={to}
                 to={to}
                 onClick={onClose}
-                className="flex items-center gap-2.5 rounded-[var(--radiusLarge)] px-2 py-2 text-[13px] font-medium transition-colors"
+                className="flex items-center gap-2.5 rounded-[var(--radiusLarge)] px-2 py-1.5 text-[13px] font-medium transition-colors"
                 style={{
                   color: highlight ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground2)',
                   background: 'transparent',
@@ -1134,6 +1136,7 @@ const QuickAccessPanel = ({ auth, onClose }) => {
             ))}
           </div>
         ))}
+        </div>
       </div>
     </motion.div>
   );
