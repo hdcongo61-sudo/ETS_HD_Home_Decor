@@ -33,6 +33,7 @@ import {
   History,
   CreditCard,
   LifeBuoy,
+  LayoutDashboard,
   Truck,
   Boxes,
   RotateCcw,
@@ -939,17 +940,28 @@ const CompactMobileNavigation = ({ auth, onClose, onLogout, linkClass, iconClass
 /* ═══════════════════════════════════════════
    QUICK ACCESS PANEL — Fluent 2 Mega-Menu
    ═══════════════════════════════════════════ */
-const QA_GROUPS = (auth, hasFeature = () => true) => ([
-  {
-    label: 'Ventes',
-    items: [
-      { to: '/sales#sale-form', icon: PlusCircle,   label: 'Nouvelle vente',        highlight: true },
-      { to: '/sales',           icon: ShoppingCart,  label: 'Liste des ventes' },
-      { to: '/sales/all',       icon: History,       label: 'Archives ventes' },
-      { to: '/sales/partially-paid', icon: CreditCard, label: 'Paiements partiels' },
-      ...(auth.isAdmin ? [{ to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' }] : []),
-    ],
-  },
+const QA_GROUPS = (auth, hasFeature = () => true) => {
+  const canViewDashboard =
+    auth.isAdmin ||
+    (Array.isArray(auth?.user?.permissions) && auth.user.permissions.includes('view_dashboard'));
+
+  return [
+    ...(canViewDashboard ? [{
+      label: 'Tableau de bord',
+      items: [
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+      ],
+    }] : []),
+    {
+      label: 'Ventes',
+      items: [
+        { to: '/sales#sale-form', icon: PlusCircle,   label: 'Nouvelle vente',        highlight: true },
+        { to: '/sales',           icon: ShoppingCart,  label: 'Liste des ventes' },
+        { to: '/sales/all',       icon: History,       label: 'Archives ventes' },
+        { to: '/sales/partially-paid', icon: CreditCard, label: 'Paiements partiels' },
+        ...(auth.isAdmin ? [{ to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' }] : []),
+      ],
+    },
   {
     label: 'Produits',
     items: [
@@ -1016,7 +1028,8 @@ const QA_GROUPS = (auth, hasFeature = () => true) => ([
       ],
     },
   ]),
-]).map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || hasFeature(it.feature)) }));
+  ].map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || hasFeature(it.feature)) }));
+};
 
 const QuickAccessPanel = ({ auth, onClose }) => {
   const { hasFeature } = useContext(AuthContext);

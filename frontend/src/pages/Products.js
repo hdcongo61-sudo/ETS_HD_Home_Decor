@@ -26,6 +26,7 @@ import {
   Download,
   Copy,
   Edit3,
+  Eye,
   FileSpreadsheet,
   Package,
   PackageMinus,
@@ -48,6 +49,7 @@ import {
   X,
 } from 'lucide-react';
 import ProductImportModal from '../components/ProductImportModal';
+import ProductQuickViewModal from '../components/ProductQuickViewModal';
 import Modal from '../components/Modal';
 import FeatureGate, { LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
@@ -930,6 +932,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
   const [exporting, setExporting] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(min-width: 768px)').matches;
@@ -953,6 +956,11 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       }
     };
   }, []);
+
+  // L'aperçu rapide est réservé au desktop : on le ferme si la fenêtre repasse en mobile.
+  useEffect(() => {
+    if (!isDesktop) setQuickViewProduct(null);
+  }, [isDesktop]);
 
   useEffect(() => {
     setFilters(readProductFiltersFromSearch(location.search));
@@ -1662,17 +1670,26 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       </div>
     ) : null;
 
+  const quickViewModal = (
+    <ProductQuickViewModal
+      product={quickViewProduct}
+      onClose={() => setQuickViewProduct(null)}
+      onEdit={isAdmin ? onEdit : undefined}
+    />
+  );
+
   if (!isAdmin) {
     return (
       <div>
         {renderToolbar()}
         {renderResultStats()}
         {renderFiltersDrawer()}
+        {quickViewModal}
 
         <div className="divide-y divide-slate-100 bg-white lg:divide-y-0 lg:p-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6">
           {visibleProducts.map((p) => (
+            <div key={p._id} className="relative">
             <Link
-              key={p._id}
               to={productPath(p)}
               state={productLinkState}
               {...desktopLinkProps}
@@ -1714,6 +1731,16 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                 </div>
               </div>
             </Link>
+            <button
+              type="button"
+              onClick={() => setQuickViewProduct(p)}
+              className="absolute right-3 top-3 hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:border-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)] hover:text-[var(--colorBrandForeground1)] lg:inline-flex"
+              aria-label={`Aperçu de ${p.name}`}
+              title="Aperçu rapide"
+            >
+              <Eye className="h-5 w-5" aria-hidden />
+            </button>
+            </div>
           ))}
         </div>
 
@@ -1733,6 +1760,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       {renderToolbar()}
       {renderResultStats()}
       {renderFiltersDrawer()}
+      {quickViewModal}
 
       {/* Mobile card layout */}
       <div className="lg:hidden space-y-3 p-3">
@@ -1925,6 +1953,15 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-right">
                   <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQuickViewProduct(p)}
+                      className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-[var(--ms-blue-soft)] hover:text-[var(--colorBrandForeground1)] transition"
+                      aria-label={`Aperçu de ${p.name}`}
+                      title="Aperçu rapide"
+                    >
+                      <Eye className="h-5 w-5" aria-hidden />
+                    </button>
                     <button
                       type="button"
                       onClick={() => onEdit(p)}

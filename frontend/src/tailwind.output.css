@@ -1231,6 +1231,13 @@ video {
   -webkit-line-clamp: 2;
 }
 
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .block {
   display: block;
 }
@@ -2324,6 +2331,10 @@ video {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
   border-bottom-width: calc(1px * var(--tw-divide-y-reverse));
+}
+
+.divide-\[color\:var\(--colorNeutralStroke3\)\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--colorNeutralStroke3);
 }
 
 .divide-\[var\(--colorNeutralStroke2\)\] > :not([hidden]) ~ :not([hidden]) {
@@ -8271,6 +8282,10 @@ form input[type="radio"],
 
   .lg\:flex {
     display: flex;
+  }
+
+  .lg\:inline-flex {
+    display: inline-flex;
   }
 
   .lg\:grid {
