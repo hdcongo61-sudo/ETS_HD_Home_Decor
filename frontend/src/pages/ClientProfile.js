@@ -93,7 +93,8 @@ const ClientProfile = () => {
         ]);
 
         const c = clientRes.data;
-        const s = salesRes.data;
+        // L'API renvoie { client, statistics, purchases } — on normalise en tableau.
+        const s = Array.isArray(salesRes.data) ? salesRes.data : (salesRes.data?.purchases || []);
         setClient(c);
         setPurchases(s);
 
