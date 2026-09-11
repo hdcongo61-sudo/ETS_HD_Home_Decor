@@ -17,6 +17,7 @@ export const catalogApi = {
   slowMovers: (params) => api.get('/products/slow-movers', { params }),
   bySupplier: (params) => api.get('/products/by-supplier', { params }),
   lossMap: () => api.get('/products/loss-map'),
+  salesMap: () => api.get('/products/sales-map'),
   stockMovements: (params) => api.get('/products/stock-movements', { params }),
   fieldValues: () => api.get('/products/field-values'),
   images: (id) => api.get(`/products/${id}/images`),

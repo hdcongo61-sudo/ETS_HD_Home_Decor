@@ -109,6 +109,18 @@ app.use(cors({
   },
   credentials: true,
   optionsSuccessStatus: 204,
+  // En-têtes personnalisés envoyés par le frontend (x-location-id via l'intercepteur Axios).
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Location-Id',
+    'X-Request-Id',
+    'Cache-Control',
+    'Pragma',
+    'Accept',
+    'Origin',
+    'X-Requested-With',
+  ],
 }));
 
 // Lightweight health check — no auth, no DB, not rate-limited. Used by uptime

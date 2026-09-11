@@ -1493,6 +1493,44 @@ const getProductLossMap = async (req, res) => {
   }
 };
 
+// @desc    Per-product sales map (units sold + revenue + profit) for catalog stats.
+// @route   GET /api/products/sales-map
+// @access  Private/Admin
+const getProductSalesMap = async (req, res) => {
+  try {
+    const products = await Product.find(tenantFilter(req)).select('_id costPrice').lean();
+    const costById = new Map(products.map((p) => [String(p._id), Number(p.costPrice) || 0]));
+
+    const agg = await Sale.aggregate([
+      { $match: { ...tenantFilter(req), status: { $ne: 'cancelled' } } },
+      { $unwind: '$products' },
+      {
+        $group: {
+          _id: '$products.product',
+          sold: { $sum: '$products.quantity' },
+          revenue: { $sum: { $multiply: ['$products.quantity', '$products.priceAtSale'] } },
+        },
+      },
+    ]);
+
+    const map = {};
+    for (const r of agg) {
+      const pid = r._id ? String(r._id) : null;
+      if (!pid) continue;
+      const cost = costById.get(pid) || 0;
+      map[pid] = {
+        sold: r.sold || 0,
+        revenue: Math.round((r.revenue || 0) * 100) / 100,
+        profit: Math.round(((r.revenue || 0) - cost * (r.sold || 0)) * 100) / 100,
+      };
+    }
+    res.json({ map });
+  } catch (error) {
+    console.error('❌ [getProductSalesMap]:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Undo a stock movement — restores the units to stock and removes it.
 // @route   DELETE /api/products/stock-movement/:id
 // @access  Private/Admin
@@ -2184,6 +2222,7 @@ module.exports = {
   createStockMovement,
   getStockMovements,
   getProductLossMap,
+  getProductSalesMap,
   deleteStockMovement,
   getProductsBySupplier,
   getProductsByContainer,

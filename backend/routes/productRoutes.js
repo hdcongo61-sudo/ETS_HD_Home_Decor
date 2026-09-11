@@ -16,6 +16,7 @@ const {
   createStockMovement,
   getStockMovements,
   getProductLossMap,
+  getProductSalesMap,
   deleteStockMovement,
   getProductDashboard, // Assurez-vous d'importer cette fonction
   getProductsBySupplier,
@@ -37,6 +38,7 @@ router.route('/never-sold').get(protect, requireTenant, getNeverSoldProducts);
 router.route('/slow-movers').get(protect, requireTenant, admin, getSlowMovingProducts);
 router.route('/stock-movements').get(protect, requireTenant, admin, getStockMovements);
 router.route('/loss-map').get(protect, requireTenant, admin, getProductLossMap);
+router.route('/sales-map').get(protect, requireTenant, admin, getProductSalesMap);
 router.route('/stock-movement').post(protect, requireTenant, admin, resolveLocation, deprecate(DEPRECATIONS[1]), createStockMovement);
 router.route('/stock-movement/:id').delete(protect, requireTenant, admin, deleteStockMovement);
 // Route pour le tableau de bord des produits (DOIT ÊTRE AVANT LES ROUTES AVEC :id)

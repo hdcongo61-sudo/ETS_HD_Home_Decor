@@ -128,6 +128,7 @@ const Products = () => {
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const [products, setProducts] = useState([]);
   const [lossMap, setLossMap] = useState({});
+  const [salesMap, setSalesMap] = useState({});
   const [editingProduct, setEditingProduct] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -199,6 +200,7 @@ const Products = () => {
   useEffect(() => {
     if (!isAdmin) return;
     catalogApi.lossMap().then(({ data }) => setLossMap(data.map || {})).catch(() => setLossMap({}));
+    catalogApi.salesMap().then(({ data }) => setSalesMap(data.map || {})).catch(() => setSalesMap({}));
   }, [isAdmin]);
 
   const fetchProducts = useCallback(async (options = {}) => {
@@ -222,10 +224,15 @@ const Products = () => {
 
   // A sale created from the global modal decrements stock — refresh silently.
   useEffect(() => {
-    const refresh = () => fetchProducts({ showLoading: false });
+    const refresh = () => {
+      fetchProducts({ showLoading: false });
+      if (isAdmin) {
+        catalogApi.salesMap().then(({ data }) => setSalesMap(data.map || {})).catch(() => setSalesMap({}));
+      }
+    };
     window.addEventListener('saleCreated', refresh);
     return () => window.removeEventListener('saleCreated', refresh);
-  }, [fetchProducts]);
+  }, [fetchProducts, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin || !(isFormOpen || bulkOpen) || lookupsLoaded) return;
@@ -504,6 +511,7 @@ const Products = () => {
           onDuplicate={handleDuplicate}
           isAdmin={isAdmin}
           lossMap={lossMap}
+          salesMap={salesMap}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
         />
@@ -922,7 +930,7 @@ const renderLossChip = (lossMap, p) => {
   );
 };
 
-const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin, lossMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
+const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin, lossMap = {}, salesMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
@@ -1145,6 +1153,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
   // Summary stats for the current filtered/searched results.
   const resultStats = useMemo(() => {
     let units = 0, sellValue = 0, costValue = 0, inStock = 0, low = 0, out = 0;
+    let soldUnits = 0, realizedProfit = 0;
     filtered.forEach((p) => {
       const s = Number(p.stock) || 0;
       const price = Number(p.price) || 0;
@@ -1155,9 +1164,14 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       if (s <= 0) out += 1;
       else if (s < 5) low += 1;
       else inStock += 1;
+      const sold = salesMap[p._id];
+      if (sold) {
+        soldUnits += Number(sold.sold) || 0;
+        realizedProfit += Number(sold.profit) || 0;
+      }
     });
-    return { count: filtered.length, units, sellValue, costValue, potentialMargin: sellValue - costValue, inStock, low, out };
-  }, [filtered]);
+    return { count: filtered.length, units, sellValue, costValue, potentialMargin: sellValue - costValue, soldUnits, realizedProfit, inStock, low, out };
+  }, [filtered, salesMap]);
 
   // Click a column header to sort by it (toggles desc/asc).
   const toggleSort = (field) => {
@@ -1550,7 +1564,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       { label: 'Stock faible', value: resultStats.low.toLocaleString('fr-FR'), tone: 'warning' },
       { label: 'Rupture', value: resultStats.out.toLocaleString('fr-FR'), tone: 'danger' },
       ...(isAdmin ? [
-        { label: 'Valeur (prix de vente)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
+        { label: 'Unités vendues', value: resultStats.soldUnits.toLocaleString('fr-FR'), tone: 'brand' },
+        { label: 'Bénéfice gagné', value: `${resultStats.realizedProfit.toLocaleString('fr-FR')} CFA`, tone: resultStats.realizedProfit >= 0 ? 'success' : 'danger' },
+        { label: 'Restant (valeur)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
         { label: 'Marge potentielle', value: `${resultStats.potentialMargin.toLocaleString('fr-FR')} CFA`, tone: 'success' },
       ] : []),
     ];
