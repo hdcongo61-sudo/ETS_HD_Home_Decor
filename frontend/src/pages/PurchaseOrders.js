@@ -83,33 +83,66 @@ const PurchaseOrders = () => {
     supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '',
   });
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+  // Lookups statiques : chargés une seule fois, jamais re-téléchargés après une mutation.
+  const loadLookups = useCallback(async () => {
     try {
-      const [oRes, sRes, iRes, pRes, supRes, prodRes, locRes] = await Promise.all([
-        purchasingApi.orders(),
-        purchasingApi.shipments(),
-        purchasingApi.invoices(),
-        purchasingApi.payables(),
+      const [supRes, prodRes, locRes] = await Promise.all([
         purchasingApi.suppliers(),
         catalogApi.list({ limit: 500 }),
         platformApi.locations(),
       ]);
-      setOrders(asList(oRes.data, 'orders'));
-      setShipments(asList(sRes.data, 'shipments'));
-      setInvoices(asList(iRes.data, 'invoices'));
-      setPayables(pRes.data?.bySupplier ? pRes.data : { ...(pRes.data || {}), bySupplier: [] });
       setSuppliers(asList(supRes.data, 'suppliers'));
       setProducts(asList(prodRes.data, 'products'));
       setLocations(asList(locRes.data, 'locations'));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger les achats.');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Données secondaires : on conserve les valeurs déjà en mémoire.
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadOrders = useCallback(async () => {
+    try {
+      const oRes = await purchasingApi.orders();
+      setOrders(asList(oRes.data, 'orders'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les bons de commande.');
+    }
+  }, []);
+
+  const loadShipments = useCallback(async () => {
+    try {
+      const sRes = await purchasingApi.shipments();
+      setShipments(asList(sRes.data, 'shipments'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les expéditions.');
+    }
+  }, []);
+
+  const loadInvoices = useCallback(async () => {
+    try {
+      const iRes = await purchasingApi.invoices();
+      setInvoices(asList(iRes.data, 'invoices'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les factures.');
+    }
+  }, []);
+
+  const loadPayables = useCallback(async () => {
+    try {
+      const pRes = await purchasingApi.payables();
+      setPayables(pRes.data?.bySupplier ? pRes.data : { ...(pRes.data || {}), bySupplier: [] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les dettes fournisseur.');
+    }
+  }, []);
+
+  // Chargement complet (montage + bouton « Actualiser »).
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    await Promise.all([loadLookups(), loadOrders(), loadShipments(), loadInvoices(), loadPayables()]);
+    setLoading(false);
+  }, [loadLookups, loadOrders, loadShipments, loadInvoices, loadPayables]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const supplierName = (idOrDoc) => idOrDoc?.name || (typeof idOrDoc === 'string' ? idOrDoc.slice(-6) : '—');
 
@@ -145,7 +178,7 @@ const PurchaseOrders = () => {
         await extra();
       }
       toast.success('Action effectuée.');
-      load(true);
+      await loadOrders();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -173,7 +206,7 @@ const PurchaseOrders = () => {
       toast.success('Bon de commande créé.');
       setPoForm({ supplierId: '', note: '', expectedDate: '', lines: [{ product: '', orderedQuantity: 1, unitCost: 0 }] });
       setShowPoForm(false);
-      load(true);
+      await loadOrders();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Création impossible.');
     }
@@ -206,7 +239,7 @@ const PurchaseOrders = () => {
       toast.success('Expédition créée.');
       setShipForm({ reference: '', destinationLocationId: '', origin: '', containerNumber: '', supplierIds: '', purchaseOrderIds: '', freightCost: 0, customsCost: 0, insuranceCost: 0, note: '' });
       setShowShipForm(false);
-      load(true);
+      await loadShipments();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Création impossible.');
     }
@@ -226,7 +259,7 @@ const PurchaseOrders = () => {
         await purchasingApi.cancelShipment(shipment._id);
       }
       toast.success('Action effectuée.');
-      load(true);
+      await loadShipments();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -251,7 +284,7 @@ const PurchaseOrders = () => {
       toast.success('Facture créée.');
       setInvForm({ supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '' });
       setShowInvForm(false);
-      load(true);
+      await loadInvoices();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Création impossible.');
     }
@@ -274,7 +307,8 @@ const PurchaseOrders = () => {
         await purchasingApi.cancelInvoice(invoice._id);
       }
       toast.success('Action effectuée.');
-      load(true);
+      // Comptabiliser, payer ou annuler une facture touche factures + dettes fournisseur.
+      await Promise.all([loadInvoices(), loadPayables()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -310,7 +344,7 @@ const PurchaseOrders = () => {
         title="Achats & fournisseurs"
         description="Cycle d'achat complet : bon de commande → expédition → facture → règlement."
         actions={
-          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => load(true)}>
+          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => loadAll(true)}>
             <RefreshCw size={16} /> Actualiser
           </button>
         }

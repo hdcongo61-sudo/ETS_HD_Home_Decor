@@ -147,87 +147,181 @@ const deleteClient = async (req, res) => {
  * @desc    Obtenir les statistiques clients (pour le header & le graphique)
  * @route   GET /api/clients/stats
  * @access  Private (admin ou sales manager)
+ *
+ * Payload complet pour le tableau de bord clients :
+ * KPI globaux, top clients (dépenses / fidélité), acquisitions mensuelles,
+ * récence du dernier achat et liste des clients à risque.
  */
 const getClientStats = async (req, res) => {
   try {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
     const [
       totalClients,
-      salesAgg,
       newThisMonth,
-      genderAggregation
+      clientSales,
+      genderAggregation,
+      monthlySignupsRaw,
+      atRiskClientsRaw,
     ] = await Promise.all([
       Client.countDocuments(),
+      Client.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      // Ventes par client : dépenses, nombre d'achats, première et dernière vente.
       Sale.aggregate([
-        {
-          $match: {
-            client: { $ne: null }
-          }
-        },
+        { $match: { client: { $ne: null } } },
         {
           $group: {
             _id: '$client',
             totalSpent: { $sum: '$totalAmount' },
-            totalSales: { $sum: 1 }
-          }
+            totalSales: { $sum: 1 },
+            lastSaleDate: { $max: '$saleDate' },
+            firstSaleDate: { $min: '$saleDate' },
+          },
         },
-        {
-          $facet: {
-            totals: [
-              {
-                $group: {
-                  _id: null,
-                  totalSpent: { $sum: '$totalSpent' },
-                  activeClients: { $sum: 1 }
-                }
-              }
-            ],
-            topClients: [
-              { $sort: { totalSpent: -1, totalSales: -1 } },
-              { $limit: 5 },
-              {
-                $lookup: {
-                  from: 'clients',
-                  localField: '_id',
-                  foreignField: '_id',
-                  as: 'clientInfo'
-                }
-              },
-              { $unwind: '$clientInfo' },
-              {
-                $project: {
-                  name: '$clientInfo.name',
-                  totalSpent: 1,
-                  totalSales: 1,
-                  clientId: '$_id',
-                  slug: '$clientInfo.slug'
-                }
-              }
-            ]
-          }
-        }
       ]),
-      Client.countDocuments({
-        createdAt: { $gte: startOfMonth }
-      }),
       Client.aggregate([
         {
           $group: {
             _id: { $ifNull: ['$gender', 'other'] },
-            count: { $sum: 1 }
-          }
+            count: { $sum: 1 },
+          },
         },
-        { $sort: { count: -1 } }
-      ])
+        { $sort: { count: -1 } },
+      ]),
+      Client.aggregate([
+        { $match: { createdAt: { $gte: twelveMonthsAgo } } },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+      ]),
+      // Clients à risque : plus de 60 jours sans achat, ou jamais acheté.
+      Client.find({
+        $or: [
+          { lastPurchaseDate: { $lt: sixtyDaysAgo } },
+          { lastPurchaseDate: null },
+        ],
+      })
+        .select('name slug lastPurchaseDate')
+        .sort({ lastPurchaseDate: 1 })
+        .limit(8)
+        .lean(),
     ]);
 
-    const totalSpent = Number(salesAgg[0]?.totals?.[0]?.totalSpent) || 0;
-    const activeClients = Number(salesAgg[0]?.totals?.[0]?.activeClients) || 0;
-    const avgSpent = activeClients ? totalSpent / activeClients : 0;
-    const topClients = salesAgg[0]?.topClients || [];
+    const dayDiff = (date) =>
+      Math.floor((now - new Date(date)) / (1000 * 60 * 60 * 24));
+
+    // --- Dépenses & activité (basées sur les ventes réelles) ---
+    const buyingClients = clientSales.length;
+    const totalSpent = clientSales.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
+    const activeClients = clientSales.filter(
+      (c) => c.lastSaleDate && new Date(c.lastSaleDate) >= sixtyDaysAgo
+    ).length;
+    const avgSpent = buyingClients ? totalSpent / buyingClients : 0;
+    const retentionRate = totalClients ? (activeClients / totalClients) * 100 : 0;
+
+    // Fréquence moyenne entre deux achats (clients ayant acheté au moins 2 fois).
+    const repeatBuyers = clientSales.filter(
+      (c) => c.totalSales > 1 && c.firstSaleDate && c.lastSaleDate
+    );
+    const avgPurchaseFreq = repeatBuyers.length
+      ? repeatBuyers.reduce(
+          (sum, c) =>
+            sum +
+            (new Date(c.lastSaleDate) - new Date(c.firstSaleDate)) /
+              (c.totalSales - 1) /
+              (1000 * 60 * 60 * 24),
+          0
+        ) / repeatBuyers.length
+      : 0;
+
+    // --- Récence du dernier achat ---
+    const recencyCounts = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+    clientSales.forEach((c) => {
+      if (!c.lastSaleDate) {
+        recencyCounts['90+'] += 1;
+        return;
+      }
+      const days = dayDiff(c.lastSaleDate);
+      if (days <= 30) recencyCounts['0-30'] += 1;
+      else if (days <= 60) recencyCounts['31-60'] += 1;
+      else if (days <= 90) recencyCounts['61-90'] += 1;
+      else recencyCounts['90+'] += 1;
+    });
+    const recencyBuckets = [
+      { key: '0-30', count: recencyCounts['0-30'] },
+      { key: '31-60', count: recencyCounts['31-60'] },
+      { key: '61-90', count: recencyCounts['61-90'] },
+      { key: '90+', count: recencyCounts['90+'] },
+      { key: 'never', count: Math.max(0, totalClients - buyingClients) },
+    ];
+
+    // --- Classements (dépenses & fidélité) ---
+    const topSpenders = [...clientSales]
+      .sort((a, b) => b.totalSpent - a.totalSpent || b.totalSales - a.totalSales)
+      .slice(0, 5);
+    const topLoyal = [...clientSales]
+      .sort((a, b) => b.totalSales - a.totalSales || b.totalSpent - a.totalSpent)
+      .slice(0, 5);
+
+    const rankedIds = [
+      ...new Set([...topSpenders, ...topLoyal].map((c) => String(c._id))),
+    ];
+    const rankedDocs = rankedIds.length
+      ? await Client.find({ _id: { $in: rankedIds } })
+          .select('name slug')
+          .lean()
+      : [];
+    const infoById = new Map(rankedDocs.map((c) => [String(c._id), c]));
+
+    const toRankedClient = (entry) => {
+      const info = infoById.get(String(entry._id)) || {};
+      return {
+        clientId: entry._id,
+        name: info.name || 'Client',
+        slug: info.slug || '',
+        totalSpent: entry.totalSpent,
+        totalSales: entry.totalSales,
+        lastSaleDate: entry.lastSaleDate,
+      };
+    };
+
+    const topClients = topSpenders.map(toRankedClient);
+    const topLoyalClients = topLoyal.map(toRankedClient);
+
+    // --- Acquisitions mensuelles (12 derniers mois, comblés à zéro) ---
+    const signupMap = new Map(
+      monthlySignupsRaw.map((m) => [`${m._id.year}-${m._id.month}`, m.count])
+    );
+    const monthlySignups = [];
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      monthlySignups.push({
+        year,
+        month,
+        count: signupMap.get(`${year}-${month}`) || 0,
+      });
+    }
+
+    // --- Clients à risque ---
+    const atRiskClients = atRiskClientsRaw.map((c) => ({
+      id: c._id,
+      name: c.name,
+      slug: c.slug,
+      daysSince: c.lastPurchaseDate ? dayDiff(c.lastPurchaseDate) : null,
+      neverPurchased: !c.lastPurchaseDate,
+    }));
 
     const genderDistribution = genderAggregation.map((item) => ({
       gender: item._id,
@@ -240,8 +334,16 @@ const getClientStats = async (req, res) => {
       totalSpent,
       avgSpent,
       newThisMonth,
+      activeClients,
+      atRiskCount: Math.max(0, totalClients - activeClients),
+      retentionRate: Number(retentionRate.toFixed(1)),
+      avgPurchaseFreq: Number(avgPurchaseFreq.toFixed(1)),
       topClients,
-      genderDistribution
+      topLoyalClients,
+      monthlySignups,
+      recencyBuckets,
+      atRiskClients,
+      genderDistribution,
     });
   } catch (error) {
     console.error('Erreur statistiques clients:', error);

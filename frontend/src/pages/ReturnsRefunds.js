@@ -50,25 +50,41 @@ const ReturnsRefunds = () => {
   });
   const [refundForm, setRefundForm] = useState({ amount: '', method: 'cash', reason: '' });
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+  const loadSales = useCallback(async () => {
     try {
-      const [sRes, rRes, aRes] = await Promise.all([
-        salesApi.list({ limit: 50 }),
-        salesApi.listRefunds({ limit: 50 }),
-        salesApi.allReturns({ limit: 200 }),
-      ]);
+      const sRes = await salesApi.list({ limit: 50 });
       setSales(asList(sRes.data, 'sales'));
-      setRefunds(asList(rRes.data, 'refunds'));
-      setAllReturns(asList(aRes.data, 'returns'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger retours et remboursements.');
-    } finally {
-      setLoading(false);
+      toast.error(err.response?.data?.message || 'Impossible de charger les ventes.');
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadRefunds = useCallback(async () => {
+    try {
+      const rRes = await salesApi.listRefunds({ limit: 50 });
+      setRefunds(asList(rRes.data, 'refunds'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les remboursements.');
+    }
+  }, []);
+
+  const loadAllReturns = useCallback(async () => {
+    try {
+      const aRes = await salesApi.allReturns({ limit: 200 });
+      setAllReturns(asList(aRes.data, 'returns'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les retours.');
+    }
+  }, []);
+
+  // Chargement complet (montage + bouton « Actualiser »).
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    await Promise.all([loadSales(), loadRefunds(), loadAllReturns()]);
+    setLoading(false);
+  }, [loadSales, loadRefunds, loadAllReturns]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const selectSale = async (saleId) => {
     if (!saleId) { setSale(null); setReturns([]); return; }
@@ -111,8 +127,9 @@ const ReturnsRefunds = () => {
       toast.success('Retour enregistré.');
       setReturnForm({ note: '', lines: [{ product: '', quantity: 1, disposition: 'restocked' }] });
       setShowReturnForm(false);
-      selectSale(sale._id);
-      load(true);
+      // Retour : la vente sélectionnée (retours liés) + liste des ventes et retours globaux bougent.
+      await selectSale(sale._id);
+      await Promise.all([loadSales(), loadAllReturns()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Retour impossible.');
     }
@@ -129,8 +146,8 @@ const ReturnsRefunds = () => {
         await salesApi.cancelReturn(sale._id, ret._id);
       }
       toast.success('Action effectuée.');
-      selectSale(sale._id);
-      load(true);
+      await selectSale(sale._id);
+      await Promise.all([loadSales(), loadAllReturns()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -155,7 +172,9 @@ const ReturnsRefunds = () => {
       toast.success('Remboursement enregistré.');
       setRefundForm({ amount: '', method: 'cash', reason: '' });
       setShowRefundForm(false);
-      load(true);
+      // Remboursement : la vente sélectionnée, la liste des ventes et les remboursements bougent.
+      await selectSale(sale._id);
+      await Promise.all([loadSales(), loadRefunds()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Remboursement impossible.');
     }
@@ -187,7 +206,7 @@ const ReturnsRefunds = () => {
         title="Retours & remboursements"
         description="Sélectionnez une vente, enregistrez des retours (remise en stock, casse, perte) et des remboursements."
         actions={
-          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => load(true)}>
+          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => loadAll(true)}>
             <RefreshCw size={16} /> Actualiser
           </button>
         }

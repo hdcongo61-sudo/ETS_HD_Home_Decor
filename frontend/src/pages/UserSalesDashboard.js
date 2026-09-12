@@ -295,6 +295,7 @@ const UserSalesDashboard = () => {
   const [historySort, setHistorySort] = useState('recent');
   const [exporting, setExporting] = useState('');
   const [activeSection, setActiveSection] = useState('performance');
+  const [retryToken, setRetryToken] = useState(0);
 
   const deferredSearch = useDeferredValue(search);
   const deferredHistorySearch = useDeferredValue(historySearch);
@@ -345,7 +346,7 @@ const UserSalesDashboard = () => {
     if (isAdmin || isOwner) {
       fetchData();
     }
-  }, [auth?.isLoading, isAdmin, isOwner, userId]);
+  }, [auth?.isLoading, isAdmin, isOwner, userId, retryToken]);
 
   const normalizedSales = useMemo(
     () =>
@@ -860,7 +861,7 @@ const UserSalesDashboard = () => {
         <EmptyState
           title="Chargement impossible"
           helper={error}
-          action={<button type="button" onClick={() => window.location.reload()} className="ms-button ms-button-primary ms-button-md">Recharger</button>}
+          action={<button type="button" onClick={() => setRetryToken((v) => v + 1)} className="ms-button ms-button-primary ms-button-md">Recharger</button>}
         />
       </div>
     );

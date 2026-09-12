@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
+  AreaChart, Area, ResponsiveContainer, Tooltip,
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { customersApi } from '../features/customers/api';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
 import AppLoader from '../components/AppLoader';
+import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
   ArrowRight,
+  ChevronRight,
   Clock3,
-  Repeat2,
   ShoppingBag,
+  UserCheck,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -23,32 +26,54 @@ import {
   EmptyState,
   KPICard,
   PageHeader,
+  StatusBadge,
   Workspace,
 } from '../components/business';
+import { SERIE_PROFIT, SERIE_REVENUE } from '../utils/chartColors';
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const RECENCY_LABELS = {
+  '0-30': '0–30 j',
+  '31-60': '31–60 j',
+  '61-90': '61–90 j',
+  '90+': '90 j +',
+  never: 'Jamais acheté',
+};
+
+const RECENCY_COLORS = {
+  '0-30': '#16A34A',
+  '31-60': '#2563EB',
+  '61-90': '#F59E0B',
+  '90+': '#EF4444',
+  never: '#9CA3AF',
+};
+
+const INACTIVITY_DAYS = 60;
+
+const monthLabel = (year, month) =>
+  new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
 
 const ClientDashboard = () => {
+  const navigate = useNavigate();
   const tableRef = useRef(null);
-  const [clients, setClients] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
     try {
-      setLoading(true);
-      const [statsRes, clientsRes] = await Promise.all([
-        customersApi.stats(),
-        customersApi.list(),
-      ]);
-      setStats(statsRes.data);
-      setClients(clientsRes.data.clients || []);
+      if (!silent) setLoading(true);
+      const res = await customersApi.stats();
+      setStats(res.data);
+      setError('');
     } catch (err) {
       console.error(err);
-      setError('Impossible de charger le tableau de bord client');
+      if (!silent) {
+        setError('Impossible de charger le tableau de bord clients');
+        toast.error('Impossible de charger le tableau de bord clients');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -58,55 +83,35 @@ const ClientDashboard = () => {
 
   // Refresh when a sale is created from the global modal (affects client stats).
   useEffect(() => {
-    window.addEventListener('saleCreated', fetchDashboardData);
-    return () => window.removeEventListener('saleCreated', fetchDashboardData);
+    const refresh = () => fetchDashboardData({ silent: true });
+    window.addEventListener('saleCreated', refresh);
+    return () => window.removeEventListener('saleCreated', refresh);
   }, [fetchDashboardData]);
 
   const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+  const formatDate = (value) =>
+    value
+      ? new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—';
 
-  // --- Derived analytics ---
-  const enhancedMetrics = useMemo(() => {
-    if (!clients.length) return {};
+  // --- Données dérivées pour les graphiques ---
+  const monthlySignups = useMemo(
+    () => (stats?.monthlySignups || []).map((m) => ({ ...m, label: monthLabel(m.year, m.month) })),
+    [stats]
+  );
+  const recencyBuckets = useMemo(
+    () =>
+      (stats?.recencyBuckets || []).map((b) => ({
+        ...b,
+        label: RECENCY_LABELS[b.key] || b.key,
+      })),
+    [stats]
+  );
+  const topClients = stats?.topClients || [];
+  const topLoyalClients = stats?.topLoyalClients || [];
+  const atRiskClients = stats?.atRiskClients || [];
 
-    const now = new Date();
-    const inactiveClients = clients.filter((c) =>
-      c.lastPurchaseDate ? (now - new Date(c.lastPurchaseDate)) / (1000 * 60 * 60 * 24) > 60 : true
-    );
-
-    const loyalClients = [...clients]
-      .sort((a, b) => b.purchaseCount - a.purchaseCount)
-      .slice(0, 5);
-
-    const avgPurchaseFreq = (() => {
-      const active = clients.filter((c) => c.purchaseCount > 1 && c.lastPurchaseDate);
-      if (!active.length) return 0;
-      const diffs = active.map(
-        (c) =>
-          (new Date(c.lastPurchaseDate) - new Date(c.createdAt)) /
-          (c.purchaseCount - 1) /
-          (1000 * 60 * 60 * 24)
-      );
-      return diffs.reduce((a, b) => a + b, 0) / diffs.length;
-    })();
-
-    const retentionRate = clients.length
-      ? ((clients.length - inactiveClients.length) / clients.length) * 100
-      : 0;
-
-    // Monthly registrations trend
-    const monthlySignups = Object.values(
-      clients.reduce((acc, c) => {
-        const month = new Date(c.createdAt).toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
-        if (!acc[month]) acc[month] = { month, count: 0 };
-        acc[month].count++;
-        return acc;
-      }, {})
-    );
-
-    return { inactiveClients, loyalClients, avgPurchaseFreq, retentionRate, monthlySignups };
-  }, [clients]);
-
-  useResponsiveTable(tableRef, [stats?.topClients]);
+  useResponsiveTable(tableRef, [topClients]);
 
   if (loading) {
     return (
@@ -126,106 +131,182 @@ const ClientDashboard = () => {
     );
   }
 
-  const topClients = stats?.topClients || [];
+  if (!stats) return null;
 
   return (
     <Workspace className="space-y-5">
       <PageHeader
-        title="Tableau de bord clients"
-        description="Apercu global des clients et de leurs comportements."
+        title="Clients"
+        description="Santé de votre base : acquisition, fidélité et clients à relancer."
         actions={
-          <Button variant="secondary" size="sm" onClick={() => window.location.href = '/clients'}>
-            Liste complete <ArrowRight className="h-4 w-4" />
+          <Button variant="secondary" size="sm" onClick={() => navigate('/clients')}>
+            Voir tous les clients <ArrowRight className="h-4 w-4" />
           </Button>
         }
       />
 
-      {/* KPI Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <KPICard title="Total Clients" value={stats.totalClients} tone="neutral" icon={<Users className="h-4 w-4" />} />
-          <KPICard title="Achats Cumules" value={formatCurrency(stats.totalSpent)} tone="success" icon={<Wallet className="h-4 w-4" />} />
-          <KPICard title="Depense Moyenne" value={formatCurrency(stats.avgSpent)} tone="neutral" icon={<ShoppingBag className="h-4 w-4" />} />
-          <KPICard title="Retention" value={`${enhancedMetrics.retentionRate.toFixed(1)}%`} tone="neutral" icon={<Repeat2 className="h-4 w-4" />} />
-          <KPICard title="Freq. Achats" value={`${enhancedMetrics.avgPurchaseFreq.toFixed(1)} jrs`} tone="neutral" icon={<Clock3 className="h-4 w-4" />} />
-        </div>
-      )}
+      {stats.totalClients === 0 ? (
+        <EmptyState
+          title="Aucun client pour le moment"
+          description="Ajoutez vos premiers clients pour suivre leurs achats, leur fidélité et vos revenus."
+          action={
+            <Button onClick={() => navigate('/clients')}>
+              Ajouter des clients <ArrowRight className="h-4 w-4" />
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            <KPICard title="Total clients" value={stats.totalClients} context={`+${stats.newThisMonth} ce mois-ci`} icon={<Users className="h-4 w-4" />} />
+            <KPICard title="Clients actifs" value={stats.activeClients} context={`${stats.retentionRate} % de rétention (${INACTIVITY_DAYS} j)`} tone="success" icon={<UserCheck className="h-4 w-4" />} />
+            <KPICard title="Achats cumulés" value={formatCurrency(stats.totalSpent)} icon={<Wallet className="h-4 w-4" />} />
+            <KPICard title="Panier moyen" value={formatCurrency(stats.avgSpent)} context="Par client acheteur" icon={<ShoppingBag className="h-4 w-4" />} />
+            <KPICard title="Clients à risque" value={stats.atRiskCount} context={`Sans achat depuis ${INACTIVITY_DAYS} j`} tone="warning" icon={<AlertTriangle className="h-4 w-4" />} />
+            <KPICard title="Fréquence d'achat" value={stats.avgPurchaseFreq > 0 ? `${stats.avgPurchaseFreq.toFixed(0)} j` : '—'} context="Entre deux achats" icon={<Clock3 className="h-4 w-4" />} />
+          </section>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {topClients.length > 0 && (
-          <ChartCard title="Top 5 Clients (depenses)">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={topClients} dataKey="totalSpent" nameKey="name" outerRadius={100} label>
-                  {topClients.map((entry, index) => (<Cell key={index} fill={COLORS[index % COLORS.length]} />))}
-                </Pie>
-                <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          {/* Acquisition & récence */}
+          <div className="grid gap-4 xl:grid-cols-3">
+            <ChartCard
+              title="Nouveaux clients"
+              description="Acquisitions sur les 12 derniers mois"
+              className="xl:col-span-2"
+            >
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlySignups} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="signupsFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={SERIE_REVENUE} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={SERIE_REVENUE} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v) => [`${v} clients`, 'Inscriptions']} />
+                    <Area type="monotone" dataKey="count" stroke={SERIE_REVENUE} strokeWidth={2} fill="url(#signupsFill)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+
+            <ChartCard title="Récence du dernier achat" description="Répartition de la base clients">
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={recencyBuckets} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v) => [`${v} clients`, 'Clients']} />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                      {recencyBuckets.map((entry) => (
+                        <Cell key={entry.key} fill={RECENCY_COLORS[entry.key] || '#9CA3AF'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          </div>
+
+          {/* Fidélité & risque */}
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ChartCard title="Top clients fidèles" description="Classement par nombre d'achats">
+              {topLoyalClients.length > 0 ? (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topLoyalClients} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(v) => [`${v} achats`, 'Achats']} />
+                      <Bar dataKey="totalSales" fill={SERIE_PROFIT} radius={[0, 6, 6, 0]} maxBarSize={22} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <EmptyState title="Pas encore d'achats" description="Les achats liés à des clients apparaîtront ici." />
+              )}
+            </ChartCard>
+
+            <ChartCard
+              title="Clients à risque"
+              description={`${INACTIVITY_DAYS} jours ou plus sans achat — à relancer`}
+            >
+              {atRiskClients.length > 0 ? (
+                <ul className="max-h-72 divide-y divide-[var(--ms-border)] overflow-y-auto">
+                  {atRiskClients.map((client) => (
+                    <li key={client.id}>
+                      <Link
+                        to={clientPath({ _id: client.id, slug: client.slug })}
+                        className="flex min-h-[48px] items-center gap-3 px-2 py-2.5 transition hover:bg-[var(--ms-bg)]"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-medium text-[var(--ms-text)]">{client.name}</span>
+                        <StatusBadge tone={client.neverPurchased ? 'neutral' : 'warning'}>
+                          {client.neverPurchased ? 'Jamais acheté' : `Il y a ${client.daysSince} j`}
+                        </StatusBadge>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[var(--ms-text-muted)]" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState title="Aucun client à risque" description="Tous vos clients ont acheté récemment." />
+              )}
+            </ChartCard>
+          </div>
+
+          {/* Classement par dépenses */}
+          <ChartCard title="Top clients par dépenses" description="Les clients qui génèrent le plus de chiffre d'affaires">
+            {topClients.length > 0 ? (
+              <DataTable>
+                <table ref={tableRef} className="responsive-table w-full">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Client</th>
+                      <th>Achats</th>
+                      <th>Total dépensé</th>
+                      <th>Panier moyen</th>
+                      <th>Dernier achat</th>
+                      <th className="text-right">Profil</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topClients.map((client, index) => {
+                      const href = clientPath({ _id: client.clientId, slug: client.slug });
+                      const avgBasket = client.totalSales > 0 ? client.totalSpent / client.totalSales : 0;
+                      return (
+                        <tr key={client.clientId || index} className="cursor-pointer" onClick={() => navigate(href)}>
+                          <td className="font-semibold text-[var(--ms-text-muted)]">{index + 1}</td>
+                          <td className="font-medium text-[var(--ms-text)]">{client.name}</td>
+                          <td>{client.totalSales}</td>
+                          <td className="font-semibold text-[var(--ms-text)]">{formatCurrency(client.totalSpent)}</td>
+                          <td>{formatCurrency(avgBasket)}</td>
+                          <td>{formatDate(client.lastSaleDate)}</td>
+                          <td className="text-right">
+                            <Link to={href} className="ms-button ms-button-secondary ms-button-sm" onClick={(e) => e.stopPropagation()}>
+                              <ArrowRight className="h-4 w-4" /> Profil
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </DataTable>
+            ) : (
+              <EmptyState
+                title="Pas encore de ventes clients"
+                description="Créez une vente en associant un client pour voir apparaître le classement."
+              />
+            )}
           </ChartCard>
-        )}
-        <ChartCard title="Nouveaux Clients par Mois">
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={enhancedMetrics.monthlySignups}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="count" stroke="#0078D4" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-        {/* Loyalty & Inactivity */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <ChartCard title="Top Clients Fideles (achats)">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={enhancedMetrics.loyalClients}>
-              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip />
-              <Bar dataKey="purchaseCount" fill="#107C10" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-        <ChartCard title="Clients Inactifs (>= 60 jours)">
-          {enhancedMetrics.inactiveClients.length > 0 ? (
-            <ul className="max-h-72 divide-y divide-[var(--ms-border)] overflow-y-auto">
-              {enhancedMetrics.inactiveClients.map((c) => (
-                <li key={c._id} className="flex items-center justify-between py-3 px-2">
-                  <span className="font-medium text-[var(--ms-text)]">{c.name}</span>
-                  <span className="text-sm text-[var(--ms-text-muted)]">Dernier achat: {c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('fr-FR') : '—'}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-6 text-center text-[var(--ms-text-muted)]">Aucun client inactif</p>
-          )}
-        </ChartCard>
-      </div>
-
-      <ChartCard title="Top Clients par Depenses">
-        {topClients.length > 0 ? (
-          <DataTable>
-            <table ref={tableRef} className="responsive-table w-full">
-              <thead><tr><th>#</th><th>Nom</th><th>Total Depense</th><th className="text-right">Profil</th></tr></thead>
-              <tbody>
-                {topClients.map((client, index) => (
-                  <tr key={client._id} className="cursor-pointer" onClick={() => window.location.href = clientPath(client)}>
-                    <td className="font-semibold text-[var(--ms-text-muted)]">{index + 1}</td>
-                    <td className="font-medium text-[var(--ms-text)]">{client.name}</td>
-                    <td className="font-semibold text-[var(--ms-text)]">{formatCurrency(client.totalSpent)}</td>
-                    <td className="text-right"><Link to={clientPath(client)} className="ms-button ms-button-secondary ms-button-sm"><ArrowRight className="h-4 w-4" /> Profil</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataTable>
-        ) : (
-          <EmptyState title="Pas assez de donnees clients." />
-        )}
-      </ChartCard>
+        </>
+      )}
     </Workspace>
   );
 };

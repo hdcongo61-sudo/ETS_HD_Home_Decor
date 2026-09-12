@@ -541,33 +541,28 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders on mount only
   }, [isAdmin, nonCriticalReady]);
 
-  useEffect(() => {
-    if (!isAdmin) return undefined;
-
-    const refreshRemindersAfterSale = () => {
-      fetchReminders();
-    };
-
-    window.addEventListener("saleCreated", refreshRemindersAfterSale);
-    return () => window.removeEventListener("saleCreated", refreshRemindersAfterSale);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders intentionally reused for sale-created refresh
-  }, [isAdmin]);
-
   // The global modals (FAB) create sales/payments/expenses from any page.
-  // Refresh the dashboard data on those events so it's immediate — no reload.
+  // Refresh only the data each event can affect — no full dashboard reload.
   useEffect(() => {
-    const refresh = () => {
+    const refreshAfterSale = () => {
       fetchData();
       fetchDeliveryStats();
       if (isAdmin) fetchReminders();
     };
-    window.addEventListener("saleCreated", refresh);
-    window.addEventListener("paymentCreated", refresh);
-    window.addEventListener("expenseCreated", refresh);
+    const refreshAfterPayment = () => {
+      fetchData();
+      if (isAdmin) fetchReminders();
+    };
+    const refreshAfterExpense = () => {
+      fetchData();
+    };
+    window.addEventListener("saleCreated", refreshAfterSale);
+    window.addEventListener("paymentCreated", refreshAfterPayment);
+    window.addEventListener("expenseCreated", refreshAfterExpense);
     return () => {
-      window.removeEventListener("saleCreated", refresh);
-      window.removeEventListener("paymentCreated", refresh);
-      window.removeEventListener("expenseCreated", refresh);
+      window.removeEventListener("saleCreated", refreshAfterSale);
+      window.removeEventListener("paymentCreated", refreshAfterPayment);
+      window.removeEventListener("expenseCreated", refreshAfterExpense);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReminders is stable enough for this refresh
   }, [fetchData, fetchDeliveryStats, isAdmin]);

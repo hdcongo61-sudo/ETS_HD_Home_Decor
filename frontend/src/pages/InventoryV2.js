@@ -63,33 +63,76 @@ const InventoryV2 = () => {
   const [countForm, setCountForm] = useState({ locationId: '', productIds: '', reason: '', note: '' });
   const [adjustForm, setAdjustForm] = useState({ productId: '', quantity: '', unitCost: '', note: '' });
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+  // Lookups statiques : chargés une seule fois, jamais re-téléchargés après une mutation.
+  const loadLookups = useCallback(async () => {
     try {
-      const [bRes, tRes, cRes, rRes, prodRes, locRes, mRes] = await Promise.all([
-        inventoryApi.balances({ limit: 500 }),
-        inventoryApi.transfers({ limit: 100 }),
-        inventoryApi.counts({ limit: 100 }),
-        inventoryApi.reconciliation(),
+      const [prodRes, locRes] = await Promise.all([
         catalogApi.list({ limit: 500 }),
         platformApi.locations(),
-        inventoryApi.movements({ limit: 30 }),
       ]);
-      setBalances(asList(bRes.data, 'balances'));
-      setTransfers(asList(tRes.data, 'transfers'));
-      setCounts(asList(cRes.data, 'counts'));
-      setReconciliation(rRes.data);
       setProducts(asList(prodRes.data, 'products'));
       setLocations(asList(locRes.data, 'locations'));
-      setMovements(asList(mRes.data, 'movements'));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger l’inventaire.');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Données secondaires : on conserve les valeurs déjà en mémoire.
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadBalances = useCallback(async () => {
+    try {
+      const bRes = await inventoryApi.balances({ limit: 500 });
+      setBalances(asList(bRes.data, 'balances'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les soldes.');
+    }
+  }, []);
+
+  const loadTransfers = useCallback(async () => {
+    try {
+      const tRes = await inventoryApi.transfers({ limit: 100 });
+      setTransfers(asList(tRes.data, 'transfers'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les transferts.');
+    }
+  }, []);
+
+  const loadCounts = useCallback(async () => {
+    try {
+      const cRes = await inventoryApi.counts({ limit: 100 });
+      setCounts(asList(cRes.data, 'counts'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger les inventaires.');
+    }
+  }, []);
+
+  const loadReconciliation = useCallback(async () => {
+    try {
+      const rRes = await inventoryApi.reconciliation();
+      setReconciliation(rRes.data);
+    } catch {
+      // Rapprochement facultatif.
+    }
+  }, []);
+
+  const loadMovements = useCallback(async () => {
+    try {
+      const mRes = await inventoryApi.movements({ limit: 30 });
+      setMovements(asList(mRes.data, 'movements'));
+    } catch {
+      // Mouvements secondaires.
+    }
+  }, []);
+
+  // Chargement complet (montage + bouton « Actualiser »).
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    await Promise.all([
+      loadLookups(), loadBalances(), loadTransfers(), loadCounts(),
+      loadReconciliation(), loadMovements(),
+    ]);
+    setLoading(false);
+  }, [loadLookups, loadBalances, loadTransfers, loadCounts, loadReconciliation, loadMovements]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const productLabel = (idOrDoc) => {
     if (!idOrDoc) return '—';
@@ -122,7 +165,7 @@ const InventoryV2 = () => {
       toast.success('Transfert créé.');
       setTransferForm({ sourceLocationId: '', destinationLocationId: '', note: '', lines: [{ product: '', quantity: 1 }] });
       setShowTransferForm(false);
-      load(true);
+      await loadTransfers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Création impossible.');
     }
@@ -142,7 +185,13 @@ const InventoryV2 = () => {
         await inventoryApi.cancelTransfer(transfer._id);
       }
       toast.success('Action effectuée.');
-      load(true);
+      if (action === 'cancel') {
+        // Annulation : seul le statut du transfert change, le stock reste inchangé.
+        await loadTransfers();
+      } else {
+        // Expédition/réception : le stock bouge — soldes, transferts, mouvements et rapprochement.
+        await Promise.all([loadTransfers(), loadBalances(), loadMovements(), loadReconciliation()]);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action impossible.');
     } finally {
@@ -168,7 +217,7 @@ const InventoryV2 = () => {
       toast.success('Inventaire physique ouvert.');
       setCountForm({ locationId: '', productIds: '', reason: '', note: '' });
       setShowCountForm(false);
-      load(true);
+      await loadCounts();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Ouverture impossible.');
     }
@@ -188,7 +237,8 @@ const InventoryV2 = () => {
       await inventoryApi.postCount(count._id, { countedQuantities: obj });
       toast.success('Inventaire publié — écarts appliqués.');
       setCountedValues({});
-      load(true);
+      // Écarts appliqués en ajustements : comptages, soldes, mouvements et rapprochement bougent.
+      await Promise.all([loadCounts(), loadBalances(), loadMovements(), loadReconciliation()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Publication impossible.');
     } finally {
@@ -202,7 +252,7 @@ const InventoryV2 = () => {
       setBusyId(count._id);
       await inventoryApi.cancelCount(count._id);
       toast.success('Inventaire annulé.');
-      load(true);
+      await loadCounts();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Annulation impossible.');
     } finally {
@@ -227,7 +277,7 @@ const InventoryV2 = () => {
       });
       toast.success('Ajustement appliqué.');
       setAdjustForm({ productId: '', quantity: '', unitCost: '', note: '' });
-      load(true);
+      await Promise.all([loadBalances(), loadMovements(), loadReconciliation()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Ajustement impossible.');
     }
@@ -254,7 +304,7 @@ const InventoryV2 = () => {
         title="Inventaire"
         description="Moteur d'inventaire transactionnel : soldes par boutique, transferts, comptages et rapprochement."
         actions={
-          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => load(true)}>
+          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => loadAll(true)}>
             <RefreshCw size={16} /> Actualiser
           </button>
         }

@@ -222,9 +222,10 @@ const Comptabilite = () => {
 
   const range = useMemo(() => presetRange(preset), [preset]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError('');
       const params = new URLSearchParams({
         startDate: range.start.toISOString(),
@@ -236,15 +237,29 @@ const Comptabilite = () => {
       ]);
       setSummary(summaryRes.data?.data || null);
       setJournal(journalRes.data?.data || null);
-      setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors du chargement de la comptabilité');
-      setLoading(false);
+    } finally {
+      if (!silent) setLoading(false);
     }
   }, [range]);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  // Encaissement / dépense / vente créés depuis cette page (modales globales) :
+  // ne recharger que les données de la période affichée, sans toucher au reste.
+  useEffect(() => {
+    const refresh = () => fetchData({ silent: true });
+    window.addEventListener('saleCreated', refresh);
+    window.addEventListener('paymentCreated', refresh);
+    window.addEventListener('expenseCreated', refresh);
+    return () => {
+      window.removeEventListener('saleCreated', refresh);
+      window.removeEventListener('paymentCreated', refresh);
+      window.removeEventListener('expenseCreated', refresh);
+    };
   }, [fetchData]);
 
   useResponsiveTable(journalRef, [journal]);
