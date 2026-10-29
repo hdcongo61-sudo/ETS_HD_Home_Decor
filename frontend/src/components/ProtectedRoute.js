@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { FeatureLockedView } from './FeatureGate';
+import PermissionDenied from '../pages/PermissionDenied';
 
 const storeRestrictionInfo = (payload) => {
   try {
@@ -47,7 +48,7 @@ const ProtectedRoute = ({ children, adminOnly = false, feature = null, permissio
   }
 
   if (adminOnly && !auth.isAdmin) {
-    return <Navigate to="/" replace />;
+    return <PermissionDenied reason="Cette page est réservée aux administrateurs de la boutique." />;
   }
 
   // Permission individuelle accordée par un admin à un membre
@@ -55,7 +56,7 @@ const ProtectedRoute = ({ children, adminOnly = false, feature = null, permissio
   if (permission && !auth.isAdmin && !auth.isSuperAdmin) {
     const permissions = Array.isArray(auth.user?.permissions) ? auth.user.permissions : [];
     if (!permissions.includes(permission)) {
-      return <Navigate to="/" replace />;
+      return <PermissionDenied reason="Votre compte n’a pas encore reçu l’autorisation nécessaire pour cette action." />;
     }
   }
 

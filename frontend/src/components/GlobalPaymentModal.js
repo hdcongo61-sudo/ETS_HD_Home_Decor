@@ -278,7 +278,6 @@ const GlobalPaymentModal = () => {
     await api.post(`/sales/${selectedSaleData._id}/payments`, payload);
     setIsDirty(false);
     closeModal();
-    window.dispatchEvent(new CustomEvent('paymentCreated'));
     toast.success('Paiement enregistré — données à jour.');
   };
 

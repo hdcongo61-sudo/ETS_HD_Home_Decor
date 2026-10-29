@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Download, Edit3, FileText, RefreshCw, ShoppingCart, Trash2 } from 'lucide-react';
+import { Download, Edit3, FileText, RefreshCw, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
@@ -47,6 +47,7 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
   const [editing, setEditing] = useState(null);
   const [editClient, setEditClient] = useState('');
   const [editProducts, setEditProducts] = useState([]);
+  const [editProductSearchTerms, setEditProductSearchTerms] = useState([]);
   const [editNote, setEditNote] = useState('');
   const [editValidUntil, setEditValidUntil] = useState('');
 
@@ -96,6 +97,7 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
         price: item.price,
       }))
     );
+    setEditProductSearchTerms((proforma.products || []).map(() => ''));
     setEditNote(proforma.note || '');
     setEditValidUntil(dateInputValue(proforma.validUntil));
   };
@@ -116,6 +118,10 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
 
   const saveEdit = async (event) => {
     event.preventDefault();
+    if (editProducts.some((line) => !line.product)) {
+      toast.error('Recherchez et sélectionnez un produit pour chaque ligne.');
+      return;
+    }
     try {
       setWorkingId(editing._id);
       const { data } = await api.put(`/proformas/${editing._id}`, {
@@ -307,18 +313,32 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
               </select>
             </div>
             <div className="space-y-3">
-              {editProducts.map((line, index) => (
+              {editProducts.map((line, index) => {
+                const searchTerm = editProductSearchTerms[index] || '';
+                const matches = searchTerm.trim()
+                  ? products.filter((product) => `${product.name || ''} ${product.sku || product.reference || ''}`.toLowerCase().includes(searchTerm.trim().toLowerCase())).slice(0, 30)
+                  : [];
+                const selected = products.find((product) => product._id === line.product);
+                return (
                 <div key={`${line.product}-${index}`} className="grid gap-2 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] p-3 sm:grid-cols-[1fr_110px_140px_auto]">
-                  <select className="form-control" value={line.product} onChange={(event) => updateEditLine(index, { product: event.target.value })} required>
-                    <option value="">Produit…</option>
-                    {products.map((product) => <option key={product._id} value={product._id}>{product.name}</option>)}
-                  </select>
+                  <div className="relative sm:col-span-4">
+                    <label className="sr-only" htmlFor={`proforma-product-search-${index}`}>Rechercher un produit pour l’article {index + 1}</label>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ms-text-muted)]" aria-hidden="true" />
+                    <input id={`proforma-product-search-${index}`} type="search" className="form-control pl-9" placeholder="Rechercher un produit…" value={searchTerm} onChange={(event) => setEditProductSearchTerms((current) => current.map((term, termIndex) => termIndex === index ? event.target.value : term))} aria-controls={`proforma-product-options-${index}`} />
+                    {selected && !searchTerm && <p className="mt-1 truncate text-xs text-[var(--ms-text-muted)]">Sélectionné : {selected.name}</p>}
+                    {searchTerm.trim() && <div id={`proforma-product-options-${index}`} role="listbox" aria-label={`Résultats produit ${index + 1}`} className="mt-1 max-h-56 overflow-y-auto rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white shadow-[var(--ms-shadow-sm)]">
+                      {matches.length ? matches.map((product) => <button key={product._id} type="button" role="option" aria-selected={product._id === line.product} onClick={() => { updateEditLine(index, { product: product._id }); setEditProductSearchTerms((current) => current.map((term, termIndex) => termIndex === index ? '' : term)); }} className={`flex min-h-[56px] w-full items-center gap-3 border-b border-[var(--ms-border)] px-3 py-2 text-left last:border-b-0 hover:bg-[var(--ms-bg-subtle)] ${product._id === line.product ? 'bg-[var(--ms-blue-soft)]' : ''}`}>
+                        <img src={product.image || '/placeholder.png'} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-md border border-[var(--ms-border)] object-cover" />
+                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{product.name}</span><span className="block text-xs text-[var(--ms-text-muted)]">Stock : {product.stock ?? '—'} · Prix : {Number(product.price || 0).toLocaleString('fr-FR')} CFA</span></span>
+                      </button>) : <p className="p-3 text-sm text-[var(--ms-text-muted)]">Aucun produit correspondant.</p>}
+                    </div>}
+                  </div>
                   <input className="form-control" type="number" min="1" value={line.quantity} onChange={(event) => updateEditLine(index, { quantity: Number(event.target.value) })} required />
                   <input className="form-control" type="number" min="0" value={line.price} onChange={(event) => updateEditLine(index, { price: Number(event.target.value) })} required />
                   <button type="button" onClick={() => setEditProducts((current) => current.filter((_, lineIndex) => lineIndex !== index))} className="ms-button ms-button-danger ms-button-sm">Retirer</button>
                 </div>
-              ))}
-              <button type="button" onClick={() => setEditProducts((current) => [...current, { product: '', quantity: 1, price: 0 }])} className="ms-button ms-button-secondary ms-button-sm">
+              );})}
+              <button type="button" onClick={() => { setEditProducts((current) => [...current, { product: '', quantity: 1, price: 0 }]); setEditProductSearchTerms((current) => [...current, '']); }} className="ms-button ms-button-secondary ms-button-sm">
                 Ajouter un produit
               </button>
             </div>

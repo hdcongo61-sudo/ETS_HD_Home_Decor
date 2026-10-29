@@ -247,8 +247,13 @@ const Login = () => {
               <input
                 id="loginId"
                 type="text"
-                inputMode={isEmail(loginId) ? 'email' : 'tel'}
+                // Keep a text keyboard available from the first keystroke so mobile
+                // users can enter an email address without being trapped in digits.
+                inputMode="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
                 className="form-control pr-11"

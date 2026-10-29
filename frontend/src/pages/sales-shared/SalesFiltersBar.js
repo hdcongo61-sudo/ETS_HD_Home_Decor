@@ -13,7 +13,7 @@ const LABEL_CLASS =
   "flex items-center gap-2 text-[11px] font-semibold uppercase text-[var(--ms-text-muted)]";
 
 const INPUT_CLASS =
-  "w-full min-h-[38px] rounded-md border border-[var(--ms-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--ms-text)] transition focus:outline-none focus:ring-2 focus:ring-[rgba(0,120,212,0.16)] focus:border-[var(--ms-blue)]";
+  "w-full min-h-[44px] rounded-md border border-[var(--ms-border)] bg-white px-2.5 py-1.5 text-sm text-[var(--ms-text)] transition focus:outline-none focus:ring-2 focus:ring-[rgba(0,120,212,0.16)] focus:border-[var(--ms-blue)]";
 
 const ICON_DOT_CLASS = {
   indigo: "bg-[var(--ms-blue)]",
@@ -239,7 +239,7 @@ const SalesFiltersBar = ({
         >
           <label
             htmlFor="filter-date"
-            className="flex min-h-[38px] items-center rounded-md border border-[var(--ms-border)] bg-white px-2.5 focus-within:border-[var(--ms-blue)] focus-within:ring-2 focus-within:ring-[rgba(0,120,212,0.16)]"
+            className="flex min-h-[44px] items-center rounded-md border border-[var(--ms-border)] bg-white px-2.5 focus-within:border-[var(--ms-blue)] focus-within:ring-2 focus-within:ring-[rgba(0,120,212,0.16)]"
           >
             <input
               id="filter-date"

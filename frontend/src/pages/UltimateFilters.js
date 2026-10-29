@@ -1,631 +1,82 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { AlertCircle, ArrowLeft, Check, ChevronRight, Clock3, Copy, FileText, Filter, Info, Landmark, Package, Receipt, RefreshCw, Save, ShoppingCart, Sparkles, Trash2, UserCog, Users, X } from 'lucide-react';
 import { Workspace } from '../components/business';
+import SectionError from '../components/SectionError';
 import { platformApi } from '../features/platform/api';
 import { catalogApi } from '../features/catalog/api';
 import AdvancedFilters from '../components/AdvancedFilters';
-import {
-  SALES_FILTERS,
-  PRODUCTS_FILTERS,
-  EXPENSES_FILTERS,
-  CLIENTS_FILTERS,
-  EMPLOYEES_FILTERS,
-  BANK_FILTERS,
-  DOCUMENTS_FILTERS,
-  populateDynamicOptions,
-} from '../config/filterConfigs';
-import {
-  ShoppingCart,
-  Package,
-  Receipt,
-  Users,
-  UserCog,
-  Landmark,
-  FileText,
-  ArrowLeft,
-  Filter,
-  Sparkles,
-  Info,
-} from 'lucide-react';
+import { SALES_FILTERS, PRODUCTS_FILTERS, EXPENSES_FILTERS, CLIENTS_FILTERS, EMPLOYEES_FILTERS, BANK_FILTERS, DOCUMENTS_FILTERS, populateDynamicOptions } from '../config/filterConfigs';
 import api from '../services/api';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+const STORAGE_KEY = 'ultimate-filters-saved-views-v1';
 const FILTER_PAGES = [
-  {
-    id: 'sales',
-    title: 'Ventes',
-    icon: ShoppingCart,
-    config: SALES_FILTERS,
-    endpoint: '/sales',
-    color: 'var(--colorStatusSuccessForeground1)',
-    description: 'Filtrez vos ventes par période, statut, montant, mode de paiement et plus',
-  },
-  {
-    id: 'products',
-    title: 'Produits',
-    icon: Package,
-    config: PRODUCTS_FILTERS,
-    endpoint: '/products',
-    color: 'var(--ms-blue)',
-    description: 'Trouvez vos produits par catégorie, stock, prix, fournisseur',
-  },
-  {
-    id: 'expenses',
-    title: 'Dépenses',
-    icon: Receipt,
-    config: EXPENSES_FILTERS,
-    endpoint: '/expenses',
-    color: 'var(--colorStatusDangerForeground1)',
-    description: 'Analysez vos dépenses par catégorie, période et montant',
-  },
-  {
-    id: 'clients',
-    title: 'Clients',
-    icon: Users,
-    config: CLIENTS_FILTERS,
-    endpoint: '/clients',
-    color: 'var(--colorStatusSuccessForeground1)',
-    description: 'Segmentez vos clients par achats, fidélité et dépenses',
-  },
-  {
-    id: 'employees',
-    title: 'Employés',
-    icon: UserCog,
-    config: EMPLOYEES_FILTERS,
-    endpoint: '/employees',
-    color: 'var(--colorBrandForeground1)',
-    description: 'Filtrez vos employés par poste, salaire et date d\'embauche',
-  },
-  {
-    id: 'bank',
-    title: 'Banque',
-    icon: Landmark,
-    config: BANK_FILTERS,
-    endpoint: '/bank',
-    color: 'var(--colorStatusWarningForeground1)',
-    description: 'Suivez vos transactions bancaires par type et période',
-  },
-  {
-    id: 'documents',
-    title: 'Documents',
-    icon: FileText,
-    config: DOCUMENTS_FILTERS,
-    endpoint: '/documents',
-    color: 'var(--colorNeutralForeground2)',
-    description: 'Organisez vos documents par type et date',
-  },
+  { id: 'sales', title: 'Ventes', icon: ShoppingCart, config: SALES_FILTERS, endpoint: '/sales', color: 'var(--colorStatusSuccessForeground1)', description: 'Repérez les ventes à encaisser, livrer ou analyser.', link: '/sales' },
+  { id: 'products', title: 'Produits', icon: Package, config: PRODUCTS_FILTERS, endpoint: '/products', color: 'var(--ms-blue)', description: 'Identifiez les produits à réapprovisionner, déprécier ou mettre en avant.', link: '/products' },
+  { id: 'expenses', title: 'Dépenses', icon: Receipt, config: EXPENSES_FILTERS, endpoint: '/expenses', color: 'var(--colorStatusDangerForeground1)', description: 'Contrôlez les dépenses par période, catégorie et montant.', link: '/expenses' },
+  { id: 'clients', title: 'Clients', icon: Users, config: CLIENTS_FILTERS, endpoint: '/clients', color: 'var(--colorStatusSuccessForeground1)', description: 'Construisez des segments utiles pour le suivi et la fidélisation.', link: '/clients' },
+  { id: 'employees', title: 'Employés', icon: UserCog, config: EMPLOYEES_FILTERS, endpoint: '/employees', color: 'var(--colorBrandForeground1)', description: 'Analysez les équipes par poste, salaire et ancienneté.', link: '/employees' },
+  { id: 'bank', title: 'Banque', icon: Landmark, config: BANK_FILTERS, endpoint: '/bank', color: 'var(--colorStatusWarningForeground1)', description: 'Suivez les entrées et sorties de trésorerie.', link: '/bank' },
+  { id: 'documents', title: 'Documents', icon: FileText, config: DOCUMENTS_FILTERS, endpoint: '/documents', color: 'var(--colorNeutralForeground2)', description: 'Retrouvez rapidement les documents par type et période.', link: '/documents' },
 ];
+const PRESETS = {
+  sales: [{ id: 'sales-outstanding', label: 'À encaisser', filters: { paymentStatus: 'partial' } }, { id: 'sales-today', label: "Aujourd'hui", filters: { dateRange: { start: new Date().toISOString().slice(0, 10), end: new Date().toISOString().slice(0, 10) } } }],
+  products: [{ id: 'products-low-stock', label: 'Stock faible', filters: { stockStatus: 'low_stock' } }, { id: 'products-out', label: 'Ruptures', filters: { stockStatus: 'out_of_stock' } }],
+  expenses: [{ id: 'expenses-month', label: 'Ce mois', filters: { dateRange: { start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), end: new Date().toISOString().slice(0, 10) } } }],
+  clients: [{ id: 'clients-debt', label: 'Avec dette', filters: { hasDebt: 'yes' } }], employees: [], bank: [], documents: [],
+};
+const readRows = payload => { const body = payload?.data ?? payload; if (Array.isArray(body)) return body; if (Array.isArray(body?.data)) return body.data; for (const key of ['sales', 'products', 'expenses', 'clients', 'employees', 'users', 'transactions', 'documents', 'items']) if (Array.isArray(body?.[key])) return body[key]; return []; };
+const readMeta = payload => { const body = payload?.data ?? payload; return body?.pagination || body?.meta || {}; };
+const buildQueryParams = (filters = {}) => {
+  const params = {};
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) return;
+    if (key === 'dateRange' || key === 'hireDateRange') { if (value.start) params.startDate = value.start; if (value.end) params.endDate = value.end; return; }
+    if (typeof value === 'object' && !Array.isArray(value)) { if (value.min !== undefined && value.min !== '') params[`min${key[0].toUpperCase()}${key.slice(1, -5)}`] = value.min; if (value.max !== undefined && value.max !== '') params[`max${key[0].toUpperCase()}${key.slice(1, -5)}`] = value.max; return; }
+    params[key] = Array.isArray(value) ? value.join(',') : value;
+  });
+  const ranges = { amountRange: 'Amount', priceRange: 'Price', stockRange: 'Stock', salaryRange: 'Salary', totalSpentRange: 'TotalSpent', purchaseCountRange: 'PurchaseCount' };
+  Object.entries(ranges).forEach(([key, name]) => { if (filters[key]) { if (filters[key].min !== undefined && filters[key].min !== '') params[`min${name}`] = filters[key].min; if (filters[key].max !== undefined && filters[key].max !== '') params[`max${name}`] = filters[key].max; } });
+  return params;
+};
+const encodeState = (tab, filters) => encodeURIComponent(JSON.stringify({ tab, filters }));
+const decodeState = value => { try { const parsed = JSON.parse(decodeURIComponent(value)); return FILTER_PAGES.some(page => page.id === parsed.tab) ? parsed : null; } catch { return null; } };
+const filterCount = filters => Object.values(filters || {}).filter(value => Array.isArray(value) ? value.length : typeof value === 'string' ? value.trim() : typeof value === 'object' && value ? Object.values(value).some(Boolean) : value !== undefined && value !== null).length;
 
 const UltimateFiltersPage = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('sales');
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-
-  const activeConfig = FILTER_PAGES.find(p => p.id === activeTab);
-
-  // Charger les options dynamiques
-  useEffect(() => {
-    const loadDynamicOptions = async () => {
-      try {
-        // Charger les utilisateurs
-        const usersRes = await platformApi.users();
-        setUsers(usersRes.data.map(u => ({ value: u._id, label: u.name })));
-
-        // Charger les catégories de produits
-        const productsRes = await catalogApi.list();
-        const uniqueCategories = [...new Set(productsRes.data.map(p => p.category).filter(Boolean))];
-        setCategories(uniqueCategories.map(c => ({ value: c, label: c })));
-
-        // Charger les fournisseurs
-        const uniqueSuppliers = [...new Set(productsRes.data.map(p => p.supplierName).filter(Boolean))];
-        setSuppliers(uniqueSuppliers.map(s => ({ value: s, label: s })));
-      } catch (err) {
-        console.error('Error loading dynamic options:', err);
-      }
-    };
-
-    loadDynamicOptions();
-  }, []);
-
-  // Configuration avec options dynamiques
-  const filterConfig = useMemo(() => {
-    if (!activeConfig) return [];
-
-    const dynamicOptions = {
-      createdBy: users,
-      category: categories,
-      supplier: suppliers,
-      position: [
-        { value: 'manager', label: 'Manager' },
-        { value: 'vendeur', label: 'Vendeur' },
-        { value: 'caissier', label: 'Caissier' },
-        { value: 'magasinier', label: 'Magasinier' },
-      ],
-    };
-
-    return populateDynamicOptions(activeConfig.config, dynamicOptions);
-  }, [activeConfig, users, categories, suppliers]);
-
-  // Charger les données
-  const loadData = useCallback(async (appliedFilters) => {
-    if (!activeConfig) return;
-
-    setLoading(true);
-    try {
-      const params = buildQueryParams(appliedFilters);
-      const response = await api.get(activeConfig.endpoint, { params });
-      setData(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeConfig]);
-
-  // Construire les query params
-  const buildQueryParams = (filters) => {
-    const params = {};
-
-    if (filters.search) params.search = filters.search;
-
-    if (filters.dateRange?.start) params.startDate = filters.dateRange.start;
-    if (filters.dateRange?.end) params.endDate = filters.dateRange.end;
-
-    if (filters.paymentStatus) params.paymentStatus = filters.paymentStatus;
-    if (filters.deliveryStatus) params.deliveryStatus = filters.deliveryStatus;
-    if (filters.category) params.category = filters.category;
-    if (filters.stockStatus) params.stockStatus = filters.stockStatus;
-    if (filters.type) params.type = filters.type;
-
-    if (filters.amountRange?.min) params.minAmount = filters.amountRange.min;
-    if (filters.amountRange?.max) params.maxAmount = filters.amountRange.max;
-
-    if (filters.priceRange?.min) params.minPrice = filters.priceRange.min;
-    if (filters.priceRange?.max) params.maxPrice = filters.priceRange.max;
-
-    if (filters.createdBy) params.createdBy = filters.createdBy;
-
-    if (filters.paymentMethod && Array.isArray(filters.paymentMethod)) {
-      params.paymentMethod = filters.paymentMethod.join(',');
-    }
-
-    return params;
-  };
-
-  // Gérer le changement de filtres
-  const handleFilterChange = (newFilters) => {
-    loadData(newFilters);
-  };
-
-  // Export Excel
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      data.map((item, index) => {
-        const baseData = {
-          '#': index + 1,
-          'ID': item._id || '',
-        };
-
-        switch (activeTab) {
-          case 'sales':
-            return {
-              ...baseData,
-              'Référence': item.reference || '',
-              'Date': new Date(item.createdAt).toLocaleDateString('fr-FR'),
-              'Client': item.client?.name || 'Client inconnu',
-              'Montant total': item.totalAmount || 0,
-              'Encaissé': item.amountPaid || 0,
-              'Reste': (item.totalAmount || 0) - (item.amountPaid || 0),
-              'Statut paiement': item.paymentStatus || '',
-            };
-          case 'products':
-            return {
-              ...baseData,
-              'Nom': item.name || '',
-              'Catégorie': item.category || '',
-              'Prix': item.price || 0,
-              'Stock': item.stock || 0,
-              'Fournisseur': item.supplierName || '',
-            };
-          case 'expenses':
-            return {
-              ...baseData,
-              'Description': item.description || '',
-              'Date': new Date(item.date).toLocaleDateString('fr-FR'),
-              'Montant': item.amount || 0,
-              'Catégorie': item.category || '',
-            };
-          case 'clients':
-            return {
-              ...baseData,
-              'Nom': item.name || '',
-              'Téléphone': item.phone || '',
-              'Total dépensé': item.totalSpent || 0,
-              'Achats': item.totalPurchases || 0,
-            };
-          case 'employees':
-            return {
-              ...baseData,
-              'Nom': item.name || '',
-              'Poste': item.position || '',
-              'Salaire': item.salary || 0,
-              'Date embauche': item.hireDate ? new Date(item.hireDate).toLocaleDateString('fr-FR') : '',
-            };
-          default:
-            return baseData;
-        }
-      })
-    );
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, activeConfig.title);
-
-    const fileName = `${activeTab}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  };
-
-  // Export PDF
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.text(`Rapport ${activeConfig.title}`, 14, 22);
-
-    doc.setFontSize(10);
-    doc.text(`Exporté le ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
-    doc.text(`${data.length} résultat${data.length > 1 ? 's' : ''}`, 14, 36);
-
-    let tableData = [];
-    let headers = [];
-
-    switch (activeTab) {
-      case 'sales':
-        headers = ['Référence', 'Date', 'Client', 'Montant', 'Encaissé', 'Reste'];
-        tableData = data.map(item => [
-          item.reference || '',
-          new Date(item.createdAt).toLocaleDateString('fr-FR'),
-          item.client?.name || 'Client inconnu',
-          (item.totalAmount || 0).toLocaleString('fr-FR') + ' CFA',
-          (item.amountPaid || 0).toLocaleString('fr-FR') + ' CFA',
-          ((item.totalAmount || 0) - (item.amountPaid || 0)).toLocaleString('fr-FR') + ' CFA',
-        ]);
-        break;
-      case 'products':
-        headers = ['Nom', 'Catégorie', 'Prix', 'Stock'];
-        tableData = data.map(item => [
-          item.name || '',
-          item.category || '',
-          (item.price || 0).toLocaleString('fr-FR') + ' CFA',
-          item.stock || 0,
-        ]);
-        break;
-      case 'expenses':
-        headers = ['Description', 'Date', 'Montant', 'Catégorie'];
-        tableData = data.map(item => [
-          item.description || '',
-          new Date(item.date).toLocaleDateString('fr-FR'),
-          (item.amount || 0).toLocaleString('fr-FR') + ' CFA',
-          item.category || '',
-        ]);
-        break;
-      default:
-        headers = ['Données'];
-        tableData = data.map((item, i) => [`Item ${i + 1}`]);
-    }
-
-    doc.autoTable({
-      head: [headers],
-      body: tableData,
-      startY: 42,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185] },
-    });
-
-    const fileName = `${activeTab}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-  };
-
-  // Export CSV
-  const exportToCSV = () => {
-    let headers = [];
-    let rows = [];
-
-    switch (activeTab) {
-      case 'sales':
-        headers = ['Référence', 'Date', 'Client', 'Montant Total', 'Encaissé', 'Reste', 'Statut'];
-        rows = data.map(item => [
-          item.reference || '',
-          new Date(item.createdAt).toLocaleDateString('fr-FR'),
-          item.client?.name || 'Client inconnu',
-          item.totalAmount || 0,
-          item.amountPaid || 0,
-          (item.totalAmount || 0) - (item.amountPaid || 0),
-          item.paymentStatus || '',
-        ]);
-        break;
-      case 'products':
-        headers = ['Nom', 'Catégorie', 'Prix', 'Stock', 'Fournisseur'];
-        rows = data.map(item => [
-          item.name || '',
-          item.category || '',
-          item.price || 0,
-          item.stock || 0,
-          item.supplierName || '',
-        ]);
-        break;
-      default:
-        headers = ['ID'];
-        rows = data.map(item => [item._id || '']);
-    }
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Gérer l'export
-  const handleExport = (format) => {
-    switch (format) {
-      case 'excel':
-        exportToExcel();
-        break;
-      case 'pdf':
-        exportToPDF();
-        break;
-      case 'csv':
-        exportToCSV();
-        break;
-      default:
-        console.error('Unknown export format:', format);
-    }
-  };
-
-  // Charger les données au montage et changement d'onglet
-  useEffect(() => {
-    setData([]);
-    loadData({});
-  }, [activeTab, loadData]);
-
-  return (
-    <Workspace>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/')}
-              className="ms-button ms-button-secondary ms-button-sm shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Retour</span>
-            </button>
-            <div className="flex items-center gap-3 min-w-0">
-              <span
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
-                style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}
-              >
-                <Sparkles className="h-6 w-6" />
-              </span>
-              <div className="min-w-0">
-                <h1 className="fui-title3 truncate" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                  Filtres Ultimes
-                </h1>
-                <p className="fui-caption1 hidden sm:block" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                  Filtrage avancé et export pour toutes vos données
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Info banner */}
-        <div
-          className="flex items-start gap-3 rounded-[var(--radiusLarge)] border p-3 sm:p-4"
-          style={{
-            background: 'var(--ms-blue-soft)',
-            borderColor: 'var(--colorBrandStroke1)',
-          }}
-        >
-          <Info className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--colorBrandForeground1)' }} />
-          <div className="min-w-0">
-            <p className="fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>
-              Système de filtres avancés
-            </p>
-            <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
-              Utilisez les filtres rapides pour une recherche immédiate, ou dépliez les filtres avancés pour affiner davantage.
-              Exportez vos résultats en Excel, PDF ou CSV en un clic.
-            </p>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="fluent-card-filled p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-5 w-5" style={{ color: 'var(--colorBrandForeground1)' }} />
-            <h2 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>
-              Sélectionnez une catégorie
-            </h2>
-          </div>
-
-          {/* Mobile: Scroll horizontal avec chips compacts */}
-          <div className="sm:hidden">
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {FILTER_PAGES.map((page) => {
-                const Icon = page.icon;
-                const isActive = activeTab === page.id;
-                return (
-                  <button
-                    key={page.id}
-                    onClick={() => setActiveTab(page.id)}
-                    className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 transition-all ${
-                      isActive
-                        ? 'border-[var(--ms-blue)] bg-[var(--ms-blue)] text-white'
-                        : 'border-[var(--colorNeutralStroke2)] hover:border-[var(--colorNeutralStroke1)] hover:bg-[var(--colorNeutralBackground2)]'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" style={{ color: isActive ? 'white' : page.color }} />
-                    <span className="fui-caption1-strong whitespace-nowrap">
-                      {page.title}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Tablet et Desktop: Grille */}
-          <div className="hidden sm:grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-            {FILTER_PAGES.map((page) => {
-              const Icon = page.icon;
-              const isActive = activeTab === page.id;
-              return (
-                <button
-                  key={page.id}
-                  onClick={() => setActiveTab(page.id)}
-                  className={`flex flex-col items-center gap-2 rounded-[var(--radiusLarge)] border p-4 transition-all ${
-                    isActive
-                      ? 'border-[var(--ms-blue)] bg-[var(--ms-blue-soft)]'
-                      : 'border-[var(--colorNeutralStroke2)] hover:border-[var(--colorNeutralStroke1)] hover:bg-[var(--colorNeutralBackground2)]'
-                  }`}
-                >
-                  <span
-                    className="flex h-10 w-10 items-center justify-center rounded-[var(--radiusMedium)]"
-                    style={{
-                      background: isActive ? 'var(--ms-blue)' : page.color + '20',
-                      color: isActive ? 'white' : page.color,
-                    }}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span
-                    className="fui-caption1-strong text-center"
-                    style={{ color: isActive ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground2)' }}
-                  >
-                    {page.title}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {activeConfig && (
-            <p className="mt-3 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-              {activeConfig.description}
-            </p>
-          )}
-        </div>
-
-        {/* Filters */}
-        {activeConfig && (
-          <AdvancedFilters
-            filterConfig={filterConfig}
-            onFilterChange={handleFilterChange}
-            onExport={handleExport}
-            initialFilters={{}}
-            showExport={true}
-            exportFormats={['excel', 'pdf', 'csv']}
-            loading={loading}
-            resultCount={data.length}
-          />
-        )}
-
-        {/* Results */}
-        <div className="fluent-card-filled p-3 sm:p-4">
-          <h3 className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>
-            Résultats ({data.length})
-          </h3>
-
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" style={{ color: 'var(--ms-blue)' }}></div>
-              <p className="mt-4 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                Chargement...
-              </p>
-            </div>
-          ) : data.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full"
-                style={{ background: 'var(--colorNeutralBackground3)' }}
-              >
-                <Package className="h-8 w-8" style={{ color: 'var(--colorNeutralForeground3)' }} />
-              </div>
-              <p className="mt-4 fui-body1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>
-                Aucun résultat trouvé
-              </p>
-              <p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                Essayez d'ajuster vos filtres
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="space-y-2">
-                {data.slice(0, 20).map((item, index) => (
-                  <div
-                    key={item._id || index}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 rounded-[var(--radiusMedium)] border p-3 hover:bg-[var(--colorNeutralBackground2)]"
-                    style={{ borderColor: 'var(--colorNeutralStroke2)' }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="fui-body1-strong truncate">
-                        {item.name || item.reference || item.description || item._id}
-                      </p>
-                      {(item.category || item.client?.name) && (
-                        <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                          {item.category || item.client?.name}
-                        </p>
-                      )}
-                      {/* Afficher info encaissement pour les ventes */}
-                      {activeTab === 'sales' && item.amountPaid !== undefined && (
-                        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                          Encaissé: <span style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
-                            {(item.amountPaid || 0).toLocaleString('fr-FR')} CFA
-                          </span>
-                          {item.totalAmount > item.amountPaid && (
-                            <span style={{ color: 'var(--colorStatusWarningForeground1)' }}>
-                              {' · Reste: '}{((item.totalAmount || 0) - (item.amountPaid || 0)).toLocaleString('fr-FR')} CFA
-                            </span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                    {(item.totalAmount || item.price || item.amount) && (
-                      <p className="fui-body1-strong tabular-nums sm:text-right" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
-                        {(item.totalAmount || item.price || item.amount || 0).toLocaleString('fr-FR')} CFA
-                      </p>
-                    )}
-                  </div>
-                ))}
-                {data.length > 20 && (
-                  <p className="fui-caption1 text-center pt-2 px-2" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    {data.length - 20} résultats supplémentaires non affichés (utilisez l'export pour tout voir)
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </Workspace>
-  );
+  const navigate = useNavigate(); const location = useLocation();
+  const initialState = useMemo(() => { const value = new URLSearchParams(location.search).get('state'); return value ? decodeState(value) : null; }, [location.search]);
+  const [activeTab, setActiveTab] = useState(initialState?.tab || 'sales');
+  const [filtersByTab, setFiltersByTab] = useState({ [initialState?.tab || 'sales']: initialState?.filters || {} });
+  const [viewRevision, setViewRevision] = useState(0); const [data, setData] = useState([]); const [meta, setMeta] = useState({}); const [loading, setLoading] = useState(false); const [loadError, setLoadError] = useState(null); const [lastUpdated, setLastUpdated] = useState(null);
+  const [users, setUsers] = useState([]); const [categories, setCategories] = useState([]); const [suppliers, setSuppliers] = useState([]); const [showSavedViews, setShowSavedViews] = useState(false);
+  const [savedViews, setSavedViews] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }); const requestId = useRef(0);
+  const activeConfig = FILTER_PAGES.find(page => page.id === activeTab) || FILTER_PAGES[0]; const activeFilters = useMemo(() => filtersByTab[activeTab] || {}, [filtersByTab, activeTab]); const presets = PRESETS[activeTab] || [];
+  useEffect(() => { let cancelled = false; Promise.all([platformApi.users(), catalogApi.list()]).then(([usersRes, productsRes]) => { if (cancelled) return; const usersData = usersRes?.data || []; const productsData = productsRes?.data || []; setUsers(usersData.map(user => ({ value: user._id, label: user.name }))); setCategories([...new Set(productsData.map(product => product.category).filter(Boolean))].map(value => ({ value, label: value }))); setSuppliers([...new Set(productsData.map(product => product.supplierName).filter(Boolean))].map(value => ({ value, label: value }))); }).catch(error => { if (!cancelled) console.error('Error loading filter options:', error); }); return () => { cancelled = true; }; }, []);
+  const filterConfig = useMemo(() => populateDynamicOptions(activeConfig.config, { createdBy: users, category: categories, supplier: suppliers, position: [{ value: 'manager', label: 'Manager' }, { value: 'vendeur', label: 'Vendeur' }, { value: 'caissier', label: 'Caissier' }, { value: 'magasinier', label: 'Magasinier' }] }), [activeConfig, users, categories, suppliers]);
+  const loadData = useCallback(async (tab, filters) => { const page = FILTER_PAGES.find(item => item.id === tab); if (!page) return; const currentRequest = ++requestId.current; setLoading(true); setLoadError(null); try { const response = await api.get(page.endpoint, { params: buildQueryParams(filters) }); if (currentRequest !== requestId.current) return; setData(readRows(response)); setMeta(readMeta(response)); setLastUpdated(new Date()); } catch (error) { if (currentRequest === requestId.current) setLoadError(error); } finally { if (currentRequest === requestId.current) setLoading(false); } }, []);
+  useEffect(() => { const timeout = window.setTimeout(() => loadData(activeTab, activeFilters), 300); return () => window.clearTimeout(timeout); }, [activeTab, activeFilters, loadData]);
+  const updateFilters = nextFilters => { setFiltersByTab(current => ({ ...current, [activeTab]: nextFilters })); window.history.replaceState({}, '', `${location.pathname}?state=${encodeState(activeTab, nextFilters)}`); };
+  const switchTab = tab => { setActiveTab(tab); const nextFilters = filtersByTab[tab] || {}; window.history.replaceState({}, '', `${location.pathname}?state=${encodeState(tab, nextFilters)}`); };
+  const applyPreset = preset => { updateFilters({ ...preset.filters }); setViewRevision(value => value + 1); toast.success(`Vue « ${preset.label} » appliquée`); }; const resetFilters = () => { updateFilters({}); setViewRevision(value => value + 1); };
+  const saveCurrentView = () => { const name = window.prompt('Nom de cette vue'); if (!name?.trim()) return; const view = { id: `${Date.now()}`, name: name.trim(), tab: activeTab, filters: activeFilters, createdAt: new Date().toISOString() }; const next = [view, ...savedViews].slice(0, 20); setSavedViews(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setShowSavedViews(true); toast.success('Vue enregistrée'); };
+  const deleteView = id => { const next = savedViews.filter(view => view.id !== id); setSavedViews(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); }; const applySavedView = view => { setActiveTab(view.tab); setFiltersByTab(current => ({ ...current, [view.tab]: view.filters })); setViewRevision(value => value + 1); setShowSavedViews(false); window.history.replaceState({}, '', `${location.pathname}?state=${encodeState(view.tab, view.filters)}`); };
+  const copyLink = async () => { try { await navigator.clipboard.writeText(window.location.href); toast.success('Lien copié'); } catch { toast.error('Impossible de copier le lien'); } };
+  const summary = useMemo(() => { const amountKey = activeTab === 'sales' ? 'totalAmount' : activeTab === 'expenses' ? 'amount' : activeTab === 'products' ? 'price' : null; return { count: data.length, total: amountKey ? data.reduce((sum, item) => sum + Number(item[amountKey] || 0), 0) : null }; }, [activeTab, data]);
+  const exportToExcel = () => { if (!data.length) return toast.error('Aucune donnée à exporter'); const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, activeConfig.title); XLSX.writeFile(workbook, `${activeTab}-${new Date().toISOString().slice(0, 10)}.xlsx`); };
+  const exportToCSV = () => { if (!data.length) return toast.error('Aucune donnée à exporter'); const keys = [...new Set(data.flatMap(row => Object.keys(row)))].filter(key => key !== '__v'); const csv = [keys.join(','), ...data.map(row => keys.map(key => `"${String(row[key] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n'); const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(link.href); };
+  const exportToPDF = () => { if (!data.length) return toast.error('Aucune donnée à exporter'); const doc = new jsPDF(); doc.setFontSize(16); doc.text(`Rapport ${activeConfig.title}`, 14, 18); const keys = Object.keys(data[0]).filter(key => !['_id', '__v'].includes(key)).slice(0, 6); doc.autoTable({ head: [keys], body: data.map(row => keys.map(key => String(row[key] ?? ''))), startY: 28, styles: { fontSize: 7 }, headStyles: { fillColor: [41, 128, 185] } }); doc.save(`${activeTab}-${new Date().toISOString().slice(0, 10)}.pdf`); }; const handleExport = format => ({ excel: exportToExcel, csv: exportToCSV, pdf: exportToPDF }[format]?.());
+  return <Workspace><div className="space-y-5 pb-8">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex items-start gap-3"><button onClick={() => navigate('/')} className="ms-button ms-button-secondary ms-button-sm shrink-0"><ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Retour</span></button><div><div className="flex items-center gap-2"><Sparkles className="h-5 w-5" style={{ color: 'var(--ms-blue)' }} /><h1 className="fui-title3">Espace d’analyse</h1></div><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Filtrez, enregistrez et partagez une vue exploitable de vos données.</p></div></div><div className="flex flex-wrap gap-2"><button onClick={copyLink} className="ms-button ms-button-secondary ms-button-sm"><Copy className="h-4 w-4" />Partager la vue</button><button onClick={saveCurrentView} className="ms-button ms-button-primary ms-button-sm"><Save className="h-4 w-4" />Enregistrer</button></div></div>
+    <div className="rounded-[var(--radiusLarge)] border p-4" style={{ background: 'var(--ms-blue-soft)', borderColor: 'var(--colorBrandStroke1)' }}><div className="flex items-start gap-3"><Info className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--colorBrandForeground1)' }} /><div><p className="fui-body1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>Commencez par une question métier</p><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>Choisissez un périmètre, appliquez un modèle, puis ouvrez le module concerné pour agir.</p></div></div></div>
+    <div className="fluent-card-filled p-3 sm:p-4"><div className="mb-3 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Filter className="h-5 w-5" style={{ color: 'var(--colorBrandForeground1)' }} /><h2 className="fui-subtitle2">Périmètre</h2></div><button onClick={() => setShowSavedViews(value => !value)} className="ms-button ms-button-secondary ms-button-sm"><Clock3 className="h-4 w-4" />Vues enregistrées ({savedViews.length})</button></div><div role="tablist" aria-label="Périmètre des données" className="flex gap-2 overflow-x-auto pb-1">{FILTER_PAGES.map(page => { const Icon = page.icon; const active = page.id === activeTab; return <button key={page.id} role="tab" aria-selected={active} onClick={() => switchTab(page.id)} className={`flex min-w-max items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition-colors ${active ? 'border-[var(--ms-blue)] bg-[var(--ms-blue)] text-white' : 'border-[var(--colorNeutralStroke2)] hover:bg-[var(--colorNeutralBackground2)]'}`}><Icon className="h-4 w-4" />{page.title}</button>; })}</div><div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{activeConfig.description}</p><button onClick={() => navigate(activeConfig.link)} className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--colorBrandForeground1)' }}>Ouvrir le module<ChevronRight className="h-4 w-4" /></button></div>{showSavedViews && <div className="mt-4 grid gap-2 border-t pt-3 sm:grid-cols-2 lg:grid-cols-3">{savedViews.length === 0 ? <p className="fui-caption1">Aucune vue enregistrée.</p> : savedViews.map(view => <div key={view.id} className="flex items-center justify-between gap-2 rounded-[var(--radiusMedium)] border p-2" style={{ borderColor: 'var(--colorNeutralStroke2)' }}><button onClick={() => applySavedView(view)} className="min-w-0 truncate text-left text-sm font-semibold">{view.name}<span className="ml-2 text-xs font-normal" style={{ color: 'var(--colorNeutralForeground3)' }}>{FILTER_PAGES.find(page => page.id === view.tab)?.title}</span></button><button aria-label={`Supprimer ${view.name}`} onClick={() => deleteView(view.id)} className="rounded p-1 hover:bg-[var(--colorNeutralBackground2)]"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</div>
+    <div className="flex flex-wrap items-center gap-2">{presets.map(preset => <button key={preset.id} onClick={() => applyPreset(preset)} className="ms-button ms-button-secondary ms-button-sm"><Check className="h-4 w-4" />{preset.label}</button>)}{filterCount(activeFilters) > 0 && <button onClick={resetFilters} className="ms-button ms-button-ghost ms-button-sm"><X className="h-4 w-4" />Effacer les filtres</button>}</div>
+    <AdvancedFilters key={`${activeTab}-${viewRevision}`} filterConfig={filterConfig} initialFilters={activeFilters} onFilterChange={updateFilters} onExport={handleExport} showExport exportFormats={['excel', 'pdf', 'csv']} loading={loading} resultCount={data.length} />
+    <div className="fluent-card-filled p-3 sm:p-4"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><h2 className="fui-subtitle2">Résultats</h2>{loading && <RefreshCw className="h-4 w-4 animate-spin" style={{ color: 'var(--ms-blue)' }} />}<span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>{summary.count.toLocaleString('fr-FR')}</span></div><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{lastUpdated ? `Actualisé à ${lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'En attente de chargement'}{meta.total ? ` · ${Number(meta.total).toLocaleString('fr-FR')} au total` : ''}</p></div>{summary.total !== null && <div className="text-left sm:text-right"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Valeur filtrée</p><p className="fui-body1-strong">{summary.total.toLocaleString('fr-FR')} CFA</p></div>}</div>{loadError && <SectionError title="Données non actualisées" error={loadError} onRetry={() => loadData(activeTab, activeFilters)} />}{!loadError && loading && data.length === 0 && <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin" style={{ color: 'var(--ms-blue)' }} /><span className="ml-3 fui-caption1">Chargement de {activeConfig.title.toLowerCase()}…</span></div>}{!loading && !loadError && data.length === 0 && <div className="flex flex-col items-center justify-center py-12 text-center"><AlertCircle className="h-10 w-10" style={{ color: 'var(--colorNeutralForeground3)' }} /><p className="mt-3 fui-body1-strong">Aucun résultat dans ce périmètre</p><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Essayez un modèle rapide ou retirez un filtre.</p></div>}{data.length > 0 && <div className="space-y-2">{data.slice(0, 30).map((item, index) => <div key={item._id || index} className="flex flex-col gap-2 rounded-[var(--radiusMedium)] border p-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--colorNeutralStroke2)' }}><div className="min-w-0"><p className="fui-body1-strong truncate">{item.name || item.reference || item.description || item.title || item._id || `Élément ${index + 1}`}</p><p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{item.category || item.client?.name || item.status || item.type || ''}</p></div>{(item.totalAmount || item.price || item.amount) !== undefined && <p className="fui-body1-strong tabular-nums sm:text-right">{Number(item.totalAmount || item.price || item.amount || 0).toLocaleString('fr-FR')} CFA</p>}</div>)}</div>}{data.length > 30 && <p className="mt-3 text-center fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>30 résultats affichés sur {data.length}. Utilisez l’export pour récupérer l’ensemble.</p>}</div>
+  </div></Workspace>;
 };
-
 export default UltimateFiltersPage;

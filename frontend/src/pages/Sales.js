@@ -8,7 +8,7 @@ import React, {
   Suspense,
   useRef,
 } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useNavigationType } from "react-router-dom";
 import {
   AlertTriangle,
   Award,
@@ -61,6 +61,10 @@ import {
   parseDateSafely,
 } from "../utils/saleUtils";
 import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
+import useSalesListMemory from "./sales-shared/useSalesListMemory";
+import SalesSearchToolbar from "./sales-shared/SalesSearchToolbar";
+import { matchesSaleSearch, readSalesSearch, buildSalesReturnSearch, EMPTY_QUICK_FILTERS } from "./sales-shared/salesSearch";
+import { STATUS_OPTIONS, DELIVERY_OPTIONS_ARCHIVE } from "./sales-shared/constants";
 import AppLoader from "../components/AppLoader";
 import {
   Button,
@@ -84,31 +88,6 @@ const ProformaHistory = lazy(() => import("../components/ProformaHistory"));
 /* ===============================
    Utilitaires
    =============================== */
-const getTodayFilterValue = () => new Date().toLocaleDateString("fr-CA");
-
-const buildSalesReturnSearch = ({
-  statusFilter,
-  clientFilter,
-  saleTypeFilter,
-  paymentStructureFilter,
-  dateFilter,
-  deliveryFilter,
-  containerFilter,
-  sellerFilter,
-}) => {
-  const params = new URLSearchParams();
-  if (statusFilter) params.set("status", statusFilter);
-  if (clientFilter) params.set("client", clientFilter);
-  if (saleTypeFilter) params.set("saleType", saleTypeFilter);
-  if (paymentStructureFilter) params.set("paymentStructure", paymentStructureFilter);
-  if (dateFilter) params.set("date", dateFilter);
-  if (deliveryFilter) params.set("delivery", deliveryFilter);
-  if (containerFilter) params.set("container", containerFilter);
-  if (sellerFilter) params.set("seller", sellerFilter);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-};
-
 const normalizeCollection = (value, nestedKeys = []) => {
   if (Array.isArray(value)) return value;
   for (const key of nestedKeys) {
@@ -1085,6 +1064,7 @@ const calculateAdvancedKPIs = (salesData, clientsData) => {
 const Sales = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const { openModal } = useModal();
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
@@ -1102,7 +1082,8 @@ const Sales = () => {
   const [clientFilter, setClientFilter] = useState("");
   const [saleTypeFilter, setSaleTypeFilter] = useState("");
   const [paymentStructureFilter, setPaymentStructureFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState(() => getTodayFilterValue());
+  const [dateFilter, setDateFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [containerFilter, setContainerFilter] = useState("");
   const [sellerFilter, setSellerFilter] = useState("");
@@ -1175,28 +1156,29 @@ const Sales = () => {
     highProfit: false,
   });
 
+  const currentListSearch = buildSalesReturnSearch({ searchTerm, statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters });
+  const { restored: restoredList, remember: rememberSalePosition } = useSalesListMemory({
+    auth, location, navigationType, search: currentListSearch, ready: !loading && !error,
+  });
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.has("status")) {
-      setStatusFilter(params.get("status") || "");
-    }
-    if (params.has("client")) {
-      setClientFilter(params.get("client") || "");
-    }
-    setSaleTypeFilter(params.get("saleType") || "");
-    setPaymentStructureFilter(params.get("paymentStructure") || "");
-    if (params.has("date")) {
-      setDateFilter(params.get("date") || "");
-    }
-    if (params.has("delivery")) {
-      setDeliveryFilter(params.get("delivery") || "");
-    }
-    if (params.has("container")) {
-      setContainerFilter(params.get("container") || "");
-    }
-    setSellerFilter(params.get("seller") || "");
+    const filters = readSalesSearch(restoredList?.search || location.search);
+    setStatusFilter(filters.statusFilter);
+    setClientFilter(filters.clientFilter);
+    setSaleTypeFilter(filters.saleTypeFilter);
+    setPaymentStructureFilter(filters.paymentStructureFilter);
+    setDateFilter(filters.dateFilter);
+    setDeliveryFilter(filters.deliveryFilter);
+    setContainerFilter(filters.containerFilter);
+    setSellerFilter(filters.sellerFilter);
+    setSearchTerm(filters.searchTerm);
+    setQuickFilters(filters.quickFilters);
+    const params = new URLSearchParams(restoredList?.search || location.search);
     setPrefillProductId(params.get("addProduct") || "");
-  }, [location.search]);
+    if (params.get("workspace") === "history" || Object.values(filters).some(value => typeof value === "string" && value) || Object.values(filters.quickFilters).some(Boolean)) {
+      setMobilePanel("history");
+    }
+  }, [location.search, restoredList]);
 
   // Scroll vers le formulaire de vente quand on arrive avec #sale-form (menu "Enregistrer une vente")
   useEffect(() => {
@@ -1355,6 +1337,19 @@ const Sales = () => {
     []
   );
 
+  const retrySalesLoad = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const [, , salesData] = await Promise.all([fetchClients(), fetchProducts(), fetchSales(), fetchContainers()]);
+      await hydrateDeliveryStats(salesData);
+    } catch {
+      setError("Erreur de chargement des données");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const initialBootstrapDone = useRef(false);
 
   // Premier chargement : ventes, clients, produits, stats, dashboard (une seule fois)
@@ -1443,10 +1438,15 @@ const Sales = () => {
 
     window.addEventListener("saleCreated", refreshAfterGlobalMutation);
     window.addEventListener("paymentCreated", refreshAfterGlobalMutation);
+    const refreshChangedResource = (event) => {
+      if (['sales', 'products', 'clients'].includes(event.detail?.resource)) refreshAfterGlobalMutation();
+    };
+    window.addEventListener("app:data-changed", refreshChangedResource);
 
     return () => {
       window.removeEventListener("saleCreated", refreshAfterGlobalMutation);
       window.removeEventListener("paymentCreated", refreshAfterGlobalMutation);
+      window.removeEventListener("app:data-changed", refreshChangedResource);
     };
   }, [
     dateFilter,
@@ -1506,7 +1506,7 @@ const Sales = () => {
       const containerMatch =
         !containerFilter ||
         (sale.products || []).some((p) => p.product?.container === containerFilter);
-      return statusMatch && clientMatch && sellerMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
+      return matchesSaleSearch(sale, searchTerm) && statusMatch && clientMatch && sellerMatch && saleTypeMatch && paymentStructureMatch && dateMatch && deliveryMatch && containerMatch;
     });
 
     let out = [...base];
@@ -1527,7 +1527,7 @@ const Sales = () => {
     }
     if (quickFilters.highProfit) out = out.filter((s) => (s.computedProfit || 0) > 10000);
     return out;
-  }, [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
+  }, [searchTerm, statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter, quickFilters]);
 
   const filteredSales = useMemo(
     () => applySalesFilters(salesWithProfit, { includeDate: true }),
@@ -1642,11 +1642,13 @@ const Sales = () => {
     };
   }, [clients, products]);
 
-  const hasActiveFilters = Boolean(statusFilter || clientFilter || sellerFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
+  const hasActiveFilters = Boolean(searchTerm || Object.values(quickFilters).some(Boolean) || statusFilter || clientFilter || sellerFilter || saleTypeFilter || paymentStructureFilter || dateFilter || deliveryFilter || containerFilter);
 
   const salesReturnSearch = useMemo(
     () =>
       buildSalesReturnSearch({
+        searchTerm,
+        quickFilters,
         statusFilter,
         clientFilter,
         sellerFilter,
@@ -1656,10 +1658,34 @@ const Sales = () => {
         deliveryFilter,
         containerFilter,
       }),
-    [statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]
+    [searchTerm, quickFilters, statusFilter, clientFilter, sellerFilter, saleTypeFilter, paymentStructureFilter, dateFilter, deliveryFilter, containerFilter]
   );
-  const salesReturnPath = `/sales${salesReturnSearch}`;
+  const salesReturnPath = "/sales" + salesReturnSearch + "&resume=" + encodeURIComponent(location.key);
   const saleLinkState = useMemo(() => ({ returnToSales: salesReturnPath }), [salesReturnPath]);
+
+  const resetSalesFilters = () => {
+    setSearchTerm(""); setStatusFilter(""); setClientFilter(""); setSellerFilter("");
+    setSaleTypeFilter(""); setPaymentStructureFilter(""); setDateFilter("");
+    setDeliveryFilter(""); setContainerFilter(""); setQuickFilters({ ...EMPTY_QUICK_FILTERS });
+  };
+  const activeSalesFilters = [
+    ["status", statusFilter, "Statut : " + (STATUS_OPTIONS.find(option => option.value === statusFilter)?.label || statusFilter), setStatusFilter],
+    ["client", clientFilter, "Client : " + (clients.find(client => client._id === clientFilter)?.name || clientFilter), setClientFilter],
+    ["seller", sellerFilter, "Vendeur : " + (sellers.find(seller => seller._id === sellerFilter)?.name || sellerFilter), setSellerFilter],
+    ["date", dateFilter, "Date : " + dateFilter, setDateFilter],
+    ["delivery", deliveryFilter, "Livraison : " + (DELIVERY_OPTIONS_ARCHIVE.find(option => option.value === deliveryFilter)?.label || deliveryFilter), setDeliveryFilter],
+    ["container", containerFilter, "Conteneur : " + containerFilter, setContainerFilter],
+    ["type", saleTypeFilter, saleTypeFilter === "wholesale" ? "Vente en gros" : "Vente normale", setSaleTypeFilter],
+    ["payment", paymentStructureFilter, { multiple_payments: "Paiements multiples", full_payment: "Paiement complet", pending_payment: "Paiement en attente" }[paymentStructureFilter] || paymentStructureFilter, setPaymentStructureFilter],
+  ].filter(([, value]) => value).map(([key, , label, setter]) => ({ key, label, onRemove: () => setter("") }));
+  const quickLabels = { highValue: "Montant élevé", latePayments: "Solde restant", recurring: "Clients récurrents", highProfit: "Bénéfice élevé" };
+  Object.entries(quickFilters).forEach(([key, enabled]) => {
+    if (enabled) activeSalesFilters.push({ key, label: quickLabels[key], onRemove: () => setQuickFilters(current => ({ ...current, [key]: false })) });
+  });
+  const searchToolbar = <SalesSearchToolbar value={searchTerm} onChange={setSearchTerm} filters={activeSalesFilters} onReset={resetSalesFilters} count={filteredSales.length} />;
+  const noSalesState = <EmptyState title={hasActiveFilters ? "Aucune vente ne correspond" : "Aucune vente enregistrée"}
+    description={hasActiveFilters ? "Vérifiez la référence, le nom ou le téléphone, ou retirez les filtres pour élargir la recherche." : "Enregistrez une première vente pour commencer le suivi."}
+    action={hasActiveFilters ? <button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={resetSalesFilters}>Effacer la recherche et les filtres</button> : undefined} />;
 
   const historyLinkLabel = hasActiveFilters ? "Ouvrir ces filtres" : "Voir toutes les ventes";
 
@@ -1680,21 +1706,29 @@ const Sales = () => {
   };
 
   const handleSubmitSale = async (saleData) => {
+    let data;
     try {
       setMessage("");
-      const { data } = await salesApi.create(saleData);
-      const nextSale = enrichSaleForState(data);
-      const updatedSales = [nextSale, ...sales].sort(
-        (a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime()
-      );
-      setSales(updatedSales);
-      setMessage("Vente enregistrée avec succès !");
-      toast.success("Vente enregistrée avec succès !");
-      await hydrateDeliveryStats(updatedSales);
-      if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
+      ({ data } = await salesApi.create(saleData));
     } catch (e) {
       setMessage("Erreur: " + (e.response?.data?.message || e.message));
+      throw e;
     }
+
+    const nextSale = enrichSaleForState(data);
+    const updatedSales = [nextSale, ...sales].sort(
+      (a, b) => new Date(b?.saleDate || 0).getTime() - new Date(a?.saleDate || 0).getTime()
+    );
+    setSales(updatedSales);
+    setMessage("Vente enregistrée avec succès !");
+    toast.success("Vente enregistrée avec succès !");
+    try {
+      await hydrateDeliveryStats(updatedSales);
+      if (isAdmin) await fetchDashboardData(timeRange, dateFilter, { showLoading: false });
+    } catch {
+      setMessage("Vente enregistrée. Certaines données n’ont pas pu être actualisées.");
+    }
+    return nextSale;
   };
 
   const handleAddPayment = async (paymentData) => {
@@ -2082,7 +2116,7 @@ const Sales = () => {
     return (
       <Workspace>
         <PageHeader eyebrow="Ventes" title="Gestion des ventes" description="Une erreur est survenue." />
-        <EmptyState title="Impossible de charger les ventes" description={error} />
+        <EmptyState title="Impossible de charger les ventes" description={error} action={<button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={retrySalesLoad}>Réessayer</button>} />
       </Workspace>
     );
   }
@@ -2155,6 +2189,7 @@ const Sales = () => {
                   </div>
                 </div>
 
+                {searchToolbar}
                 {/* Filtres — collapsible on mobile, always visible on sm+ */}
                 <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 overflow-hidden mb-5">
                   <button
@@ -2200,17 +2235,7 @@ const Sales = () => {
                         onDateChange={setDateFilter}
                         onDeliveryChange={setDeliveryFilter}
                         onContainerChange={setContainerFilter}
-                        onReset={() => {
-                          setStatusFilter("");
-                          setClientFilter("");
-                          setSellerFilter("");
-                          setSaleTypeFilter("");
-                          setPaymentStructureFilter("");
-                          setDateFilter("");
-                          setDeliveryFilter("");
-                          setContainerFilter("");
-                          setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
-                        }}
+                        onReset={resetSalesFilters}
                         variant="main"
                       />
                     </div>
@@ -2230,7 +2255,7 @@ const Sales = () => {
 
                 <div className="space-y-4">
                   {filteredSales.length === 0 ? (
-                    <EmptyState title="Aucune vente trouvée" description="Ajustez les filtres ou créez une nouvelle vente." />
+                    noSalesState
                   ) : (
                     filteredSales.map((sale) => {
                       const { totalPaid, balance } = calculateSaleTotals(sale);
@@ -2248,6 +2273,7 @@ const Sales = () => {
                           desktopLinkProps={desktopLinkProps}
                           linkState={saleLinkState}
                           returnTo={salesReturnPath}
+                          onOpen={rememberSalePosition}
                           actions={
                             <>
                               {sale.status !== "completed" && sale.status !== "cancelled" && (
@@ -2990,6 +3016,7 @@ const Sales = () => {
                   </header>
 
                   {/* Filtres — collapsible on mobile, always visible on sm+ */}
+                  {searchToolbar}
                   <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 overflow-hidden mb-5">
                     <button
                       type="button"
@@ -3034,17 +3061,7 @@ const Sales = () => {
                           onDateChange={setDateFilter}
                           onDeliveryChange={setDeliveryFilter}
                           onContainerChange={setContainerFilter}
-                          onReset={() => {
-                            setStatusFilter("");
-                            setClientFilter("");
-                            setSellerFilter("");
-                            setSaleTypeFilter("");
-                            setPaymentStructureFilter("");
-                            setDateFilter("");
-                            setDeliveryFilter("");
-                            setContainerFilter("");
-                            setQuickFilters({ highValue: false, latePayments: false, recurring: false, highProfit: false });
-                          }}
+                          onReset={resetSalesFilters}
                           variant="archive"
                         />
                       </div>
@@ -3067,9 +3084,7 @@ const Sales = () => {
                   {/* Liste des ventes — une carte par ligne (mobile et desktop) */}
                   <div className="grid grid-cols-1 gap-4">
                     {filteredSales.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
-                        Aucune vente trouvée
-                      </div>
+                      noSalesState
                     ) : (
                       filteredSales.map((sale) => {
                         const { totalPaid, balance } = calculateSaleTotals(sale);
@@ -3096,6 +3111,7 @@ const Sales = () => {
                             desktopLinkProps={desktopLinkProps}
                             linkState={saleLinkState}
                             returnTo={salesReturnPath}
+                            onOpen={rememberSalePosition}
                             actions={
                               <>
                                 {sale.status === "completed" && (
@@ -3431,10 +3447,9 @@ const Sales = () => {
                     </button>
                   </div>
                   <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                    {searchToolbar}
                     {filteredSales.length === 0 ? (
-                      <div className="text-center py-8 text-[var(--ms-text-muted)]">
-                        Aucune vente trouvée avec ces filtres.
-                      </div>
+                      noSalesState
                     ) : (
                       <div className="space-y-3">
                         {filteredSales.map((sale) => {
@@ -3453,6 +3468,7 @@ const Sales = () => {
                               desktopLinkProps={desktopLinkProps}
                               linkState={saleLinkState}
                               returnTo={salesReturnPath}
+                            onOpen={rememberSalePosition}
                             />
                           );
                         })}

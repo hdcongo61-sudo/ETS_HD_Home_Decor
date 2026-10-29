@@ -166,6 +166,7 @@ body {
   font-family: "Segoe UI", Inter, system-ui, sans-serif;
   line-height: 1.47;
   letter-spacing: 0;
+  overflow-x: hidden;
   /* Safe area for notched devices (iOS/Android PWA) */
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
@@ -301,7 +302,9 @@ body {
 
 /* Main content when bottom tab bar is visible (mobile): reserve space + safe area */
 .main-with-tab-bar {
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  /* AppLayout already reserves the bottom tab bar through
+     --page-bottom-pad. Avoid stacking a second mobile spacer here. */
+  padding-bottom: 0;
 }
 
 .footer-mobile-tab-clearance {

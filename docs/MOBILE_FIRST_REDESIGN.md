@@ -1,7 +1,28 @@
 # Mobile-First Redesign - Tenant Interface
 
 **Date:** 2026-08-24  
-**Status:** Completed for SuperAdmin, Products page updated
+**Historical status (2026-08-24):** Layout updates reported; current workflow audit and validation pending
+
+## Review update — 2026-10-25
+
+This document is a historical layout-change record from August 24, 2026. Its completion labels are not evidence that end-to-end workflows, accessibility, contrast or real-device behavior have been verified. The current source already includes mobile employee cards and additional sales/catalogue/inventory recovery improvements.
+
+Use [Major-page UX audit and redesign specification](UX_MAJOR_PAGES_AUDIT.md) for current priorities, role-based workflows, page specifications, error handling and implementation acceptance criteria. The review recommends sale draft/task-completion safety and count input isolation before broad visual changes. Runtime and real-device validation remain pending.
+
+The performance and accessibility assertions later in this historical document are unverified. CSS-hidden mobile/desktop trees can both mount; card layouts are not inherently faster. The documented 44px size is a project target, not proof of accessibility conformance.
+
+## Shared mobile refresh — implemented 2026-10-25
+
+The shared Navigation header now includes a 44px Actualiser icon button below 768px across authenticated pages using that shell, including nested/detail routes. It reloads the current URL, so each page runs its existing data-loading logic. It is a full page reload, not pull-to-refresh or a background data refresh.
+
+- Offline taps keep the page in place and explain that reconnection is needed.
+- Edited input/select/textarea/contenteditable fields require confirmation before reload; this includes inline stock-count inputs. Tracking is conservative and may also warn after filter edits or saved forms until navigation.
+- Shared Axios POST/PUT/PATCH/DELETE requests disable refresh until completion. A save starting while confirmation is open also cancels refresh. Request tracking does not cover writes made outside the shared API client.
+- Repeated refresh taps are locked. Loading state, accessible label and failure feedback are provided.
+- Existing fullscreen forms continue owning the mobile screen: the global header and its refresh button remain hidden there. Close the form to return to the shared refresh control. Public pages without the authenticated shell are outside this control's scope.
+- The control does not erase offline caches, authentication or saved drafts. Unsaved page-local filters/scroll may reset on full reload; URL-backed filters remain in the URL. Offline fallback may still return cached data if the connection fails during reload.
+
+Source: MobileRefreshButton.js, requestActivity.js, Navigation.js and services/api.js. Automated tests cover repeated taps, offline recovery, edit confirmation/cancellation, active writes, confirmation/save races and refresh failure. Real-device header fit at 320px/390px and mobile browser reload behavior remain to be checked.
 
 ## Overview
 

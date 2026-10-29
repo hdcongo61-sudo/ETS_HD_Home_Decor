@@ -2,6 +2,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { buildCacheKey, writeCache, readCache, clearCache, clearUserCache } from '../utils/offlineCache';
 import { ACTIVE_LOCATION_STORAGE_KEY } from '../context/LocationContext';
+import { normalizeApiError } from '../utils/errorModel';
+import { startRequest, finishRequest } from '../utils/requestActivity';
 
 let lastFeatureToastAt = 0;
 
@@ -80,6 +82,10 @@ const api = axios.create({
 
 // Intercepteur pour ajouter le token à chaque requête
 api.interceptors.request.use((config) => {
+  const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  config.headers['X-Request-Id'] = requestId;
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -90,12 +96,13 @@ api.interceptors.request.use((config) => {
   if (activeLocationId) {
     config.headers['X-Location-Id'] = activeLocationId;
   }
+  startRequest(config);
   return config;
 });
 
 // Intercepteur réponse : sur 401 (token expiré ou invalide), supprimer le token et rediriger vers login
 api.interceptors.response.use(
-  (response) => {
+  async (response) => {
     if (isLocalDev && !explicitApiUrl) {
       const responseBaseUrl = response?.config?.baseURL || api.defaults.baseURL;
       if (responseBaseUrl) {
@@ -105,16 +112,36 @@ api.interceptors.response.use(
     }
     // Cache successful GETs so they can be served offline (read-only).
     const cfg = response?.config || {};
-    if ((cfg.method || 'get').toLowerCase() === 'get' && response?.data != null && !cfg.__noOfflineCache) {
+    const method = (cfg.method || 'get').toLowerCase();
+    if (!['get', 'head', 'options'].includes(method)) {
+      // A successful mutation makes cached list/detail responses stale. Clear
+      // this account's offline snapshot so a later network failure cannot
+      // resurrect pre-save data, then notify mounted data providers.
+      const userId = localStorage.getItem('userId');
+      const tenantId = localStorage.getItem('tenantId');
+      if (userId && tenantId) await clearUserCache(userId, tenantId);
+      else await clearCache();
+
+      if (typeof window !== 'undefined') {
+        const url = String(cfg.url || '').replace(/^\/+/, '');
+        const resource = url.split(/[/?]/)[0] || 'app';
+        window.dispatchEvent(new CustomEvent('app:data-changed', {
+          detail: { resource, method, url },
+        }));
+      }
+    }
+    if (method === 'get' && response?.data != null && !cfg.__noOfflineCache) {
       const userId = localStorage.getItem('userId');
       const tenantId = localStorage.getItem('tenantId');
       let activeLocationId = null;
       try { activeLocationId = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY); } catch {}
       writeCache(buildCacheKey(cfg, userId, tenantId, activeLocationId), response.data);
     }
+    finishRequest(cfg);
     return response;
   },
   async (error) => {
+    finishRequest(error?.config || error?.response?.config);
     if (isRetriableDevFallback(error)) {
       const currentBaseUrl = error.config.baseURL || api.defaults.baseURL;
       const nextTried = [...(error.config.__devPortTried || []), currentBaseUrl];
@@ -138,6 +165,10 @@ api.interceptors.response.use(
         toast.error(error.response.data?.message || "Fonctionnalité non incluse dans votre forfait.");
       }
     }
+
+    // Keep a stable, user-facing error contract available to every caller.
+    // Existing screens can migrate incrementally from response.data.message.
+    error.normalized = normalizeApiError(error);
 
     if (error.response && error.response.status === 401) {
       const userId = localStorage.getItem('userId');

@@ -1,4 +1,5 @@
 const Product = require('../models/productModel');
+const { validateStockRemoval } = require('../utils/stockRemovalValidation');
 const ProductVariant = require('../models/productVariantModel');
 const Sale = require('../models/saleModel');
 const StockMovement = require('../models/stockMovementModel');
@@ -1369,11 +1370,9 @@ res.json({
 const createStockMovement = async (req, res) => {
   try {
     const { productId, quantity, reason, note } = req.body;
-    const qty = Math.floor(Number(quantity));
-
-    if (!productId) return res.status(400).json({ message: 'Produit manquant.' });
-    if (!Number.isFinite(qty) || qty < 1) return res.status(400).json({ message: 'Quantité invalide.' });
-    if (!STOCK_MOVEMENT_REASONS.includes(reason)) return res.status(400).json({ message: 'Motif invalide.' });
+    const validation = validateStockRemoval({ productId, quantity, reason, note });
+    if (validation) return res.status(400).json(validation);
+    const qty = Number(quantity);
 
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: 'Produit introuvable.' });

@@ -10,8 +10,11 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import 'chart.js/auto';
 import { productEditPath, productPath } from '../utils/paths';
+import { getStockStatus } from '../utils/stockStatus';
 import AuthContext from '../context/AuthContext';
 import Modal from '../components/Modal';
+import StockRemovalDialog, { STOCK_REMOVAL_REASONS } from '../components/stock/StockRemovalDialog';
+import SectionError from '../components/SectionError';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { EmptyState, LoadingSkeleton, Workspace } from '../components/business';
 import {
@@ -44,16 +47,7 @@ import {
 } from 'lucide-react';
 
 /* ─── utilities ─── */
-const LOSS_REASONS = [
-  { value: 'casse', label: 'Casse / abîmé' },
-  { value: 'cadeau', label: 'Cadeau / échantillon' },
-  { value: 'vol', label: 'Vol' },
-  { value: 'peremption', label: 'Péremption' },
-  { value: 'usage_personnel', label: 'Usage personnel' },
-  { value: 'correction', label: 'Correction de stock' },
-  { value: 'autre', label: 'Autre' },
-];
-const lossReasonLabel = (r) => (LOSS_REASONS.find((x) => x.value === r)?.label || r);
+const lossReasonLabel = (r) => (STOCK_REMOVAL_REASONS.find((x) => x.value === r)?.label || r);
 
 const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (v) =>
@@ -101,6 +95,11 @@ const ProductDetails = () => {
   const [stats, setStats] = useState(buildStatsSkeleton());
   const [weekStats, setWeekStats] = useState(buildStatsSkeleton());
   const [loading, setLoading] = useState(true);
+  const [productLoadError, setProductLoadError] = useState(null);
+  const [productLoadAttempt, setProductLoadAttempt] = useState(0);
+  const [statsError, setStatsError] = useState(null);
+  const [statsAttempt, setStatsAttempt] = useState(0);
+  const [historyAttempt, setHistoryAttempt] = useState(0);
   const [gallery, setGallery] = useState([]); // distinct images across same-name duplicates
   const [activeImage, setActiveImage] = useState('');
   const [imageZoom, setImageZoom] = useState(false);
@@ -122,21 +121,21 @@ const ProductDetails = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   // Pertes & cadeaux (sorties de stock hors vente)
   const [lossModalOpen, setLossModalOpen] = useState(false);
-  const [lossForm, setLossForm] = useState({ reason: 'casse', quantity: '1', note: '' });
-  const [lossSubmitting, setLossSubmitting] = useState(false);
   const [lossMovements, setLossMovements] = useState([]);
   const [lossLoading, setLossLoading] = useState(false);
+  const [lossError, setLossError] = useState(null);
   const qrCodeRef = useRef();
   const pageRef = useRef();
 
   const fetchLossMovements = useCallback(async () => {
     if (!id) return;
     setLossLoading(true);
+    setLossError(null);
     try {
       const { data } = await catalogApi.stockMovements({ product: id });
       setLossMovements(data.movements || []);
-    } catch {
-      setLossMovements([]);
+    } catch (error) {
+      setLossError(error);
     } finally {
       setLossLoading(false);
     }
@@ -145,6 +144,8 @@ const ProductDetails = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setProductLoadError(null);
+      setProduct(null);
       try {
         const res = await catalogApi.get(id);
         setProduct(res.data);
@@ -158,16 +159,31 @@ const ProductDetails = () => {
           setGallery([]);
           setActiveImage(res.data.image || '');
         }
-        const statsRes = await catalogApi.stats(id, 'month');
-        setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
-        const weekStatsRes = await catalogApi.stats(id, 'week');
-        setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
       } catch (err) {
         console.error('Error loading product details:', err);
+        setProductLoadError(err);
       } finally {
         setLoading(false);
       }
     };
+    load();
+  }, [id, productLoadAttempt]);
+
+  useEffect(() => {
+    if (!product) return undefined;
+    let active = true;
+    const loadStats = async () => {
+      const [monthResult, weekResult] = await Promise.allSettled([catalogApi.stats(id, 'month'), catalogApi.stats(id, 'week')]);
+      if (!active) return;
+      if (monthResult.status === 'fulfilled') setStats({ ...buildStatsSkeleton(product), ...monthResult.value.data });
+      if (weekResult.status === 'fulfilled') setWeekStats({ ...buildStatsSkeleton(product), ...weekResult.value.data });
+      setStatsError(monthResult.status === 'rejected' || weekResult.status === 'rejected' ? (monthResult.reason || weekResult.reason) : null);
+    };
+    loadStats();
+    return () => { active = false; };
+  }, [id, product, statsAttempt]);
+
+  useEffect(() => {
     const loadHistory = async () => {
       setSalesHistoryLoading(true);
       setSalesHistoryError('');
@@ -181,42 +197,31 @@ const ProductDetails = () => {
         setSalesHistoryLoading(false);
       }
     };
-    load();
     loadHistory();
-  }, [id]);
+  }, [id, historyAttempt]);
 
   // Refresh product + stats after a stock movement (stock/profit change).
   const refreshProductAndStats = useCallback(async () => {
     try {
       const res = await catalogApi.get(id);
       setProduct(res.data);
-      const statsRes = await catalogApi.stats(id, 'month');
-      setStats({ ...buildStatsSkeleton(res.data), ...statsRes.data });
-      const weekStatsRes = await catalogApi.stats(id, 'week');
-      setWeekStats({ ...buildStatsSkeleton(res.data), ...weekStatsRes.data });
-    } catch { /* ignore */ }
+      const [monthResult, weekResult] = await Promise.allSettled([catalogApi.stats(id, 'month'), catalogApi.stats(id, 'week')]);
+      if (monthResult.status === 'fulfilled') setStats({ ...buildStatsSkeleton(res.data), ...monthResult.value.data });
+      if (weekResult.status === 'fulfilled') setWeekStats({ ...buildStatsSkeleton(res.data), ...weekResult.value.data });
+      setStatsError(monthResult.status === 'rejected' || weekResult.status === 'rejected' ? (monthResult.reason || weekResult.reason) : null);
+    } catch (error) { setProductLoadError(error); }
   }, [id]);
 
   useEffect(() => { if (isAdmin) fetchLossMovements(); }, [isAdmin, fetchLossMovements]);
 
-  const submitLoss = async (e) => {
-    e.preventDefault();
-    const qty = parseInt(lossForm.quantity, 10);
-    if (!qty || qty <= 0) { toast.error('Quantité invalide.'); return; }
-    setLossSubmitting(true);
-    try {
-      await catalogApi.addStockMovement({
-        productId: id, quantity: qty, reason: lossForm.reason, note: lossForm.note.trim(),
-      });
-      toast.success('Sortie de stock enregistrée.');
-      setLossModalOpen(false);
-      setLossForm({ reason: 'casse', quantity: '1', note: '' });
-      await Promise.all([fetchLossMovements(), refreshProductAndStats()]);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement.");
-    } finally {
-      setLossSubmitting(false);
-    }
+  const handleStockRemoved = ({ product: updatedProduct }) => {
+    setLossModalOpen(false);
+    if (updatedProduct && Number.isFinite(Number(updatedProduct.stock))) {
+      setProduct(previous => ({ ...previous, stock: updatedProduct.stock }));
+      toast.success('Sortie enregistrée. Stock restant : ' + Number(updatedProduct.stock).toLocaleString('fr-FR') + ' u.');
+    } else toast.success('Sortie de stock enregistrée.');
+    Promise.all([fetchLossMovements(), refreshProductAndStats()]);
+    window.dispatchEvent(new CustomEvent('productStockChanged', { detail: { productId: id } }));
   };
 
   const undoLoss = async (movementId) => {
@@ -405,22 +410,24 @@ const ProductDetails = () => {
   /* ── loading / empty states ── */
   if (loading) return <Workspace><LoadingSkeleton rows={8} /></Workspace>;
 
-  if (!product)
+  if (!product && productLoadError)
     return (
       <Workspace>
         <EmptyState
-          title="Produit introuvable"
-          description="La fiche produit demandée n'est pas disponible."
+          title="Fiche produit indisponible"
+          description="Vérifiez votre connexion puis réessayez. Si le produit a été supprimé, retournez au catalogue."
           action={
-            <button className="ms-button ms-button-secondary ms-button-md" onClick={() => navigate(returnToProducts)}>
-              Retour à la liste
-            </button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => setProductLoadAttempt(value => value + 1)}>Réessayer</button>
+              <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>Retour au catalogue</button>
+            </div>
           }
         />
       </Workspace>
     );
+  if (!product) return <Workspace><EmptyState title="Produit introuvable" description="La fiche produit demandée n'est pas disponible." action={<button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>Retour au catalogue</button>} /></Workspace>;
 
-  const stockTone = product.stock < 5 ? 'danger' : product.stock < 15 ? 'warning' : 'success';
+  const stockStatus = getStockStatus(product.stock);
 
   /* ─── TABS config ─── */
   const TABS = [
@@ -433,6 +440,8 @@ const ProductDetails = () => {
   return (
     <Workspace>
       <div ref={pageRef} className="space-y-4">
+
+        {statsError && <SectionError title="Statistiques indisponibles" error={statsError} onRetry={() => setStatsAttempt(value => value + 1)} />}
 
         {/* ══ COMMAND BAR ══ */}
         <div className="ms-command-bar flex-wrap gap-y-2">
@@ -479,7 +488,7 @@ const ProductDetails = () => {
             )}
             {isAdmin && (
               <button
-                onClick={() => { setLossForm({ reason: 'casse', quantity: '1', note: '' }); setLossModalOpen(true); }}
+                onClick={() => setLossModalOpen(true)}
                 className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
                 title="Enregistrer une casse, un cadeau ou une autre sortie de stock"
               >
@@ -623,9 +632,7 @@ const ProductDetails = () => {
 
                 {/* Status badges */}
                 <div className="flex flex-wrap gap-2">
-                  <span className={`ms-status-badge ms-status-${stockTone}`}>
-                    {product.stock} en stock
-                  </span>
+                  <span className={`ms-status-badge ms-status-${stockStatus.tone}`}>{stockStatus.label} · {product.stock} en stock</span>
                   {product.container?.trim() && (
                     <span className="ms-status-badge ms-status-neutral flex items-center gap-1">
                       <Archive size={11} />
@@ -672,7 +679,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ══ KPI STRIP ══ */}
-        <div className="fui-kpi-grid">
+        {!statsError && <div className="fui-kpi-grid">
           <KPICard
             icon={<ShoppingCart size={16} />}
             label="Unités vendues"
@@ -699,7 +706,7 @@ const ProductDetails = () => {
             value={fmt(stats.stock.stockValue)}
             tone="neutral"
           />
-        </div>
+        </div>}
 
         {/* ══ PIVOT TABS ══ */}
         <div className="fluent-card-filled overflow-hidden">
@@ -718,6 +725,9 @@ const ProductDetails = () => {
 
           {/* Tab content */}
           <div className="p-5">
+            {statsError && activeTab !== 'losses' ? (
+              <p role="status" className="rounded-md border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4 text-sm text-[var(--ms-text-muted)]">Les indicateurs et l’historique du produit seront affichés après le chargement des statistiques.</p>
+            ) : <>
 
             {/* ── APERÇU ── */}
             {activeTab === 'overview' && (
@@ -745,7 +755,7 @@ const ProductDetails = () => {
                   {salesHistoryLoading ? (
                     <LoadingSkeleton rows={3} />
                   ) : salesHistoryError ? (
-                    <p className="fui-caption1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{salesHistoryError}</p>
+                    <SectionError title="Ventes liées indisponibles" error={salesHistoryError} onRetry={() => setHistoryAttempt(value => value + 1)} />
                   ) : salesHistory.length === 0 ? (
                     <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune vente récente</p>
                   ) : (
@@ -882,7 +892,7 @@ const ProductDetails = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setLossForm({ reason: 'casse', quantity: '1', note: '' }); setLossModalOpen(true); }}
+                    onClick={() => setLossModalOpen(true)}
                     className="ms-button ms-button-primary ms-button-sm flex items-center gap-1.5 shrink-0"
                   >
                     <Plus size={14} /> Enregistrer
@@ -891,6 +901,8 @@ const ProductDetails = () => {
 
                 {lossLoading ? (
                   <LoadingSkeleton rows={3} />
+                ) : lossError ? (
+                  <SectionError title="Historique des sorties indisponible" error={lossError} onRetry={fetchLossMovements} />
                 ) : lossMovements.length === 0 ? (
                   <EmptyState title="Aucune perte ni cadeau" description="Aucune sortie de stock hors vente enregistrée pour ce produit." />
                 ) : (
@@ -925,36 +937,13 @@ const ProductDetails = () => {
               </div>
             )}
 
-</div>
+            </>}
+          </div>
         </div>
       </div>
 
       {/* ══ MODAL: PERTE / CADEAU ══ */}
-      <Modal isOpen={lossModalOpen} onClose={() => setLossModalOpen(false)} title="Enregistrer une sortie de stock" subtitle="Casse, cadeau, vol, péremption…" size="sm">
-        <form onSubmit={submitLoss} className="space-y-4">
-          <div>
-            <label className="form-label mb-1 block">Motif</label>
-            <select className="form-control" value={lossForm.reason} onChange={(e) => setLossForm((f) => ({ ...f, reason: e.target.value }))}>
-              {LOSS_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="form-label mb-1 block">Quantité</label>
-            <input type="number" min="1" inputMode="numeric" className="form-control" value={lossForm.quantity} onChange={(e) => setLossForm((f) => ({ ...f, quantity: e.target.value }))} />
-            <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>Stock actuel : {toNumber(product.stock)} u</p>
-          </div>
-          <div>
-            <label className="form-label mb-1 block">Note (optionnel)</label>
-            <input type="text" className="form-control" maxLength={300} value={lossForm.note} onChange={(e) => setLossForm((f) => ({ ...f, note: e.target.value }))} placeholder="Précisez si besoin…" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setLossModalOpen(false)} className="ms-button ms-button-secondary ms-button-md">Annuler</button>
-            <button type="submit" disabled={lossSubmitting} className="ms-button ms-button-primary ms-button-md disabled:opacity-60">
-              {lossSubmitting ? 'Enregistrement…' : 'Enregistrer'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      {lossModalOpen && <StockRemovalDialog product={product} onClose={() => setLossModalOpen(false)} onSaved={handleStockRemoved} />}
 
       {/* ══ MODAL: IMAGE ZOOM ══ */}
       <Modal isOpen={imageZoom} onClose={() => setImageZoom(false)} title={product?.name || 'Image'} size="lg">

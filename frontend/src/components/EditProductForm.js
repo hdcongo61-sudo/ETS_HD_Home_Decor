@@ -13,6 +13,7 @@ import {
 import Modal from './Modal';
 import { FormActionsSticky } from './FormLayout';
 import VariantManager from './VariantManager';
+import { productPath } from '../utils/paths';
 
 // Hint shown under a select when its reference list is empty.
 const LookupHint = ({ label }) => (
@@ -200,10 +201,10 @@ const EditProductForm = () => {
       errors.price = 'Le prix doit être supérieur à 0';
     if (formData.costPrice && parseFloat(formData.costPrice) < 0)
       errors.costPrice = 'Le prix de revient ne peut pas être négatif';
-    if (!formData.stock || parseInt(formData.stock, 10) < 0)
-      errors.stock = 'Le stock ne peut pas être négatif';
     if (!formData.category.trim()) errors.category = 'La catégorie est requise';
     if (!formData.supplierName.trim()) errors.supplierName = 'Le nom du fournisseur est requis';
+    if (formData.stock === '' || parseFloat(formData.stock) < 0)
+      errors.stock = 'Le stock ne peut pas être négatif';
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -224,7 +225,7 @@ const EditProductForm = () => {
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
-        stock: parseInt(formData.stock, 10),
+        stock: parseFloat(formData.stock),
         category: formData.category.trim(),
         image: formData.image.trim() || null,
         supplierName: formData.supplierName.trim(),
@@ -359,8 +360,9 @@ const EditProductForm = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Stock disponible</label>
-                  <input type="number" inputMode="numeric" name="stock" value={formData.stock} onChange={handleChange} min="0" className={inputClass('stock')} />
+                  <input type="number" inputMode="numeric" name="stock" value={formData.stock} onChange={handleChange} min="0" step="1" className={inputClass('stock')} />
                   {validationErrors.stock && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.stock}</p>}
+                  <Link to={productPath(product || id)} className="mt-1 inline-block text-xs font-medium text-[var(--colorBrandForeground1)] hover:underline">Voir les mouvements de stock</Link>
                 </div>
                 <div className="flex flex-col justify-center border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3">
                   <p className="ms-kpi-title">Marge</p>

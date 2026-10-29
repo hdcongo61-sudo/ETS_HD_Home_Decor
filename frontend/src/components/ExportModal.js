@@ -26,7 +26,7 @@ const ExportModal = ({
             type="button"
             onClick={onExport}
             disabled={exporting}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white flex items-center justify-center gap-2 touch-manipulation disabled:opacity-60"
+            className="ms-button ms-button-primary min-h-[44px] w-full sm:w-auto"
           >
             <FileDown size={18} />
             {exporting ? "Export..." : "Exporter Excel"}
@@ -36,7 +36,7 @@ const ExportModal = ({
               type="button"
               onClick={onPdfExport}
               disabled={exporting}
-              className="min-h-[44px] w-full sm:w-auto px-4 py-3 rounded-xl font-medium border border-[var(--ms-border)] bg-white text-[var(--ms-text)] hover:bg-[var(--ms-bg-subtle)] flex items-center justify-center gap-2 touch-manipulation disabled:opacity-60"
+              className="ms-button ms-button-secondary min-h-[44px] w-full sm:w-auto"
             >
               <FileDown size={18} />
               {exporting ? "Export..." : "Rapport PDF"}
@@ -46,17 +46,17 @@ const ExportModal = ({
       }
     >
       <div className="space-y-4">
-        <div className="rounded-2xl border border-[var(--ms-blue)]/20 bg-[var(--ms-blue-soft)] p-4 dark:border-[var(--ms-blue-dark)] dark:bg-[var(--ms-blue-dark)]">
-          <p className="text-sm font-semibold text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue-soft)]">
+        <div className="rounded-[var(--radiusLarge)] border p-4" style={{ borderColor: 'var(--colorBrandStroke2, var(--ms-border))', background: 'var(--ms-blue-soft)' }}>
+          <p className="fui-caption1-strong" style={{ color: 'var(--colorBrandForeground1)' }}>
             Choisissez la période à exporter
           </p>
-          <p className="mt-1 text-sm text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)]">
+          <p className="fui-caption1 mt-1" style={{ color: 'var(--colorBrandForeground1)' }}>
             {filterLabel || "Période personnalisée"}
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-            <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <label className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
+            <span className="fui-caption1-strong uppercase tracking-wide" style={{ color: 'var(--colorNeutralForeground3)' }}>
               Date début
             </span>
             <input
@@ -67,8 +67,8 @@ const ExportModal = ({
               className="form-control mt-2"
             />
           </label>
-          <label className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-            <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <label className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
+            <span className="fui-caption1-strong uppercase tracking-wide" style={{ color: 'var(--colorNeutralForeground3)' }}>
               Date fin
             </span>
             <input
@@ -80,8 +80,8 @@ const ExportModal = ({
             />
           </label>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-          Le fichier contient les ventes, encaissements, dépenses et profit pour les dates choisies. Le PDF ajoute un résumé lisible pour impression.
+        <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
+          <p className="fui-caption1">Le fichier contient les ventes, encaissements, dépenses et profit pour les dates choisies. Le PDF ajoute un résumé lisible pour impression.</p>
         </div>
       </div>
     </Modal>

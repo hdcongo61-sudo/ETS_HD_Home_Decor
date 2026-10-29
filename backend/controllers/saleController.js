@@ -19,6 +19,7 @@ const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 const { issueStock, receiveStock } = require('../services/inventoryService');
 const { recordPayment } = require('../services/paymentService');
 const { nextNumber } = require('../services/cashService');
+const { findStalePartialSales } = require('../utils/staleBalanceDetection');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -355,7 +356,7 @@ const getSales = asyncHandler(async (req, res) => {
     } else if (isListSummary) {
       query = query
         .select('_id reference client user products totalAmount payments saleType saleDate status deliveryStatus deliveryDate deliveryNote updatedAt createdAt profitData profitCategory modificationHistory._id')
-        .populate('client', 'name email')
+        .populate('client', 'name email phone')
         .populate({ path: 'user', select: 'name email isAdmin role', options: { skipTenantGuard: true } })
         .populate({
           path: 'products.product',
@@ -2716,7 +2717,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const [overdue, upcoming, neverPaid, salaryEmployees] = await Promise.all([
+    const [overdue, upcoming, neverPaid, stalePartialCandidates, salaryEmployees] = await Promise.all([
       Sale.find({ ...tenantFilter(req), ...baseReminderFilter,
         'paymentReminder.isSet': true,
         'paymentReminder.reminderDate': { $lte: now },
@@ -2753,6 +2754,16 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
         .lean()
         .sort({ saleDate: 1 }),
 
+      // Ventes partiellement payées en sommeil : détectées sur l'historique
+      // des paiements lui-même, indépendamment de tout rappel programmé à la
+      // main (contrairement à overdue/upcoming ci-dessus).
+      Sale.find({ ...tenantFilter(req), ...baseReminderFilter,
+        status: 'partially_paid'
+      })
+        .populate('client', 'name email phone')
+        .select('_id client totalAmount payments paymentReminder saleDate saleType status lastRemindedAt reminderLog')
+        .lean(),
+
       isAdminUser(req.user)
         ? Employee.find({ ...tenantFilter(req), isActive: { $ne: false },
             $expr: { $eq: [{ $dayOfMonth: '$hireDate' }, currentDay] },
@@ -2776,7 +2787,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
       return reminders.map(sale => {
         const totalPaid = sale.payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
         const balance = Math.max(0, (sale.totalAmount || 0) - totalPaid);
-        
+
         return {
           ...sale,
           totalPaid,
@@ -2785,10 +2796,13 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
       });
     };
 
+    const stalePartial = findStalePartialSales(processReminders(stalePartialCandidates), now);
+
     res.json({
       overdue: processReminders(overdue),
       upcoming: processReminders(upcoming),
       neverPaid: processReminders(neverPaid),
+      stalePartial,
       salaryReminders: salaryEmployees.map((employee) => ({
         _id: employee._id,
         name: employee.name,

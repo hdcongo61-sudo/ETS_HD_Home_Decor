@@ -24,7 +24,7 @@ const sanitizeFilename = (value) =>
     .replace(/^-+|-+$/g, '')
     .toLowerCase();
 
-const ExportSalesPdf = ({ sale }) => {
+const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800' }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
 
@@ -201,8 +201,9 @@ const ExportSalesPdf = ({ sale }) => {
 
   return (
     <button
+      type="button"
       onClick={generatePDF}
-      className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800"
+      className={buttonClassName}
     >
       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

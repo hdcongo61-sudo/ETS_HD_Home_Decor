@@ -1,15 +1,18 @@
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState, useRef } from 'react';
+import { Banknote, CreditCard, Smartphone } from 'lucide-react';
 import Modal from './Modal';
 import AuthContext from '../context/AuthContext';
+import { getErrorMessage } from '../utils/errorModel';
 
-const formatAmount = (value) => `${Number(value || 0).toFixed(0)} CFA`;
+const noop = () => {};
+const formatAmount = (value) => `${Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CFA`;
 
 export const PaymentForm = ({
   sale,
   onAddPayment,
   formId = 'sale-payment-form',
-  onSubmittingChange = () => {},
-  onSuccess = () => {},
+  onSubmittingChange = noop,
+  onSuccess = noop,
 }) => {
   const { auth } = useContext(AuthContext);
   const manualPaymentDateEnabled =
@@ -21,17 +24,22 @@ export const PaymentForm = ({
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionLock = useRef(false);
+  const amountRef = useRef(null);
 
   const totalPaid = sale?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
   const balance = Math.max((Number(sale?.totalAmount) || 0) - totalPaid, 0);
-  const enteredAmount = Number.parseFloat(amount);
+  const enteredAmount = Number(amount);
+  const validAmount = Number.isFinite(enteredAmount) && enteredAmount > 0 && enteredAmount <= balance;
+  const paidProgress = Number(sale?.totalAmount) > 0 ? Math.min(100, Math.max(0, Math.round(totalPaid / Number(sale.totalAmount) * 100))) : 0;
   const canMarkAsDelivered =
     sale?.deliveryStatus !== 'delivered' &&
     Number.isFinite(enteredAmount) &&
     enteredAmount > 0 &&
-    enteredAmount >= balance - 0.009;
+    validAmount && enteredAmount === balance;
 
   useEffect(() => {
+    submissionLock.current = false;
     setAmount('');
     setMethod('cash');
     setPaymentDate('');
@@ -53,18 +61,21 @@ export const PaymentForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const paymentAmount = parseFloat(amount);
+    if (submissionLock.current) return;
+    const paymentAmount = Number(amount);
 
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      setError('Montant invalide');
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      setError('Saisissez un montant supérieur à 0 CFA.');
+      amountRef.current?.focus();
       return;
     }
 
     if (paymentAmount > balance) {
-      setError(`Le montant ne peut pas dépasser le solde restant (${formatAmount(balance)})`);
+      setError(`Le montant ne peut pas dépasser le solde restant (${formatAmount(balance)}).`);
       return;
     }
 
+    submissionLock.current = true;
     setIsSubmitting(true);
     setError('');
 
@@ -75,12 +86,12 @@ export const PaymentForm = ({
         paymentDate: manualPaymentDateEnabled && paymentDate ? paymentDate : undefined,
         markAsDelivered,
       });
-      onSuccess();
+      window.dispatchEvent(new CustomEvent('paymentCreated'));
+      onSuccess({ amount: paymentAmount, balance: Math.max(0, balance - paymentAmount) });
     } catch (submissionError) {
+      submissionLock.current = false;
       const fallbackMessage = "Impossible d'ajouter le paiement. Veuillez réessayer.";
-      const apiMessage =
-        submissionError?.response?.data?.message || submissionError?.message;
-      setError(apiMessage || fallbackMessage);
+      setError(getErrorMessage(submissionError, fallbackMessage));
     } finally {
       setIsSubmitting(false);
     }
@@ -111,6 +122,13 @@ export const PaymentForm = ({
           <span className={`font-semibold ${balance > 0 ? 'text-[var(--ms-danger)]' : 'text-[var(--ms-success)]'}`}>
             {formatAmount(balance)}
           </span>
+        </div>
+
+        <div className="mt-4" role="progressbar" aria-label="Part de la vente déjà payée" aria-valuemin={0} aria-valuemax={100} aria-valuenow={paidProgress}>
+          <div className="mb-1 flex justify-between text-xs text-[var(--ms-text-muted)]"><span>Déjà payé</span><span>{paidProgress}%</span></div>
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--colorNeutralBackground3)]">
+            <div className="h-full rounded-full bg-[var(--colorStatusSuccessForeground1)]" style={{ width: paidProgress + '%' }} />
+          </div>
         </div>
 
         {sale.payments?.length > 0 && (
@@ -153,7 +171,9 @@ export const PaymentForm = ({
         )}
       </div>
 
-      <form id={formId} onSubmit={handleSubmit} className="space-y-5">
+      <form id={formId} onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-5">
+        <fieldset disabled={isSubmitting || balance <= 0 || submissionLock.current} className="min-w-0 space-y-5">
+        {balance <= 0 && <p role="status" className="text-sm text-[var(--ms-success)]">Cette vente est déjà soldée. Aucun paiement supplémentaire n’est nécessaire.</p>}
         {manualPaymentDateEnabled && (
           <div>
             <label className="block text-sm font-medium text-[var(--ms-text)] mb-2">
@@ -176,7 +196,7 @@ export const PaymentForm = ({
 
         <div>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <label className="block text-sm font-medium text-[var(--ms-text)]">
+            <label htmlFor={`${formId}-amount`} className="block text-sm font-medium text-[var(--ms-text)]">
               Montant à payer
             </label>
             {balance > 0 && (
@@ -194,6 +214,8 @@ export const PaymentForm = ({
           </div>
           <div className="relative">
             <input
+              id={`${formId}-amount`}
+              ref={amountRef}
               type="number"
               step="0.01"
               min="0.01"
@@ -206,11 +228,17 @@ export const PaymentForm = ({
               }}
               placeholder="0"
               required
+              aria-invalid={Boolean(error)}
+              aria-describedby={`${formId}-preview${error ? ` ${formId}-error` : ''}`}
               className="form-control pr-14 text-lg font-semibold"
             />
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--ms-text-muted)]">CFA</span>
           </div>
         </div>
+
+        <p id={`${formId}-preview`} role="status" className="rounded-md border border-[var(--ms-border)] p-3 text-sm">
+          {validAmount ? `Après ce paiement : ${formatAmount(balance - enteredAmount)} restant${balance === enteredAmount ? ' — vente soldée' : ''}.` : `Solde disponible : ${formatAmount(balance)}.`}
+        </p>
 
         {canMarkAsDelivered && (
           <button
@@ -253,6 +281,7 @@ export const PaymentForm = ({
                 key={opt}
                 type="button"
                 onClick={() => setMethod(opt)}
+                aria-pressed={method === opt}
                 className={`min-h-[44px] p-3 rounded-md border-2 text-sm font-medium transition-all touch-manipulation ${
                   method === opt
                     ? 'border-[var(--ms-blue)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]'
@@ -269,7 +298,7 @@ export const PaymentForm = ({
                         : 'bg-purple-100 text-purple-600'
                     }`}
                   >
-                    💰
+                    {opt === 'cash' ? <Banknote className="h-5 w-5" aria-hidden="true" /> : opt === 'MobileMoney' ? <Smartphone className="h-5 w-5" aria-hidden="true" /> : <CreditCard className="h-5 w-5" aria-hidden="true" />}
                   </div>
                   <span className="text-xs font-medium capitalize">
                     {opt === 'MobileMoney'
@@ -285,13 +314,14 @@ export const PaymentForm = ({
         </div>
 
         {error && (
-          <div className="p-3 bg-[var(--ms-danger)]/10 border border-red-200 text-[var(--ms-danger)] rounded-md text-sm flex items-center gap-2">
+          <div id={`${formId}-error`} role="alert" className="p-3 bg-[var(--ms-danger)]/10 border border-red-200 text-[var(--ms-danger)] rounded-md text-sm flex items-start gap-2">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             {error}
           </div>
         )}
+        </fieldset>
       </form>
     </div>
   );
@@ -307,10 +337,11 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
   return (
     <Modal
       isOpen={show}
-      onClose={onClose}
+      onClose={() => { if (!isSubmitting) onClose(); }}
       title="Ajouter un paiement"
       subtitle={sale.client?.name ? `${sale.client.name} · Solde: ${formatAmount(balance)}` : undefined}
       size="sm"
+      mobileFullscreen
       footer={
         <>
           <button
@@ -324,7 +355,7 @@ const PaymentModal = ({ show, onClose, sale, onAddPayment }) => {
           <button
             type="submit"
             form="sale-payment-form"
-            disabled={isSubmitting}
+            disabled={isSubmitting || balance <= 0}
             className="ms-button ms-button-primary ms-button-md w-full justify-center sm:w-auto"
           >
             {isSubmitting ? (

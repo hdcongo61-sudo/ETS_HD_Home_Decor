@@ -24,40 +24,43 @@ import { fr } from "date-fns/locale";
 const formatCFA = (value) =>
   `${Math.round(value || 0).toLocaleString("fr-FR")} CFA`;
 
+const STAT_TONES = {
+  green: { iconBg: 'var(--colorStatusSuccessBackground1)', iconFg: 'var(--colorStatusSuccessForeground1)' },
+  blue: { iconBg: 'var(--ms-blue-soft)', iconFg: 'var(--colorBrandForeground1)' },
+  red: { iconBg: 'var(--colorStatusDangerBackground1)', iconFg: 'var(--colorStatusDangerForeground1)' },
+  violet: { iconBg: '#EDE9FE', iconFg: '#6D28D9' },
+  slate: { iconBg: 'var(--colorNeutralBackground3)', iconFg: 'var(--colorNeutralForeground3)' },
+};
+
 const StatCard = ({ icon: Icon, title, value, helper, tone = "slate" }) => {
-  const toneClasses = {
-    green: "bg-[var(--ms-success)]/10 text-emerald-700 border-emerald-200 dark:bg-[var(--ms-success)]/100/10 dark:text-emerald-300 dark:border-emerald-500/20",
-    blue: "bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] border-[var(--ms-blue-soft)] dark:bg-[var(--ms-blue)] dark:text-[var(--ms-blue)] dark:border-[var(--ms-blue)]",
-    red: "bg-[var(--ms-danger)]/10 text-rose-700 border-rose-200 dark:bg-[var(--ms-danger)]/100/10 dark:text-rose-300 dark:border-rose-500/20",
-    violet: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
-    slate: "bg-gray-100 text-gray-700 border-gray-200   ",
-  };
+  const toneStyle = STAT_TONES[tone] || STAT_TONES.slate;
 
   return (
-  <motion.div
-    whileHover={{ y: -2 }}
-    className="rounded-[22px] border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md  "
-  >
-    <div className="flex items-start justify-between gap-3">
-      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${toneClasses[tone] || toneClasses.slate}`}>
-        <Icon size={20} />
-      </span>
-      {helper && (
-        <span className="rounded-full bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500  ">
-          {helper}
+    <motion.div whileHover={{ y: -2 }} className="fluent-card-filled p-4 transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+          style={{ background: toneStyle.iconBg, color: toneStyle.iconFg }}
+        >
+          <Icon size={20} />
         </span>
-      )}
-    </div>
-    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-      {title}
-    </p>
-    <h3 className="mt-2 text-xl font-bold text-gray-950 ">
-        {typeof value === "number"
-          ? formatCFA(value)
-          : value}
-    </h3>
-  </motion.div>
+        {helper && (
+          <span className="ms-status-badge ms-status-neutral">{helper}</span>
+        )}
+      </div>
+      <p className="fui-caption1 mt-4" style={{ color: 'var(--colorNeutralForeground3)' }}>{title}</p>
+      <h3 className="fui-title3 mt-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
+        {typeof value === "number" ? formatCFA(value) : value}
+      </h3>
+    </motion.div>
   );
+};
+
+const INSIGHT_TONES = {
+  red: 'var(--colorStatusDangerForeground1)',
+  green: 'var(--colorStatusSuccessForeground1)',
+  blue: 'var(--colorBrandForeground1)',
+  slate: 'var(--colorNeutralForeground1)',
 };
 
 const BusinessAnalyticsDashboard = ({
@@ -228,33 +231,35 @@ const BusinessAnalyticsDashboard = ({
 
   return (
     <motion.div
-      className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] "
+      className="fluent-card-filled overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
       {/* ====== Résumé Analytique ====== */}
-      <div className="border-b border-gray-100 p-4 sm:p-5">
+      <div className="border-b border-[var(--ms-border)] p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)] dark:bg-white dark:text-gray-950">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]"
+              style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}
+            >
               <Brain size={20} />
             </span>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+              <p className="fui-caption1-strong uppercase tracking-[0.16em]" style={{ color: 'var(--colorNeutralForeground3)' }}>
                 Semaine courante
               </p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-950  sm:text-2xl">
-                Résumé analytique
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 ">
+              <h2 className="fui-title2 mt-1">Résumé analytique</h2>
+              <p className="fui-caption1 mt-1">
                 Lecture rapide des ventes, encaissements, clients et produits du {weeklyLabel}.
               </p>
             </div>
           </div>
           {onOpenDayDetails && (
             <button
+              type="button"
               onClick={() => onOpenDayDetails(new Date())}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-0.5 hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+              className="ms-button ms-button-primary min-h-[44px]"
             >
               <CalendarDays size={18} />
               Détails du jour
@@ -276,32 +281,19 @@ const BusinessAnalyticsDashboard = ({
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {insightCards.map(({ label, value, helper, icon: Icon, tone }) => (
-            <div
-              key={label}
-              className="rounded-[22px] border border-gray-200 bg-gray-50/80 p-4  /70"
-            >
+            <div key={label} className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
+                <p className="fui-caption1-strong uppercase tracking-[0.14em]" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {label}
                 </p>
-                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-gray-700 shadow-sm  ">
+                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radiusLarge)] bg-[var(--ms-white)] shadow-sm" style={{ color: 'var(--colorNeutralForeground2)' }}>
                   <Icon size={17} />
                 </span>
               </div>
-              <p className={`mt-3 text-2xl font-black tabular-nums ${
-                tone === "red"
-                  ? "text-rose-700 dark:text-rose-300"
-                  : tone === "green"
-                  ? "text-emerald-700 dark:text-emerald-300"
-                  : tone === "blue"
-                  ? "text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)]"
-                  : "text-gray-950 "
-              }`}>
+              <p className="mt-3 fui-title2 tabular-nums" style={{ color: INSIGHT_TONES[tone] || INSIGHT_TONES.slate }}>
                 {value}
               </p>
-              <p className="mt-1 text-sm leading-5 text-gray-500 ">
-                {helper}
-              </p>
+              <p className="fui-caption1 mt-1">{helper}</p>
             </div>
           ))}
         </div>
@@ -446,25 +438,21 @@ const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) 
   const hasChildren = React.Children.count(children) > 0;
 
   return (
-    <section className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm  ">
+    <section className="fluent-card-filled p-4">
       <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-700  ">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground2)' }}>
           <Icon size={18} />
         </span>
         <div>
-          <h3 className="text-base font-semibold text-gray-950 ">
-            {title}
-          </h3>
-          <p className="mt-0.5 text-sm text-gray-500 ">
-            {description}
-          </p>
+          <h3 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{title}</h3>
+          <p className="fui-caption1 mt-0.5">{description}</p>
         </div>
       </div>
       {hasChildren ? (
         <div className="space-y-2">{children}</div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500   ">
-          {emptyText}
+        <div className="rounded-[var(--radiusLarge)] border border-dashed border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-6 text-center">
+          <p className="fui-caption1">{emptyText}</p>
         </div>
       )}
     </section>
@@ -474,22 +462,21 @@ const AnalyticsList = ({ title, description, icon: Icon, emptyText, children }) 
 const RankedRow = ({ index, title, subtitle, value }) => (
   <motion.div
     whileHover={{ x: 2 }}
-    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3  /70"
+    className="flex items-center justify-between gap-3 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3"
   >
     <div className="flex min-w-0 items-center gap-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-950 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radiusMedium)] text-xs font-bold text-white"
+        style={{ background: 'var(--colorBrandBackground)' }}
+      >
         {index + 1}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-gray-950 ">
-          {title}
-        </p>
-        <p className="text-xs text-gray-500 ">{subtitle}</p>
+        <p className="truncate text-sm font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>{title}</p>
+        <p className="fui-caption1">{subtitle}</p>
       </div>
     </div>
-    <span className="shrink-0 text-sm font-bold text-gray-950 ">
-      {value}
-    </span>
+    <span className="shrink-0 text-sm font-bold" style={{ color: 'var(--colorNeutralForeground1)' }}>{value}</span>
   </motion.div>
 );
 

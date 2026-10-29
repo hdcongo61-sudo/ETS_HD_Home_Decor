@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, useMemo, useRef, lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
 import toast from 'react-hot-toast';
-import { ScanLine, X } from 'lucide-react';
+import { ArrowRight as ArrowRightIcon, CheckCircle2 as CheckCircle2Icon, ScanLine, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -9,9 +10,11 @@ import { getCompanyIdentity } from '../utils/appBranding';
 import { generateProformaPdf } from '../utils/proformaPdf';
 import { getSaleTypeText } from '../utils/saleUtils';
 import { useFeature } from './FeatureGate';
+import { saleDraftKey, readSaleDraft, hasSaleDraftContent, SALE_DRAFT_VERSION } from '../utils/saleDraft';
 import { FEATURE_KEYS } from '../config/features';
 
 const ProductQrScanner = lazy(() => import('./ProductQrScanner'));
+const ExportSalesPdf = lazy(() => import('./ExportSalesPdf'));
 
 // Extract a product id from a scanned QR value (sell URL, product URL, or raw id).
 const parseScannedProductId = (text) => {
@@ -35,7 +38,18 @@ const normalizeCollection = (value, nestedKeys = []) => {
   return [];
 };
 
-const SaleForm = ({
+// Libellés des boutons "Continuer" par étape — source unique partagée avec
+// tout conteneur qui rend son propre bouton de progression (ex:
+// GlobalSaleModal, qui rend SaleForm avec hideSubmit). Mode vente uniquement :
+// hideSubmit masque aussi le bascule vente/proforma (voir plus bas), donc ce
+// conteneur ne voit jamais documentMode === 'proforma'.
+export const SALE_STAGE_CONTINUE_LABELS = [
+  'Continuer vers les produits',
+  'Continuer vers le paiement',
+  'Vérifier la vente',
+];
+
+const SaleFormFields = ({
   clients = [],
   products: initialProducts = [],
   onSubmit,
@@ -43,6 +57,10 @@ const SaleForm = ({
   formId = 'sale-form',
   hideSubmit = false,
   initialProductId = '',
+  draftKey = '',
+  documentMode,
+  setDocumentMode,
+  onStageChange,
 }) => {
   const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
@@ -73,12 +91,79 @@ const SaleForm = ({
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
-  const [documentMode, setDocumentMode] = useState('sale');
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() + 15);
     return date.toISOString().slice(0, 10);
   });
+  const [draftReady, setDraftReady] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [draftNotice, setDraftNotice] = useState('');
+  const [draftStorageError, setDraftStorageError] = useState(false);
+  const [activeStage, setActiveStage] = useState(0);
+  const [completedSale, setCompletedSale] = useState(null);
+  const submitLock = useRef(false);
+  const stageVisited = useRef(false);
+
+  useEffect(() => {
+    try {
+      const draft = readSaleDraft(window.localStorage, draftKey);
+      setPendingDraft(draft);
+      setDraftReady(!draft);
+    } catch {
+      setDraftStorageError(true);
+      setDraftReady(true);
+    }
+  }, [draftKey]);
+
+  const resumeDraft = () => {
+    const draft = pendingDraft;
+    if (!draft) return;
+    const missingClient = draft.selectedClient && !safeClients.some(client => client._id === draft.selectedClient);
+    const missingProduct = draft.selectedProducts.some(line => line.product && !products.some(product => product._id === line.product));
+    if (missingClient || missingProduct) {
+      setDraftNotice('Certains clients ou produits ne sont plus disponibles. Sélectionnez-les de nouveau avant l’enregistrement.');
+    } else {
+      setDraftNotice('Brouillon repris. Vérifiez les prix, le stock et le paiement avant d’enregistrer.');
+    }
+    setSelectedClient(missingClient ? '' : draft.selectedClient);
+    setSelectedProducts(draft.selectedProducts.length ? draft.selectedProducts.map(line => ({ ...line, product: products.some(product => product._id === line.product) ? line.product : '' })) : [{ product: '', quantity: '', price: 0 }]);
+    setSaleType(draft.saleType || 'normal');
+    setPaymentMethod(draft.paymentMethod || 'cash');
+    setPaymentAmount(draft.paymentAmount ?? '');
+    setNote(draft.note || '');
+    setSaleDate(draft.saleDate || '');
+    setSetReminder(Boolean(draft.setReminder));
+    setReminderDate(draft.reminderDate || '');
+    setReminderNote(draft.reminderNote || '');
+    setMarkAsDelivered(Boolean(draft.markAsDelivered));
+    if (draft.validUntil) setValidUntil(draft.validUntil);
+    setPendingDraft(null);
+    setDraftReady(true);
+  };
+  const discardDraft = () => {
+    try { if (draftKey) window.localStorage.removeItem(draftKey); } catch { setDraftStorageError(true); }
+    setPendingDraft(null);
+    setDraftReady(true);
+    setDraftNotice('Brouillon supprimé. Vous pouvez commencer un nouveau document.');
+  };
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (!draftKey) { setDraftStorageError(true); return; }
+    const draft = {
+      version: SALE_DRAFT_VERSION, updatedAt: new Date().toISOString(),
+      selectedClient, selectedProducts, saleType, paymentMethod, paymentAmount, note,
+      saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil,
+    };
+    try {
+      if (hasSaleDraftContent(draft)) {
+        window.localStorage.setItem(draftKey, JSON.stringify(draft));
+        setDraftStorageError(false);
+      } else window.localStorage.removeItem(draftKey);
+    } catch { setDraftStorageError(true); }
+  }, [draftReady, draftKey, selectedClient, selectedProducts, saleType, paymentMethod, paymentAmount, note, saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil]);
+
 
 	
   useEffect(() => {
@@ -170,8 +255,9 @@ const SaleForm = ({
       if (!item.product) return 'Sélectionnez un produit';
       const product = products.find(p => p._id === item.product);
       if (!product) return 'Produit invalide';
-      if (!item.quantity || item.quantity <= 0) return 'Quantité invalide';
+      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) return 'Quantité invalide';
       if (totals.get(item.product) > Number(product.stock)) return `Stock insuffisant (${product.stock} disponibles au total)`;
+      if (!Number.isFinite(Number(item.price)) || Number(item.price) < 0) return 'Prix invalide';
       if (item.price < product.costPrice) return `Prix trop bas (min: ${product.costPrice} CFA)`;
       return null;
     });
@@ -262,21 +348,36 @@ const SaleForm = ({
     setReminderNote('');
     setMarkAsDelivered(false);
     setTotalAmount(0);
+    setActiveStage(0);
+    setCompletedSale(null);
     setFormError('');
+    try {
+      if (draftKey && typeof window !== 'undefined') window.localStorage.removeItem(draftKey);
+    } catch (error) {
+      console.warn('Unable to clear sale draft', error);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLock.current || !draftReady) return;
+    if (activeStage < 3) {
+      goToStage(activeStage + 1);
+      return;
+    }
+    submitLock.current = true;
     setIsSubmitting(true);
     setFormError('');
 
-    if (!selectedClient) {
+    if (!safeClients.some(client => client._id === selectedClient)) {
       setFormError('Sélectionnez un client.');
+      submitLock.current = false;
       setIsSubmitting(false);
       return;
     }
     if (!validatePrices()) {
       setFormError('Corrigez les erreurs du formulaire.');
+      submitLock.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -327,13 +428,15 @@ const SaleForm = ({
         console.error('Unable to generate proforma PDF:', error);
         setFormError('Impossible de générer la facture proforma.');
       } finally {
-        setIsSubmitting(false);
+        submitLock.current = false;
+      setIsSubmitting(false);
       }
       return;
     }
 
     if (normalizedPaymentAmount > totalAmount) {
       setFormError('Le montant payé ne peut pas dépasser le total de la vente.');
+      submitLock.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -355,14 +458,23 @@ const SaleForm = ({
         reminderDate: setReminder && !isFullyPaid ? reminderDate : undefined,
         reminderNote: setReminder && !isFullyPaid ? reminderNote : undefined,
       };
-      await onSubmit(payload);
+      const result = await onSubmit(payload);
       resetForm();
+      if (documentMode === 'sale') {
+        const fallbackSale = {
+          client: safeClients.find(client => client._id === selectedClient) || selectedClient,
+          totalAmount,
+          payments: normalizedPaymentAmount > 0 ? [{ amount: normalizedPaymentAmount }] : [],
+        };
+        setCompletedSale({ ...fallbackSale, ...(result || {}) });
+      }
     } catch (error) {
       setFormError(
         error?.response?.data?.message ||
         'Erreur lors de la création de la vente.'
       );
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -371,14 +483,96 @@ const SaleForm = ({
     'form-control text-gray-900 placeholder:text-gray-400';
 
   const sectionTitleClass = 'text-sm font-semibold text-[var(--ms-text)] uppercase tracking-[0.12em]';
+  const workflowSteps = [
+    { label: 'Client', complete: Boolean(selectedClient) },
+    { label: 'Produits', complete: selectedProducts.some((item) => item.product && Number(item.quantity) > 0) },
+    { label: 'Paiement', complete: totalAmount > 0 && paymentAmount !== '' },
+    { label: 'Confirmation', complete: false },
+  ];
+  useEffect(() => {
+    onStageChange?.(activeStage);
+    if (stageVisited.current) {
+      const headingId = ['sale-form-client', 'sale-form-products', documentMode === 'proforma' ? 'proforma-validity' : 'sale-form-payment', 'sale-review-title'][activeStage];
+      const heading = document.getElementById(headingId);
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    }
+    stageVisited.current = true;
+  }, [activeStage, documentMode, onStageChange]);
+
+  const stageClass = (stage) => activeStage === stage ? '' : 'hidden';
+  const goToStage = (nextStage) => {
+    if (nextStage === 1 && !safeClients.some(client => client._id === selectedClient)) {
+      setFormError('Sélectionnez un client avant de continuer.');
+      return false;
+    }
+    if (nextStage >= 2 && !validatePrices()) {
+      setFormError('Ajoutez un produit valide et corrigez les erreurs avant de continuer.');
+      return false;
+    }
+    if (nextStage >= 3 && (totalAmount <= 0 || (documentMode === 'sale' && (paymentAmount === '' || normalizedPaymentAmount > totalAmount)))) {
+      setFormError('Vérifiez le montant payé avant de continuer.');
+      return false;
+    }
+    setFormError('');
+    setActiveStage(Math.max(0, Math.min(3, nextStage)));
+    return true;
+  };
 
   /** UI **/
+  if (completedSale) {
+    const saleId = completedSale._id || completedSale.id;
+    const clientName = typeof completedSale.client === 'object' ? completedSale.client?.name : safeClients.find(client => client._id === completedSale.client)?.name;
+    const saleTotal = Number(completedSale.totalAmount ?? completedSale.total ?? totalAmount) || 0;
+    const paid = Array.isArray(completedSale.payments)
+      ? completedSale.payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
+      : Number(completedSale.paidAmount ?? normalizedPaymentAmount) || 0;
+    const balance = Math.max(0, saleTotal - paid);
+    return (
+      <section className="space-y-5" aria-labelledby="sale-complete-title" role="status">
+        <header className="border-b border-[var(--ms-border)] pb-4">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--colorStatusSuccessBackground1)] text-[var(--colorStatusSuccessForeground1)]"><CheckCircle2Icon aria-hidden="true" /></span>
+            <div className="min-w-0">
+              <h3 id="sale-complete-title" className="text-lg font-semibold text-[var(--ms-text-strong)]">Vente enregistrée</h3>
+              <p className="mt-1 text-sm text-[var(--ms-text-muted)]">{clientName ? `La vente de ${clientName} est enregistrée.` : 'La vente est enregistrée.'} {saleId ? `Référence : ${saleId}` : ''}</p>
+            </div>
+          </div>
+        </header>
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Total</dt><dd className="mt-1 font-semibold tabular-nums">{saleTotal.toLocaleString('fr-FR')} CFA</dd></div>
+          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Encaissé</dt><dd className="mt-1 font-semibold tabular-nums">{paid.toLocaleString('fr-FR')} CFA</dd></div>
+          <div className="col-span-2 rounded-md border border-[var(--ms-border)] p-3 sm:col-span-1"><dt className="text-xs text-[var(--ms-text-muted)]">À suivre</dt><dd className="mt-1 font-semibold tabular-nums">{balance > 0 ? `${balance.toLocaleString('fr-FR')} CFA à encaisser` : markAsDelivered ? 'Livraison confirmée' : 'Paiement complet'}</dd></div>
+        </dl>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-[var(--ms-text)]">Prochaine étape</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {saleId && <Link to={`/sales/${saleId}`} className="ms-button ms-button-primary min-h-[44px]">{balance > 0 ? 'Ouvrir pour encaisser' : 'Ouvrir le suivi de livraison'} <ArrowRightIcon size={16} /></Link>}
+            {saleId && <Suspense fallback={<span role="status" className="inline-flex min-h-[44px] items-center px-3 text-sm">Préparation de la facture…</span>}><ExportSalesPdf sale={completedSale} buttonClassName="ms-button ms-button-secondary min-h-[44px]" /></Suspense>}
+            <Link to="/sales?workspace=history" className="ms-button ms-button-secondary min-h-[44px]">Voir les ventes</Link>
+            <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => { resetForm(); setDraftReady(true); }}>Enregistrer une autre vente</button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <form
       id={formId}
       onSubmit={handleSubmit}
       className="form-shell"
     >
+      {pendingDraft && <section className="p-4 space-y-3" aria-label="Brouillon disponible">
+        <p className="fui-body1">Un brouillon de cette boutique est disponible, enregistré le {new Date(pendingDraft.updatedAt).toLocaleString('fr-FR')}.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="ms-button ms-button-primary ms-button-md min-h-[44px]" onClick={resumeDraft}>Reprendre le brouillon</button>
+          <button type="button" className="ms-button ms-button-secondary ms-button-md min-h-[44px]" onClick={discardDraft}>Supprimer le brouillon</button>
+        </div>
+      </section>}
+      {draftNotice && <p role="status" className="p-4 text-sm">{draftNotice}</p>}
+      {draftStorageError && <p role="alert" className="p-4 text-sm">Le brouillon ne peut pas être enregistré sur cet appareil. Gardez ce formulaire ouvert pour conserver votre saisie.</p>}
+      <fieldset disabled={!draftReady || isSubmitting} className="min-w-0">
       {/* Header */}
       <div className="border-b border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4 sm:px-6 sm:py-5">
         <h3 className="text-lg font-semibold text-[var(--ms-text-strong)]">
@@ -389,6 +583,24 @@ const SaleForm = ({
             ? 'Renseignez le client, les produits et le paiement.'
             : 'Préparez une proposition commerciale sans enregistrer de vente.'}
         </p>
+        {
+          <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="Progression de la vente">
+            {workflowSteps.map((originalStep, index) => {
+              const step = documentMode === 'proforma' ? { ...originalStep, label: ['Client', 'Produits', 'Validité', 'Confirmation'][index], complete: index < activeStage } : originalStep;
+              const isActive = index === activeStage;
+              return (
+                <li key={step.label} className="min-w-0">
+                  <button type="button" onClick={() => index <= activeStage && goToStage(index)} className={`flex w-full min-h-[42px] items-center gap-1.5 rounded-[var(--radiusMedium)] border px-2 py-1.5 text-left ${step.complete ? 'border-[var(--colorStatusSuccessStroke1)] bg-[var(--colorStatusSuccessBackground1)]' : isActive ? 'border-[var(--colorBrandStroke1)] bg-[var(--ms-blue-soft)]' : 'border-[var(--ms-border)] bg-[var(--ms-white)]'}`} aria-current={activeStage === index ? 'step' : undefined}>
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${step.complete ? 'bg-[var(--colorStatusSuccessForeground1)] text-white' : isActive ? 'bg-[var(--ms-blue)] text-white' : 'bg-[var(--colorNeutralBackground3)] text-[var(--colorNeutralForeground3)]'}`}>
+                      {step.complete ? '✓' : index + 1}
+                    </span>
+                    <span className="truncate text-[11px] font-semibold" style={{ color: step.complete ? 'var(--colorStatusSuccessForeground1)' : isActive ? 'var(--colorBrandForeground1)' : 'var(--colorNeutralForeground3)' }}>{step.label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        }
         {!hideSubmit && canProforma && <div className="mt-4 grid grid-cols-2 gap-1 rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--colorNeutralBackground2)] p-1">
           {[
             { key: 'sale', label: 'Vente' },
@@ -415,8 +627,8 @@ const SaleForm = ({
 
       <div className="p-5 sm:p-6 space-y-8">
         {/* CLIENT */}
-        <section className="space-y-3" aria-labelledby="sale-form-client">
-          <h4 id="sale-form-client" className={sectionTitleClass}>
+        <section className={`${stageClass(0)} space-y-3`} aria-labelledby="sale-form-client">
+          <h4 id="sale-form-client" tabIndex={-1} className={sectionTitleClass}>
             Client
           </h4>
           <div className="form-panel p-4 space-y-3">
@@ -446,10 +658,12 @@ const SaleForm = ({
           </div>
         </section>
 
+        {activeStage === 0 && <div className="flex justify-end"><button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => goToStage(1)}>{SALE_STAGE_CONTINUE_LABELS[0]} <ArrowRightIcon /></button></div>}
+
         {/* PRODUCTS */}
-        <section className="space-y-4" aria-labelledby="sale-form-products">
+        <section className={`${stageClass(1)} space-y-4`} aria-labelledby="sale-form-products">
           <div className="flex items-center justify-between gap-2">
-            <h4 id="sale-form-products" className={sectionTitleClass}>
+            <h4 id="sale-form-products" tabIndex={-1} className={sectionTitleClass}>
               Produits
             </h4>
             <div className="flex items-center gap-2">
@@ -648,8 +862,16 @@ const SaleForm = ({
           </button>
         </section>
 
+        {activeStage === 1 && <div className="flex justify-between gap-2"><button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => goToStage(0)}>Retour</button><button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => goToStage(2)}>{SALE_STAGE_CONTINUE_LABELS[1]} <ArrowRightIcon /></button></div>}
+
+        {activeStage === 2 && (
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Dernières informations avant la vérification : note, {documentMode === 'proforma' ? 'validité de l’offre' : 'type de vente et encaissement'}.
+          </p>
+        )}
+
         {/* NOTE */}
-        <section className="space-y-2" aria-labelledby="sale-form-note">
+        <section className={`${stageClass(2)} space-y-2`} aria-labelledby="sale-form-note">
           <label id="sale-form-note" className={sectionTitleClass}>
             Note (optionnelle)
           </label>
@@ -664,8 +886,8 @@ const SaleForm = ({
         </section>
 
         {documentMode === 'proforma' && (
-          <section className="space-y-3" aria-labelledby="proforma-validity">
-            <h4 id="proforma-validity" className={sectionTitleClass}>
+          <section className={`${stageClass(2)} space-y-3`} aria-labelledby="proforma-validity">
+          <h4 id="proforma-validity" tabIndex={-1} className={sectionTitleClass}>
               Validité de l’offre
             </h4>
             <div className="form-panel p-4 space-y-2">
@@ -683,7 +905,7 @@ const SaleForm = ({
         )}
 
         {documentMode === 'sale' && manualSaleDateEnabled && (
-          <section className="space-y-3" aria-labelledby="sale-form-date">
+          <section className={`${stageClass(2)} space-y-3`} aria-labelledby="sale-form-date">
             <h4 id="sale-form-date" className={sectionTitleClass}>
               Date réelle de vente
             </h4>
@@ -703,7 +925,7 @@ const SaleForm = ({
         )}
 
         {documentMode === 'sale' && (
-          <section className="space-y-3" aria-labelledby="sale-form-type">
+          <section className={`${stageClass(2)} space-y-3`} aria-labelledby="sale-form-type">
             <h4 id="sale-form-type" className={sectionTitleClass}>
               Type de vente
             </h4>
@@ -747,7 +969,7 @@ const SaleForm = ({
         )}
 
         {/* REMINDER */}
-        {documentMode === 'sale' && <section className="space-y-3" aria-labelledby="sale-form-reminder">
+        {documentMode === 'sale' && <section className={`${stageClass(2)} space-y-3`} aria-labelledby="sale-form-reminder">
           <h4 id="sale-form-reminder" className={sectionTitleClass}>
             Rappel de paiement
           </h4>
@@ -788,8 +1010,8 @@ const SaleForm = ({
         </section>}
 
         {/* PAYMENT METHOD */}
-        {documentMode === 'sale' && <section className="space-y-3" aria-labelledby="sale-form-payment">
-          <h4 id="sale-form-payment" className={sectionTitleClass}>
+        {documentMode === 'sale' && <section className={`${stageClass(2)} space-y-3`} aria-labelledby="sale-form-payment">
+          <h4 id="sale-form-payment" tabIndex={-1} className={sectionTitleClass}>
             Méthode de paiement
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-labelledby="sale-form-payment">
@@ -875,15 +1097,23 @@ const SaleForm = ({
           </div>
         </section>}
 
+        {activeStage === 2 && <div className="flex justify-between gap-2"><button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => goToStage(1)}>Retour</button><button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => goToStage(3)}>{documentMode === 'proforma' ? 'Vérifier la proforma' : SALE_STAGE_CONTINUE_LABELS[2]} <ArrowRightIcon /></button></div>}
+
         {/* TOTAL */}
-        <div className="flex items-center justify-between rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4">
-          <span className="font-semibold text-[var(--ms-text)]">Total</span>
-          <span className="text-xl font-bold text-[var(--ms-text-strong)] tabular-nums">
-            {totalAmount.toLocaleString('fr-FR')} CFA
-          </span>
+        <div className={`${stageClass(3)} rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4`}>
+          <div className="mb-3 flex items-center justify-between"><h4 id="sale-review-title" tabIndex={-1} className="font-semibold">{documentMode === 'proforma' ? 'Vérification de la proforma' : 'Vérification finale'}</h4><button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => goToStage(2)}>Modifier</button></div>
+          <div className="grid gap-2 text-sm sm:grid-cols-2"><p>Client : <strong>{safeClients.find(client => client._id === selectedClient)?.name || '—'}</strong></p><p>Mode : <strong>{documentMode === 'proforma' ? 'Facture proforma' : getSaleTypeText(saleType)}</strong></p>{documentMode === 'sale' && <><p>Paiement : <strong>{paymentMethod === 'MobileMoney' ? 'Mobile Money' : paymentMethod === 'credit' ? 'Crédit' : 'Espèces'}</strong></p><p>Payé maintenant : <strong>{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</strong></p><p>Reste à payer : <strong>{remainingBalance.toLocaleString('fr-FR')} CFA</strong></p></>}{documentMode === 'proforma' && <p>Valide jusqu’au : <strong>{validUntil || '—'}</strong></p>}</div>
+          <ul className="mt-3 divide-y divide-[var(--ms-border)] rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)]" aria-label="Articles à vérifier">
+            {selectedProducts.filter(item => item.product).map((item, index) => {
+              const product = products.find(candidate => candidate._id === item.product);
+              return <li key={`${item.product}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">{product?.name || 'Produit à sélectionner'}</strong><span>{item.quantity} × {Number(item.price || 0).toLocaleString('fr-FR')} CFA</span></span><strong className="shrink-0 tabular-nums">{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('fr-FR')} CFA</strong></li>;
+            })}
+          </ul>
+          {note && <p className="mt-2 text-sm">Note : {note}</p>}
+          <div className="mt-3 flex items-center justify-between border-t border-[var(--ms-border)] pt-3"><span className="font-semibold">Total</span><span className="text-xl font-bold tabular-nums">{totalAmount.toLocaleString('fr-FR')} CFA</span></div>
         </div>
 
-        {!hideSubmit && (
+        {!hideSubmit && activeStage === 3 && (
           <button
             type="submit"
             disabled={isSubmitting}
@@ -908,8 +1138,17 @@ const SaleForm = ({
           </div>
         )}
       </div>
+      </fieldset>
     </form>
   );
+};
+
+// Remount fields on identity/mode changes so one shop or document cannot inherit another's state.
+const SaleForm = props => {
+  const { auth } = useContext(AuthContext);
+  const [documentMode, setDocumentMode] = useState('sale');
+  const key = saleDraftKey({ tenantId: auth?.tenantId, userId: auth?.user?._id, mode: documentMode });
+  return <SaleFormFields {...props} key={key || 'unscoped'} draftKey={key} documentMode={documentMode} setDocumentMode={setDocumentMode} />;
 };
 
 SaleForm.propTypes = {
@@ -936,6 +1175,7 @@ SaleForm.propTypes = {
   formId: PropTypes.string,
   hideSubmit: PropTypes.bool,
   initialProductId: PropTypes.string,
+  onStageChange: PropTypes.func,
 };
 
 export default SaleForm;

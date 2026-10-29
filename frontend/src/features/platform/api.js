@@ -31,6 +31,7 @@ export const platformApi = {
   supportReply: (id, data) => api.post(`/support/${id}/reply`, data),
 
   // Divers tenant : boutiques, demandes de modification.
+  myMemberships: () => api.get('/memberships/me'),
   locations: () => api.get('/locations'),
   registerTenant: (data) => api.post('/tenants/register', data),
   listRequests: () => api.get('/admin-requests'),

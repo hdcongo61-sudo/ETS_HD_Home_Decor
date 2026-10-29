@@ -1,0 +1,45 @@
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import StockRemovalDialog from './StockRemovalDialog';
+import { catalogApi } from '../../features/catalog/api';
+jest.mock('../../features/catalog/api', () => ({ catalogApi: { addStockMovement: jest.fn() } }));
+jest.mock('../Modal', () => ({ children, title, onClose }) => <div role="dialog" aria-label={title}><button onClick={onClose}>Fermer</button>{children}</div>);
+let root, container;
+const saved = jest.fn(), close = jest.fn();
+const product = { _id: 'product-1', name: 'Étagère', stock: 5, warehouse: 'Boutique Centre' };
+beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; jest.clearAllMocks(); container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); act(() => root.render(<StockRemovalDialog product={product} onSaved={saved} onClose={close} />)); });
+afterEach(() => { act(() => root.unmount()); container.remove(); });
+const set = (selector, value) => act(() => { const input = container.querySelector(selector); const proto = input.tagName === 'SELECT' ? HTMLSelectElement.prototype : input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(input, value); input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); });
+const submit = () => act(async () => container.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+test('requires deliberate reason selection and rejects fractional or excessive quantities', async () => {
+  await submit(); expect(container.textContent).toContain('Choisissez le motif');
+  set('select', 'casse'); set('input[type="number"]', '1.5'); await submit();
+  expect(container.textContent).toContain('nombre entier');
+  set('input[type="number"]', '6'); await submit();
+  expect(container.textContent).toContain('5 u disponibles, 6 u demandées');
+  expect(catalogApi.addStockMovement).not.toHaveBeenCalled();
+});
+test('requires explanation for other and reviews before changing stock', async () => {
+  set('select', 'autre'); await submit();
+  expect(container.textContent).toContain('Précisez le motif');
+  set('textarea', 'Erreur de comptage'); set('input[type="number"]', '2'); await submit();
+  expect(container.querySelector('[role="dialog"]').getAttribute('aria-label')).toBe('Vérifier la sortie de stock');
+  expect(container.querySelector('[aria-label="Aperçu du stock"]').textContent).toContain('Stock après3 u');
+  expect(catalogApi.addStockMovement).not.toHaveBeenCalled();
+});
+test('failed confirmation preserves inputs and allows retry without duplicate saves or closing', async () => {
+  set('select', 'casse'); set('input[type="number"]', '2'); set('textarea', 'Transport'); await submit();
+  catalogApi.addStockMovement.mockRejectedValueOnce({ response: { status: 503, data: { message: 'Service indisponible', requestId: 'stock-42' } } });
+  await submit();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('stock-42');
+  expect(container.querySelector('textarea').value).toBe('Transport');
+  let resolve;
+  catalogApi.addStockMovement.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  act(() => { const form = container.querySelector('form'); form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+  act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Fermer').click());
+  expect(close).not.toHaveBeenCalled();
+  expect(catalogApi.addStockMovement).toHaveBeenCalledTimes(2);
+  await act(async () => resolve({ data: { product: { _id: product._id, stock: 3 } } }));
+  expect(saved).toHaveBeenCalledWith({ product: { _id: product._id, stock: 3 } });
+  expect(catalogApi.addStockMovement).toHaveBeenLastCalledWith({ productId: product._id, quantity: 2, reason: 'casse', note: 'Transport' });
+});

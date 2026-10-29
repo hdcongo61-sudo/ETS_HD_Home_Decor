@@ -1,0 +1,33 @@
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import SaleWorkflowPanel from './SaleWorkflowPanel';
+let root, container;
+beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
+afterEach(() => { act(() => root.unmount()); container.remove(); });
+test('shows the client and balance and invokes only the appropriate primary action', () => {
+  const onPayment = jest.fn(), onDelivery = jest.fn();
+  const render = sale => act(() => root.render(<SaleWorkflowPanel sale={sale} onPayment={onPayment} onDelivery={onDelivery} renderReceipt={tone => <button className={'ms-button-' + tone}>Télécharger la facture</button>} />));
+  const sale = { client: { name: 'Élodie' }, totalAmount: 1000, status: 'partially_paid', payments: [{ amount: 300 }] };
+  render(sale);
+  expect(container.textContent).toContain('Élodie');
+  expect(container.textContent).toContain('700 CFA');
+  act(() => container.querySelector('.ms-button-primary').click());
+  expect(onPayment).toHaveBeenCalledTimes(1);
+  expect(onDelivery).not.toHaveBeenCalled();
+  render({ ...sale, payments: [{ amount: 1000 }], status: 'completed' });
+  act(() => container.querySelector('.ms-button-primary').click());
+  expect(onDelivery).toHaveBeenCalledTimes(1);
+  expect(container.querySelectorAll('.ms-button-primary')).toHaveLength(1);
+  render({ ...sale, payments: [{ amount: 1000 }], status: 'completed', deliveryStatus: 'delivered' });
+  expect(container.querySelector('.ms-button-primary').textContent).toBe('Télécharger la facture');
+  expect(container.textContent).not.toContain('Enregistrer un paiement');
+});
+test('keeps cancellation read-only and provides refresh for inconsistent states', () => {
+  const onRefresh = jest.fn();
+  act(() => root.render(<SaleWorkflowPanel sale={{ status: 'cancelled', totalAmount: 200 }} renderReceipt={() => null} />));
+  expect(container.querySelectorAll('button')).toHaveLength(0);
+  expect(container.textContent).toContain('Vente annulée');
+  act(() => root.render(<SaleWorkflowPanel sale={{ status: 'pending', totalAmount: 0 }} renderReceipt={() => null} onRefresh={onRefresh} />));
+  act(() => container.querySelector('button').click());
+  expect(onRefresh).toHaveBeenCalledTimes(1);
+});

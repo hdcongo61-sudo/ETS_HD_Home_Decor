@@ -15,6 +15,7 @@
  *   GET  /api/v2/inventory/reconciliation  Product.stock vs Σ balances
  */
 const asyncHandler = require('express-async-handler');
+const { validateInventoryAdjustment } = require('../utils/inventoryAdjustmentValidation');
 const InventoryBalance = require('../models/inventoryBalanceModel');
 const StockMovement = require('../models/stockMovementModel');
 const Product = require('../models/productModel');
@@ -77,10 +78,9 @@ const getMovements = asyncRoute(async (req, res) => {
 // @route   POST /api/v2/inventory/adjustments
 const createAdjustment = asyncRoute(async (req, res) => {
   const { productId, quantity, unitCost = 0, note = '' } = req.body;
+  const validation = validateInventoryAdjustment({ productId, quantity, unitCost, note });
+  if (validation) return res.status(400).json(validation);
   const signedQuantity = Number(quantity);
-  if (!Number.isFinite(signedQuantity) || signedQuantity === 0) {
-    return res.status(400).json({ message: 'La quantité d\'ajustement (signée, non nulle) est requise.' });
-  }
   const locationId = req.locationId || req.body.locationId || null;
   const base = {
     tenantId: req.tenantId,
@@ -88,7 +88,7 @@ const createAdjustment = asyncRoute(async (req, res) => {
     productId,
     unitCost: Number(unitCost) || 0,
     referenceType: 'adjustment',
-    note: String(note || '').slice(0, 300),
+    note: note.trim(),
     userId: req.user ? req.user._id : null,
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Pencil, Plus, ReceiptText, RefreshCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -53,6 +53,9 @@ const formatSalaryPeriod = (expense) => {
 };
 
 const Expenses = () => {
+  const location = useLocation();
+  const linkedDate = new URLSearchParams(location.search).get('date') || '';
+  const safeLinkedDate = /^\d{4}-\d{2}-\d{2}$/.test(linkedDate) && !Number.isNaN(new Date(linkedDate + 'T00:00:00').getTime()) ? linkedDate : '';
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin);
   const tableRef = useRef(null);
@@ -60,10 +63,13 @@ const Expenses = () => {
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [filter, setFilter] = useState({
     search: '',
-    startDate: '',
-    endDate: '',
+    startDate: safeLinkedDate,
+    endDate: safeLinkedDate,
     category: ''
   });
+  useEffect(() => {
+    if (safeLinkedDate) setFilter(previous => ({ ...previous, startDate: safeLinkedDate, endDate: safeLinkedDate }));
+  }, [safeLinkedDate]);
   const [editingExpense, setEditingExpense] = useState(null);
   const [formPanelOpen, setFormPanelOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -85,8 +91,15 @@ const Expenses = () => {
   // Refresh when an expense is created elsewhere (e.g. the global expense modal).
   useEffect(() => {
     const onExpenseCreated = () => fetchExpenses();
+    const onDataChanged = (event) => {
+      if (event.detail?.resource === 'expenses') fetchExpenses();
+    };
     window.addEventListener('expenseCreated', onExpenseCreated);
-    return () => window.removeEventListener('expenseCreated', onExpenseCreated);
+    window.addEventListener('app:data-changed', onDataChanged);
+    return () => {
+      window.removeEventListener('expenseCreated', onExpenseCreated);
+      window.removeEventListener('app:data-changed', onDataChanged);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpenses uses filter
   }, [filter]);
 

@@ -73,7 +73,7 @@ exports.getOverview = async (req, res) => {
       response.delivery = deliveryData.status === 'fulfilled' ? deliveryData.value : null;
       response.paymentsToday = paymentsTodayData.status === 'fulfilled'
         ? paymentsTodayData.value
-        : { total: 0, count: 0 };
+        : null;
 
       response.errors = [
         salesData, productsData, clientsData, bankData, comptaData, remindersData, deliveryData, paymentsTodayData
@@ -90,16 +90,16 @@ exports.getOverview = async (req, res) => {
 
       response.userSales = userSales.status === 'fulfilled'
         ? userSales.value
-        : { total: 0, count: 0, sales: [] };
+        : null;
       response.paymentsToday = paymentsTodayData.status === 'fulfilled'
         ? paymentsTodayData.value
-        : { total: 0, count: 0 };
+        : null;
       response.todaySales = todaySalesData.status === 'fulfilled'
         ? todaySalesData.value
-        : { total: 0, count: 0 };
+        : null;
       response.todayExpenses = todayExpensesData.status === 'fulfilled'
         ? todayExpensesData.value
-        : { total: 0, count: 0 };
+        : null;
       response.errors = [userSales, paymentsTodayData, todaySalesData, todayExpensesData]
         .filter((r) => r.status === 'rejected').length;
     }

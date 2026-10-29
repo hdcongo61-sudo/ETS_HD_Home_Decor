@@ -1,5 +1,5 @@
 import { confirmDialog } from './ConfirmProvider';
-import React, { useState, useEffect, useContext, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useContext, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { clientPath, productPath } from '../utils/paths';
@@ -8,6 +8,8 @@ import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, format
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
 import { ExternalLink } from 'lucide-react';
+import SaleWorkflowPanel from './sales/SaleWorkflowPanel';
+import SectionError from './SectionError';
 import { Bar } from 'react-chartjs-2';
 import AuthContext from '../context/AuthContext';
 import useAutoClearMessage from '../hooks/useAutoClearMessage';
@@ -52,7 +54,8 @@ const SaleDetailPage = () => {
     const returnToSales = location.state?.returnToSales || queryParams.get('returnToSales') || '/sales';
     const [sale, setSale] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState(null);
+    const [loadAttempt, setLoadAttempt] = useState(0);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showReminderModal, setShowReminderModal] = useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -64,7 +67,9 @@ const SaleDetailPage = () => {
     const [message, setMessage] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
-    const [showProfitSections, setShowProfitSections] = useState(true);
+    const [deliveryError, setDeliveryError] = useState(null);
+    const deliverySaveLock = useRef(false);
+    const [showProfitSections, setShowProfitSections] = useState(false);
     const [paymentStartDate, setPaymentStartDate] = useState('');
     const [paymentEndDate, setPaymentEndDate] = useState('');
     const [requestModal, setRequestModal] = useState(null);
@@ -80,10 +85,13 @@ const SaleDetailPage = () => {
     const [productNames, setProductNames] = useState({});
 
     useEffect(() => {
+        let active = true;
         const fetchSale = async () => {
             try {
                 setLoading(true);
+                setError(null);
                 const response = await api.get(`/sales/${id}`);
+                if (!active) return;
                 const saleData = response.data;
                 setSale(saleData);
 
@@ -123,14 +131,15 @@ const SaleDetailPage = () => {
                     }
                 }
             } catch (err) {
-                setError('Erreur de chargement de la vente');
+                if (active) setError(err);
                 console.error('Error fetching sale:', err);
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         };
         fetchSale();
-    }, [id]);
+        return () => { active = false; };
+    }, [id, loadAttempt]);
 
     // Calculate total profit for the sale
     const calculateTotalProfit = () => {
@@ -271,6 +280,7 @@ const SaleDetailPage = () => {
         } catch (error) {
             console.error('Payment error:', error.response?.data);
             setMessage('Erreur: ' + (error.response?.data?.message || error.message));
+            throw error;
         }
     };
 
@@ -336,32 +346,39 @@ const SaleDetailPage = () => {
         }
     };
 
+    const openDelivery = () => {
+        setDeliveryError(null);
+        setDeliveryStatus(sale.deliveryStatus || 'pending');
+        setDeliveryNote(sale.deliveryNote || '');
+        setShowDeliveryModal(true);
+    };
     const handleUpdateDelivery = async () => {
+        if (deliverySaveLock.current) return;
+        deliverySaveLock.current = true;
+        setDeliveryError(null);
+        setIsUpdatingDelivery(true);
         try {
-            setMessage('Mise à jour en cours...');
-            setIsUpdatingDelivery(true);
-
             const payload = {
                 deliveryStatus,
                 deliveryNote: deliveryNote || '',
-                deliveryDate: deliveryStatus === 'delivered' ? new Date().toISOString() : null
+                deliveryDate: deliveryStatus === 'delivered'
+                    ? (sale.deliveryStatus === 'delivered' && sale.deliveryDate ? sale.deliveryDate : new Date().toISOString())
+                    : null
             };
-
-            const { data } = await api.put(`/sales/${id}/delivery`, payload);
-            const nextDeliveryState = {
+            const { data } = await api.put('/sales/' + id + '/delivery', payload);
+            setSale(mergeSaleState({
                 deliveryStatus: data?.deliveryStatus ?? payload.deliveryStatus,
                 deliveryNote: data?.deliveryNote ?? payload.deliveryNote,
                 deliveryDate: data?.deliveryDate ?? payload.deliveryDate,
                 updatedAt: data?.updatedAt
-            };
-
-            setSale(mergeSaleState(nextDeliveryState));
-            setMessage('✅ Statut de livraison mis à jour avec succès!');
+            }));
+            setMessage('Statut de livraison mis à jour avec succès !');
             setShowDeliveryModal(false);
+            window.dispatchEvent(new CustomEvent('saleCreated', { detail: { saleId: id, source: 'delivery' } }));
         } catch (error) {
-            console.error('Erreur:', error);
-            setMessage('❌ Erreur: ' + (error.response?.data?.message || error.message));
+            setDeliveryError(error);
         } finally {
+            deliverySaveLock.current = false;
             setIsUpdatingDelivery(false);
         }
     };
@@ -602,7 +619,8 @@ const SaleDetailPage = () => {
         return (
             <Workspace>
                 <PageHeader eyebrow="Vente" title="Détails de la vente" description="Une erreur est survenue." />
-                <EmptyState title="Impossible de charger la vente" description={error} />
+                <SectionError error={error} title="Impossible de charger la vente" onRetry={() => setLoadAttempt(value => value + 1)} />
+                <button type="button" className="ms-button ms-button-secondary min-h-[44px] mt-4" onClick={() => navigate(returnToSales)}>Retour aux ventes</button>
             </Workspace>
         );
     }
@@ -675,26 +693,6 @@ const SaleDetailPage = () => {
     });
     const filteredPaymentsTotal = filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
     const formatCfa = (value) => `${(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
-    const mobileSummaryCards = [
-        {
-            label: 'Total',
-            value: formatCfa(sale.totalAmount),
-            tone: 'bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)] border-[var(--ms-blue-soft)]'
-        },
-        {
-            label: 'Payé',
-            value: formatCfa(sale.totalPaid),
-            tone: 'bg-emerald-50 text-emerald-700 border-emerald-100'
-        },
-        {
-            label: 'Reste',
-            value: formatCfa(Math.max(Number(sale.balance) || 0, 0)),
-            tone: Number(sale.balance) > 0
-                ? 'bg-rose-50 text-rose-700 border-rose-100'
-                : 'bg-slate-50 text-slate-700 border-slate-100'
-        }
-    ];
-
     // Chart data for payment history
     const paymentChartData = {
         labels: filteredPayments.map((_, index) => `Paiement ${index + 1}`),
@@ -751,6 +749,12 @@ const SaleDetailPage = () => {
                     </div>
                     </div>
                 </header>
+
+                <SaleWorkflowPanel sale={sale}
+                    onPayment={() => setShowPaymentModal(true)}
+                    onDelivery={openDelivery}
+                    onRefresh={() => setLoadAttempt(value => value + 1)}
+                    renderReceipt={tone => <Suspense fallback={<span role="status">Chargement de la facture…</span>}><ExportSalesPdf sale={sale} buttonClassName={'ms-button ms-button-' + tone + ' min-h-[44px]'} /></Suspense>} />
 
                 <nav className="sticky top-[72px] z-20 -mx-3 overflow-x-auto border-y border-gray-200 bg-white/95 px-3 py-2 backdrop-blur sm:hidden">
                     <div className="flex min-w-max gap-2">
@@ -832,7 +836,9 @@ const SaleDetailPage = () => {
                                     {sale.formattedDate || new Date(sale.createdAt).toLocaleDateString('fr-FR')}
                                 </p>
                             </div>
-                            <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
+                            <details className="w-full sm:w-auto">
+                                <summary className="ms-button ms-button-secondary min-h-[44px] cursor-pointer">Autres actions</summary>
+                                <div className="mt-3 flex flex-wrap gap-2">
                                 {isAdmin && (
                                     <button
                                         type="button"
@@ -893,24 +899,6 @@ const SaleDetailPage = () => {
                                         Demander suppression
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPaymentModal(true)}
-                                    className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-50 sm:min-h-[44px] sm:px-4 sm:py-2.5"
-                                    disabled={sale.status === 'completed' || sale.status === 'cancelled'}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h6m-6 0H6" />
-                                    </svg>
-                                    <span className="sm:hidden">Paiement</span>
-                                    <span className="hidden sm:inline">Ajouter paiement</span>
-                                </button>
-                                {/* Télécharger la facture PDF — uniquement pour les ventes payées */}
-                                {sale.status === 'completed' && (
-                                    <Suspense fallback={null}>
-                                        <ExportSalesPdf sale={sale} />
-                                    </Suspense>
-                                )}
                                 {(sale.status === 'pending' || sale.status === 'partially_paid') && (
                                     <button
                                         type="button"
@@ -941,19 +929,7 @@ const SaleDetailPage = () => {
                                         <span className="hidden sm:inline">Rappel WhatsApp</span>
                                     </a>
                                 )}
-                                {sale.status === 'completed' && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDeliveryModal(true)}
-                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:min-h-[44px] sm:px-4 sm:py-2.5"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                        </svg>
-                                        <span className="sm:hidden">Livraison</span>
-                                        <span className="hidden sm:inline">Statut livraison</span>
-                                    </button>
-                                )}
+                                {sale.status === 'completed' && sale.deliveryStatus === 'delivered' && <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={openDelivery}>Modifier la livraison</button>}
                                 {sale.modificationHistory && sale.modificationHistory.length > 0 && (
                                     <button
                                         type="button"
@@ -966,17 +942,9 @@ const SaleDetailPage = () => {
                                         Historique
                                     </button>
                                 )}
-                            </div>
+                                </div>
+                            </details>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 p-4 sm:hidden">
-                        {mobileSummaryCards.map((card) => (
-                            <div key={card.label} className={`rounded-2xl border p-3 ${card.tone}`}>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{card.label}</p>
-                                <p className="mt-1 break-words text-sm font-bold leading-tight text-gray-950">{card.value}</p>
-                            </div>
-                        ))}
                     </div>
 
                     {/* Payment Reminder Section */}
@@ -1122,7 +1090,7 @@ const SaleDetailPage = () => {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setShowDeliveryModal(true)}
+                                    onClick={openDelivery}
                                     className="min-w-[44px] min-h-[44px] w-fit flex items-center justify-center gap-2 text-[var(--ms-blue)] hover:text-[var(--ms-blue-dark)] dark:text-[var(--ms-blue)] rounded-xl hover:bg-[var(--ms-blue-soft)] dark:hover:bg-[var(--ms-blue-dark)] transition-colors px-3"
                                     title="Modifier le statut de livraison"
                                     aria-label="Modifier le statut de livraison"
@@ -1918,7 +1886,8 @@ const SaleDetailPage = () => {
                 {/* Modal de statut de livraison */}
                 <Modal
                     isOpen={showDeliveryModal}
-                    onClose={() => setShowDeliveryModal(false)}
+                    onClose={() => { if (!deliverySaveLock.current) setShowDeliveryModal(false); }}
+                    mobileFullscreen
                     title="Statut de livraison"
                     size="sm"
                     footer={
@@ -1932,11 +1901,13 @@ const SaleDetailPage = () => {
                         </>
                     }
                 >
-                    <div className="space-y-4">
+                    <div className="space-y-4" aria-busy={isUpdatingDelivery}>
+                        {deliveryError && <SectionError error={deliveryError} title="Livraison non enregistrée" />}
                         <div>
                             <label htmlFor="delivery-status-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statut de livraison</label>
                             <select
                                 id="delivery-status-select"
+                                disabled={isUpdatingDelivery}
                                 value={deliveryStatus}
                                 onChange={(e) => setDeliveryStatus(e.target.value)}
                                 className="w-full min-h-[44px] px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[var(--ms-blue)] touch-manipulation"
@@ -1950,6 +1921,7 @@ const SaleDetailPage = () => {
                             <label htmlFor="delivery-note-ta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note de livraison (optionnelle)</label>
                             <textarea
                                 id="delivery-note-ta"
+                                disabled={isUpdatingDelivery}
                                 value={deliveryNote}
                                 onChange={(e) => setDeliveryNote(e.target.value)}
                                 placeholder="Notes sur la livraison..."

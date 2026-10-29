@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Boxes, ArrowLeftRight, ClipboardCheck, SlidersHorizontal, Scale, Plus,
@@ -6,13 +6,18 @@ import {
 } from 'lucide-react';
 import {
   Workspace, PageHeader, Surface, StatusBadge, KPICard, EmptyState,
-  LoadingSkeleton, DataTable,
+  DataTable,
 } from '../components/business';
 import { confirmDialog } from '../components/ConfirmProvider';
 import { inventoryApi } from '../features/inventory/api';
 import { catalogApi } from '../features/catalog/api';
 import { platformApi } from '../features/platform/api';
+import InventoryAdjustmentForm from '../components/stock/InventoryAdjustmentForm';
+import AuthContext from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { formatDate } from '../utils/saleUtils';
+import useInventorySection from './inventory-shared/useInventorySection';
+import InventorySectionState from './inventory-shared/InventorySectionState';
 
 const TRANSFER_STATUS = {
   draft: { label: 'Brouillon', tone: 'neutral' },
@@ -38,18 +43,11 @@ const TABS = [
 
 const asList = (data, field) => (Array.isArray(data) ? data : (Array.isArray(data?.[field]) ? data[field] : []));
 
-const InventoryV2 = () => {
+const InventoryWorkspace = ({ auth }) => {
   const [tab, setTab] = useState('balances');
-  const [loading, setLoading] = useState(true);
+  const { activeLocationId } = useLocations() || {};
+  const [adjustBusy, setAdjustBusy] = useState(false);
   const [busyId, setBusyId] = useState(null);
-
-  const [balances, setBalances] = useState([]);
-  const [transfers, setTransfers] = useState([]);
-  const [counts, setCounts] = useState([]);
-  const [reconciliation, setReconciliation] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [movements, setMovements] = useState([]);
 
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [showCountForm, setShowCountForm] = useState(false);
@@ -61,76 +59,43 @@ const InventoryV2 = () => {
     lines: [{ product: '', quantity: 1 }],
   });
   const [countForm, setCountForm] = useState({ locationId: '', productIds: '', reason: '', note: '' });
-  const [adjustForm, setAdjustForm] = useState({ productId: '', quantity: '', unitCost: '', note: '' });
 
-  // Lookups statiques : chargés une seule fois, jamais re-téléchargés après une mutation.
-  const loadLookups = useCallback(async () => {
-    try {
-      const [prodRes, locRes] = await Promise.all([
-        catalogApi.list({ limit: 500 }),
-        platformApi.locations(),
-      ]);
-      setProducts(asList(prodRes.data, 'products'));
-      setLocations(asList(locRes.data, 'locations'));
-    } catch {
-      // Données secondaires : on conserve les valeurs déjà en mémoire.
-    }
-  }, []);
 
-  const loadBalances = useCallback(async () => {
-    try {
-      const bRes = await inventoryApi.balances({ limit: 500 });
-      setBalances(asList(bRes.data, 'balances'));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger les soldes.');
-    }
-  }, []);
-
-  const loadTransfers = useCallback(async () => {
-    try {
-      const tRes = await inventoryApi.transfers({ limit: 100 });
-      setTransfers(asList(tRes.data, 'transfers'));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger les transferts.');
-    }
-  }, []);
-
-  const loadCounts = useCallback(async () => {
-    try {
-      const cRes = await inventoryApi.counts({ limit: 100 });
-      setCounts(asList(cRes.data, 'counts'));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Impossible de charger les inventaires.');
-    }
-  }, []);
-
-  const loadReconciliation = useCallback(async () => {
-    try {
-      const rRes = await inventoryApi.reconciliation();
-      setReconciliation(rRes.data);
-    } catch {
-      // Rapprochement facultatif.
-    }
-  }, []);
-
-  const loadMovements = useCallback(async () => {
-    try {
-      const mRes = await inventoryApi.movements({ limit: 30 });
-      setMovements(asList(mRes.data, 'movements'));
-    } catch {
-      // Mouvements secondaires.
-    }
-  }, []);
+  const balancesSection = useInventorySection(useCallback(async () => asList((await inventoryApi.balances({ limit: 500 })).data, 'balances'), []), []);
+  const transfersSection = useInventorySection(useCallback(async () => asList((await inventoryApi.transfers({ limit: 100 })).data, 'transfers'), []), []);
+  const countsSection = useInventorySection(useCallback(async () => asList((await inventoryApi.counts({ limit: 100 })).data, 'counts'), []), []);
+  const movementsSection = useInventorySection(useCallback(async () => asList((await inventoryApi.movements({ limit: 30 })).data, 'movements'), []), []);
+  const reconciliationSection = useInventorySection(useCallback(async () => (await inventoryApi.reconciliation()).data, []), null);
+  const lookupsSection = useInventorySection(useCallback(async () => {
+    const [products, locations] = await Promise.all([catalogApi.list({ limit: 500 }), platformApi.locations()]);
+    return { products: asList(products.data, 'products'), locations: asList(locations.data, 'locations') };
+  }, []), { products: [], locations: [] });
+  const { data: balances, reload: loadBalances } = balancesSection;
+  const { data: transfers, reload: loadTransfers } = transfersSection;
+  const { data: counts, reload: loadCounts } = countsSection;
+  const { data: movements, reload: loadMovements } = movementsSection;
+  const { data: reconciliation, reload: loadReconciliation } = reconciliationSection;
+  const { data: { products, locations }, reload: loadLookups } = lookupsSection;
+  const permissionsSection = useInventorySection(useCallback(async () => {
+    if (auth.isAdmin || auth.isSuperAdmin) return { permissions: ['*'], allLocations: true };
+    const response = await platformApi.myMemberships();
+    return asList(response.data, 'memberships').find(membership => String(membership.tenantId?._id || membership.tenantId) === String(auth.tenantId) && membership.status === 'active') || { permissions: [] };
+  }, [auth.isAdmin, auth.isSuperAdmin, auth.tenantId]), { permissions: [] });
+  const { reload: loadPermissions } = permissionsSection;
+  const can = permission => !sessionStorage.getItem('impersonating') && permissionsSection.loaded && !permissionsSection.error && (permissionsSection.data.permissions?.includes('*') || permissionsSection.data.permissions?.includes(permission));
+  const canTransfer = can('inventory.transfer');
+  const canCount = can('inventory.count');
+  const refreshing = [balancesSection, transfersSection, countsSection, movementsSection, reconciliationSection, lookupsSection, permissionsSection].some(section => section.pending);
+  const metric = (section, value) => section.loaded ? value : '—';
+  const freshness = (section, context) => !section.loaded ? 'Indisponible' : section.error || section.pending ? 'Données à actualiser' : context;
 
   // Chargement complet (montage + bouton « Actualiser »).
-  const loadAll = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+  const loadAll = useCallback(async () => {
     await Promise.all([
       loadLookups(), loadBalances(), loadTransfers(), loadCounts(),
-      loadReconciliation(), loadMovements(),
+      loadReconciliation(), loadMovements(), loadPermissions(),
     ]);
-    setLoading(false);
-  }, [loadLookups, loadBalances, loadTransfers, loadCounts, loadReconciliation, loadMovements]);
+  }, [loadLookups, loadBalances, loadTransfers, loadCounts, loadReconciliation, loadMovements, loadPermissions]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -151,6 +116,7 @@ const InventoryV2 = () => {
   // ── Transferts ──
   const createTransfer = async (e) => {
     e.preventDefault();
+    if (!canTransfer || !lookupsReady) return;
     if (!transferForm.sourceLocationId || !transferForm.destinationLocationId || transferForm.lines.some((l) => !l.product || Number(l.quantity) <= 0)) {
       toast.error('Boutiques et lignes valides requises.');
       return;
@@ -172,6 +138,7 @@ const InventoryV2 = () => {
   };
 
   const transferAction = async (transfer, action) => {
+    if (!canTransfer) return;
     try {
       setBusyId(transfer._id);
       if (action === 'ship') {
@@ -202,6 +169,7 @@ const InventoryV2 = () => {
   // ── Inventaires physiques ──
   const createCount = async (e) => {
     e.preventDefault();
+    if (!canCount || !lookupsReady) return;
     const productIds = countForm.productIds.split(',').map((s) => s.trim()).filter(Boolean);
     if (!countForm.locationId || productIds.length === 0 || !countForm.reason.trim()) {
       toast.error('Boutique, produits et motif requis.');
@@ -224,7 +192,8 @@ const InventoryV2 = () => {
   };
 
   const postCount = async (count) => {
-    const missing = (count.lines || []).filter((l) => countedValues[String(l.product)] === undefined || countedValues[String(l.product)] === '');
+    if (!canCount) return;
+    const missing = (count.lines || []).filter((l) => countedValues[String(count._id)]?.[String(l.product?._id || l.product)] === undefined || countedValues[String(count._id)]?.[String(l.product?._id || l.product)] === '');
     if (missing.length > 0) {
       toast.error(`Quantité comptée manquante pour ${missing.length} ligne(s).`);
       return;
@@ -233,10 +202,10 @@ const InventoryV2 = () => {
     try {
       setBusyId(count._id);
       const obj = {};
-      (count.lines || []).forEach((l) => { obj[String(l.product)] = Number(countedValues[String(l.product)]); });
+      (count.lines || []).forEach((l) => { obj[String(l.product?._id || l.product)] = Number(countedValues[String(count._id)]?.[String(l.product?._id || l.product)]); });
       await inventoryApi.postCount(count._id, { countedQuantities: obj });
       toast.success('Inventaire publié — écarts appliqués.');
-      setCountedValues({});
+      setCountedValues(previous => { const next = { ...previous }; delete next[String(count._id)]; return next; });
       // Écarts appliqués en ajustements : comptages, soldes, mouvements et rapprochement bougent.
       await Promise.all([loadCounts(), loadBalances(), loadMovements(), loadReconciliation()]);
     } catch (err) {
@@ -247,6 +216,7 @@ const InventoryV2 = () => {
   };
 
   const cancelCount = async (count) => {
+    if (!canCount) return;
     if (!(await confirmDialog('Annuler cet inventaire ?', { danger: true, confirmLabel: 'Annuler' }))) return;
     try {
       setBusyId(count._id);
@@ -261,26 +231,16 @@ const InventoryV2 = () => {
   };
 
   // ── Ajustements ──
-  const createAdjustment = async (e) => {
-    e.preventDefault();
-    const qty = Number(adjustForm.quantity);
-    if (!adjustForm.productId || !Number.isFinite(qty) || qty === 0) {
-      toast.error('Produit et quantité non nulle requis.');
-      return;
-    }
-    try {
-      await inventoryApi.adjust({
-        productId: adjustForm.productId,
-        quantity: qty,
-        unitCost: adjustForm.unitCost ? Number(adjustForm.unitCost) : 0,
-        note: adjustForm.note,
-      });
-      toast.success('Ajustement appliqué.');
-      setAdjustForm({ productId: '', quantity: '', unitCost: '', note: '' });
-      await Promise.all([loadBalances(), loadMovements(), loadReconciliation()]);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Ajustement impossible.');
-    }
+  const adjustmentLocation = activeLocationId
+    ? locations.find(location => String(location._id) === String(activeLocationId) && location.isActive !== false)
+    : [...locations].filter(location => location.isActive !== false).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+  const permissionData = permissionsSection.data;
+  const canAdjust = can('inventory.adjust') && (permissionData.permissions?.includes('*') || permissionData.allLocations || (permissionData.locationIds || []).some(id => String(id?._id || id) === String(adjustmentLocation?._id)));
+  const lookupsReady = lookupsSection.loaded && !lookupsSection.error && !lookupsSection.pending;
+  const readOnlyMessage = <p className="fui-body1 mb-3">Consultation uniquement : votre rôle ne permet pas de modifier cette section. Contactez un administrateur pour obtenir cet accès.</p>;
+  const adjustmentSaved = () => {
+    Promise.all([loadBalances(), loadMovements(), loadReconciliation()]);
+    window.dispatchEvent(new CustomEvent('productStockChanged'));
   };
 
   const totalOnHand = useMemo(() => balances.reduce((sum, b) => sum + (Number(b.onHand) || 0), 0), [balances]);
@@ -288,14 +248,6 @@ const InventoryV2 = () => {
   const shippedTransfers = transfers.filter((t) => t.status === 'shipped');
   const mismatches = reconciliation?.mismatches || [];
 
-  if (loading) {
-    return (
-      <Workspace>
-        <PageHeader eyebrow="Inventaire v2" title="Inventaire" description="Soldes, transferts, inventaires physiques et rapprochement." />
-        <LoadingSkeleton rows={6} />
-      </Workspace>
-    );
-  }
 
   return (
     <Workspace>
@@ -304,17 +256,17 @@ const InventoryV2 = () => {
         title="Inventaire"
         description="Moteur d'inventaire transactionnel : soldes par boutique, transferts, comptages et rapprochement."
         actions={
-          <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => loadAll(true)}>
-            <RefreshCw size={16} /> Actualiser
+          <button type="button" className="ms-button ms-button-secondary ms-button-md" disabled={adjustBusy || refreshing} onClick={() => loadAll()}>
+            <RefreshCw size={16} /> {refreshing ? 'Actualisation…' : 'Actualiser'}
           </button>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KPICard title="Stock total" value={totalOnHand} context={`${balances.length} soldes`} />
-        <KPICard title="Transferts en route" value={shippedTransfers.length} context={`${transfers.length} au total`} tone="info" />
-        <KPICard title="Inventaires ouverts" value={openCounts.length} context="À publier" tone="warning" />
-        <KPICard title="Écarts de rapprochement" value={mismatches.length} context={reconciliation?.coherent ? 'Cohérent' : 'À corriger'} tone={reconciliation?.coherent ? 'success' : 'danger'} />
+        <KPICard title="Stock total" value={metric(balancesSection, totalOnHand)} context={freshness(balancesSection, balances.length + ' soldes')} />
+        <KPICard title="Transferts en route" value={metric(transfersSection, shippedTransfers.length)} context={freshness(transfersSection, transfers.length + ' au total')} tone="info" />
+        <KPICard title="Inventaires ouverts" value={metric(countsSection, openCounts.length)} context={freshness(countsSection, 'À publier')} tone="warning" />
+        <KPICard title="Écarts de rapprochement" value={metric(reconciliationSection, mismatches.length)} context={freshness(reconciliationSection, reconciliation?.coherent ? 'Cohérent' : 'À corriger')} tone={!reconciliationSection.loaded || reconciliationSection.error || reconciliationSection.pending ? 'neutral' : reconciliation?.coherent ? 'success' : 'danger'} />
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections inventaire">
@@ -324,7 +276,7 @@ const InventoryV2 = () => {
             type="button"
             role="tab"
             aria-selected={tab === key}
-            onClick={() => setTab(key)}
+            disabled={adjustBusy} onClick={() => setTab(key)}
             className={tab === key ? 'ms-button ms-button-primary ms-button-md' : 'ms-button ms-button-secondary ms-button-md'}
           >
             <Icon size={16} /> {label}
@@ -332,10 +284,13 @@ const InventoryV2 = () => {
         ))}
       </div>
 
+      <InventorySectionState section={permissionsSection} />
+
       {/* ── Soldes ── */}
       {tab === 'balances' && (
         <Surface className="p-4">
           <h2 className="fui-subtitle1 mb-4">Soldes par boutique</h2>
+          <InventorySectionState section={balancesSection}>
           {balances.length === 0 ? (
             <EmptyState title="Aucun solde" description="Aucun mouvement d'inventaire v2 enregistré pour l'instant." />
           ) : (
@@ -363,6 +318,7 @@ const InventoryV2 = () => {
               </table>
             </DataTable>
           )}
+          </InventorySectionState>
         </Surface>
       )}
 
@@ -371,12 +327,17 @@ const InventoryV2 = () => {
         <Surface className="p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Transferts inter-boutiques</h2>
-            <button type="button" className="ms-button ms-button-primary ms-button-md" onClick={() => setShowTransferForm((v) => !v)}>
+            {canTransfer && (
+            <button type="button" className="ms-button ms-button-primary ms-button-md" disabled={!lookupsReady} onClick={() => setShowTransferForm((v) => !v)}>
               {showTransferForm ? <X size={16} /> : <Plus size={16} />} {showTransferForm ? 'Fermer' : 'Nouveau transfert'}
             </button>
+            )}
           </div>
+          {!canTransfer && permissionsSection.loaded && !permissionsSection.error && readOnlyMessage}
+          <InventorySectionState section={lookupsSection} />
 
-          {showTransferForm && (
+          {canTransfer && lookupsSection.loaded && showTransferForm && (
+            <fieldset disabled={!lookupsReady} className="min-w-0">
             <form onSubmit={createTransfer} className="mb-4 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)' }}>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <label className="form-control">
@@ -434,10 +395,12 @@ const InventoryV2 = () => {
                 <button type="submit" className="btn-primary"><ArrowLeftRight size={16} /> Créer le transfert</button>
               </div>
             </form>
+            </fieldset>
           )}
 
+          <InventorySectionState section={transfersSection}>
           {transfers.length === 0 ? (
-            <EmptyState title="Aucun transfert" description="Transférez du stock entre vos boutiques." />
+            <EmptyState title="Aucun transfert" description={canTransfer ? 'Transférez du stock entre vos boutiques.' : 'Aucun transfert enregistré.'} />
           ) : (
             <DataTable>
               <table className="ms-table">
@@ -459,13 +422,13 @@ const InventoryV2 = () => {
                         <td>{formatDate(t.createdAt)}</td>
                         <td><StatusBadge tone={st.tone}>{st.label}</StatusBadge></td>
                         <td className="text-right whitespace-nowrap">
-                          {['draft', 'submitted'].includes(t.status) && (
+                          {canTransfer && ['draft', 'submitted'].includes(t.status) && (
                             <>
                               <button type="button" className="btn-ghost" disabled={busyId === t._id} onClick={() => transferAction(t, 'ship')}><Send size={14} /> Expédier</button>
-                              <button type="button" className="btn-ghost-danger" disabled={busyId === t._id} onClick={() => transferAction(t, 'cancel')}><Ban size={14} /></button>
+                              <button type="button" className="btn-ghost-danger" disabled={busyId === t._id} aria-label="Annuler le transfert" onClick={() => transferAction(t, 'cancel')}><Ban size={14} /></button>
                             </>
                           )}
-                          {t.status === 'shipped' && (
+                          {canTransfer && t.status === 'shipped' && (
                             <button type="button" className="btn-ghost" disabled={busyId === t._id} onClick={() => transferAction(t, 'receive')}><PackageCheck size={14} /> Réceptionner</button>
                           )}
                           {['received', 'cancelled'].includes(t.status) && <span className="fui-caption1">—</span>}
@@ -477,6 +440,7 @@ const InventoryV2 = () => {
               </table>
             </DataTable>
           )}
+          </InventorySectionState>
         </Surface>
       )}
 
@@ -485,12 +449,17 @@ const InventoryV2 = () => {
         <Surface className="p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Inventaires physiques</h2>
-            <button type="button" className="ms-button ms-button-primary ms-button-md" onClick={() => setShowCountForm((v) => !v)}>
+            {canCount && (
+            <button type="button" className="ms-button ms-button-primary ms-button-md" disabled={!lookupsReady} onClick={() => setShowCountForm((v) => !v)}>
               {showCountForm ? <X size={16} /> : <Plus size={16} />} {showCountForm ? 'Fermer' : 'Ouvrir un inventaire'}
             </button>
+            )}
           </div>
+          {!canCount && permissionsSection.loaded && !permissionsSection.error && readOnlyMessage}
+          <InventorySectionState section={lookupsSection} />
 
-          {showCountForm && (
+          {canCount && lookupsSection.loaded && showCountForm && (
+            <fieldset disabled={!lookupsReady} className="min-w-0">
             <form onSubmit={createCount} className="mb-4 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)' }}>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <label className="form-control">
@@ -523,10 +492,12 @@ const InventoryV2 = () => {
                 <button type="submit" className="btn-primary"><ClipboardCheck size={16} /> Ouvrir l'inventaire</button>
               </div>
             </form>
+            </fieldset>
           )}
 
+          <InventorySectionState section={countsSection}>
           {counts.length === 0 ? (
-            <EmptyState title="Aucun inventaire" description="Ouvrez un inventaire physique pour compter votre stock." />
+            <EmptyState title="Aucun inventaire" description={canCount ? 'Ouvrez un inventaire physique pour compter votre stock.' : 'Aucun inventaire physique enregistré.'} />
           ) : (
             <DataTable>
               <table className="ms-table">
@@ -549,28 +520,28 @@ const InventoryV2 = () => {
                           <td>{formatDate(c.createdAt)}</td>
                           <td><StatusBadge tone={st.tone}>{st.label}</StatusBadge></td>
                           <td className="text-right whitespace-nowrap">
-                            {c.status === 'open' && (
+                            {canCount && c.status === 'open' && (
                               <>
                                 <button type="button" className="btn-ghost" disabled={busyId === c._id} onClick={() => postCount(c)}><CheckCircle2 size={14} /> Publier</button>
-                                <button type="button" className="btn-ghost-danger" disabled={busyId === c._id} onClick={() => cancelCount(c)}><Ban size={14} /></button>
+                                <button type="button" className="btn-ghost-danger" disabled={busyId === c._id} aria-label="Annuler l’inventaire" onClick={() => cancelCount(c)}><Ban size={14} /></button>
                               </>
                             )}
                             {c.status !== 'open' && <span className="fui-caption1">—</span>}
                           </td>
                         </tr>
-                        {c.status === 'open' && (c.lines || []).length > 0 && (
+                        {canCount && c.status === 'open' && (c.lines || []).length > 0 && (
                           <tr>
                             <td colSpan="7" style={{ background: 'var(--colorNeutralBackground2)' }}>
                               <div className="grid grid-cols-2 gap-2 p-2 md:grid-cols-4">
                                 {c.lines.map((line) => (
-                                  <label key={line.product} className="form-control">
+                                  <label key={String(line.product?._id || line.product)} className="form-control">
                                     <span className="fui-caption1 mb-1">
                                       {productLabel(line.product)} <span className="opacity-60">(attendu {line.expectedQuantity})</span>
                                     </span>
                                     <input
                                       type="number" min="0" className="form-control" placeholder="Compté"
-                                      value={countedValues[String(line.product)] ?? ''}
-                                      onChange={(e) => setCountedValues((prev) => ({ ...prev, [String(line.product)]: e.target.value }))}
+                                      value={countedValues[String(c._id)]?.[String(line.product?._id || line.product)] ?? ''}
+                                      onChange={(e) => setCountedValues((prev) => ({ ...prev, [String(c._id)]: { ...prev[String(c._id)], [String(line.product?._id || line.product)]: e.target.value } }))}
                                     />
                                   </label>
                                 ))}
@@ -585,6 +556,7 @@ const InventoryV2 = () => {
               </table>
             </DataTable>
           )}
+          </InventorySectionState>
         </Surface>
       )}
 
@@ -593,46 +565,19 @@ const InventoryV2 = () => {
         <Surface className="p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Ajustement manuel</h2>
-            <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => setShowAdjustForm((v) => !v)}>
+            {canAdjust && (
+            <button type="button" className="ms-button ms-button-secondary ms-button-md" disabled={adjustBusy || !lookupsReady} onClick={() => setShowAdjustForm((v) => !v)}>
               {showAdjustForm ? <X size={16} /> : <Plus size={16} />} {showAdjustForm ? 'Fermer' : 'Nouvel ajustement'}
             </button>
+            )}
           </div>
+          {!canAdjust && permissionsSection.loaded && !permissionsSection.error && readOnlyMessage}
+          <InventorySectionState section={lookupsSection} />
 
-          {showAdjustForm && (
-            <form onSubmit={createAdjustment} className="mb-4 rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)' }}>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                <label className="form-control">
-                  <span className="fui-caption1 mb-1">Produit *</span>
-                  <select className="form-control" value={adjustForm.productId} onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })} required>
-                    <option value="">— Choisir —</option>
-                    {products.map((p) => <option key={p._id} value={p._id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>)}
-                  </select>
-                </label>
-                <label className="form-control">
-                  <span className="fui-caption1 mb-1">Quantité (positive = entrée, négative = sortie) *</span>
-                  <input
-                    type="number" className="form-control" placeholder="ex. 10 ou -5"
-                    value={adjustForm.quantity}
-                    onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
-                    required
-                  />
-                </label>
-                <label className="form-control">
-                  <span className="fui-caption1 mb-1">Coût unitaire (optionnel)</span>
-                  <input type="number" min="0" step="0.01" className="form-control" value={adjustForm.unitCost} onChange={(e) => setAdjustForm({ ...adjustForm, unitCost: e.target.value })} />
-                </label>
-                <label className="form-control">
-                  <span className="fui-caption1 mb-1">Note</span>
-                  <input type="text" className="form-control" value={adjustForm.note} onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })} placeholder="Casse, don, erreur…" />
-                </label>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button type="submit" className="btn-primary"><SlidersHorizontal size={16} /> Appliquer l'ajustement</button>
-              </div>
-            </form>
-          )}
+          {canAdjust && lookupsSection.loaded && showAdjustForm && <fieldset disabled={!lookupsReady} className="min-w-0"><InventoryAdjustmentForm key={adjustmentLocation?._id || "no-location"} products={products} location={adjustmentLocation} onSaved={adjustmentSaved} onBusyChange={setAdjustBusy} /></fieldset>}
 
           <h3 className="fui-body1-strong mt-4 mb-2">Derniers mouvements</h3>
+          <InventorySectionState section={movementsSection}>
           {movements.length === 0 ? (
             <EmptyState title="Aucun mouvement" description="Le journal des mouvements v2 est vide." />
           ) : (
@@ -658,6 +603,7 @@ const InventoryV2 = () => {
               </table>
             </DataTable>
           )}
+          </InventorySectionState>
         </Surface>
       )}
 
@@ -665,6 +611,7 @@ const InventoryV2 = () => {
       {tab === 'reconciliation' && (
         <Surface className="p-4">
           <h2 className="fui-subtitle1 mb-4">Rapprochement Product.stock ↔ registre des soldes</h2>
+          <InventorySectionState section={reconciliationSection}>
           {!reconciliation ? (
             <EmptyState title="Rapport indisponible" />
           ) : (
@@ -725,10 +672,17 @@ const InventoryV2 = () => {
               )}
             </>
           )}
+          </InventorySectionState>
         </Surface>
       )}
     </Workspace>
   );
+};
+
+// Changing shop or user must never retain the preceding account's data.
+const InventoryV2 = () => {
+  const { auth } = useContext(AuthContext);
+  return <InventoryWorkspace key={String(auth.tenantId) + ':' + String(auth.user?._id)} auth={auth} />;
 };
 
 export default InventoryV2;

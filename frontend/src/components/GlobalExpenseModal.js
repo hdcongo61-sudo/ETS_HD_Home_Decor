@@ -7,6 +7,7 @@ import { useModal } from '../context/ModalContext';
 import Modal from './Modal';
 import ExpenseForm from './ExpenseForm';
 import { confirmDialog } from './ConfirmProvider';
+import { getErrorMessage } from '../utils/errorModel';
 
 const GlobalExpenseModal = () => {
   const { activeModal, closeModal } = useModal();
@@ -38,7 +39,7 @@ const GlobalExpenseModal = () => {
       window.dispatchEvent(new CustomEvent('expenseCreated'));
     } catch (error) {
       console.error('Error creating expense:', error);
-      toast.error(error.response?.data?.message || "Erreur lors de l'enregistrement de la dépense.");
+      toast.error(getErrorMessage(error, "Erreur lors de l'enregistrement de la dépense."));
     } finally {
       setIsSubmitting(false);
     }

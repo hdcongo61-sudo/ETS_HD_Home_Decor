@@ -4,8 +4,9 @@ import { AlertCircle, Check, Loader2, ReceiptText, RefreshCw, Users, Boxes } fro
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
+import { getErrorMessage } from '../utils/errorModel';
 import Modal from './Modal';
-import SaleForm from './SaleForm';
+import SaleForm, { SALE_STAGE_CONTINUE_LABELS } from './SaleForm';
 import { confirmDialog } from './ConfirmProvider';
 
 const normalizeCollection = (value, nestedKeys = []) => {
@@ -63,15 +64,16 @@ const GlobalSaleModal = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saleStage, setSaleStage] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
+
 
   const requestClose = useCallback(async () => {
     if (isSubmitting) return;
     if (isDirty) {
-      const discard = await confirmDialog('Les informations saisies seront perdues.', {
-        title: 'Abandonner cette vente ?',
-        confirmLabel: 'Abandonner',
-        danger: true,
+      const discard = await confirmDialog('La fermeture conserve le brouillon si son enregistrement sur cet appareil est disponible. Vous pourrez le reprendre dans cette boutique.', {
+        title: 'Fermer cette vente ?',
+        confirmLabel: 'Fermer',
       });
       if (!discard) return;
     }
@@ -95,10 +97,7 @@ const GlobalSaleModal = () => {
       console.error('Error loading sale modal data:', error);
       setClients([]);
       setProducts([]);
-      setLoadError(
-        error.response?.data?.message ||
-          'Impossible de charger les clients et les produits.'
-      );
+      setLoadError(getErrorMessage(error, 'Impossible de charger les clients et les produits.'));
     } finally {
       setLoading(false);
     }
@@ -106,6 +105,7 @@ const GlobalSaleModal = () => {
 
   useEffect(() => {
     if (!isOpen) return;
+    setSaleStage(0);
     fetchSaleFormData();
   }, [fetchSaleFormData, isOpen]);
 
@@ -159,11 +159,10 @@ const GlobalSaleModal = () => {
                 <Loader2 size={18} className="animate-spin" />
                 Enregistrement...
               </>
+            ) : saleStage < 3 ? (
+              <>{SALE_STAGE_CONTINUE_LABELS[saleStage]}</>
             ) : (
-              <>
-                <Check size={18} />
-                Enregistrer la vente
-              </>
+              <><Check size={18} /> Enregistrer la vente</>
             )}
           </button>
         </>
@@ -194,6 +193,7 @@ const GlobalSaleModal = () => {
             <MetricPill icon={<Boxes size={16} />} label="Produits" value={products.length} tone="success" />
           </div>
 
+
           <div onInputCapture={() => setIsDirty(true)} onChangeCapture={() => setIsDirty(true)}>
             <SaleForm
               clients={clients}
@@ -201,6 +201,7 @@ const GlobalSaleModal = () => {
               onSubmit={handleSubmit}
               formId="global-sale-form"
               hideSubmit
+              onStageChange={setSaleStage}
             />
           </div>
         </div>

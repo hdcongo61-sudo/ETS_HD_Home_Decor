@@ -45,13 +45,10 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { useModal } from "../context/ModalContext";
 import { resolveAppLogo } from "../utils/appBranding";
 import LocationSwitcher from "./LocationSwitcher";
+import MobileRefreshButton from "./MobileRefreshButton";
 
 const Navigation = () => {
   const { auth } = useContext(AuthContext);
-  // Permissions individuelles accordées par un admin aux membres.
-  const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
-  const canUseExpenses = auth.isAdmin || permissions.includes('use_expenses');
-  const canViewDashboard = auth.isAdmin || permissions.includes('view_dashboard');
   const { appSettings } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
@@ -194,7 +191,9 @@ const Navigation = () => {
     }
   };
 
-  const showSearchBar = auth.isAuthenticated && auth.isAdmin; // ✅ Seuls les admins connectés
+  // Search is a core operational action. Sellers and warehouse users need the
+  // same fast path to products, clients, and sales as administrators.
+  const showSearchBar = auth.isAuthenticated;
 
   if (!auth.isAuthenticated) return null;
 
@@ -316,7 +315,8 @@ const Navigation = () => {
           <div className="hidden md:block w-px h-6 bg-[var(--ms-border)]" />
 
           {/* === Profil & Actions === */}
-          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2.5">
+            <MobileRefreshButton />
             {showSearchBar && (
               <button
                 type="button"

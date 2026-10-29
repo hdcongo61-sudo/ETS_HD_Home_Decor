@@ -7,6 +7,8 @@ import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import LoaderOverlay from '../components/LoaderOverlay';
+import SectionError from '../components/SectionError';
+import { matchesProductSearch } from './products-shared/productSearch';
 import AppLoader from '../components/AppLoader';
 import toast from 'react-hot-toast';
 import { productPath } from '../utils/paths';
@@ -54,6 +56,7 @@ import Modal from '../components/Modal';
 import FeatureGate, { LockedFeatureButton } from '../components/FeatureGate';
 import { FEATURE_KEYS } from '../config/features';
 import { compressImage, formatBytes } from '../utils/imageCompression';
+import { getStockStatus } from '../utils/stockStatus';
 
 const sortProductsByName = (items) =>
   [...items].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'fr', { sensitivity: 'base' }));
@@ -76,15 +79,40 @@ const DEFAULT_PRODUCT_FILTERS = {
 
 const PRODUCT_FILTER_QUERY_KEYS = Object.keys(DEFAULT_PRODUCT_FILTERS);
 
+// Sentinel écrit dans l'URL par les actions "Tous / Réinitialiser / Effacer"
+// pour marquer explicitement "aucun filtre de stock voulu" — nécessaire car
+// une URL sans aucun paramètre de stock est sinon indiscernable d'une
+// première visite, ce qui ferait revenir le filtre par défaut après un clic
+// sur "Tous". matchesNumericFilter traite déjà tout opérateur inconnu comme
+// "pas de filtre" (son switch retombe sur `default: return true`).
+const STOCK_FILTER_SHOW_ALL = 'all';
+
 const readProductFiltersFromSearch = (search) => {
   const params = new URLSearchParams(search || '');
-  return PRODUCT_FILTER_QUERY_KEYS.reduce(
+  const resolved = PRODUCT_FILTER_QUERY_KEYS.reduce(
     (acc, key) => ({
       ...acc,
       [key]: params.get(key) || '',
     }),
     { ...DEFAULT_PRODUCT_FILTERS }
   );
+
+  if (resolved.stockOperator === STOCK_FILTER_SHOW_ALL) {
+    resolved.stockOperator = '';
+    return resolved;
+  }
+
+  // Vue par défaut : masquer les ruptures de stock pour ne pas polluer la
+  // liste avec des produits non vendables. S'efface dès qu'un filtre de
+  // stock explicite ou une recherche (ex: deep-link par SKU) est présent
+  // dans l'URL, pour ne jamais cacher un produit volontairement recherché.
+  const hasExplicitStockFilter = params.has('stockOperator') || params.has('stock') || params.has('stockMax');
+  if (!hasExplicitStockFilter && !resolved.product) {
+    resolved.stockOperator = 'gte';
+    resolved.stock = '1';
+  }
+
+  return resolved;
 };
 
 const buildSearchFromProductFilters = (currentSearch, filters) => {
@@ -132,7 +160,11 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadError] = useState(null);
+  const [lookupError, setLookupError] = useState(null);
+  const [productActionResult, setProductActionResult] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const catalogueRequest = useRef(0);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -176,6 +208,7 @@ const Products = () => {
 
   const fetchLookups = useCallback(async () => {
     try {
+      setLookupError(null);
       // Listes depuis les PARAMÈTRES (référentiels), pas depuis les produits
       // existants : catégories, conteneurs, entrepôts et fournisseurs.
       const [cats, conts, whs, supps] = await Promise.all([
@@ -194,6 +227,8 @@ const Products = () => {
       setLookupsLoaded(true);
     } catch (err) {
       console.error('Error fetching lookups:', err);
+      setLookupError(err);
+      setLookupsLoaded(false);
     }
   }, []);
 
@@ -205,16 +240,20 @@ const Products = () => {
 
   const fetchProducts = useCallback(async (options = {}) => {
     const { showLoading = true } = options;
+    const requestId = ++catalogueRequest.current;
     try {
       if (showLoading) setLoading(true);
-      setLoadError('');
+      setRefreshing(true);
+      setLoadError(null);
       const response = await catalogApi.list({ summary: 'list' });
-      setProducts(response.data);
+      if (requestId === catalogueRequest.current) setProducts(response.data);
     } catch (error) {
-      console.error('Error fetching products:', error);
-      setLoadError(error.response?.data?.message || 'Impossible de charger le catalogue pour le moment.');
+      if (requestId === catalogueRequest.current) setLoadError(error);
     } finally {
-      if (showLoading) setLoading(false);
+      if (requestId === catalogueRequest.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -230,8 +269,17 @@ const Products = () => {
         catalogApi.salesMap().then(({ data }) => setSalesMap(data.map || {})).catch(() => setSalesMap({}));
       }
     };
+    const refreshChangedResource = (event) => {
+      if (event.detail?.resource === 'products' || event.detail?.resource === 'sales') refresh();
+    };
     window.addEventListener('saleCreated', refresh);
-    return () => window.removeEventListener('saleCreated', refresh);
+    window.addEventListener('productStockChanged', refresh);
+    window.addEventListener('app:data-changed', refreshChangedResource);
+    return () => {
+      window.removeEventListener('saleCreated', refresh);
+      window.removeEventListener('productStockChanged', refresh);
+      window.removeEventListener('app:data-changed', refreshChangedResource);
+    };
   }, [fetchProducts, isAdmin]);
 
   useEffect(() => {
@@ -283,6 +331,7 @@ const Products = () => {
         });
         setIsFormOpen(false);
         setEditingProduct(null);
+        setProductActionResult({ product: data, action: editingProduct ? 'updated' : 'created' });
       }
     } catch (error) {
       console.error('Error:', error.response?.data?.message || error.message);
@@ -344,7 +393,7 @@ const Products = () => {
 
   const totalStock = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
   const inStockCount = products.filter((product) => Number(product.stock) > 0).length;
-  const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) < 5).length;
+  const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) <= 5).length;
   const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
   const stockValue = products.reduce((sum, product) => sum + ((Number(product.stock) || 0) * (Number(product.price) || 0)), 0);
   const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
@@ -357,15 +406,7 @@ const Products = () => {
           title="Produits"
           description="Trouvez un produit, surveillez le stock et gérez votre catalogue depuis un seul espace."
         />
-        <EmptyState
-          title="Catalogue indisponible"
-          description={loadError}
-          action={(
-            <Button variant="primary" onClick={() => fetchProducts()}>
-              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Réessayer
-            </Button>
-          )}
-        />
+        <SectionError title="Catalogue indisponible" error={loadError} onRetry={() => fetchProducts()} />
       </Workspace>
     );
   }
@@ -378,15 +419,25 @@ const Products = () => {
         text={editingProduct ? 'Modification produit...' : 'Création du produit...'}
       />
 
-      {loadError && (
-        <div role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--colorStatusWarningStroke1)] bg-[var(--colorStatusWarningBackground1)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-[var(--colorStatusWarningForeground1)]">
-            Les données affichées peuvent être anciennes. {loadError}
-          </p>
-          <Button variant="secondary" size="sm" onClick={() => fetchProducts({ showLoading: false })}>
-            <RotateCcw className="h-4 w-4" aria-hidden="true" /> Actualiser
-          </Button>
-        </div>
+      {loadError && <div className="space-y-2">
+        <p className="text-sm text-[var(--ms-text-muted)]">Les données affichées peuvent être anciennes. Actualisez avant de vous fier aux quantités disponibles.</p>
+        <SectionError title="Catalogue non actualisé" error={loadError} onRetry={() => fetchProducts({ showLoading: false })} />
+      </div>}
+      {refreshing && !loading && <p role="status" className="text-sm text-[var(--ms-text-muted)]">Actualisation du stock en cours…</p>}
+
+      {productActionResult && (
+        <section className="rounded-[var(--radiusLarge)] border border-[var(--colorStatusSuccessStroke1)] bg-[var(--colorStatusSuccessBackground1)] p-4" role="status" aria-label="Résultat produit">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-[var(--colorStatusSuccessForeground1)]">{productActionResult.action === 'created' ? 'Produit créé' : 'Produit mis à jour'}</p>
+              <p className="mt-1 text-sm text-[var(--colorStatusSuccessForeground1)]">{productActionResult.product?.name || 'Le produit est disponible dans le catalogue.'}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {productActionResult.product?._id && <Link to={productPath(productActionResult.product)} className="ms-button ms-button-primary min-h-[44px]">Ouvrir le produit</Link>}
+              <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => setProductActionResult(null)}>Fermer</button>
+            </div>
+          </div>
+        </section>
       )}
 
       <PageHeader
@@ -410,6 +461,7 @@ const Products = () => {
             <Button
               variant="primary"
               onClick={() => {
+                setProductActionResult(null);
                 setEditingProduct(null);
                 setIsFormOpen(true);
               }}
@@ -576,6 +628,8 @@ const Products = () => {
             onSubmit={handleCreate}
             loading={formSubmitting}
             lookups={lookups}
+            lookupError={lookupError}
+            onRetryLookups={() => { setLookupsLoaded(false); fetchLookups(); }}
           />
         </RightDetailPanel>
       )}
@@ -650,7 +704,7 @@ const getProductFormDefaults = (product) => ({
   warehouse: product?.warehouse || '',
 });
 
-const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
+const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, onRetryLookups }) => {
   const { categories = [], containers = [], warehouses = [], suppliers = [] } = lookups;
   const [formData, setFormData] = useState(() => getProductFormDefaults(product));
   const [profitMargin, setProfitMargin] = useState(0);
@@ -754,6 +808,7 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
 
   return (
     <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
+      {lookupError && <SectionError title="Référentiels indisponibles" error={lookupError} onRetry={onRetryLookups} />}
       {/* Section: Informations générales */}
       <FormSection step={1} icon={<Package className="h-4 w-4" />} title="Informations générales" description="Identité du produit dans le catalogue">
         <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required className="sm:col-span-2 lg:col-span-4" />
@@ -767,7 +822,12 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {} }) => {
       <FormSection step={2} icon={<Wallet className="h-4 w-4" />} title="Prix & stock" description="Marge et disponibilité">
         <Input label="Prix de revient (CFA)" name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
         <Input label="Prix de vente (CFA)" name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
-        <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
+        <div>
+          <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
+          {product && (
+            <Link to={productPath(product)} className="mt-1 inline-block text-xs font-medium text-[var(--colorBrandForeground1)] hover:underline">Voir les mouvements de stock</Link>
+          )}
+        </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-col justify-center">
           <p className="text-xs font-medium text-slate-500 uppercase">Marge</p>
           <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-emerald-700' : profitMargin < 0 ? 'text-rose-700' : 'text-slate-700'}`}>
@@ -908,13 +968,6 @@ const getFilterOptions = (items, accessor) =>
   [...new Set(items.map(accessor).map((value) => String(value || '').trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
 
-const getProductStockStatus = (stock) => {
-  const numericStock = Number(stock) || 0;
-  if (numericStock <= 0) return { tone: 'danger', label: 'Rupture' };
-  if (numericStock < 5) return { tone: 'warning', label: 'Stock bas' };
-  return { tone: 'success', label: 'Disponible' };
-};
-
 const renderLossChip = (lossMap, p) => {
   const l = lossMap?.[p._id];
   if (!l || !l.units) return null;
@@ -930,7 +983,7 @@ const renderLossChip = (lossMap, p) => {
   );
 };
 
-const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin, lossMap = {}, salesMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
+export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin, lossMap = {}, salesMap = {}, selectedIds = [], setSelectedIds = () => {} }) => {
   const { appSettings } = useAppSettings();
   const company = getCompanyIdentity(appSettings.branding);
   const location = useLocation();
@@ -1040,14 +1093,17 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
 
   const resetFilters = () => {
     setFilters({ ...DEFAULT_PRODUCT_FILTERS });
-    updateFiltersInUrl(DEFAULT_PRODUCT_FILTERS);
+    updateFiltersInUrl({ ...DEFAULT_PRODUCT_FILTERS, stockOperator: STOCK_FILTER_SHOW_ALL });
   };
 
-  // Apply several filter keys at once (used by removable chips) with a single URL sync.
-  const setManyFilters = (patch) => {
+  // Apply several filter keys at once (used by removable chips) with a single
+  // URL sync. urlPatch lets a caller write a different value to the URL than
+  // to in-memory state — needed to clear the stock filter with the explicit
+  // "show all" sentinel instead of an empty value (see STOCK_FILTER_SHOW_ALL).
+  const setManyFilters = (patch, urlPatch) => {
     setFilters((prev) => {
       const next = { ...prev, ...patch };
-      updateFiltersInUrl(next);
+      updateFiltersInUrl(urlPatch ? { ...next, ...urlPatch } : next);
       return next;
     });
   };
@@ -1056,14 +1112,14 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
   const STOCK_PRESETS = {
     all:      { stockOperator: '', stock: '', stockMax: '' },
     inStock:  { stockOperator: 'gte', stock: '1', stockMax: '' },
-    low:      { stockOperator: 'between', stock: '1', stockMax: '4' },
+    low:      { stockOperator: 'between', stock: '1', stockMax: '5' },
     out:      { stockOperator: 'eq', stock: '0', stockMax: '' },
   };
   const activeStockPreset = (() => {
     const { stockOperator, stock, stockMax } = filters;
     if (!stockOperator && !stock && !stockMax) return 'all';
     if (stockOperator === 'gte' && String(stock) === '1' && !stockMax) return 'inStock';
-    if (stockOperator === 'between' && String(stock) === '1' && String(stockMax) === '4') return 'low';
+    if (stockOperator === 'between' && String(stock) === '1' && String(stockMax) === '5') return 'low';
     if (stockOperator === 'eq' && String(stock) === '0') return 'out';
     return null; // custom numeric filter
   })();
@@ -1071,12 +1127,21 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
     const preset = STOCK_PRESETS[key];
     const next = { ...filters, ...preset };
     setFilters(next);
-    updateFiltersInUrl(next);
+    // "Tous" doit s'écrire dans l'URL avec le sentinel, sinon une URL sans
+    // paramètre de stock ferait revenir le filtre "en stock" par défaut.
+    updateFiltersInUrl(key === 'all' ? { ...next, stockOperator: STOCK_FILTER_SHOW_ALL } : next);
   };
 
-  const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== '');
-  const filterInputClass = 'form-control';
-  const actionButtonClass = 'ms-button ms-button-secondary ms-button-sm';
+  // Le filtre "en stock" appliqué par défaut (readProductFiltersFromSearch)
+  // ne compte pas comme un filtre actif choisi par l'utilisateur.
+  const isDefaultInStockOnly =
+    filters.stockOperator === 'gte' && String(filters.stock) === '1' && !filters.stockMax;
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (isDefaultInStockOnly && (key === 'stockOperator' || key === 'stock')) return false;
+    return String(value).trim() !== '';
+  });
+  const filterInputClass = 'form-control min-h-[44px]';
+  const actionButtonClass = 'ms-button ms-button-secondary ms-button-sm min-h-[44px]';
   const comparisonOptions = [
     { value: '', label: 'Toutes' },
     { value: 'eq', label: '=' },
@@ -1096,21 +1161,19 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
   };
 
   const filtered = useMemo(() => {
-    const productFilter = normalizeText(filters.product);
     const categoryFilter = normalizeText(filters.category);
     const containerFilter = normalizeText(filters.container);
     const warehouseFilter = normalizeText(filters.warehouse);
     const supplierFilter = normalizeText(filters.supplier);
 
     const matched = products.filter((product) => {
-      const normalizedProductName = normalizeText(product.name);
       const normalizedCategory = normalizeText(product.category);
       const normalizedContainer = normalizeText(product.container);
       const normalizedWarehouse = normalizeText(product.warehouse);
       const normalizedSupplier = normalizeText(product.supplierName);
 
       return (
-        (!productFilter || normalizedProductName.includes(productFilter)) &&
+        matchesProductSearch(product, filters.product) &&
         (!categoryFilter || normalizedCategory === categoryFilter) &&
         (!containerFilter || normalizedContainer === containerFilter) &&
         (!warehouseFilter || normalizedWarehouse === warehouseFilter) &&
@@ -1162,7 +1225,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       sellValue += s * price;
       costValue += s * cost;
       if (s <= 0) out += 1;
-      else if (s < 5) low += 1;
+      else if (s <= 5) low += 1;
       else inStock += 1;
       const sold = salesMap[p._id];
       if (sold) {
@@ -1443,7 +1506,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
     filters.warehouse && { key: 'warehouse', label: `Entrepôt : ${filters.warehouse}`, onRemove: () => setManyFilters({ warehouse: '' }) },
     filters.supplier && { key: 'supplier', label: `Fournisseur : ${filters.supplier}`, onRemove: () => setManyFilters({ supplier: '' }) },
     priceChipOp && { key: 'price', label: `Prix ${comparisonLabels[priceChipOp] || ''} ${filters.price}${priceChipOp === 'between' && filters.priceMax ? ` et ${filters.priceMax}` : ''}`.trim(), onRemove: () => setManyFilters({ priceOperator: '', price: '', priceMax: '' }) },
-    stockChipOp && { key: 'stock', label: `Stock ${comparisonLabels[stockChipOp] || ''} ${filters.stock}${stockChipOp === 'between' && filters.stockMax ? ` et ${filters.stockMax}` : ''}`.trim(), onRemove: () => setManyFilters({ stockOperator: '', stock: '', stockMax: '' }) },
+    stockChipOp && { key: 'stock', label: `Stock ${comparisonLabels[stockChipOp] || ''} ${filters.stock}${stockChipOp === 'between' && filters.stockMax ? ` et ${filters.stockMax}` : ''}`.trim(), onRemove: () => setManyFilters({ stockOperator: '', stock: '', stockMax: '' }, { stockOperator: STOCK_FILTER_SHOW_ALL }) },
   ].filter(Boolean);
 
   // Compact toolbar: inline search, stock presets, filter-drawer trigger, sort + export, active chips.
@@ -1455,13 +1518,13 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               id="product-filter-name"
-              type="text"
-              placeholder="Rechercher un produit…"
+              type="search"
+              placeholder="Nom ou référence SKU…"
               value={filters.product}
               onChange={(e) => handleFilterChange('product', e.target.value)}
               className={`${filterInputClass} pl-9`}
               autoComplete="off"
-              aria-label="Rechercher un produit"
+              aria-label="Rechercher par nom ou référence SKU"
             />
           </div>
           <button
@@ -1485,7 +1548,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="min-h-[36px] rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 text-sm outline-none focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
+              className="min-h-[44px] rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-2.5 text-sm outline-none focus:border-[var(--ms-blue)] focus:ring-2 focus:ring-[var(--ms-blue)]/20"
               style={{ color: 'var(--colorNeutralForeground1)' }}
               aria-label="Trier les produits"
             >
@@ -1498,11 +1561,11 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
           </label>
           {isAdmin && (
             <>
-              <button type="button" onClick={handleExportExcel} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
+              <button type="button" aria-label="Exporter les produits en Excel" onClick={handleExportExcel} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">{exporting === 'excel' ? 'Export Excel…' : 'Excel'}</span>
               </button>
-              <button type="button" onClick={handleExportPdf} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
+              <button type="button" aria-label="Exporter les produits en PDF" onClick={handleExportPdf} disabled={exporting !== null || filtered.length === 0} className={actionButtonClass}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">{exporting === 'pdf' ? 'Export PDF…' : 'PDF'}</span>
               </button>
@@ -1519,12 +1582,13 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
             key={key}
             type="button"
             onClick={() => applyStockPreset(key)}
-            className={`ms-button ms-button-sm ${activeStockPreset === key ? 'ms-button-primary' : 'ms-button-secondary'}`}
+            aria-pressed={activeStockPreset === key}
+            className={`ms-button ms-button-sm min-h-[44px] ${activeStockPreset === key ? 'ms-button-primary' : 'ms-button-secondary'}`}
           >
             {label}
           </button>
         ))}
-        <span className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        <span role="status" aria-live="polite" className="fui-caption1 ml-auto" style={{ color: 'var(--colorNeutralForeground3)' }}>
           <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{filtered.length}</span> produit{filtered.length > 1 ? 's' : ''}
         </span>
       </div>
@@ -1537,7 +1601,8 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
               key={chip.key}
               type="button"
               onClick={chip.onRemove}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition"
+              aria-label={"Retirer le filtre " + chip.label}
               style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}
               title="Retirer ce filtre"
             >
@@ -1738,7 +1803,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <p className="flex flex-wrap items-center gap-1.5 font-medium text-[var(--ms-text)]">
                       Stock : <span className="font-bold tabular-nums">{(Number(p.stock) || 0).toLocaleString('fr-FR')}</span>
-                      <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                      <StatusBadge tone={getStockStatus(p.stock).tone}>{getStockStatus(p.stock).label}</StatusBadge>
                     </p>
                     <p className="text-right font-semibold text-slate-950 tabular-nums">
                       {p.price?.toLocaleString('fr-FR')} CFA
@@ -1764,7 +1829,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
 
         {filtered.length === 0 && (
           <div className="text-center py-12 lg:py-16 text-slate-500">
-            <EmptyState title="Aucun produit trouvé" description="Ajustez les filtres pour afficher le catalogue." />
+            <EmptyState title={hasActiveFilters ? "Aucun produit ne correspond" : "Catalogue vide"}
+              description={hasActiveFilters ? "Vérifiez le nom ou la référence SKU, ou retirez les filtres pour élargir la recherche." : "Aucun produit n’est encore disponible dans ce catalogue."}
+              action={hasActiveFilters ? <Button variant="primary" onClick={resetFilters}>Effacer la recherche et les filtres</Button> : undefined} />
           </div>
         )}
       </div>
@@ -1781,7 +1848,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
       {/* Mobile card layout */}
       <div className="lg:hidden space-y-3 p-3">
         {visibleProducts.map((p) => {
-          const stockStatus = getProductStockStatus(p.stock);
+          const stockStatus = getStockStatus(p.stock);
           return (
             <div key={p._id} className={`fluent-card-filled p-4 space-y-3 ${selectedIds.includes(p._id) ? 'ring-2 ring-[var(--ms-blue)]' : ''}`}>
               <div className="flex items-start gap-3">
@@ -1937,7 +2004,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                         {p.name}
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                        <StatusBadge tone={getStockStatus(p.stock).tone}>{getStockStatus(p.stock).label}</StatusBadge>
                         {renderLossChip(lossMap, p)}
                       </div>
                     </div>
@@ -1960,7 +2027,7 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
                 <td className="px-4 py-3 text-right font-medium tabular-nums lg:px-6 lg:py-4">
                   <div className="flex flex-col items-end gap-1">
                     <span>{p.stock}</span>
-                    <StatusBadge tone={getProductStockStatus(p.stock).tone}>{getProductStockStatus(p.stock).label}</StatusBadge>
+                    <StatusBadge tone={getStockStatus(p.stock).tone}>{getStockStatus(p.stock).label}</StatusBadge>
                   </div>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-slate-700">
@@ -2025,7 +2092,9 @@ const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, isAdmin
 
       {filtered.length === 0 && (
         <div className="text-center py-12 lg:py-16 text-gray-500">
-          <EmptyState title="Aucun produit trouvé" description="Ajustez les filtres pour afficher le catalogue." />
+          <EmptyState title={hasActiveFilters ? "Aucun produit ne correspond" : "Catalogue vide"}
+              description={hasActiveFilters ? "Vérifiez le nom ou la référence SKU, ou retirez les filtres pour élargir la recherche." : "Aucun produit n’est encore disponible dans ce catalogue."}
+              action={hasActiveFilters ? <Button variant="primary" onClick={resetFilters}>Effacer la recherche et les filtres</Button> : undefined} />
         </div>
       )}
     </div>

@@ -51,7 +51,7 @@ const CriticalStockProducts = () => {
       <ProductHero
         eyebrow="Stock"
         title="Produits à stock critique"
-        description="Liste des articles dont le stock est inférieur à 5 unités."
+        description="Liste des articles avec 5 unités ou moins en stock."
         onBack={() => navigate('/product-dashboard')}
       />
 

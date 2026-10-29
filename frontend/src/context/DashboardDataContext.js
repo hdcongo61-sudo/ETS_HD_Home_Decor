@@ -54,7 +54,7 @@ export const DashboardDataProvider = ({ children }) => {
           params: { range }
         });
 
-        const data = response.data;
+        const data = { ...response.data, freshness: { offline: Boolean(response.fromOfflineCache), at: response.fromOfflineCache ? response.cachedAt : Date.now() } };
         setOverviewData(data);
         cacheTimestamp.current = Date.now();
         return data;

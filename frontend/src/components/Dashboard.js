@@ -86,6 +86,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
+import SectionError from "./SectionError";
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
 import { useFeature, LockedFeatureButton } from "./FeatureGate";
@@ -111,6 +112,13 @@ const formatCfa = (value) =>
   `${Math.round(Number(value) || 0).toLocaleString("en-US")} CFA`;
 
 const CFA_EXCEL_FORMAT = '#,##0 "CFA"';
+
+const SALES_STATS_RANGE_LABELS = {
+  all: 'Toutes les dates',
+  '7days': '7 derniers jours',
+  '30days': '30 derniers jours',
+  '90days': '90 derniers jours',
+};
 
 const cleanReportText = (value) => String(value || "").trim();
 
@@ -161,7 +169,69 @@ const getClientName = (row) => {
   return row.client.name || "Client inconnu";
 };
 
-const Dashboard = () => {
+// Mini-graphe inline (sans dépendance Recharts) pour donner une forme visuelle
+// aux séries de la période affichée sur une carte KPI.
+const Sparkline = ({ values = [], color = 'var(--colorBrandForeground1)' }) => {
+  const points = values.filter((v) => v != null);
+  if (points.length < 2) return null;
+  const width = 96;
+  const height = 28;
+  const max = Math.max(...points, 0);
+  const min = Math.min(...points, 0);
+  const span = max - min || 1;
+  const step = width / (points.length - 1);
+  const coords = points.map((v, i) => [i * step, height - ((v - min) / span) * height]);
+  const path = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const areaPath = `${path} L${(points.length - 1) * step},${height} L0,${height} Z`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0" aria-hidden="true">
+      <path d={areaPath} fill={color} opacity={0.12} />
+      <path d={path} fill="none" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
+// Liste classée avec barre de grandeur relative — remplace un tableau brut
+// quand la seule vraie information utile est "combien, et par rapport à quoi".
+const RankedBarList = ({ caption, rows, color = 'var(--colorBrandForeground1)' }) => {
+  const max = Math.max(1, ...rows.map((r) => r.value || 0));
+  return (
+    <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-3">
+      <p className="fui-caption1-strong mb-2" style={{ color: 'var(--colorNeutralForeground2)' }}>{caption}</p>
+      {rows.length === 0 ? (
+        <p className="fui-caption1">Aucune donnée pour cette période.</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => {
+            const pct = Math.max(2, Math.round(((row.value || 0) / max) * 100));
+            return (
+              <li key={row.key} className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-sm font-medium" style={{ color: 'var(--colorNeutralForeground1)' }}>{row.label}</span>
+                    <span className="shrink-0 fui-caption1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                      {row.value.toLocaleString('fr-FR')} CFA
+                    </span>
+                  </div>
+                  <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full" style={{ background: 'var(--ms-bg-subtle)' }} aria-hidden="true">
+                    <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                  </span>
+                </div>
+                {row.link && (
+                  <Link className="ms-button ms-button-secondary ms-button-sm shrink-0" to={row.link.to}>
+                    {row.link.text}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const DashboardWorkspace = () => {
   const { auth } = useContext(AuthContext);
   const { appSettings } = useAppSettings();
   useDashboardData();
@@ -267,10 +337,15 @@ const Dashboard = () => {
   // ===== Reminders / UI =====
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [financialError, setFinancialError] = useState(null);
+  const [financialLoaded, setFinancialLoaded] = useState(false);
+  const [financialScope, setFinancialScope] = useState('');
+  const financialRequest = useRef(0);
   const dashboardDataLoadedRef = useRef(false);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [overdueReminders, setOverdueReminders] = useState([]);
   const [neverPaidReminders, setNeverPaidReminders] = useState([]);
+  const [stalePartialReminders, setStalePartialReminders] = useState([]);
   const [salaryReminders, setSalaryReminders] = useState([]);
   const [stockReplacementReminders, setStockReplacementReminders] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -424,6 +499,8 @@ const Dashboard = () => {
 
   // ===== FETCH: période courante =====
   const fetchData = useCallback(async () => {
+    const request = ++financialRequest.current;
+    setFinancialError(null);
     const isInitialLoad = !dashboardDataLoadedRef.current;
     try {
       if (isInitialLoad) {
@@ -444,6 +521,9 @@ const Dashboard = () => {
           `/sales/payments/date-range?startDate=${start.toISOString()}&endDate=${end.toISOString()}&summary=dashboard`
         ),
       ]);
+      if (request !== financialRequest.current) return;
+      setFinancialLoaded(true);
+      setFinancialScope(format(start, 'dd/MM/yyyy') + ' au ' + format(end, 'dd/MM/yyyy'));
       setSalesData(salesRes.data || []);
       setExpensesData(expensesRes.data || []);
       setPaymentsData(paymentsRes.data || []);
@@ -455,8 +535,9 @@ const Dashboard = () => {
         )
       );
     } catch (e) {
-      console.error("Erreur de chargement :", e);
+      if (request === financialRequest.current) setFinancialError(e);
     } finally {
+      if (request !== financialRequest.current) return;
       if (isInitialLoad) {
         dashboardDataLoadedRef.current = true;
         setLoading(false);
@@ -465,7 +546,9 @@ const Dashboard = () => {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange is stable
-  }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange]);
+  }, [timeRange, activeYear, activeMonth, selectedWeek, getYearScopedRange, canUseExpenses]);
+
+  useEffect(() => () => { financialRequest.current += 1; }, []);
 
   // ===== FETCH: période de référence (toujours chargée — tendances des cartes,
   // overlay du graphique seulement si la comparaison est activée) =====
@@ -520,6 +603,7 @@ const Dashboard = () => {
       setUpcomingReminders(response.data.upcoming || []);
       setOverdueReminders(response.data.overdue || []);
       setNeverPaidReminders(response.data.neverPaid || []);
+      setStalePartialReminders(response.data.stalePartial || []);
       setSalaryReminders(response.data.salaryReminders || []);
       const stockResponse = await api.get("/stock-replacement-reminders");
       setStockReplacementReminders(stockResponse.data.reminders || []);
@@ -613,6 +697,9 @@ const Dashboard = () => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- getDateRange/getPrevPeriod are stable
   }, [combinedData, prevCombinedData, timeRange, baselineMode, hasCompare, activeYear, activeMonth, selectedWeek]);
+
+  // Dernier jour avec des données dans la période affichée (sinon aujourd'hui).
+  const lastChartDay = mergedForChart.filter((row) => row.sales !== null).slice(-1)[0]?.date || format(new Date(), "yyyy-MM-dd");
 
   // ===== METRICS =====
   const totalSales = useMemo(
@@ -1488,7 +1575,6 @@ const Dashboard = () => {
       </div>
     );
 
-  const today = new Date();
   const periodLabel =
     timeRange === "day"
       ? "Aujourd'hui"
@@ -1616,6 +1702,15 @@ const Dashboard = () => {
     { iconBg: '#EDE9FE',                              color: '#6D28D9' },                               // Profit net
   ];
 
+  // Séries jour par jour pour les sparklines des cartes KPI — dérivées du
+  // graphique financier déjà chargé, pas d'appel réseau supplémentaire.
+  const kpiSeries = {
+    sales: mergedForChart.map((row) => row.sales),
+    paid: mergedForChart.map((row) => row.paid),
+    expenses: mergedForChart.map((row) => row.expenses),
+    profit: mergedForChart.map((row) => (row.paidProfit == null ? null : row.paidProfit - (row.expenses || 0))),
+  };
+
   return (
     <div className="min-h-full bg-[var(--ms-bg)] text-[var(--ms-text-strong)] dark:text-gray-100 transition-colors duration-300">
       <div className="space-y-6 sm:space-y-8">
@@ -1627,66 +1722,47 @@ const Dashboard = () => {
           <span className="hidden fui-caption1 text-[var(--ms-text-muted)] sm:block">Analyse détaillée</span>
         </div>
 
-        {/* ===== ACTIONS RAPIDES (mobile uniquement) ===== */}
-        <div className="grid grid-cols-2 gap-3 md:hidden">
-          {[
-            { to: "/sales#sale-form", label: "Vendre", icon: ShoppingCart, primary: true },
-            { to: "/bank", label: "Caisse", icon: Landmark },
-            { to: "/products", label: "Produits", icon: Package },
-            { to: "/clients", label: "Clients", icon: UsersRound },
-          ].map(({ to, label, icon: Icon, primary }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border shadow-sm transition active:scale-[0.98]"
-              style={
-                primary
-                  ? { background: "var(--colorBrandBackground)", borderColor: "transparent", color: "#fff" }
-                  : { background: "var(--ms-white)", borderColor: "var(--ms-border)", color: "var(--ms-text)" }
-              }
-            >
-              <Icon size={26} strokeWidth={2} />
-              <span className="text-sm font-semibold">{label}</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* ===== PAGES RATTACHÉES (admin uniquement) ===== */}
-        {isAdmin && (
-        <section className="fluent-card-filled p-4 sm:p-5 lg:p-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-              Pages rattachées
-            </h2>
-            <span className="text-xs font-medium text-[var(--ms-text-muted)]">{homeShortcuts.length} accès</span>
+        <header className="fluent-card-filled p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="fui-caption1-strong uppercase tracking-[0.14em]" style={{ color: 'var(--colorBrandForeground1)' }}>Centre de décision</p>
+              <h1 className="fui-title2 mt-1">Tableau de bord</h1>
+              <p className="mt-2 max-w-2xl text-sm">Comprenez ce qui s’est passé, vérifiez ce qui l’explique, puis ouvrez directement l’opération à traiter.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/sales?workspace=history" className="ms-button ms-button-primary min-h-[44px]">Ouvrir les ventes</Link>
+              {isAdmin && <Link to="/ultimate-filters" className="ms-button ms-button-secondary min-h-[44px]">Analyser une vue</Link>}
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
-              <Link
-                key={to}
-                to={to}
-                className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+          <nav aria-label="Parcours du tableau de bord" className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              ['01', 'Synthèse', 'Les chiffres clés', '#dashboard-finance'],
+              ['02', 'Tendance', 'Le mouvement dans le temps', '#dashboard-finance-chart'],
+              ...(isAdmin
+                ? [
+                    ['03', 'Commerce', 'Ventes, produits, livraisons', '#dashboard-sales-stats'],
+                    ['04', 'Actions', 'Alertes et rappels', '#dashboard-reminders'],
+                  ]
+                : []),
+            ].map(([step, label, description, href]) => (
+              <a
+                key={href}
+                href={href}
+                className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3 transition-colors hover:border-[var(--ms-blue)] hover:bg-[var(--ms-blue-soft)]"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}>
-                    <Icon size={20} />
-                  </span>
-                  <span className="ms-status-badge ms-status-neutral">
-                    {meta}
-                  </span>
-                </div>
-                <p className="mt-4 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{label}</p>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
-                  {description}
-                </p>
-              </Link>
+                <span className="text-[11px] font-bold text-[var(--ms-blue)]">{step}</span>
+                <span className="mt-1 block text-sm font-semibold">{label}</span>
+                <span className="mt-0.5 block text-xs text-[var(--ms-text-muted)]">{description}</span>
+              </a>
             ))}
-          </div>
-        </section>
-        )}
-
+          </nav>
+          <p className="fui-caption1 mt-4">Période financière : {financialScope || 'Chargement indisponible'}{chartLoading ? ' · Actualisation en cours' : ''}</p>
+        </header>
+        {financialError && <SectionError error={financialError} onRetry={fetchData} title="Analyse financière non actualisée" />}
+        {financialError && financialLoaded && <p role="status">La dernière période chargée était : {financialScope}. Réessayez pour afficher une analyse correspondant à la sélection actuelle.</p>}
+        {financialLoaded && !financialError && <>
         {/* ===== CARTES PRINCIPALES (KPI) — responsive mobile/desktop ===== */}
-        <div className="relative space-y-3 sm:space-y-4" aria-busy={chartLoading}>
+        <div id="dashboard-finance" className="relative space-y-3 sm:space-y-4 scroll-mt-24" aria-busy={chartLoading}>
           {chartLoading && (
             <div className="absolute inset-0 z-20 flex items-start justify-center rounded-lg bg-[var(--ms-white)]/55 pt-5 dark:bg-gray-950/35">
               <div className="rounded-full border border-[var(--ms-blue-soft)] bg-[var(--ms-white)] px-4 py-2 text-sm font-medium text-[var(--ms-blue-dark)] shadow-lg dark:border-[var(--ms-blue-dark)] dark:bg-gray-900 dark:text-[var(--ms-blue-soft)]">
@@ -1706,22 +1782,27 @@ const Dashboard = () => {
           >
             {[
               {
+                detail: "sales",
                 title: "Ventes totales",
                 value: totalSales,
                 prevValue: trendBase.sales,
                 icon: <DollarSign size={22} />,
                 trend: salesTrend,
                 style: CARD_STYLES[0],
+                series: kpiSeries.sales,
               },
               {
+                detail: "payments",
                 title: "Encaissements",
                 value: totalPaid,
                 prevValue: trendBase.paid,
                 icon: <Coins size={22} />,
                 trend: paidTrend,
                 style: CARD_STYLES[1],
+                series: kpiSeries.paid,
               },
               canUseExpenses && {
+                detail: "expenses",
                 title: "Dépenses",
                 value: totalExpenses,
                 prevValue: trendBase.expenses,
@@ -1730,6 +1811,7 @@ const Dashboard = () => {
                 // Des dépenses en hausse sont un signal négatif
                 invertTrendColor: true,
                 style: CARD_STYLES[2],
+                series: kpiSeries.expenses,
               },
               // Admins : profit net (marge encaissée − dépenses).
               // Membres : encaissé net (encaissements − dépenses), sans marge.
@@ -1741,6 +1823,7 @@ const Dashboard = () => {
                     icon: <PieIcon size={22} />,
                     trend: profitTrend,
                     style: CARD_STYLES[3],
+                    series: kpiSeries.profit,
                   }
                 : canUseExpenses && {
                     title: "Encaissé net",
@@ -1752,10 +1835,14 @@ const Dashboard = () => {
                     icon: <Landmark size={22} />,
                     trend: netCollectedTrend,
                     style: CARD_STYLES[3],
+                    series: kpiSeries.profit,
                   },
             ].filter(Boolean).map((stat, i) => {
               const trendIsUp = String(stat.trend).startsWith('+');
               const trendIsGood = stat.invertTrendColor ? !trendIsUp : trendIsUp;
+              // Un -100% quand il n'y avait déjà presque rien à la base est un
+              // bruit alarmant plutôt qu'un vrai signal — on le neutralise.
+              const isNoiseDrop = !trendIsUp && !stat.value && Number(stat.prevValue) < 1000;
               return (
               <article key={i} className="fluent-card-filled p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -1765,14 +1852,17 @@ const Dashboard = () => {
                   >
                     {stat.icon}
                   </div>
-                  {stat.trend != null && (
-                    <span
-                      className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
-                      style={{ color: trendIsGood ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
-                    >
-                      {trendIsUp ? '↑' : '↓'} {stat.trend}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Sparkline values={stat.series} color={stat.style.color} />
+                    {stat.trend != null && !isNoiseDrop && (
+                      <span
+                        className="fui-caption1-strong shrink-0 inline-flex items-center gap-0.5"
+                        style={{ color: trendIsGood ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)' }}
+                      >
+                        {trendIsUp ? '↑' : '↓'} {stat.trend}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <h2 className="fui-caption1 mt-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {stat.title}
@@ -1782,7 +1872,9 @@ const Dashboard = () => {
                 </p>
                 {stat.trend != null && (
                   <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    Vs {trendBaseLabel} : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span>
+                    {isNoiseDrop
+                      ? "Pas encore d'activité sur cette période."
+                      : <>Vs {trendBaseLabel} : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span></>}
                   </p>
                 )}
               </article>
@@ -1974,7 +2066,7 @@ const Dashboard = () => {
             className={`relative overflow-hidden fluent-card-filled p-4 sm:p-5 transition-opacity ${
               chartLoading ? "opacity-60" : "opacity-100"
             }`}
-            aria-label="Analyse financière"
+            id="dashboard-finance-chart" aria-label="Analyse financière"
           >
             <div className="absolute right-3 top-3 sm:right-4 sm:top-4 text-[10px] sm:text-xs px-2 py-1 rounded-full bg-[var(--ms-blue)] text-white font-medium">
               {hasCompare ? `Vs ${comparisonLabel.toLowerCase()}` : "Comparaison désactivée"}
@@ -1986,13 +2078,14 @@ const Dashboard = () => {
             </h2>
             <button
               type="button"
-              onClick={() => handleOpenDayDetails(today)}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[var(--ms-blue)] hover:bg-[var(--ms-blue-dark)] text-white rounded-xl font-medium text-sm transition-colors"
+              onClick={() => handleOpenDayDetails(new Date(`${lastChartDay}T00:00:00`))}
+              className="ms-button ms-button-primary min-h-[44px] w-full sm:w-auto"
             >
-              <CalendarDays size={18} /> Détails du jour
+              <CalendarDays size={18} /> Dernier jour de la période
             </button>
           </div>
 
+          <p className="fui-caption1 mb-3">Sélectionnez un jour du graphique pour ouvrir le détail des opérations.</p>
           <div className="h-64 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
@@ -2156,9 +2249,44 @@ const Dashboard = () => {
             </section>
           )}
         </div>
+        </>}
+        {/* ===== PAGES RATTACHÉES (admin uniquement) ===== */}
+        {isAdmin && (
+        <details id="dashboard-explorer" className="fluent-card-filled scroll-mt-24 p-4 sm:p-5 lg:p-6"><summary className="cursor-pointer min-h-[44px] font-semibold">Explorer les autres espaces</summary>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+              Pages rattachées
+            </h2>
+            <span className="text-xs font-medium text-[var(--ms-text-muted)]">{homeShortcuts.length} accès</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {homeShortcuts.map(({ to, label, description, icon: Icon, meta }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorBrandBackground)', color: '#fff', boxShadow: 'var(--shadow8)' }}>
+                    <Icon size={20} />
+                  </span>
+                  <span className="ms-status-badge ms-status-neutral">
+                    {meta}
+                  </span>
+                </div>
+                <p className="mt-4 text-sm font-semibold text-[var(--ms-text-strong)] dark:text-white">{label}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ms-text-muted)] dark:text-[var(--ms-text-muted)]">
+                  {description}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </details>
+        )}
+
 
         {isAdmin && nonCriticalReady && (
-          <section className="fluent-card-filled p-4 sm:p-5">
+          <section id="dashboard-stock-actions" className="fluent-card-filled scroll-mt-24 p-4 sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -2298,6 +2426,7 @@ const Dashboard = () => {
         )}
 
         {isAdmin && nonCriticalReady && (
+        <div id="dashboard-sales-stats" className="scroll-mt-24">
         <AccordionSection title="Statistiques des ventes" defaultOpenDesktop={true}>
         <motion.div
           className="overflow-hidden fluent-card-filled"
@@ -2310,7 +2439,7 @@ const Dashboard = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
-                Home analytics
+                Analyse commerciale
               </p>
               <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--ms-text-strong)] dark:text-white">
                 Statistiques des ventes
@@ -2472,11 +2601,12 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* 🔹 Tendance des ventes (+ lissage) */}
             <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
                   <TrendingUp size={15} />
                 </span>
                 <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">Tendance des ventes</h3>
+                <Link to="/sales?workspace=history" className="ms-button ms-button-secondary min-h-[44px]">Explorer les ventes</Link>
               </div>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -2496,11 +2626,12 @@ const Dashboard = () => {
 
             {/* Statuts des ventes */}
             <div className="rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)] p-4 dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: 'var(--colorStatusSuccessBackground1)', color: 'var(--colorStatusSuccessForeground1)' }}>
                   <BarChart2 size={15} />
                 </span>
                 <h3 className="text-sm font-semibold text-[var(--ms-text)] dark:text-gray-200">Statuts des ventes</h3>
+                <Link to="/sales?workspace=history" className="ms-button ms-button-secondary min-h-[44px]">Filtrer les ventes par statut</Link>
               </div>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -2519,11 +2650,44 @@ const Dashboard = () => {
             </div>
           </div>
 
+          <details className="mt-4 rounded-lg border border-[var(--ms-border)] p-4">
+            <summary className="min-h-[44px] cursor-pointer font-semibold">Voir le détail de la tendance et des statuts</summary>
+            <p className="fui-caption1 my-2">
+              Période commerciale : {SALES_STATS_RANGE_LABELS[salesStatsRange] || SALES_STATS_RANGE_LABELS['30days']}.
+              Valeurs brutes, sans lissage. Cette période est indépendante de la synthèse financière.
+            </p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <RankedBarList
+                caption="Tendance commerciale"
+                rows={trendDataRaw.map((row, index) => ({
+                  key: row.date || index,
+                  label: row.date,
+                  value: Number(row.total || 0),
+                  link: /^\d{4}-\d{2}-\d{2}$/.test(String(row.date))
+                    ? { to: `/sales?workspace=history&date=${row.date}`, text: 'Ventes du jour' }
+                    : null,
+                }))}
+                color="var(--colorBrandForeground1)"
+              />
+              <RankedBarList
+                caption="Répartition par statut"
+                rows={statusData.map((row) => ({
+                  key: row.name,
+                  label: row.name,
+                  value: Number(row.total || 0),
+                  link: { to: `/sales?workspace=history&status=${encodeURIComponent(row.name)}`, text: 'Voir ces ventes' },
+                }))}
+                color="var(--colorStatusSuccessForeground1)"
+              />
+            </div>
+          </details>
+
           {/* Top produits */}
           <div className="mt-4 bg-[var(--ms-bg-subtle)] dark:bg-gray-900 p-4 rounded-lg border border-[var(--ms-border)] dark:border-gray-700">
             <h3 className="font-semibold mb-3 text-[var(--ms-text)] dark:text-gray-200 text-sm">
               Top produits vendus
             </h3>
+            <Link to="/products/top-sellers" className="ms-button ms-button-secondary min-h-[44px] mb-3">Voir le classement détaillé · période à choisir</Link>
             {(topProducts && topProducts.length > 0) ? (
               <ul className="space-y-2">
                 {(() => {
@@ -2542,7 +2706,7 @@ const Dashboard = () => {
                             {i + 1}
                           </span>
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--ms-text)] dark:text-gray-300">
-                            {p.product?.name || "Produit"}
+                            {p.product?._id ? <Link className="text-[var(--ms-blue)] underline" to={'/products/' + p.product._id}>{p.product.name || 'Voir le produit'}</Link> : p.product?.name || 'Produit'}
                           </span>
                           <span className="shrink-0 text-sm font-bold tabular-nums text-[var(--ms-text-strong)] dark:text-white">
                             {qty} <span className="text-xs font-normal text-[var(--ms-text-muted)]">vendus</span>
@@ -2565,10 +2729,11 @@ const Dashboard = () => {
           </div>
         </motion.div>
         </AccordionSection>
+        </div>
         )}
 
         {isAdmin && nonCriticalReady && (
-          <AccordionSection title="Analyse avancée" defaultOpenDesktop={true}>
+          <div id="dashboard-advanced" className="scroll-mt-24"><AccordionSection title="Analyse avancée" defaultOpenDesktop={true}>
             <div className="p-4 sm:p-0">
               <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
                 <BusinessAnalyticsDashboard
@@ -2580,7 +2745,7 @@ const Dashboard = () => {
                 />
               </Suspense>
             </div>
-          </AccordionSection>
+          </AccordionSection></div>
         )}
 
         {/* ===== Admin only ===== */}
@@ -2589,11 +2754,12 @@ const Dashboard = () => {
             {Object.values(bestDaysRanges).length > 0 && (
               <PerformanceByPeriod ranges={bestDaysRanges} />
             )}
-            <Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
+            <div id="dashboard-reminders" className="scroll-mt-24"><Suspense fallback={<div className="flex justify-center py-4"><AppLoader fullScreen={false} /></div>}>
               <RemindersPanel
                 overdue={overdueReminders}
                 upcoming={upcomingReminders}
                 neverPaid={neverPaidReminders}
+                stalePartial={stalePartialReminders}
                 salaryReminders={salaryReminders}
                 stockReplacementReminders={stockReplacementReminders}
                 onStockReplacementConfirmed={(id) => {
@@ -2602,7 +2768,7 @@ const Dashboard = () => {
                 shopName={auth?.tenant?.name || ""}
                 dialCode={auth?.tenant?.dialCode || ""}
               />
-            </Suspense>
+            </Suspense></div>
           </>
         )}
 
@@ -2759,7 +2925,7 @@ const PerformanceByPeriod = ({ ranges }) => {
   const activeLabel = (PERF_RANGES.find((r) => r.key === activeKey) || {}).label || "";
 
   return (
-    <section className="overflow-hidden fluent-card-filled">
+    <section id="dashboard-performance" className="overflow-hidden fluent-card-filled scroll-mt-24">
       <div className="flex flex-col gap-3 border-b border-[var(--ms-border)] p-4 dark:border-gray-800 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ms-text-muted)]">
@@ -2810,4 +2976,8 @@ const PerformanceByPeriod = ({ ranges }) => {
   );
 };
 
+const Dashboard = () => {
+  const { auth } = useContext(AuthContext);
+  return <DashboardWorkspace key={String(auth?.tenantId) + ':' + String(auth?.user?._id) + ':' + String(auth?.isAdmin)} />;
+};
 export default Dashboard;

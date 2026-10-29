@@ -283,7 +283,7 @@ const ACCOUNT_LOCK_DURATION_MS = ACCOUNT_LOCK_DURATION_MINUTES * 60 * 1000;
 
 const normalizePhoneToDigits = (value) => (value || '').replace(/\D/g, '');
 
-/** Normalize for comparison: digits only, then strip leading 0 so 07... and 7... match */
+/** Normalize common local and international forms to the national number. */
 const normalizePhoneForMatch = (value) => {
   const digits = normalizePhoneToDigits(value);
   if (digits.length >= 10 && digits[0] === '0') return digits.slice(1);
@@ -299,7 +299,16 @@ const findUsersByPhone = async (phoneInput) => {
     const stored = u.phone || '';
     const storedNorm = normalizePhoneForMatch(stored);
     const storedDigits = normalizePhoneToDigits(stored);
-    return storedNorm.length >= 8 && (storedNorm === inputNorm || storedDigits === inputDigits);
+    if (storedNorm.length < 8) return false;
+    if (storedNorm === inputNorm || storedDigits === inputDigits) return true;
+
+    // A country calling code can be present on one side while the stored number
+    // uses its local form (for example +242 06... versus 06...). Compare the
+    // national portion only for full-length numbers to support both forms.
+    const shorterLength = Math.min(storedNorm.length, inputNorm.length);
+    return shorterLength >= 9 && (
+      storedNorm.endsWith(inputNorm) || inputNorm.endsWith(storedNorm)
+    );
   });
 };
 
@@ -319,7 +328,7 @@ const loginUser = asyncHandler(async (req, res) => {
     }
   }
   const phoneStr = typeof phone === 'string' ? phone.trim() : '';
-  const emailStr = typeof email === 'string' ? email.trim() : '';
+  const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : '';
   const loginByPhone = phoneStr.length > 0;
 
   if (!password) {

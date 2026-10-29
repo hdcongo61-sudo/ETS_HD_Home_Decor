@@ -37,6 +37,7 @@ const SaleCard = ({
   desktopLinkProps = {},
   linkState,
   returnTo,
+  onOpen,
   actions,
   className = "",
 }) => {
@@ -49,6 +50,7 @@ const SaleCard = ({
 
   return (
     <motion.article
+      data-sale-id={sale._id}
       key={sale._id}
       whileHover={{ y: -1 }}
       transition={{ duration: 0.15 }}
@@ -63,6 +65,9 @@ const SaleCard = ({
               state={linkState}
               className="block touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ms-blue)] rounded-sm"
               {...desktopLinkProps}
+              onClick={() => onOpen?.(sale._id)}
+              onAuxClick={() => onOpen?.(sale._id)}
+              onContextMenu={() => onOpen?.(sale._id)}
             >
               <span className="fui-body1-strong block truncate" style={{ color: "var(--colorNeutralForeground1)" }}>
                 {sale.client?.name || "Client non spécifié"}

@@ -1,0 +1,55 @@
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import SaleDetailPage from './SaleDetailPage';
+import AuthContext from '../context/AuthContext';
+import api from '../services/api';
+jest.mock('../services/api', () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn(), post: jest.fn() } }));
+jest.mock('./Modal', () => ({ isOpen, children, footer, title }) => isOpen ? <div role="dialog" aria-label={title}>{children}{footer}</div> : null);
+jest.mock('./PaymentModal', () => () => null);
+jest.mock('./ExportSalesPdf', () => ({ buttonClassName }) => <button className={buttonClassName}>Télécharger la facture</button>);
+jest.mock('react-chartjs-2', () => ({ Bar: () => null }));
+const sale = { _id: '123456789012345678901234', reference: 'V-42', products: [], payments: [{ _id: 'payment1', amount: 1000, paymentDate: '2026-10-23' }], totalAmount: 1000, totalPaid: 1000, balance: 0, status: 'completed', saleDate: '2026-10-22', deliveryStatus: 'pending', client: { name: 'Élodie' } };
+let root, container;
+beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; jest.clearAllMocks(); api.get.mockResolvedValue({ data: sale }); container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
+afterEach(() => { act(() => root.unmount()); container.remove(); });
+const renderPage = () => act(async () => root.render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/sales/' + sale._id]}><AuthContext.Provider value={{ auth: { user: { isAdmin: false }, tenant: {} } }}><Routes><Route path="/sales/:id" element={<SaleDetailPage />} /></Routes></AuthContext.Provider></MemoryRouter>));
+const button = label => [...container.querySelectorAll('button')].find(node => node.textContent.trim() === label);
+test('failed load exposes a retry and preserves the return action', async () => {
+  api.get.mockRejectedValueOnce({ response: { status: 503, data: { message: 'Service indisponible', requestId: 'req-42' } } });
+  const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+  await renderPage();
+  errorLog.mockRestore();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('req-42');
+  await act(async () => button('Réessayer').click());
+  expect(api.get).toHaveBeenCalledTimes(2);
+  expect(container.textContent).toContain('Organiser la livraison');
+});
+test('delivery failure keeps input and retry locks duplicate saves, then advances to invoice', async () => {
+  await renderPage();
+  act(() => button('Mettre à jour la livraison').click());
+  const select = container.querySelector('#delivery-status-select');
+  act(() => { select.value = 'delivered'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+  api.put.mockRejectedValueOnce({ response: { status: 503, data: { message: 'Réessayez plus tard', requestId: 'delivery-42' } } });
+  await act(async () => button('Enregistrer').click());
+  expect(container.querySelector('[role="dialog"] [role="alert"]').textContent).toContain('delivery-42');
+  expect(container.querySelector('#delivery-status-select').value).toBe('delivered');
+  let resolve;
+  api.put.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  const save = button('Enregistrer');
+  act(() => { save.click(); save.click(); });
+  expect(api.put).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('#delivery-status-select').disabled).toBe(true);
+  await act(async () => resolve({ data: { deliveryStatus: 'delivered', deliveryDate: '2026-10-25' } }));
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.querySelector('[aria-labelledby="sale-next-action-title"]').textContent).toContain('Vente payée et livrée');
+});
+
+test('editing a delivered sale preserves its recorded delivery time', async () => {
+  api.get.mockResolvedValueOnce({ data: { ...sale, deliveryStatus: 'delivered', deliveryDate: '2026-10-24T09:00:00.000Z' } });
+  api.put.mockResolvedValueOnce({ data: { deliveryStatus: 'delivered', deliveryDate: '2026-10-24T09:00:00.000Z' } });
+  await renderPage();
+  act(() => button('Modifier la livraison').click());
+  await act(async () => button('Enregistrer').click());
+  expect(api.put.mock.calls[0][1].deliveryDate).toBe('2026-10-24T09:00:00.000Z');
+});
