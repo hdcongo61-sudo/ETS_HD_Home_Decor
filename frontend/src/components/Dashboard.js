@@ -2638,7 +2638,16 @@ const DashboardWorkspace = () => {
                   <BarChart data={statusData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--colorNeutralStroke2)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => Number(v).toLocaleString("fr-FR")} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                      tickFormatter={(value) => new Intl.NumberFormat('fr-FR', {
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(Number(value) || 0)}
+                    />
                     <Tooltip
                       contentStyle={{ borderRadius: 12, border: '1px solid var(--colorNeutralStroke2)', fontSize: 12 }}
                       formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} CFA`, 'Total']}
