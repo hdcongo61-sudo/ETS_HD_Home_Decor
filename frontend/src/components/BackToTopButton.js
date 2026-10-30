@@ -1,5 +1,5 @@
 // components/BackToTopButton.js
-// Bouton flottant « remonter en haut » — mobile uniquement.
+// Bouton flottant « remonter en haut » pour mobile et desktop.
 import React, { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
@@ -32,7 +32,7 @@ const BackToTopButton = () => {
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       aria-label="Remonter en haut de page"
       title="Remonter en haut"
-      className={`fixed left-[calc(1rem+env(safe-area-inset-left,0px))] bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-50 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)]/95 text-[var(--ms-text-strong)] shadow-[var(--ms-shadow)] backdrop-blur transition-all duration-300 ease-out will-change-transform md:hidden ${
+      className={`fixed left-[calc(1rem+env(safe-area-inset-left,0px))] bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] z-50 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ms-border)] bg-[var(--ms-white)]/95 text-[var(--ms-text-strong)] shadow-[var(--ms-shadow)] backdrop-blur transition-all duration-300 ease-out will-change-transform md:bottom-6 md:left-6 md:right-auto ${
         visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'
       }`}
     >

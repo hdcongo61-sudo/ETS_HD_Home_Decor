@@ -1731,6 +1731,8 @@ const DashboardWorkspace = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link to="/sales?workspace=history" className="ms-button ms-button-primary min-h-[44px]">Ouvrir les ventes</Link>
+              <Link to="/sales/partially-paid" className="ms-button ms-button-secondary min-h-[44px]">Ventes partiellement payées</Link>
+              {isAdmin && <a href="#dashboard-reminders" className="ms-button ms-button-secondary min-h-[44px]">Gestion des Rappels Clients</a>}
               {isAdmin && <Link to="/ultimate-filters" className="ms-button ms-button-secondary min-h-[44px]">Analyser une vue</Link>}
             </div>
           </div>

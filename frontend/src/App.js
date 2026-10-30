@@ -25,6 +25,7 @@ import { LocationProvider } from './context/LocationContext';
 import DesktopNavRail from './components/DesktopNavRail';
 import ServerWakeup from './components/ServerWakeup';
 import TrialBanner from './components/TrialBanner';
+import BackToTopButton from './components/BackToTopButton';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -135,6 +136,7 @@ function ApplicationShell() {
       {showAuthenticatedShell && (
         <>
           <GlobalModals />
+          <BackToTopButton />
           <PageGuide />
           <PushNotificationManager />
           <PwaInstallPrompt />
