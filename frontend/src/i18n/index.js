@@ -51,6 +51,15 @@ const resources = {
         cutover: 'Bascule v2',
         other: 'Autres',
       },
+      productDetails: {
+        notFound: 'Produit introuvable',
+        notFoundDesc: "La fiche produit demandée n'est pas disponible.",
+        backToCatalog: 'Retour au catalogue',
+        unavailable: 'Fiche produit indisponible',
+        hideFinancials: 'Masquer les données financières',
+        showFinancials: 'Afficher les données financières',
+        recordStockOut: 'Enregistrer une casse, un cadeau ou une autre sortie de stock',
+      },
       login: {
         welcome: 'Connexion',
         subtitle: 'Accédez à votre espace professionnel',
@@ -264,6 +273,15 @@ const resources = {
         returns: 'Returns & refunds',
         cutover: 'v2 cutover',
         other: 'Other',
+      },
+      productDetails: {
+        notFound: 'Product not found',
+        notFoundDesc: 'The requested product page is not available.',
+        backToCatalog: 'Back to catalog',
+        unavailable: 'Product page unavailable',
+        hideFinancials: 'Hide financial data',
+        showFinancials: 'Show financial data',
+        recordStockOut: 'Record breakage, a gift, or another stock removal',
       },
       login: {
         welcome: 'Sign in',

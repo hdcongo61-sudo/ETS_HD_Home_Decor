@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect, useRef, useCallback } from 'rea
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { catalogApi } from '../features/catalog/api';
+import { useTranslation } from 'react-i18next';
 import { platformApi } from '../features/platform/api';
 import { confirmDialog } from '../components/ConfirmProvider';
 import QRCode from 'react-qr-code';
@@ -84,6 +85,7 @@ const ACTIVITY_META = {
 /*  PRODUCT DETAILS                                        */
 /* ═══════════════════════════════════════════════════════ */
 const ProductDetails = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { auth } = useContext(AuthContext);
   const isAdmin = Boolean(auth?.user?.isAdmin || auth?.isAdmin);
@@ -414,18 +416,18 @@ const ProductDetails = () => {
     return (
       <Workspace>
         <EmptyState
-          title="Fiche produit indisponible"
+          title={t('productDetails.unavailable', 'Fiche produit indisponible')}
           description="Vérifiez votre connexion puis réessayez. Si le produit a été supprimé, retournez au catalogue."
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => setProductLoadAttempt(value => value + 1)}>Réessayer</button>
-              <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>Retour au catalogue</button>
+              <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>{t('productDetails.backToCatalog', 'Retour au catalogue')}</button>
             </div>
           }
         />
       </Workspace>
     );
-  if (!product) return <Workspace><EmptyState title="Produit introuvable" description="La fiche produit demandée n'est pas disponible." action={<button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>Retour au catalogue</button>} /></Workspace>;
+  if (!product) return <Workspace><EmptyState title={t('productDetails.notFound', 'Produit introuvable')} description={t('productDetails.notFoundDesc', "La fiche produit demandée n'est pas disponible.")} action={<button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => navigate(returnToProducts)}>{t('productDetails.backToCatalog', 'Retour au catalogue')}</button>} /></Workspace>;
 
   const stockStatus = getStockStatus(product.stock);
 
@@ -464,7 +466,7 @@ const ProductDetails = () => {
               <button
                 onClick={() => setShowProfitSections(p => !p)}
                 className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
-                title={showProfitSections ? 'Masquer les données financières' : 'Afficher les données financières'}
+                title={showProfitSections ? t('productDetails.hideFinancials', 'Masquer les données financières') : t('productDetails.showFinancials', 'Afficher les données financières')}
               >
                 {showProfitSections ? <EyeOff size={14} /> : <Eye size={14} />}
                 <span className="hidden sm:inline">{showProfitSections ? 'Masquer bénéfice' : 'Afficher bénéfice'}</span>
@@ -490,7 +492,7 @@ const ProductDetails = () => {
               <button
                 onClick={() => setLossModalOpen(true)}
                 className="ms-button ms-button-secondary ms-button-sm flex items-center gap-1.5"
-                title="Enregistrer une casse, un cadeau ou une autre sortie de stock"
+                title={t('productDetails.recordStockOut', 'Enregistrer une casse, un cadeau ou une autre sortie de stock')}
               >
                 <AlertTriangle size={14} />
                 <span className="hidden sm:inline">Perte / Cadeau</span>
