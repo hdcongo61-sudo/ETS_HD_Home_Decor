@@ -979,6 +979,7 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
         { to: '/products/out-of-stock',icon: AlertTriangle, label: i18n.t('nav.outOfStock', 'Rupture de stock') },
         { to: '/products/expiring',    icon: CalendarClock, label: i18n.t('nav.expiring', 'Expiration proche') },
         { to: '/products/by-supplier', icon: Building2,     label: i18n.t('nav.bySupplier', 'Par fournisseur') },
+        { to: '/services',             icon: BriefcaseBusiness, label: i18n.t('nav.services', 'Services') },
       ] : []),
     ],
   },

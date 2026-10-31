@@ -57,6 +57,7 @@ const Bank = lazy(() => import('./pages/Bank'));
 const Comptabilite = lazy(() => import('./pages/Comptabilite'));
 const Promotions = lazy(() => import('./pages/Promotions'));
 const ExpiringProducts = lazy(() => import('./pages/ExpiringProducts'));
+const Services = lazy(() => import('./pages/Services'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -324,6 +325,14 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <ExpiringProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/services"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Services />
                     </ProtectedRoute>
                   }
                 />

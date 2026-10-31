@@ -73,6 +73,7 @@ const promotionRoutes = require('./routes/promotionRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const apiKeyAuth = require('./middlewares/apiKeyAuth');
 const webhookRoutes = require('./routes/webhookRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 
 const app = express();
 
@@ -250,6 +251,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/promotions', promotionRoutes);
 // API publique (lecture seule) — clé API par boutique.
 app.use('/api/public', apiKeyAuth, publicRoutes);
+app.use('/api/services', serviceRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
