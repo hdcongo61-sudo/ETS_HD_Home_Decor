@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { reportingApi } from '../features/reporting/api';
+import { useTranslation } from 'react-i18next';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { useModal } from '../context/ModalContext';
 import { MODAL_IDS } from '../config/modals';
@@ -211,6 +212,7 @@ const buildAccountingWorkbook = ({ summary, journal, periodLabel }) => {
 };
 
 const Comptabilite = () => {
+  const { t } = useTranslation();
   const journalRef = useRef(null);
   const { openModal } = useModal();
   const [preset, setPreset] = useState('month');
@@ -314,8 +316,8 @@ const Comptabilite = () => {
   return (
     <Workspace className="space-y-6">
       <PageHeader
-        eyebrow="Finance & pilotage"
-        title="Comptabilité"
+        eyebrow={t('comptabilite.eyebrow', 'Finance & pilotage')}
+        title={t('comptabilite.title', 'Comptabilité')}
         description="Suivez ce que l'entreprise gagne, dépense et doit encore encaisser."
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -324,14 +326,14 @@ const Comptabilite = () => {
               onClick={() => openModal(MODAL_IDS.PAYMENT)}
               className="ms-button ms-button-secondary ms-button-md"
             >
-              <CreditCard className="h-4 w-4" /> Encaisser
+              <CreditCard className="h-4 w-4" /> {t('comptabilite.collect', 'Encaisser')}
             </button>
             <button
               type="button"
               onClick={() => openModal(MODAL_IDS.EXPENSE)}
               className="ms-button ms-button-primary ms-button-md"
             >
-              <Plus className="h-4 w-4" /> Dépense
+              <Plus className="h-4 w-4" /> {t('comptabilite.expense', 'Dépense')}
             </button>
           </div>
         }
@@ -344,7 +346,7 @@ const Comptabilite = () => {
               <CalendarDays className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="fui-caption1 font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">Période analysée</p>
+              <p className="fui-caption1 font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">{t('comptabilite.period', 'Période analysée')}</p>
               <p className="truncate fui-body1-strong text-[var(--ms-text-strong)]">{periodLabel}</p>
             </div>
           </div>
@@ -358,7 +360,7 @@ const Comptabilite = () => {
                 className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
                 aria-label="Actualiser les données"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualiser
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> {t('comptabilite.refresh', 'Actualiser')}
               </button>
             <button
               type="button"
@@ -366,14 +368,14 @@ const Comptabilite = () => {
               disabled={loading || !summary}
               className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
             >
-              <FileSpreadsheet className="h-4 w-4" /> Exporter
+              <FileSpreadsheet className="h-4 w-4" /> {t('comptabilite.export', 'Exporter')}
             </button>
             <button
               type="button"
               onClick={handleVatExport}
               className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
             >
-              <FileSpreadsheet className="h-4 w-4" /> Déclaration TVA
+              <FileSpreadsheet className="h-4 w-4" /> {t('comptabilite.vat', 'Déclaration TVA')}
             </button>
             </div>
           </div>
@@ -381,10 +383,10 @@ const Comptabilite = () => {
       </section>
 
       <nav className="no-print -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Sections comptables">
-        <SectionLink href="#synthese" icon={<TrendingUp className="h-4 w-4" />} label="Synthèse" />
-        <SectionLink href="#resultats" icon={<Calculator className="h-4 w-4" />} label="Résultats" />
-        <SectionLink href="#depenses" icon={<Banknote className="h-4 w-4" />} label="Dépenses" />
-        <SectionLink href="#journal" icon={<FileText className="h-4 w-4" />} label="Journal" />
+        <SectionLink href="#synthese" icon={<TrendingUp className="h-4 w-4" />} label={t('comptabilite.synthesis', 'Synthèse')} />
+        <SectionLink href="#resultats" icon={<Calculator className="h-4 w-4" />} label={t('comptabilite.results', 'Résultats')} />
+        <SectionLink href="#depenses" icon={<Banknote className="h-4 w-4" />} label={t('comptabilite.expenses', 'Dépenses')} />
+        <SectionLink href="#journal" icon={<FileText className="h-4 w-4" />} label={t('comptabilite.journal', 'Journal')} />
       </nav>
 
       {error && (
@@ -403,7 +405,7 @@ const Comptabilite = () => {
       {loading ? (
         <LoadingSkeleton rows={6} />
       ) : !summary ? (
-        <EmptyState title="Aucune donnée" description="Aucune écriture sur la période sélectionnée." />
+        <EmptyState title={t('comptabilite.none', 'Aucune donnée')} description="Aucune écriture sur la période sélectionnée." />
       ) : (
         <>
           {/* ── Result hero ─────────────────────────────────────────── */}
