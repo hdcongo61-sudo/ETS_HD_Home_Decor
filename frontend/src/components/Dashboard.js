@@ -90,10 +90,10 @@ import {
 import SectionError from "./SectionError";
 import AccordionSection from "../components/AccordionSection";
 import AppLoader from "../components/AppLoader";
+import DayDetailsModal from "./DayDetailsModal";
 import { useFeature, LockedFeatureButton } from "./FeatureGate";
 import { FEATURE_KEYS } from "../config/features";
 
-const DayDetailsModal = lazy(() => import("./DayDetailsModal"));
 const RemindersPanel = lazy(() => import("../components/RemindersPanel"));
 const ExportModal = lazy(() => import("../components/ExportModal"));
 const BusinessAnalyticsDashboard = lazy(() => import("../components/BusinessAnalyticsDashboard"));
@@ -2798,29 +2798,27 @@ const DashboardWorkspace = () => {
         </Suspense>
 
         {/* ===== Modal Détails jour ===== */}
-        <Suspense fallback={<div className="flex justify-center p-6"><AppLoader fullScreen={false} /></div>}>
-          {isModalOpen && (
-            <DayDetailsModal
-              date={selectedDate}
-              sales={salesData.filter(
-                (s) =>
-                  format(new Date(s.saleDate || s.createdAt), "yyyy-MM-dd") ===
-                  format(selectedDate, "yyyy-MM-dd")
-              )}
-              expenses={expensesData.filter(
-                (e) =>
-                  format(new Date(e.date || e.createdAt), "yyyy-MM-dd") ===
-                  format(selectedDate, "yyyy-MM-dd")
-              )}
-              payments={paymentsData.filter(
-                (p) =>
-                  format(new Date(p.paymentDate || p.createdAt), "yyyy-MM-dd") ===
-                  format(selectedDate, "yyyy-MM-dd")
-              )}
-              onClose={handleCloseModal}
-            />
-          )}
-        </Suspense>
+        {isModalOpen && (
+          <DayDetailsModal
+            date={selectedDate}
+            sales={salesData.filter(
+              (s) =>
+                format(new Date(s.saleDate || s.createdAt), "yyyy-MM-dd") ===
+                format(selectedDate, "yyyy-MM-dd")
+            )}
+            expenses={expensesData.filter(
+              (e) =>
+                format(new Date(e.date || e.createdAt), "yyyy-MM-dd") ===
+                format(selectedDate, "yyyy-MM-dd")
+            )}
+            payments={paymentsData.filter(
+              (p) =>
+                format(new Date(p.paymentDate || p.createdAt), "yyyy-MM-dd") ===
+                format(selectedDate, "yyyy-MM-dd")
+            )}
+            onClose={handleCloseModal}
+          />
+        )}
       </div>
     </div>
   );

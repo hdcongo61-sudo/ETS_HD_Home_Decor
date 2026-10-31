@@ -6,6 +6,7 @@ const PDFDocument = require('pdfkit');
 const Tenant = require('../models/tenantModel');
 const { PLAN_CATALOG } = require('../models/tenantModel');
 const User = require('../models/userModel');
+const TenantPresence = require('../models/tenantPresenceModel');
 const PlatformAudit = require('../models/platformAuditModel');
 const PlatformConfig = require('../models/platformConfigModel');
 const { TENANT_SCOPED_MODELS } = require('../utils/tenantCollections');
@@ -527,7 +528,13 @@ const getOverviewStats = asyncHandler(async (req, res) => {
 
   // Plan distribution
   const planDist = {};
-  tenants.forEach((t) => { planDist[t.plan] = (planDist[t.plan] || 0) + 1; });
+  const planRevenue = {};
+  tenants.forEach((t) => {
+    planDist[t.plan] = (planDist[t.plan] || 0) + 1;
+    if (t.status === 'active') {
+      planRevenue[t.plan] = (planRevenue[t.plan] || 0) + (Number(t.monthlyPrice) || 0);
+    }
+  });
 
   // Growth & churn over the last 6 months: new shops (createdAt) vs lost shops
   // (suspend events from the audit log). Reactivations net the loss back.
@@ -560,6 +567,8 @@ const getOverviewStats = asyncHandler(async (req, res) => {
   const liveStats = await getLiveStats(tenants.map((t) => t._id));
   const soon = 3 * 86400000;
   const inactiveCutoff = new Date(now - 14 * 86400000);
+  const active30DayCutoff = new Date(now - 30 * 86400000);
+  const recentSignupCutoff = new Date(now - 30 * 86400000);
 
   const trialsExpiring = trials
     .filter((t) => t.trialEndsAt && new Date(t.trialEndsAt) - now <= soon)
@@ -583,6 +592,47 @@ const getOverviewStats = asyncHandler(async (req, res) => {
     })
     .filter((t) => t.pct >= 0.8);
 
+  const onboarding = tenants
+    .filter((tenant) => {
+      if (!tenant.createdAt || new Date(tenant.createdAt) < recentSignupCutoff) return false;
+      const live = liveStats[tenant._id.toString()] || {};
+      return !live.productCount || !live.saleCount;
+    })
+    .map((tenant) => {
+      const live = liveStats[tenant._id.toString()] || {};
+      return {
+        _id: tenant._id,
+        name: tenant.name,
+        createdAt: tenant.createdAt,
+        missingProducts: !live.productCount,
+        missingSales: !live.saleCount,
+      };
+    });
+
+  const cohortMap = {};
+  tenants.forEach((tenant) => {
+    const createdAt = tenant.createdAt ? new Date(tenant.createdAt) : null;
+    if (!createdAt || Number.isNaN(createdAt.getTime())) return;
+    const month = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+    if (!cohortMap[month]) cohortMap[month] = { month, total: 0, activeLast30Days: 0 };
+    cohortMap[month].total += 1;
+    if (
+      tenant.status !== 'suspended' &&
+      tenant.status !== 'expired' &&
+      tenant.stats?.lastActiveAt &&
+      new Date(tenant.stats.lastActiveAt) >= active30DayCutoff
+    ) {
+      cohortMap[month].activeLast30Days += 1;
+    }
+  });
+  const signupCohorts = Object.values(cohortMap)
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .slice(-12)
+    .map((cohort) => ({
+      ...cohort,
+      activeRate: cohort.total ? Math.round((cohort.activeLast30Days / cohort.total) * 100) : 0,
+    }));
+
   res.json({
     revenue: { mrr, arr: mrr * 12, revenueThisMonth },
     funnel: {
@@ -594,10 +644,114 @@ const getOverviewStats = asyncHandler(async (req, res) => {
     },
     signups,
     planDist,
+    planRevenue,
     growth,
     churnRate,
-    attention: { trialsExpiring, paymentsOverdue, dormant, nearLimit },
+    signupCohorts,
+    attention: { trialsExpiring, paymentsOverdue, dormant, nearLimit, onboarding },
   });
+});
+
+// ── Super-admin: live process and database health ──
+// GET /api/tenants/system/health
+const getSystemHealth = asyncHandler(async (req, res) => {
+  const mongoose = require('mongoose');
+  const connectionStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  const memory = process.memoryUsage();
+  const presenceWindowSeconds = 120;
+  const activeShops = mongoose.connection.readyState === 1
+    ? await TenantPresence.countDocuments({
+        lastSeenAt: { $gte: new Date(Date.now() - presenceWindowSeconds * 1000) },
+      })
+    : null;
+
+  res.json({
+    checkedAt: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    nodeVersion: process.version,
+    environment: process.env.NODE_ENV || 'development',
+    database: connectionStates[mongoose.connection.readyState] || 'unknown',
+    activeShops: {
+      count: activeShops,
+      windowSeconds: presenceWindowSeconds,
+    },
+    memory: {
+      rssBytes: memory.rss,
+      heapUsedBytes: memory.heapUsed,
+      heapTotalBytes: memory.heapTotal,
+    },
+  });
+});
+
+// GET /api/tenants/data-usage
+const getTenantDataUsage = asyncHandler(async (req, res) => {
+  const tenants = await Tenant.find({}).select('_id name code').lean();
+  const tenantIds = tenants.map((tenant) => tenant._id);
+  const usageByTenant = new Map(
+    tenantIds.map((tenantId) => [tenantId.toString(), { estimatedBytes: 0, documentCount: 0 }])
+  );
+  const availableModels = mongoose.modelNames()
+    .filter((name) => name !== 'TenantPresence')
+    .map((name) => mongoose.model(name))
+    .filter((model) => model.schema.path('tenantId'));
+  const batchSize = 5;
+
+  for (let index = 0; tenantIds.length && index < availableModels.length; index += batchSize) {
+    const batch = availableModels.slice(index, index + batchSize);
+    const results = await Promise.all(batch.map((model) => model.aggregate([
+      { $match: { tenantId: { $in: tenantIds } } },
+      {
+        $group: {
+          _id: '$tenantId',
+          estimatedBytes: { $sum: { $bsonSize: '$$ROOT' } },
+          documentCount: { $sum: 1 },
+        },
+      },
+    ]).allowDiskUse(true)));
+
+    results.flat().forEach((result) => {
+      const usage = usageByTenant.get(result._id.toString());
+      if (!usage) return;
+      usage.estimatedBytes += result.estimatedBytes || 0;
+      usage.documentCount += result.documentCount || 0;
+    });
+  }
+
+  const totalEstimatedBytes = [...usageByTenant.values()]
+    .reduce((total, usage) => total + usage.estimatedBytes, 0);
+  const shops = tenants.map((tenant) => {
+    const usage = usageByTenant.get(tenant._id.toString());
+    return {
+      tenantId: tenant._id,
+      name: tenant.name,
+      code: tenant.code,
+      ...usage,
+      sharePercentage: totalEstimatedBytes
+        ? Number(((usage.estimatedBytes / totalEstimatedBytes) * 100).toFixed(2))
+        : 0,
+    };
+  }).sort((a, b) => b.estimatedBytes - a.estimatedBytes);
+
+  res.json({
+    computedAt: new Date().toISOString(),
+    totalEstimatedBytes,
+    measuredCollections: availableModels.length,
+    shops,
+    methodology: 'Taille BSON estimée des documents tenant-scopés; hors index, compression MongoDB et fichiers stockés à l’extérieur.',
+  });
+});
+
+// POST /api/tenants/me/presence
+const recordTenantPresence = asyncHandler(async (req, res) => {
+  const filter = { tenantId: req.tenantId };
+  const update = { $set: { lastSeenAt: new Date() } };
+  try {
+    await TenantPresence.updateOne(filter, update, { upsert: true });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    await TenantPresence.updateOne(filter, update);
+  }
+  res.sendStatus(204);
 });
 
 // ── Super-admin: record a payment for a tenant ──
@@ -1033,4 +1187,7 @@ module.exports = {
   updatePlans,
   getTenantStats,
   generateApiKey,
+  getSystemHealth,
+  getTenantDataUsage,
+  recordTenantPresence,
 };

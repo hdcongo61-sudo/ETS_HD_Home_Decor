@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { platformApi } from '../features/platform/api';
 import { API_URL } from '../config';
@@ -12,7 +12,7 @@ import {
   Layers, Save, Pencil, BarChart3, TrendingDown, Boxes, AlertCircle,
   RotateCcw, LifeBuoy, Bell, Shield,
   Database, DollarSign, UserCheck, Mail, Eye, EyeOff,
-  BarChart2, Server, FileText,
+  BarChart2, Server, FileText, Sparkles,
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, PieChart, Pie, Cell } from 'recharts';
 import { EmptyState, LoadingSkeleton, PageHeader, RightDetailPanel, Workspace } from '../components/business';
@@ -53,6 +53,7 @@ const AUDIT_META = {
   'tenant.delete':      { label: 'Supprimée',          tone: 'danger',  icon: Trash2 },
   'tenant.impersonate': { label: 'Accès supervision',  tone: 'warning', icon: LogIn },
   'tenant.payment':     { label: 'Paiement',           tone: 'success', icon: Receipt },
+  'platform.announcement': { label: 'Publication plateforme', tone: 'info', icon: Bell },
 };
 
 const StatusBadge = ({ status }) => {
@@ -89,6 +90,7 @@ const DOC_LABELS = {
   flyer: 'Flyer (prospection)',
   guide: 'Guide de gestion',
   formation: 'Guide de formation',
+  nouveautes: 'Nouveautés de l’application',
 };
 
 // Generates the branded PDF for a doc type and triggers a download.
@@ -288,6 +290,18 @@ const DocEditor = () => {
 /* ─── TAB: Ressources (documents PDF et éditeur de contenu) ── */
 const ResourcesTab = () => (
   <div className="space-y-4">
+    <div
+      className="rounded-[var(--radiusLarge)] p-4"
+      style={{ background: 'var(--colorBrandBackground2)', border: '1px solid var(--colorBrandStroke2)' }}
+    >
+      <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Supports de présentation et de formation</p>
+      <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+        Les modèles par défaut couvrent les fonctions récentes : achats reçus, création de produits pendant un achat,
+        comptabilité et suivi des opérations hors ligne. Un document personnalisé conserve son contenu ; restaurez
+        le contenu par défaut dans l’éditeur pour récupérer la version mise à jour. Pour « Nouveautés », mettez à jour
+        la date et les sections avant chaque diffusion.
+      </p>
+    </div>
     <EditorDocs />
     <DocEditor />
   </div>
@@ -667,15 +681,19 @@ const TABS = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'analytics', label: 'Analytiques',   icon: TrendingUp },
   { id: 'support',  label: 'Support',        icon: LifeBuoy },
-  { id: 'system',   label: 'Systeme',        icon: Server },
+  { id: 'system',   label: 'Système',        icon: Server },
   { id: 'audit',    label: 'Journal',        icon: History },
   { id: 'resources', label: 'Ressources',    icon: FileText },
 ];
 
 const SuperAdmin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { auth, setAuth } = useContext(AuthContext);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => {
+    const requestedTab = searchParams.get('tab');
+    return TABS.some(({ id }) => id === requestedTab) ? requestedTab : 'overview';
+  });
 
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -838,8 +856,8 @@ const OverviewTab = ({ onJump }) => {
   if (loading) return <LoadingSkeleton rows={6} />;
   if (!stats) return <EmptyState title="Statistiques indisponibles" />;
 
-  const { revenue, funnel, signups, planDist, attention, growth = {}, churnRate = 0 } = stats;
-  const attentionTotal = attention.trialsExpiring.length + attention.paymentsOverdue.length + attention.dormant.length + attention.nearLimit.length;
+  const { revenue, funnel, signups, planDist, planRevenue = {}, attention, growth = {}, churnRate = 0 } = stats;
+  const attentionTotal = attention.trialsExpiring.length + attention.paymentsOverdue.length + attention.dormant.length + attention.nearLimit.length + (attention.onboarding?.length || 0);
 
   const growthData = Object.entries(growth).map(([m, v]) => ({ month: m.slice(5), Nouvelles: v.new || 0, Perdues: v.lost || 0 }));
   const totalNew = growthData.reduce((s, d) => s + d.Nouvelles, 0);
@@ -868,7 +886,7 @@ const OverviewTab = ({ onJump }) => {
     PLAN_OPTIONS.forEach(([k, v]) => {
       const count = planDist[k] || 0;
       rows.push([`Plan ${v}`, 'Nombre', count]);
-      rows.push([`Plan ${v}`, 'Revenu mensuel (CFA)', count * PLAN_PRICES[k]]);
+      rows.push([`Plan ${v}`, 'Revenu mensuel (CFA)', Math.round(planRevenue[k] || 0)]);
     });
     signupEntries.forEach(([month, count]) => rows.push(['Inscriptions', month, count]));
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
@@ -976,7 +994,7 @@ const OverviewTab = ({ onJump }) => {
                   <div key={k} className="flex items-center gap-2 text-sm">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PLAN_COLORS[k] }} />
                     <span className="min-w-0 flex-1 truncate" style={{ color: 'var(--colorNeutralForeground2)' }}>{v}</span>
-                    <span className="tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{money(count * PLAN_PRICES[k])}/m</span>
+                    <span className="tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{money(planRevenue[k] || 0)}/m</span>
                     <span className="w-10 text-right tabular-nums font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>{count} <span className="font-normal" style={{ color: 'var(--colorNeutralForeground3)' }}>({pct}%)</span></span>
                   </div>
                 );
@@ -991,11 +1009,11 @@ const OverviewTab = ({ onJump }) => {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Croissance & rétention</p>
-            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Nouvelles boutiques contre boutiques suspendues (6 mois)</p>
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Inscriptions et suspensions nettes enregistrées dans le journal (6 mois)</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Taux d'attrition (mois)</p>
+              <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Suspensions nettes / base active (mois)</p>
               <p className="fui-subtitle2 tabular-nums" style={{ color: churnRate > 5 ? 'var(--colorStatusDangerForeground1)' : 'var(--colorStatusSuccessForeground1)' }}>{churnRate}%</p>
             </div>
             <div className="text-right">
@@ -1035,6 +1053,7 @@ const OverviewTab = ({ onJump }) => {
             <AttentionList title="Paiements en retard" tone="danger" items={attention.paymentsOverdue} render={(t) => `${t.name} — ${money(t.amount)} dû le ${fmtDate(t.nextPaymentDue)}`} onClick={() => onJump('billing')} />
             <AttentionList title="Boutiques dormantes (>14j)" tone="neutral" items={attention.dormant} render={(t) => `${t.name} — actif ${relativeDays(t.lastActiveAt)}`} onClick={() => onJump('tenants')} />
             <AttentionList title="Proches de la limite (≥80%)" tone="warning" items={attention.nearLimit} render={(t) => `${t.name} — ${t.userCount}/${t.maxUsers} users, ${t.productCount}/${t.maxProducts} prod.`} onClick={() => onJump('tenants')} />
+            <AttentionList title="Démarrage à accompagner (<30j)" tone="info" items={attention.onboarding || []} render={(t) => `${t.name} — ${[t.missingProducts && 'aucun produit', t.missingSales && 'aucune vente'].filter(Boolean).join(', ')}`} onClick={() => onJump('tenants')} />
           </div>
         )}
       </div>
@@ -2593,6 +2612,21 @@ const NotificationsTab = ({ tenants }) => {
   });
   const [sending, setSending] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const { data } = await platformApi.announcements();
+      setHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de charger l’historique des annonces.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const now = Date.now();
 
@@ -2600,11 +2634,11 @@ const NotificationsTab = ({ tenants }) => {
   const targetTenants = tenants.filter((t) => {
     if (form.targetType === 'all') return true;
 
-    if (form.targetType === 'plans' && form.plans.length > 0) {
+    if (form.targetType === 'plans') {
       if (!form.plans.includes(t.plan)) return false;
     }
 
-    if (form.targetType === 'statuses' && form.statuses.length > 0) {
+    if (form.targetType === 'statuses') {
       if (!form.statuses.includes(t.status)) return false;
     }
 
@@ -2637,9 +2671,21 @@ const NotificationsTab = ({ tenants }) => {
 
     try {
       setSending(true);
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      toast.success(`Notification envoyee a ${targetTenants.length} boutique(s)`);
+      const target = form.targetType === 'plans'
+        ? { targetType: 'plans', plans: form.plans }
+        : form.targetType === 'statuses'
+          ? { targetType: 'statuses', statuses: form.statuses }
+          : form.targetType === 'payment'
+            ? { targetType: 'payment', paymentStatus: form.paymentStatus }
+            : { targetType: 'all' };
+      const { data } = await platformApi.publishAnnouncement({
+        title: form.title,
+        message: form.message,
+        type: form.type,
+        target,
+      });
+      setHistory((items) => [data.announcement, ...items].slice(0, 100));
+      toast.success(`Publication envoyée à ${data.announcement.recipientCount} boutique(s).`);
       setForm({
         title: '',
         message: '',
@@ -2650,7 +2696,7 @@ const NotificationsTab = ({ tenants }) => {
         paymentStatus: 'all',
       });
     } catch (err) {
-      toast.error('Erreur lors de l envoi');
+      toast.error(err.response?.data?.message || 'Erreur lors de la publication.');
     } finally {
       setSending(false);
     }
@@ -2661,6 +2707,7 @@ const NotificationsTab = ({ tenants }) => {
     { value: 'warning', label: 'Avertissement', color: 'var(--colorStatusWarningForeground1)', icon: AlertTriangle },
     { value: 'success', label: 'Succes', color: 'var(--colorStatusSuccessForeground1)', icon: CheckCircle2 },
     { value: 'urgent', label: 'Urgent', color: 'var(--colorStatusDangerForeground1)', icon: AlertCircle },
+    { value: 'release', label: 'Nouveautés', color: 'var(--colorBrandForeground1)', icon: Zap },
   ];
 
   return (
@@ -2894,6 +2941,9 @@ const NotificationsTab = ({ tenants }) => {
           </button>
         </div>
       </div>
+      <div className="rounded-[var(--radiusLarge)] p-3 fui-caption1" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground2)' }}>
+        Pour publier une note de version, choisissez « Nouveautés ». Les boutiques la verront dans l’application et pourront la marquer comme lue ; le PDF éditable reste disponible dans l’onglet Ressources.
+      </div>
 
       {/* Preview */}
       {preview && form.title && form.message && (
@@ -2942,6 +2992,43 @@ const NotificationsTab = ({ tenants }) => {
           </div>
         </div>
       )}
+
+      <div className="fluent-card-filled overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <div>
+            <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Historique des publications</p>
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Annonces visibles dans l’application des boutiques ciblées.</p>
+          </div>
+          <button type="button" onClick={loadHistory} className="ms-button ms-button-secondary ms-button-sm" disabled={historyLoading}>
+            <RefreshCw size={14} className={historyLoading ? 'animate-spin' : ''} /> Actualiser
+          </button>
+        </div>
+        {historyLoading ? (
+          <LoadingSkeleton rows={3} />
+        ) : history.length ? (
+          <div className="divide-y" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+            {history.map((item) => (
+              <div key={item._id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    {item.type === 'release' && <Sparkles size={14} className="mr-1 inline" aria-hidden="true" />}
+                    {item.title}
+                  </p>
+                  <p className="fui-caption1 mt-1 whitespace-pre-wrap" style={{ color: 'var(--colorNeutralForeground2)' }}>{item.message}</p>
+                  <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    {fmtDateTime(item.publishedAt)} · {item.createdByName || 'Super Admin'}
+                  </p>
+                </div>
+                <span className="ms-status-badge ms-status-neutral">
+                  {fmt(item.readCount)}/{fmt(item.recipientCount)} lus
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Aucune publication" description="Les annonces et nouveautés publiées apparaîtront ici." />
+        )}
+      </div>
     </div>
   );
 };
@@ -2949,11 +3036,30 @@ const NotificationsTab = ({ tenants }) => {
 /* ─── TAB: Analytics ──────────────────────────────────────── */
 const AnalyticsTab = ({ tenants }) => {
   const now = Date.now();
+  const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState('');
+  useEffect(() => {
+    let active = true;
+    platformApi.tenantsOverview()
+      .then(({ data }) => { if (active) setOverview(data); })
+      .catch((err) => {
+        if (active) setOverviewError(err.response?.data?.message || 'Les cohortes sont indisponibles.');
+      });
+    return () => { active = false; };
+  }, []);
 
   // Growth metrics
-  const last30Days = tenants.filter(t => t.createdAt && (now - new Date(t.createdAt)) <= 30 * 86400000);
-  const last60Days = tenants.filter(t => t.createdAt && (now - new Date(t.createdAt)) <= 60 * 86400000);
-  const growthRate = last60Days.length > 30 ? ((last30Days.length / (last60Days.length - last30Days.length) - 1) * 100).toFixed(1) : 0;
+  const thirtyDays = 30 * 86400000;
+  const currentPeriodStart = now - thirtyDays;
+  const previousPeriodStart = now - (2 * thirtyDays);
+  const last30Days = tenants.filter((t) => t.createdAt && new Date(t.createdAt).getTime() >= currentPeriodStart);
+  const previous30Days = tenants.filter((t) => {
+    const createdAt = new Date(t.createdAt).getTime();
+    return t.createdAt && createdAt >= previousPeriodStart && createdAt < currentPeriodStart;
+  });
+  const growthRate = previous30Days.length
+    ? (((last30Days.length - previous30Days.length) / previous30Days.length) * 100).toFixed(1)
+    : null;
 
   // Revenue trends (last 6 months)
   const monthlyRevenue = [];
@@ -2968,13 +3074,7 @@ const AnalyticsTab = ({ tenants }) => {
     monthlyRevenue.push({ month: monthKey, revenue });
   }
 
-  // Churn analysis
-  const churnedThisMonth = tenants.filter(t => {
-    if (t.status !== 'expired' && t.status !== 'suspended') return false;
-    const lastActive = t.lastPaymentAt || t.createdAt;
-    if (!lastActive) return false;
-    return (now - new Date(lastActive)) <= 30 * 86400000;
-  });
+  const inactiveStatusCount = tenants.filter((t) => t.status === 'expired' || t.status === 'suspended').length;
 
   // Plan distribution
   const planDist = tenants.reduce((acc, t) => {
@@ -2989,15 +3089,23 @@ const AnalyticsTab = ({ tenants }) => {
 
   // Retention rate
   const totalActive = tenants.filter(t => t.status === 'active').length;
-  const retentionRate = tenants.length > 0 ? ((totalActive / tenants.length) * 100).toFixed(1) : 0;
+  const activeStatusRate = tenants.length > 0 ? ((totalActive / tenants.length) * 100).toFixed(1) : 0;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="Croissance 30j" value={`${growthRate}%`} sub={`${last30Days.length} nouvelles boutiques`} accent={growthRate >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)'} icon={TrendingUp} />
-        <Kpi label="Taux de retention" value={`${retentionRate}%`} sub={`${totalActive}/${tenants.length} actives`} accent="var(--colorBrandForeground1)" icon={CheckCircle2} />
-        <Kpi label="Churn ce mois" value={fmt(churnedThisMonth.length)} sub="Perdus ce mois" accent="var(--colorStatusDangerForeground1)" icon={TrendingDown} />
-        <Kpi label="LTV moyen" value={money(totalActive > 0 ? tenants.reduce((s, t) => s + (t.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 0) / totalActive : 0)} sub="Par boutique active" accent="#7C3AED" icon={DollarSign} />
+        <Kpi label="Croissance des inscriptions (30 j)" value={growthRate == null ? '—' : `${growthRate}%`} sub={`${last30Days.length} nouvelles · ${previous30Days.length} période précédente`} accent={Number(growthRate) >= 0 ? 'var(--colorStatusSuccessForeground1)' : 'var(--colorStatusDangerForeground1)'} icon={TrendingUp} />
+        <Kpi label="Boutiques au statut actif" value={`${activeStatusRate}%`} sub={`${totalActive}/${tenants.length} boutiques`} accent="var(--colorBrandForeground1)" icon={CheckCircle2} />
+        <Kpi label="Suspendues / expirées" value={fmt(inactiveStatusCount)} sub="Statut actuel, pas churn mensuel" accent="var(--colorStatusDangerForeground1)" icon={TrendingDown} />
+        <Kpi label="Encaissements cumulés moyens" value={money(totalActive > 0 ? tenants.reduce((s, t) => s + (t.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 0) / totalActive : 0)} sub="Par boutique actuellement active" accent="#7C3AED" icon={DollarSign} />
+      </div>
+      <div className="fluent-card-filled p-4">
+        <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Comment lire ces indicateurs</p>
+        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+          La croissance compare les inscriptions des 30 derniers jours aux 30 jours précédents. « Statut actif » est une photo
+          de l’état actuel, pas une mesure de rétention historique. Les encaissements cumulés moyens additionnent les paiements
+          enregistrés et les divisent par le nombre de boutiques actuellement actives ; ce n’est pas une prévision de valeur vie client.
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -3056,83 +3164,139 @@ const AnalyticsTab = ({ tenants }) => {
             ))}
         </div>
       </div>
+
+      <div className="fluent-card-filled overflow-hidden">
+        <div className="border-b px-4 py-3" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
+          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Activité par cohorte d’inscription</p>
+          <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Part des boutiques de chaque mois d’inscription ayant eu une activité au cours des 30 derniers jours. Ce n’est pas une rétention historique par mois de vie.
+          </p>
+        </div>
+        {overviewError ? (
+          <p role="alert" className="px-4 py-3 fui-caption1" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{overviewError}</p>
+        ) : overview?.signupCohorts?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[460px] text-left">
+              <thead>
+                <tr className="fui-caption1-strong" style={{ background: 'var(--colorNeutralBackground2)', color: 'var(--colorNeutralForeground2)' }}>
+                  <th className="px-4 py-2">Mois d’inscription</th>
+                  <th className="px-4 py-2 text-right">Boutiques</th>
+                  <th className="px-4 py-2 text-right">Actives (30 j)</th>
+                  <th className="px-4 py-2 text-right">Taux actif</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overview.signupCohorts.map((cohort) => (
+                  <tr key={cohort.month} className="border-t" style={{ borderColor: 'var(--colorNeutralStroke2)', color: 'var(--colorNeutralForeground1)' }}>
+                    <td className="px-4 py-2 fui-body1">{cohort.month}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(cohort.total)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(cohort.activeLast30Days)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{cohort.activeRate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-4 py-3 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            {overview ? 'Aucune cohorte disponible.' : 'Chargement des cohortes…'}
+          </p>
+        )}
+      </div>
     </div>
   );
 };
 
 /* ─── TAB: System Management ─────────────────────────────────── */
 const SystemTab = () => {
-  const [settings, setSettings] = useState({
-    maintenanceMode: false,
-    allowNewRegistrations: true,
-    defaultTrialDays: 30,
-    minPasswordLength: 8,
-  });
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const loadHealth = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await platformApi.systemHealth();
+      setHealth(data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'État du système indisponible.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    loadHealth();
+    const intervalId = window.setInterval(loadHealth, 30000);
+    return () => window.clearInterval(intervalId);
+  }, [loadHealth]);
+
+  const formatUptime = (seconds = 0) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return [days && `${days} j`, hours && `${hours} h`, `${minutes} min`].filter(Boolean).join(' ');
+  };
+  const formatBytes = (bytes = 0) => {
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+  };
+  const databaseMeta = {
+    connected: { label: 'Connectée', color: 'var(--colorStatusSuccessForeground1)' },
+    connecting: { label: 'Connexion…', color: 'var(--colorStatusWarningForeground1)' },
+    disconnecting: { label: 'Déconnexion…', color: 'var(--colorStatusWarningForeground1)' },
+    disconnected: { label: 'Déconnectée', color: 'var(--colorStatusDangerForeground1)' },
+  }[health?.database] || { label: health?.database || 'Inconnue', color: 'var(--colorStatusWarningForeground1)' };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="Uptime" value="99.9%" sub="30 derniers jours" accent="var(--colorStatusSuccessForeground1)" icon={Server} />
-        <Kpi label="API Calls" value="1.2M" sub="Ce mois" accent="var(--colorBrandForeground1)" icon={Activity} />
-        <Kpi label="Storage" value="2.4 GB" sub="Base de donnees" accent="var(--colorStatusWarningForeground1)" icon={Database} />
-        <Kpi label="Backups" value="Daily" sub="Dernier: il y a 2h" accent="var(--colorNeutralForeground2)" icon={Shield} />
+      <div className="ms-command-bar flex-wrap justify-between gap-2">
+        <div>
+          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>État réel du serveur</p>
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Informations de ce processus, de sa connexion MongoDB et de l’activité récente des boutiques.
+          </p>
+        </div>
+        <button type="button" onClick={loadHealth} disabled={loading} className="ms-button ms-button-secondary ms-button-sm">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualiser
+        </button>
       </div>
 
-      <div className="fluent-card-filled p-5">
-        <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Configuration systeme</p>
-        <div className="space-y-4">
-          <label className="flex items-center justify-between p-3 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
-            <div>
-              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Mode maintenance</p>
-              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Bloquer l acces aux boutiques (super-admin uniquement)</p>
-            </div>
-            <input type="checkbox" checked={settings.maintenanceMode} onChange={(e) => setSettings(s => ({ ...s, maintenanceMode: e.target.checked }))} className="form-checkbox" />
-          </label>
-
-          <label className="flex items-center justify-between p-3 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
-            <div>
-              <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Nouvelles inscriptions</p>
-              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Autoriser l inscription de nouvelles boutiques</p>
-            </div>
-            <input type="checkbox" checked={settings.allowNewRegistrations} onChange={(e) => setSettings(s => ({ ...s, allowNewRegistrations: e.target.checked }))} className="form-checkbox" />
-          </label>
-
-          <div className="p-3 rounded hover:bg-[var(--colorNeutralBackground2)]">
-            <label className="block">
-              <p className="fui-body1-strong mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Duree d essai par defaut (jours)</p>
-              <input type="number" min="0" max="365" value={settings.defaultTrialDays} onChange={(e) => setSettings(s => ({ ...s, defaultTrialDays: Number(e.target.value) }))} className="form-control w-32" />
-            </label>
-          </div>
-
-          <div className="p-3 rounded hover:bg-[var(--colorNeutralBackground2)]">
-            <label className="block">
-              <p className="fui-body1-strong mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Longueur minimale du mot de passe</p>
-              <input type="number" min="6" max="32" value={settings.minPasswordLength} onChange={(e) => setSettings(s => ({ ...s, minPasswordLength: Number(e.target.value) }))} className="form-control w-32" />
-            </label>
-          </div>
-
-          <button className="ms-button ms-button-primary ms-button-md flex items-center gap-2">
-            <Save size={16} /> Enregistrer les parametres
-          </button>
+      {error && (
+        <div role="alert" className="rounded-[var(--radiusLarge)] px-4 py-3 fui-body1" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>
+          {error}
         </div>
-      </div>
+      )}
+      {loading && !health ? <LoadingSkeleton rows={3} /> : health && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+            <Kpi label="API" value="Disponible" sub={`Node.js ${health.nodeVersion}`} accent="var(--colorStatusSuccessForeground1)" icon={Server} />
+            <Kpi label="Base de données" value={databaseMeta.label} sub="Connexion MongoDB" accent={databaseMeta.color} icon={Database} />
+            <Kpi
+              label="Boutiques connectées"
+              value={health.activeShops?.count == null ? '—' : fmt(health.activeShops.count)}
+              sub="Application ouverte au premier plan (2 min)"
+              accent="var(--colorStatusSuccessForeground1)"
+              icon={Building2}
+            />
+            <Kpi label="Uptime du processus" value={formatUptime(health.uptimeSeconds)} sub={`Environnement : ${health.environment}`} accent="var(--colorBrandForeground1)" icon={Activity} />
+            <Kpi label="Mémoire heap" value={`${formatBytes(health.memory.heapUsedBytes)} / ${formatBytes(health.memory.heapTotalBytes)}`} sub={`Mémoire totale du processus : ${formatBytes(health.memory.rssBytes)}`} accent="var(--colorStatusWarningForeground1)" icon={Server} />
+          </div>
+          <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Chaque boutique est comptée une seule fois, même si plusieurs utilisateurs y sont connectés. Actualisation automatique toutes les 30 secondes.
+          </p>
+          <p className="fui-caption1 text-right" style={{ color: 'var(--colorNeutralForeground3)' }}>
+            Vérifié le {fmtDateTime(health.checkedAt)}
+          </p>
+        </>
+      )}
 
-      <div className="fluent-card-filled p-5">
-        <p className="fui-subtitle2 mb-4" style={{ color: 'var(--colorNeutralForeground1)' }}>Actions systeme</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
-            <Database size={16} /> Exporter la base de donnees
-          </button>
-          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
-            <RefreshCw size={16} /> Vider le cache
-          </button>
-          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
-            <Download size={16} /> Telecharger les logs
-          </button>
-          <button className="ms-button ms-button-secondary ms-button-md flex items-center gap-2 justify-center">
-            <Mail size={16} /> Tester les emails
-          </button>
-        </div>
+      <div className="fluent-card-filled p-4">
+        <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Contrôles de déploiement non configurés</p>
+        <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+          Les métriques de sauvegarde, le mode maintenance global, les limites d’inscription, les journaux d’hébergement
+          et les tests d’envoi d’e-mail dépendent d’intégrations qui ne sont pas reliées à cette application.
+          Ils ne sont pas présentés comme des actions disponibles.
+        </p>
       </div>
     </div>
   );
@@ -3187,6 +3351,7 @@ const AuditTab = () => {
                   {log.meta?.from && ` · ${log.meta.from} → ${log.meta.to}`}
                   {log.meta?.amount && ` · ${money(log.meta.amount)}`}
                   {log.meta?.asUser && ` · ${log.meta.asUser}`}
+                  {log.meta?.title && ` · ${log.meta.title}`}
                   {' · '}{fmtDateTime(log.createdAt)}
                 </p>
               </div>

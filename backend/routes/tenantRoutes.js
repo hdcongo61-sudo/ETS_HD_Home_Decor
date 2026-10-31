@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, protectForBilling, admin, superAdmin } = require('../middlewares/authMiddleware');
+const { protect, protectForBilling, admin, superAdmin, requireTenant } = require('../middlewares/authMiddleware');
 const {
   registerTenant,
   createTenant,
@@ -22,6 +22,9 @@ const {
   updatePlans,
   getTenantStats,
   generateApiKey,
+  getSystemHealth,
+  getTenantDataUsage,
+  recordTenantPresence,
 } = require('../controllers/tenantController');
 const {
   getPawaPayConfig,
@@ -29,6 +32,12 @@ const {
   getPawaPayPaymentStatus,
   pawaPayWebhook,
 } = require('../controllers/subscriptionPaymentController');
+const {
+  createAnnouncement,
+  listAnnouncements,
+  listMyAnnouncements,
+  markAnnouncementRead,
+} = require('../controllers/platformAnnouncementController');
 
 // ── Public ───────────────────────────────────────────────
 router.post('/register', registerTenant);
@@ -37,6 +46,7 @@ router.post('/payment/pawapay/webhook', pawaPayWebhook);
 
 // ── Authenticated (any tenant user) ─────────────────────
 router.get('/me', protect, getMyTenant);
+router.post('/me/presence', protect, requireTenant, recordTenantPresence);
 // Clé d'API publique — self-service (admin de la boutique).
 router.post('/me/api-key', protect, admin, generateApiKey);
 router.get('/plan-catalog', protect, getPlanCatalog);
@@ -46,9 +56,15 @@ router.post('/plan-request', protect, admin, requestPlanChange);
 router.get('/payment/pawapay/config',   protectForBilling, getPawaPayConfig);
 router.post('/payment/pawapay/initiate', protectForBilling, admin, initiatePawaPayPayment);
 router.get('/payment/pawapay/:depositId', protectForBilling, getPawaPayPaymentStatus);
+router.get('/announcements/my', protect, requireTenant, listMyAnnouncements);
+router.post('/announcements/:id/read', protect, requireTenant, markAnnouncementRead);
 
 // ── Super-admin only ─────────────────────────────────────
 // Static paths BEFORE '/:id' so they are not captured as an id.
+router.get('/announcements', protect, superAdmin, listAnnouncements);
+router.post('/announcements', protect, superAdmin, createAnnouncement);
+router.get('/system/health', protect, superAdmin, getSystemHealth);
+router.get('/data-usage', protect, superAdmin, getTenantDataUsage);
 router.put('/:id/plan-request', protect, superAdmin, resolvePlanRequest);
 router.post('/:id/api-key', protect, superAdmin, generateApiKey);
 router.get('/export/csv',     protect, superAdmin, exportTenantsCsv);

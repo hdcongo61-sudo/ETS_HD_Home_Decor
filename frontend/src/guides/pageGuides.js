@@ -570,8 +570,8 @@ export const PAGE_GUIDES = [
     ['En cas de doute, révoquez la session depuis Sécurité.']),
 
   // ── Plateforme ──
-  GUIDE('/super-admin', 'Super Admin', 'Console plateforme : boutiques, utilisateurs plateforme, abonnements et audit.',
-    ['Onglet Boutiques : créez, suspendez ou changez le plan d’une boutique.', 'Onglet Abonnements/Paiements : suivez les règlements.', 'Onglet Utilisateurs : gérez les comptes plateforme.', 'Onglet Journal : consultez l’audit des actions.', 'Onglet Ressources : téléchargez les documents PDF et modifiez leur contenu.'],
+  GUIDE('/super-admin', 'Super Admin', 'Console plateforme : boutiques, abonnements, assistance et ressources de formation.',
+    ['Onglet Boutiques : créez, suspendez ou changez le plan d’une boutique ; la vue d’ensemble signale les essais, impayés, boutiques dormantes, limites proches et démarrages à accompagner.', 'Onglets Forfaits, Facturation et Paiements : gérez les offres et suivez les règlements.', 'Onglet Utilisateurs : gérez les comptes plateforme.', 'Onglet Notifications : publiez une annonce ou une nouveauté ciblée, suivez le nombre de lectures et consultez l’historique ; les boutiques peuvent marquer les annonces comme lues.', 'Onglet Analytiques : consultez les définitions des indicateurs et l’activité actuelle par mois d’inscription.', 'Onglet Système : vérifiez l’API, MongoDB, l’uptime et la mémoire du processus ; les métriques et commandes d’hébergement non intégrées ne sont pas simulées.', 'Onglet Journal : consultez les actions de la plateforme.', 'Onglet Ressources : téléchargez ou modifiez le flyer, les guides et les nouveautés datées ; restaurez le contenu par défaut pour récupérer les dernières mises à jour.'],
     ['L’accès supervision (impersonation) est en lecture seule et exige une raison + code MFA le cas échéant.']),
   GUIDE('/profile', 'Profil', 'Votre profil utilisateur.',
     ['Mettez à jour nom, photo et informations.', 'Consultez vos statistiques de ventes.', 'Modifiez vos préférences.'],

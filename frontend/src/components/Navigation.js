@@ -701,6 +701,7 @@ export const renderNavigationLinks = (auth, handleLogout, closeMenu, isMobile = 
                 </span>
                 <span className="ml-3 min-w-0 flex-1 truncate">Nouvelle boutique</span>
               </Link>
+              <NavIcon to="/settings" icon={<Settings className="h-[18px] w-[18px]" />} label="Paramètres plateforme" className={linkClass} onClick={closeMenu} isMobile={isMobile} />
             </MobileMenuSection>
           )}
         </div>
@@ -921,6 +922,7 @@ const CompactMobileNavigation = ({ auth, onClose, onLogout, linkClass, iconClass
         <MobileMenuSection title="Super Admin">
           {item('/super-admin', ShieldCheck, 'Gestion des boutiques')}
           {item('/register', Building2, 'Nouvelle boutique')}
+          {item('/settings', Settings, 'Paramètres plateforme')}
         </MobileMenuSection>
       )}
 
@@ -1037,6 +1039,13 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
       ],
     },
   ]),
+  ...(auth.isSuperAdmin ? [{
+    label: 'Plateforme',
+    items: [
+      { to: '/settings', icon: Settings, label: 'Paramètres plateforme' },
+      { to: '/super-admin', icon: ShieldCheck, label: 'Console Super Admin' },
+    ],
+  }] : []),
   ].map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || hasFeature(it.feature)) }));
 };
 

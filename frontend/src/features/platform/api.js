@@ -11,6 +11,7 @@ export const platformApi = {
 
   // Tenant & plan (self-service).
   myTenant: () => api.get('/tenants/me'),
+  recordTenantPresence: () => api.post('/tenants/me/presence'),
   planCatalog: () => api.get('/tenants/plan-catalog'),
   requestPlan: (data) => api.post('/tenants/plan-request', data),
   updateAppSettings: (payload) => api.put('/app-settings', payload),
@@ -38,6 +39,12 @@ export const platformApi = {
   reviewRequest: (id, data) => api.put(`/admin-requests/${id}/review`, data),
 
   // ── Super-admin : plan de contrôle plateforme ──
+  systemHealth: () => api.get('/tenants/system/health'),
+  tenantDataUsage: () => api.get('/tenants/data-usage'),
+  announcements: () => api.get('/tenants/announcements'),
+  publishAnnouncement: (data) => api.post('/tenants/announcements', data),
+  tenantAnnouncements: () => api.get('/tenants/announcements/my'),
+  markAnnouncementRead: (id) => api.post(`/tenants/announcements/${id}/read`),
   docPdf: (type) => api.get(`/export/doc/${type}`, { responseType: 'blob' }),
   docContent: (t) => api.get(`/export/doc/${t}/content`),
   saveDocContent: (type, data) => api.put(`/export/doc/${type}/content`, data),

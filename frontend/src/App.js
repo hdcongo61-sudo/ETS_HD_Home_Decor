@@ -27,6 +27,8 @@ import DesktopNavRail from './components/DesktopNavRail';
 import ServerWakeup from './components/ServerWakeup';
 import TrialBanner from './components/TrialBanner';
 import BackToTopButton from './components/BackToTopButton';
+import TenantPresence from './components/TenantPresence';
+import PermissionDenied from './pages/PermissionDenied';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -86,6 +88,7 @@ const LoginActivityDetail = lazy(() => import('./components/LoginActivityDetail'
 const AccessRestricted = lazy(() => import('./pages/AccessRestricted'));
 const Documents = lazy(() => import('./pages/Documents'));
 const Settings = lazy(() => import('./pages/Settings'));
+const PlatformSettings = lazy(() => import('./pages/PlatformSettings'));
 const Support = lazy(() => import('./pages/Support'));
 const AdminRequests = lazy(() => import('./pages/AdminRequests'));
 const TenantRegister = lazy(() => import('./pages/TenantRegister'));
@@ -95,6 +98,7 @@ const UltimateFilters = lazy(() => import('./pages/UltimateFilters'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const PageGuide = lazy(() => import('./components/PageGuide'));
 const AttributeManager = lazy(() => import('./components/AttributeManager'));
+const PlatformAnnouncements = lazy(() => import('./components/PlatformAnnouncements'));
 
 const PUBLIC_ROUTES = new Set(['/login', '/access-restricted']);
 
@@ -111,9 +115,11 @@ function ApplicationShell() {
       <RouteProgressBar />
       {showAuthenticatedShell && (
         <>
+          <TenantPresence tenantId={auth.tenantId} />
           <TrialBanner />
           <Suspense fallback={null}><ImpersonationBanner /></Suspense>
           <Navigation />
+          {!auth.isSuperAdmin && <Suspense fallback={null}><PlatformAnnouncements /></Suspense>}
           <OfflineIndicator />
           <SyncStatusIndicator />
           <DesktopNavRail />
@@ -151,6 +157,13 @@ function ApplicationShell() {
       )}
     </div>
   );
+}
+
+function SettingsRoute() {
+  const { auth } = useContext(AuthContext);
+  if (auth.isSuperAdmin) return <PlatformSettings />;
+  if (auth.isAdmin) return <Settings />;
+  return <PermissionDenied reason="Cette page est réservée aux administrateurs de la plateforme ou de la boutique." />;
 }
 
 function ApplicationRoutes() {
@@ -524,8 +537,8 @@ function ApplicationRoutes() {
                 <Route
                   path="/settings"
                   element={
-                    <ProtectedRoute adminOnly>
-                      <Settings />
+                    <ProtectedRoute>
+                      <SettingsRoute />
                     </ProtectedRoute>
                   }
                 />

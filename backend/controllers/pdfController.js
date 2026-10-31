@@ -267,11 +267,11 @@ exports.generateBrochurePdf = async (req, res) => {
   }
 };
 
-// ── Super-admin documents (flyer / guide / formation), platform-branded ──
+// ── Super-admin documents, platform-branded ──
 const DOC_SPECS = require('./docContent');
 const PlatformConfig = require('../models/platformConfigModel');
 const PLATFORM = { name: 'HD Gestion', site: 'www.hdgestion.co', color: '#0f6cbd' };
-const DOC_TYPES = ['flyer', 'guide', 'formation'];
+const DOC_TYPES = ['flyer', 'guide', 'formation', 'nouveautes'];
 
 // Returns the effective spec for a doc type: stored override if present and
 // non-empty, otherwise the hardcoded default. `edited` flags an override.
@@ -347,7 +347,7 @@ exports.saveDocContent = async (req, res) => {
 };
 
 // @desc  Generic structured document -> branded PDF (super-admin only).
-// @route GET /api/export/doc/:type   (type = flyer | guide | formation)
+// @route GET /api/export/doc/:type
 exports.generateDocPdf = async (req, res) => {
   try {
     const type = String(req.params.type || '').toLowerCase();

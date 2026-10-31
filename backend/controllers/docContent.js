@@ -1,4 +1,4 @@
-// Content specs for the super-admin documents (flyer, guide, formation).
+// Content specs for the super-admin documents.
 // Rendered to branded PDF by pdfController.generateDocPdf.
 
 const flyer = {
@@ -25,7 +25,9 @@ const flyer = {
       bullets: [
         'Ventes : vente en 2 clics, crédit & paiements partiels, livraison, factures PDF.',
         'Produits : catalogue, import Excel, QR code, alertes de rupture, suggestions pour vendre le stock lent.',
+        'Achats fournisseurs : enregistrez une marchandise reçue, créez un nouveau produit pendant la saisie et payez la facture en une fois.',
         'Caisse / Banque : encaissements du jour, mouvements financiers, suivi de la trésorerie.',
+        'Comptabilité : résultats, journal, plan comptable et balance.',
         'Clients : fiches, historique, segmentation VIP / fidèles / à relancer.',
         'Recouvrement : rappels WhatsApp aux clients (message pré-rempli), appel direct, suivi des relances.',
         'Bénéfices : marge nette, par produit / catégorie / conteneur, pertes déduites.',
@@ -100,7 +102,16 @@ const guide = {
       ],
     },
     {
-      heading: '6. Clients',
+      heading: '6. Achats fournisseurs',
+      bullets: [
+        'Enregistrez un achat déjà reçu : choisissez le fournisseur et la date, ajoutez les produits et leurs coûts unitaires.',
+        'Créez un produit manquant directement dans le formulaire d’achat ou réutilisez un produit du catalogue.',
+        'Le stock est mis à jour et la facture fournisseur est enregistrée comme entièrement payée avec le mode de paiement choisi.',
+        'Les commandes à recevoir, expéditions, factures et soldes fournisseurs restent disponibles dans les options avancées.',
+      ],
+    },
+    {
+      heading: '7. Clients',
       bullets: [
         'Fiches clients, historique d\'achats, soldes.',
         'Segmentation automatique : VIP, Fidèle, Régulier, Nouveau, Inactif.',
@@ -108,15 +119,17 @@ const guide = {
       ],
     },
     {
-      heading: '7. Finances',
+      heading: '8. Finances',
       bullets: [
-        'Dépenses avec catégories, paiements de salaire, objectif mensuel.',
+        'Saisie rapide des dépenses : montant, catégorie et description d’abord ; les détails facultatifs sont accessibles ensuite.',
+        'Dépenses avec catégories, paiements de salaire et objectif mensuel.',
         'Analyse des bénéfices : CA, coût, bénéfice brut, pertes, bénéfice net, marge nette.',
         'Répartition par produit, catégorie et conteneur.',
+        'Comptabilité : consultez les résultats et le journal ; le grand livre propose aussi les écritures équilibrées, le plan comptable et la balance.',
       ],
     },
     {
-      heading: '8. Équipe & accès',
+      heading: '9. Équipe & accès',
       bullets: [
         'Deux profils : Administrateur (tout) et Vendeur (vend sans voir les marges).',
         'Permissions fines, restriction horaire, historique des connexions, dashboard par vendeur.',
@@ -125,13 +138,13 @@ const guide = {
       ],
     },
     {
-      heading: '9. Fournisseurs, conteneurs & entrepôts',
+      heading: '10. Fournisseurs, conteneurs & entrepôts',
       bullets: [
         'Statistiques par fournisseur, conteneur et entrepôt (valeur, ventes, marge, écoulement).',
       ],
     },
     {
-      heading: '10. Paramètres & personnalisation',
+      heading: '11. Paramètres & personnalisation',
       bullets: [
         'Identité : nom, logo, couleur, textes de connexion, footer, contact, adresse (sur les documents).',
         'Dates manuelles et listes de référence (catégories, conteneurs, entrepôts, fournisseurs).',
@@ -139,7 +152,7 @@ const guide = {
       ],
     },
     {
-      heading: '11. Assistance & support',
+      heading: '12. Assistance & support',
       bullets: [
         'Messagerie intégrée avec l\'équipe : ouvrez un message par catégorie (suggestion, réclamation, question, autre).',
         'Fil de discussion : le support répond, vous êtes notifié, un badge indique les messages non lus.',
@@ -147,7 +160,7 @@ const guide = {
       ],
     },
     {
-      heading: '12. Plateforme (multi-boutiques) - réservé éditeur',
+      heading: '13. Plateforme (multi-boutiques) - réservé éditeur',
       bullets: [
         'Console super-admin : gérer plusieurs boutiques, plans et limites, statistiques, audit.',
         'Demandes de changement de plan et messages d\'assistance des boutiques traités au même endroit.',
@@ -199,6 +212,8 @@ const formation = {
         'Enregistrer les pertes & cadeaux (casse, dons) pour un bénéfice réaliste.',
         'Relancer les impayés : rappel WhatsApp ou appel en 1 clic depuis l\'accueil / la fiche de vente ; chaque relance est tracée (historique, « relancé il y a X jours »).',
         'Réapprovisionner via les alertes de stock ; activer le stock lent avec les suggestions.',
+        'Pour un achat reçu : choisissez le fournisseur, ajoutez les produits et les coûts, créez un produit manquant au besoin, puis enregistrez le paiement intégral.',
+        'Pour une dépense : commencez par le montant, la catégorie et la description ; renseignez les détails complémentaires si nécessaire.',
       ],
     },
     {
@@ -207,6 +222,7 @@ const formation = {
         'Analyse des bénéfices : comprendre la marge nette par produit, catégorie et conteneur.',
         'Clients : repérer les VIP à choyer et les inactifs à relancer.',
         'Produits lents : appliquer remises / lots pour libérer du capital immobilisé.',
+        'Comptabilité : consultez les résultats et le journal ; utilisez le grand livre pour les comptes, les écritures équilibrées et la balance.',
       ],
     },
     {
@@ -216,6 +232,7 @@ const formation = {
         'Renseigner le prix de revient pour avoir un vrai bénéfice.',
         'Donner à chaque vendeur son propre compte (traçabilité).',
         'Sauvegarde automatique dans le cloud : aucune donnée perdue.',
+        'En cas de réseau instable, consultez les opérations en attente de synchronisation et relancez-les après reconnexion.',
       ],
     },
     {
@@ -232,11 +249,56 @@ const formation = {
         'Le vendeur voit-il mes bénéfices ? Non, jamais (marges et coûts masqués).',
         'Comment relancer un client qui n\'a pas payé ? Bouton WhatsApp/Appeler depuis l\'accueil ou la vente ; le message est pré-rempli.',
         'Puis-je corriger une erreur ? Oui : annulation des pertes, corbeille des ventes, demandes validées.',
-        'Ça marche sans internet ? L\'application signale le mode hors-ligne ; les données se synchronisent.',
+        'Ça marche sans internet ? Certaines opérations prises en charge restent en attente ; consultez leur détail et relancez la synchronisation après reconnexion.',
         'Sur quel appareil ? Téléphone, tablette ou ordinateur, et installable comme une application.',
       ],
     },
   ],
 };
 
-module.exports = { flyer, guide, formation };
+const nouveautes = {
+  title: 'Nouveautés - HD Gestion',
+  subtitle: 'Mise à jour du 31 octobre 2026',
+  sections: [
+    {
+      heading: 'Achats fournisseurs',
+      body: 'Enregistrez directement un achat déjà reçu, avec son règlement intégral.',
+      bullets: [
+        'Sélectionnez un fournisseur et ajoutez les produits, quantités et coûts unitaires.',
+        'Créez un nouveau produit directement depuis le formulaire si nécessaire.',
+        'Le stock est mis à jour et la facture fournisseur est enregistrée comme payée.',
+        'Les commandes, expéditions et paiements avancés restent disponibles dans leurs onglets dédiés.',
+      ],
+    },
+    {
+      heading: 'Saisie des dépenses',
+      body: 'La saisie commence par les informations indispensables : montant, catégorie et description.',
+      bullets: [
+        'Les détails complémentaires sont regroupés dans une section facultative.',
+        'Les champs spécifiques aux dépenses de salaire restent disponibles.',
+      ],
+    },
+    {
+      heading: 'Comptabilité et grand livre',
+      body: 'Le module Comptabilité réunit le suivi des résultats et les outils de comptabilité en partie double.',
+      bullets: [
+        'Consultez le journal comptable, le plan comptable et la balance.',
+        'Les écritures du grand livre doivent être équilibrées entre débit et crédit.',
+      ],
+    },
+    {
+      heading: 'Opérations hors ligne',
+      body: 'Lorsqu’une opération prise en charge attend une synchronisation, son détail est visible dans l’indicateur de synchronisation.',
+      bullets: [
+        'Consultez les opérations en attente au lieu de ne voir qu’un nombre.',
+        'Relancez la synchronisation lorsque la connexion est rétablie.',
+      ],
+    },
+    {
+      heading: 'À propos de cette mise à jour',
+      body: 'Modifiez la date, le titre et les sections depuis l’éditeur de ressources avant chaque diffusion.',
+    },
+  ],
+};
+
+module.exports = { flyer, guide, formation, nouveautes };

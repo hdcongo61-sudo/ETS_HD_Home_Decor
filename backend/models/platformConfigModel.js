@@ -26,7 +26,7 @@ const platformConfigSchema = new mongoose.Schema(
       pro:        { type: planSchema, default: () => ({}) },
       enterprise: { type: planSchema, default: () => ({}) },
     },
-    // Editable document overrides (flyer / guide / formation). When a key is
+    // Editable document overrides. When a key is
     // present it replaces the hardcoded default from docContent.js. Shape:
     // { [type]: { title, subtitle, sections: [{ heading, body, bullets: [] }] } }
     docs: { type: mongoose.Schema.Types.Mixed, default: {} },

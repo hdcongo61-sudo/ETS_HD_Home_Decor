@@ -68,6 +68,13 @@ Le cœur de l'activité.
 - **Paiements encaissés du jour** consultables en détail.
 - **Bénéfice :** une vision claire de l'argent qui entre.
 
+### 3.3 bis 🧾 Achats fournisseurs
+- **Achat reçu** : choisissez le fournisseur, la date, les produits, quantités et coûts unitaires.
+- **Produit nouveau** : créez-le directement depuis la saisie d’achat, sans quitter le formulaire.
+- **Paiement intégral** : l’achat enregistre le stock reçu et une facture fournisseur réglée en totalité avec le mode choisi.
+- **Options avancées** : commandes à recevoir, expéditions, factures et soldes fournisseurs restent accessibles séparément.
+- **Bénéfice :** garder une trace des achats, connaître le coût d’entrée et mettre le stock à jour.
+
 ### 3.4 📦 Produits (Catalogue)
 Le stock sous contrôle total.
 - **Catalogue complet** : nom, catégorie, conteneur, entrepôt, prix de vente, **prix de revient**, stock, fournisseur, SKU, image.
@@ -111,6 +118,7 @@ Fidéliser et relancer.
 
 ### 3.9 🧾 Dépenses
 Connaître ses charges.
+- **Saisie rapide** : commencez par le montant, la catégorie et la description ; les détails facultatifs sont regroupés à part.
 - **Enregistrement des dépenses** avec **catégories** personnalisables.
 - **Paiements de salaire** rattachés aux employés.
 - **Objectif / plan de dépenses mensuel**.
@@ -137,6 +145,11 @@ La rentabilité, en clair.
 - **Top produits**, **bénéfice par catégorie**, **bénéfice par conteneur**.
 - Filtres par **période** et **conteneur**.
 - **Bénéfice :** comprendre d'où vient (et où part) l'argent.
+
+### 3.12 bis 📚 Comptabilité & grand livre
+- **Comptabilité** : consultez la synthèse, le résultat, les dépenses et le journal sur une période.
+- **Grand livre** : gérez le plan comptable, saisissez des écritures équilibrées (débit = crédit) et consultez la balance.
+- **Accès** : réservé à l’administrateur et soumis à l’activation du module Comptabilité.
 
 ### 3.13 ⚙️ Paramètres
 Personnaliser la boutique.
@@ -209,7 +222,11 @@ L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de
 - **Demandes de changement de plan** des boutiques : approuver / refuser (applique le plan automatiquement).
 - **Messages d'assistance** des boutiques : onglet « Messages » avec badge de non-lus, réponse et résolution.
 - **Indicatif pays par boutique** (utilisé pour les rappels WhatsApp aux clients).
-- **Documents éditables** (onglet « Ressources ») : flyer, guide et guide de formation modifiables depuis l'interface puis régénérés en PDF.
+- **Documents éditables** (onglet « Ressources ») : flyer, guides et document « Nouveautés » daté, modifiables depuis l'interface puis régénérés en PDF.
+- **Annonces ciblées** dans l’application : publication par forfait, statut ou situation de paiement, historique et nombre de lectures.
+- **Santé des boutiques** : essais proches de la fin, échéances en retard, comptes dormants, limites presque atteintes et nouveaux comptes sans produits ou ventes.
+- **Analytiques explicites** : définitions des indicateurs, activité actuelle par cohorte d’inscription et revenus basés sur les paiements réellement enregistrés.
+- **État système réel** : disponibilité de l’API, état MongoDB, uptime et mémoire du processus. Les actions d’hébergement non intégrées ne sont pas présentées comme fonctionnelles.
 - **Connexion « au nom de »** (impersonation) pour assister un client.
 - **Isolation stricte des données** : chaque boutique ne voit **que** ses données.
 - **Bénéfice (pour vous) :** louer la même application à plusieurs commerçants en toute sécurité.
@@ -224,6 +241,7 @@ L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de
 - **QR Codes** produits.
 - **Import / Export Excel**.
 - **Notifications** (rappels, alertes) et **mode hors-ligne** signalé.
+- **Synchronisation** : pour les opérations prises en charge, consultez le détail des actions en attente et relancez-les après reconnexion.
 - **Application installable** (PWA) sur téléphone et ordinateur.
 - **100 % mobile-first** : menus qui se masquent au défilement, formulaires adaptés au tactile, tableaux qui deviennent des cartes lisibles sur téléphone.
 - **Devise CFA** et interface **française** partout.
@@ -250,6 +268,9 @@ L'application distingue clairement **deux types d'utilisateurs**. C'est l'une de
 
 **Caisse / Banque**
 - Mouvements financiers · encaissements du jour · suivi de la trésorerie.
+
+**Achats fournisseurs**
+- Enregistrer un achat reçu · créer un produit pendant la saisie · paiement intégral · commandes et factures avancées.
 
 **Produits**
 - Catalogue · import Excel (aperçu + modèle) · tri/filtre · fiche produit (stats, bénéfice, QR, PDF) · galerie d'images partagée · suggestions produits lents · stock critique/rupture/jamais vendus/meilleures ventes · par fournisseur/conteneur/entrepôt · pertes & cadeaux (casse/cadeau, annulation, rapport, impact bénéfice, marque catalogue).
