@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import api from '../services/api';
 import { DEFAULT_APP_SETTINGS, normalizeAppSettings, applyBrandTheme } from '../utils/appBranding';
 import { setActiveCurrency, DEFAULT_CURRENCY } from '../utils/format';
+import i18n from '../i18n';
 
 const AppSettingsContext = createContext({
   appSettings: DEFAULT_APP_SETTINGS,
@@ -98,6 +99,14 @@ export const AppSettingsProvider = ({ children }) => {
   useEffect(() => {
     setActiveCurrency(appSettings.currency || DEFAULT_CURRENCY);
   }, [appSettings.currency]);
+
+  // Apply the tenant UI language to i18next.
+  useEffect(() => {
+    const lang = appSettings.language || 'fr';
+    if (i18n.language !== lang) {
+      i18n.changeLanguage(lang).catch(() => {});
+    }
+  }, [appSettings.language]);
 
   const value = useMemo(
     () => ({

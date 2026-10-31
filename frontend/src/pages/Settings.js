@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useTranslation } from 'react-i18next';
 import { formatCfa as cfa } from '../utils/format';
 import { getLogoDataUrl, mixHexColors, resolveAppLogo } from '../utils/appBranding';
 import { PageHeader, Workspace, EmptyState, LoadingSkeleton } from '../components/business';
@@ -173,6 +174,7 @@ const SUPPORTED_CURRENCIES = [
 
 const Settings = () => {
   const { auth, setAuth } = useContext(AuthContext);
+  const { t } = useTranslation();
   const { appSettings, setAppSettings } = useAppSettings();
   const [activeTab, setActiveTab] = useState('categories');
   const isAdmin = Boolean(auth?.user?.isAdmin);
@@ -376,6 +378,17 @@ const Settings = () => {
       toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
     } finally {
       setSavingTaxSettings(false);
+    }
+  };
+
+  const handleLanguageChange = async (language) => {
+    if (!isAdmin) return;
+    try {
+      const { data } = await platformApi.updateAppSettings({ language });
+      setAppSettings(data);
+      toast.success('Langue mise à jour');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
     }
   };
 
@@ -1237,7 +1250,7 @@ const Settings = () => {
           }`}
         >
           <Icon className="h-4 w-4" />
-          {section.label}
+          {t('settings.' + section.key, section.label)}
         </button>
       );
     }
@@ -1254,7 +1267,7 @@ const Settings = () => {
         }`}
       >
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{section.label}</span>
+        <span className="truncate">{t('settings.' + section.key, section.label)}</span>
       </button>
     );
   };
@@ -1679,6 +1692,13 @@ const Settings = () => {
                     </button>
                   </div>
                 </div>
+              </BrandingField>
+
+              <BrandingField label={t('settings.language', "Langue de l'interface")} description="La langue de la navigation et des menus. Les autres écrans suivront progressivement.">
+                <select value={appSettings.language || 'fr'} onChange={(e) => handleLanguageChange(e.target.value)} className={settingInputClass}>
+                  <option value="fr">Français</option>
+                  <option value="en">English</option>
+                </select>
               </BrandingField>
 
               <div className="grid gap-4 sm:grid-cols-2">

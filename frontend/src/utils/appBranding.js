@@ -25,6 +25,7 @@ export const DEFAULT_APP_SETTINGS = {
     label: 'TVA',
     inclusive: true,
   },
+  language: 'fr',
   updatedAt: null,
 };
 
@@ -51,6 +52,7 @@ export const normalizeAppSettings = (settings) => {
       ...DEFAULT_APP_SETTINGS.tax,
       ...(settings?.tax || {}),
     },
+    language: settings?.language || DEFAULT_APP_SETTINGS.language,
   };
 };
 

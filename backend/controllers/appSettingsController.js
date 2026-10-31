@@ -29,6 +29,14 @@ const DEFAULT_CURRENCY = {
 
 const CURRENCY_CODES = new Set(['XOF', 'XAF', 'CDF', 'GNF', 'NGN', 'GHS', 'MAD', 'EUR', 'USD', 'GBP']);
 
+const SUPPORTED_LANGUAGES = new Set(['fr', 'en']);
+const DEFAULT_LANGUAGE = 'fr';
+
+const normalizeLanguage = (value) => {
+  const lang = String(value || '').trim().toLowerCase();
+  return SUPPORTED_LANGUAGES.has(lang) ? lang : DEFAULT_LANGUAGE;
+};
+
 const HEX_COLOR_PATTERN = /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i;
 
 const uploadBrandLogo = (buffer) => new Promise((resolve, reject) => {
@@ -109,6 +117,7 @@ const sanitizeSettings = (doc) => {
     },
     currency: normalizeCurrency(settings.currency),
     tax: normalizeTax(settings.tax),
+    language: normalizeLanguage(settings.language),
     updatedAt: settings.updatedAt || null,
   };
 };
@@ -133,6 +142,7 @@ const getOrCreateSettings = async (req) => {
       branding: DEFAULT_BRANDING,
       currency: DEFAULT_CURRENCY,
       tax: DEFAULT_TAX,
+      language: DEFAULT_LANGUAGE,
     });
   } catch (err) {
     // Race or stale-index collision: fall back to whatever now exists.
@@ -214,6 +224,7 @@ const updateAppSettings = asyncHandler(async (req, res) => {
   settings.branding = nextBranding;
   settings.currency = nextCurrency;
   settings.tax = nextTax;
+  settings.language = normalizeLanguage(req.body.language ?? settings.language);
   await settings.save();
 
   res.json(sanitizeSettings(settings));
@@ -256,6 +267,7 @@ const seedTenantSettings = async ({ tenantId, shopName, ownerEmail, ownerPhone, 
       branding,
       currency: DEFAULT_CURRENCY,
       tax: DEFAULT_TAX,
+      language: DEFAULT_LANGUAGE,
     });
   } catch (err) {
     // If a settings doc was created concurrently, return it instead of failing signup.

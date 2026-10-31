@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import i18n from "../i18n";
 import AuthContext from "../context/AuthContext";
 import { FEATURE_KEYS } from "../config/features";
 import api from "../services/api";
@@ -948,88 +949,88 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
 
   return [
     ...(canViewDashboard ? [{
-      label: 'Tableau de bord',
+      label: i18n.t('nav.dashboard', 'Tableau de bord'),
       items: [
-        { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+        { to: '/dashboard', icon: LayoutDashboard, label: i18n.t('nav.dashboard', 'Tableau de bord') },
       ],
     }] : []),
     {
-      label: 'Ventes',
+      label: i18n.t('nav.sales', 'Ventes'),
       items: [
-        { to: '/sales#sale-form', icon: PlusCircle,   label: 'Nouvelle vente',        highlight: true },
-        { to: '/sales',           icon: ShoppingCart,  label: 'Liste des ventes' },
-        { to: '/sales/all',       icon: History,       label: 'Archives ventes' },
-        { to: '/sales/partially-paid', icon: CreditCard, label: 'Paiements partiels' },
+        { to: '/sales#sale-form', icon: PlusCircle,   label: i18n.t('nav.newSale', 'Nouvelle vente'),        highlight: true },
+        { to: '/sales',           icon: ShoppingCart,  label: i18n.t('nav.salesList', 'Liste des ventes') },
+        { to: '/sales/all',       icon: History,       label: i18n.t('nav.salesArchive', 'Archives ventes') },
+        { to: '/sales/partially-paid', icon: CreditCard, label: i18n.t('nav.partialPayments', 'Paiements partiels') },
         ...(auth.isAdmin ? [
-          { to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' },
-          { to: '/promotions', icon: Tag, label: 'Codes promo' },
+          { to: '/sales/deleted', icon: Archive, label: i18n.t('nav.deletedSales', 'Ventes supprimées') },
+          { to: '/promotions', icon: Tag, label: i18n.t('nav.promo', 'Codes promo') },
         ] : []),
       ],
     },
   {
-    label: 'Produits',
+    label: i18n.t('nav.products', 'Produits'),
     items: [
-      { to: '/products',        icon: Package,       label: 'Catalogue produits' },
+      { to: '/products',        icon: Package,       label: i18n.t('nav.catalog', 'Catalogue produits') },
       ...(auth.isAdmin ? [
-        { to: '/attributes',           icon: Tag,           label: 'Attributs & variantes' },
-        { to: '/product-dashboard',    icon: BarChart2,     label: 'Dashboard produits' },
-        { to: '/products/top-sellers', icon: TrendingUp,    label: 'Meilleures ventes' },
-        { to: '/products/critical',    icon: AlertTriangle, label: 'Stock critique' },
-        { to: '/products/out-of-stock',icon: AlertTriangle, label: 'Rupture de stock' },
-        { to: '/products/expiring',    icon: CalendarClock, label: 'Expiration proche' },
-        { to: '/products/by-supplier', icon: Building2,     label: 'Par fournisseur' },
+        { to: '/attributes',           icon: Tag,           label: i18n.t('nav.attributes', 'Attributs & variantes') },
+        { to: '/product-dashboard',    icon: BarChart2,     label: i18n.t('nav.productDashboard', 'Dashboard produits') },
+        { to: '/products/top-sellers', icon: TrendingUp,    label: i18n.t('nav.topSellers', 'Meilleures ventes') },
+        { to: '/products/critical',    icon: AlertTriangle, label: i18n.t('nav.criticalStock', 'Stock critique') },
+        { to: '/products/out-of-stock',icon: AlertTriangle, label: i18n.t('nav.outOfStock', 'Rupture de stock') },
+        { to: '/products/expiring',    icon: CalendarClock, label: i18n.t('nav.expiring', 'Expiration proche') },
+        { to: '/products/by-supplier', icon: Building2,     label: i18n.t('nav.bySupplier', 'Par fournisseur') },
       ] : []),
     ],
   },
   {
-    label: 'Clients',
+    label: i18n.t('nav.clients', 'Clients'),
     items: [
-      { to: '/clients',           icon: Users,         label: 'Liste des clients' },
-      ...(auth.isAdmin ? [{ to: '/clients/loyalty', icon: Award, label: 'Fidélité', feature: FEATURE_KEYS.LOYALTY }] : []),
+      { to: '/clients',           icon: Users,         label: i18n.t('nav.clientsList', 'Liste des clients') },
+      ...(auth.isAdmin ? [{ to: '/clients/loyalty', icon: Award, label: i18n.t('nav.loyalty', 'Fidélité'), feature: FEATURE_KEYS.LOYALTY }] : []),
     ],
   },
   ...(auth.isAdmin ? [{
-    label: 'Employés',
+    label: i18n.t('nav.employees', 'Employés'),
     items: [
-      { to: '/employees',     icon: BriefcaseBusiness, label: 'Liste des employés', feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
-      { to: '/employees/new', icon: PlusCircle,        label: 'Nouvel employé',     feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
+      { to: '/employees',     icon: BriefcaseBusiness, label: i18n.t('nav.employeesList', 'Liste des employés'), feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
+      { to: '/employees/new', icon: PlusCircle,        label: i18n.t('nav.newEmployee', 'Nouvel employé'),     feature: FEATURE_KEYS.EMPLOYEES_PAYROLL },
     ],
   }] : []),
   ...(auth.isAdmin ? [
     {
-      label: 'Finances',
+      label: i18n.t('nav.finances', 'Finances'),
       items: [
-        { to: '/bank',                  icon: Landmark,  label: 'Caisse', feature: FEATURE_KEYS.BANK },
-        { to: '/expenses',              icon: Receipt,   label: 'Dépenses' },
-        { to: '/expenses/monthly-plan', icon: ClipboardList, label: 'Objectif mensuel', feature: FEATURE_KEYS.MONTHLY_SPENDING_PLAN },
+        { to: '/bank',                  icon: Landmark,  label: i18n.t('nav.cash', 'Caisse'), feature: FEATURE_KEYS.BANK },
+        { to: '/expenses',              icon: Receipt,   label: i18n.t('nav.expenses', 'Dépenses') },
+        { to: '/expenses/monthly-plan', icon: ClipboardList, label: i18n.t('nav.monthlyPlan', 'Objectif mensuel'), feature: FEATURE_KEYS.MONTHLY_SPENDING_PLAN },
       ],
     },
     {
-      label: 'Administration',
+      label: i18n.t('nav.administration', 'Administration'),
       items: [
-        { to: '/settings',       icon: Settings,   label: 'Paramètres' },
-        { to: '/support',        icon: LifeBuoy,   label: 'Assistance' },
-        { to: '/admin/users',    icon: UserCheck,  label: 'Gestion utilisateurs' },
-        { to: '/users/stats',    icon: BarChart2,  label: 'Dashboard utilisateurs' },
-        { to: '/documents',      icon: FileStack,  label: 'Documents', feature: FEATURE_KEYS.DOCUMENTS },
-        { to: '/admin-requests', icon: FileText,   label: 'Demandes admin' },
+        { to: '/settings',       icon: Settings,   label: i18n.t('nav.settings', 'Paramètres') },
+        { to: '/support',        icon: LifeBuoy,   label: i18n.t('nav.support', 'Assistance') },
+        { to: '/admin/users',    icon: UserCheck,  label: i18n.t('nav.userManagement', 'Gestion utilisateurs') },
+        { to: '/users/stats',    icon: BarChart2,  label: i18n.t('nav.userDashboard', 'Dashboard utilisateurs') },
+        { to: '/documents',      icon: FileStack,  label: i18n.t('nav.documents', 'Documents'), feature: FEATURE_KEYS.DOCUMENTS },
+        { to: '/admin-requests', icon: FileText,   label: i18n.t('nav.adminRequests', 'Demandes admin') },
       ],
     },
     {
-      label: 'V2 opérationnelle',
+      label: i18n.t('nav.v2Operations', 'V2 opérationnelle'),
       items: [
-        { to: '/purchasing',   icon: Truck,     label: 'Achats & fournisseurs', modules: ['purchasing'] },
-        { to: '/inventory-v2', icon: Boxes,     label: 'Inventaire',            modules: ['inventory'] },
-        { to: '/returns',      icon: RotateCcw, label: 'Retours & rembours.',   modules: ['returns'] },
-        { to: '/cutover',      icon: Workflow,  label: 'Bascule v2' },
+        { to: '/purchasing',   icon: Truck,     label: i18n.t('nav.purchasing', 'Achats & fournisseurs'), modules: ['purchasing'] },
+        { to: '/inventory-v2', icon: Boxes,     label: i18n.t('nav.inventory', 'Inventaire'),            modules: ['inventory'] },
+        { to: '/returns',      icon: RotateCcw, label: i18n.t('nav.returns', 'Retours & rembours.'),   modules: ['returns'] },
+        { to: '/cutover',      icon: Workflow,  label: i18n.t('nav.cutover', 'Bascule v2') },
       ],
     },
   ] : [
     {
-      label: 'Autres',
+      label: i18n.t('nav.other', 'Autres'),
       items: [
-        { to: '/bank',           icon: Landmark,      label: 'Caisse', feature: FEATURE_KEYS.BANK },
-        { to: '/admin-requests', icon: ClipboardList, label: 'Mes demandes' },
+        { to: '/bank',           icon: Landmark,      label: i18n.t('nav.cash', 'Caisse'), feature: FEATURE_KEYS.BANK },
+        { to: '/admin-requests', icon: ClipboardList, label: i18n.t('nav.myRequests', 'Mes demandes') },
       ],
     },
   ]),

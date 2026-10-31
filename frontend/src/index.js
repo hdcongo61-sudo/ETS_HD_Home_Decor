@@ -4,6 +4,7 @@ import App from './App';
 import './index.css'; // Import crucial ici
 import { bootstrapBrandTheme } from './utils/appBranding';
 import { bootstrapCurrency } from './utils/format';
+import './i18n';
 import {
   register as registerServiceWorker,
   unregister as unregisterServiceWorker

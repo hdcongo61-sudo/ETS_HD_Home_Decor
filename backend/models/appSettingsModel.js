@@ -164,6 +164,14 @@ const appSettingsSchema = new mongoose.Schema(
       type: taxSchema,
       default: () => ({}),
     },
+    // Langue de l'interface (code ISO). 'fr' par défaut.
+    language: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 8,
+      default: 'fr',
+    },
   },
   {
     timestamps: true,
