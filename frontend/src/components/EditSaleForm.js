@@ -5,9 +5,9 @@ import api from '../services/api';
 import { FormActionsSticky } from './FormLayout';
 import { getSaleTypeText } from '../utils/saleUtils';
 import AuthContext from '../context/AuthContext';
+import { formatCfa as cfa } from '../utils/format';
 
 const SECTION_TITLE = 'text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ms-text-muted)]';
-const cfa = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
 
 // Compact read-only stat tile used in the edit-sale summary strip.
 const SummaryTile = ({ label, value, valueColor, hint, hintColor, accent }) => (

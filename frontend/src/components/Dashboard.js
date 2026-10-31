@@ -10,6 +10,7 @@ import React, {
   useRef,
 } from "react";
 import { Link } from "react-router-dom";
+import { formatCfa } from "../utils/format";
 import {
   // Graphique financier composé
   ComposedChart,
@@ -107,9 +108,6 @@ const loadPdfTools = async () => {
     autoTable: autoTableModule.default || autoTableModule,
   };
 };
-
-const formatCfa = (value) =>
-  `${Math.round(Number(value) || 0).toLocaleString("en-US")} CFA`;
 
 const CFA_EXCEL_FORMAT = '#,##0 "CFA"';
 

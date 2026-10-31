@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { formatCfa as cfa } from '../utils/format';
 import { getLogoDataUrl, mixHexColors, resolveAppLogo } from '../utils/appBranding';
 import { PageHeader, Workspace, EmptyState, LoadingSkeleton } from '../components/business';
 import { FEATURE_LABELS } from '../config/features';
@@ -156,6 +157,19 @@ const PLAN_BENEFITS = {
   },
 };
 
+const SUPPORTED_CURRENCIES = [
+  { code: 'XOF', symbol: 'CFA', label: 'Franc CFA (UEMOA)', decimals: 0, locale: 'fr-FR' },
+  { code: 'XAF', symbol: 'FCFA', label: 'Franc CFA (CEMAC)', decimals: 0, locale: 'fr-FR' },
+  { code: 'CDF', symbol: 'FC', label: 'Franc congolais', decimals: 0, locale: 'fr-FR' },
+  { code: 'GNF', symbol: 'FG', label: 'Franc guinéen', decimals: 0, locale: 'fr-FR' },
+  { code: 'NGN', symbol: '₦', label: 'Naira nigérian', decimals: 2, locale: 'en-NG' },
+  { code: 'GHS', symbol: 'GH₵', label: 'Cedi ghanéen', decimals: 2, locale: 'en-GH' },
+  { code: 'MAD', symbol: 'DH', label: 'Dirham marocain', decimals: 2, locale: 'fr-MA' },
+  { code: 'EUR', symbol: '€', label: 'Euro', decimals: 2, locale: 'fr-FR' },
+  { code: 'USD', symbol: '$', label: 'Dollar américain', decimals: 2, locale: 'en-US' },
+  { code: 'GBP', symbol: '£', label: 'Livre sterling', decimals: 2, locale: 'en-GB' },
+];
+
 const Settings = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { appSettings, setAppSettings } = useAppSettings();
@@ -166,6 +180,11 @@ const Settings = () => {
   const [brandingLogoFile, setBrandingLogoFile] = useState(null);
   const [brandingLogoPreview, setBrandingLogoPreview] = useState('');
   const [savingBrandingSettings, setSavingBrandingSettings] = useState(false);
+  const [currencySettings, setCurrencySettings] = useState(() => ({
+    ...SUPPORTED_CURRENCIES[0],
+    ...(appSettings?.currency || {}),
+  }));
+  const [savingCurrencySettings, setSavingCurrencySettings] = useState(false);
   const [dateSettings, setDateSettings] = useState({
     manualSaleDateEnabled: false,
     manualExpenseDateEnabled: false,
@@ -295,6 +314,30 @@ const Settings = () => {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const handleCurrencySelect = (code) => {
+    const preset = SUPPORTED_CURRENCIES.find((c) => c.code === code);
+    if (!preset) return;
+    setCurrencySettings({ ...preset });
+  };
+
+  const handleCurrencyFieldChange = (field, value) => {
+    setCurrencySettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveCurrencySettings = async () => {
+    if (!isAdmin) return;
+    try {
+      setSavingCurrencySettings(true);
+      const { data } = await platformApi.updateAppSettings({ currency: currencySettings });
+      setAppSettings(data);
+      toast.success('Devise enregistrée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
+    } finally {
+      setSavingCurrencySettings(false);
+    }
   };
 
   const handleBrandingLogoChange = (event) => {
@@ -1157,7 +1200,6 @@ const Settings = () => {
       {isAdmin && activeSection === 'abonnement' && myTenant && (() => {
         const cur = planCatalog[myTenant.plan] || {};
         const pending = myTenant.planRequest && myTenant.planRequest.status === 'pending' ? myTenant.planRequest : null;
-        const cfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
         const statusLabel = { active: 'Actif', trial: 'Essai', suspended: 'Suspendu', expired: 'Expiré' }[myTenant.status] || myTenant.status;
         const statusTone = myTenant.status === 'active' ? 'ms-status-success' : myTenant.status === 'trial' ? 'ms-status-warning' : 'ms-status-danger';
         return (
@@ -1420,6 +1462,36 @@ const Settings = () => {
                   </div>
                 </BrandingField>
               </div>
+
+              <BrandingField label="Devise" description="La monnaie utilisée partout : ventes, encaissements, factures, paie et exports. Choisir une devise préremplit le symbole et les décimales.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Devise</label>
+                    <select value={currencySettings.code} onChange={(e) => handleCurrencySelect(e.target.value)} className={settingInputClass}>
+                      {SUPPORTED_CURRENCIES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Symbole (affiché après les montants)</label>
+                    <input type="text" value={currencySettings.symbol} onChange={(e) => handleCurrencyFieldChange('symbol', e.target.value)} className={settingInputClass} placeholder="CFA" maxLength={8} />
+                  </div>
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Décimales</label>
+                    <select value={currencySettings.decimals} onChange={(e) => handleCurrencyFieldChange('decimals', Number(e.target.value))} className={settingInputClass}>
+                      {[0, 1, 2, 3, 4].map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button type="button" onClick={handleSaveCurrencySettings} disabled={savingCurrencySettings} className="ms-button ms-button-secondary ms-button-md w-full justify-center disabled:opacity-60" style={{ minHeight: '44px' }}>
+                      {savingCurrencySettings ? 'Enregistrement...' : 'Enregistrer la devise'}
+                    </button>
+                  </div>
+                </div>
+              </BrandingField>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <BrandingField label="Titre de connexion" description="Le grand titre affiché sur la page de connexion.">

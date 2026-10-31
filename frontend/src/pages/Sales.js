@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from "react";
 import { Link, useNavigate, useLocation, useNavigationType } from "react-router-dom";
+import { formatCfa as cfa } from "../utils/format";
 import {
   AlertTriangle,
   Award,
@@ -466,7 +467,6 @@ const ProfitAnalysis = () => {
   const setFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
   const resetFilters = () => setFilters({ period: "month", startDate: "", endDate: "", category: "", container: "" });
 
-  const cfa = (v) => `${Math.round(Number(v) || 0).toLocaleString("fr-FR")} CFA`;
   const pctOf = (v) => `${Number(v || 0).toFixed(1)} %`;
 
   const PERIODS = [

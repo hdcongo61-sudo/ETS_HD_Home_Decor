@@ -1,6 +1,6 @@
 import React from 'react';
 import { getSaleActivity, getSaleWorkflow } from './saleWorkflow';
-const formatCfa = value => value.toLocaleString('fr-FR') + ' CFA';
+import { formatCfa } from '../../utils/format';
 
 export default function SaleWorkflowPanel({ sale, onPayment, onDelivery, renderReceipt, onRefresh }) {
   const workflow = getSaleWorkflow(sale);

@@ -5,6 +5,7 @@ import api from '../services/api';
 import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, formatReminderAgo, REMINDER_CHANNEL_LABEL } from '../utils/clientReminder';
+import { formatCfa } from '../utils/format';
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
 import { ExternalLink } from 'lucide-react';
@@ -692,7 +693,6 @@ const SaleDetailPage = () => {
         return true;
     });
     const filteredPaymentsTotal = filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-    const formatCfa = (value) => `${(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
     // Chart data for payment history
     const paymentChartData = {
         labels: filteredPayments.map((_, index) => `Paiement ${index + 1}`),

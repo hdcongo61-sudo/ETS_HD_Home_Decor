@@ -70,6 +70,45 @@ const brandingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Currency used for every money display, invoice and export of this tenant.
+// Stored as a subdocument so a shop can override symbol/decimals without
+// touching the code. Default preserves the legacy CFA behaviour.
+const currencySchema = new mongoose.Schema(
+  {
+    code: {
+      type: String,
+      trim: true,
+      maxlength: 8,
+      default: 'XOF',
+    },
+    symbol: {
+      type: String,
+      trim: true,
+      maxlength: 8,
+      default: 'CFA',
+    },
+    label: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: 'Franc CFA (UEMOA)',
+    },
+    decimals: {
+      type: Number,
+      min: 0,
+      max: 4,
+      default: 0,
+    },
+    locale: {
+      type: String,
+      trim: true,
+      maxlength: 16,
+      default: 'fr-FR',
+    },
+  },
+  { _id: false }
+);
+
 const appSettingsSchema = new mongoose.Schema(
   {
     // Top-level tenant scope so the tenant guard plugin can isolate it.
@@ -86,6 +125,10 @@ const appSettingsSchema = new mongoose.Schema(
     },
     branding: {
       type: brandingSchema,
+      default: () => ({}),
+    },
+    currency: {
+      type: currencySchema,
       default: () => ({}),
     },
   },

@@ -5,6 +5,7 @@ import { Award, Crown, Gift, Users, Coins, Sparkles, ArrowLeft, ChevronRight } f
 import { customersApi } from '../features/customers/api';
 import Modal from '../components/Modal';
 import { clientPath } from '../utils/paths';
+import { formatCfa as cfa } from '../utils/format';
 import {
   Button,
   EmptyState,
@@ -16,7 +17,6 @@ import {
   Workspace,
 } from '../components/business';
 
-const cfa = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
 const pts = (v) => `${Number(v || 0).toLocaleString('fr-FR')} pts`;
 const formatDate = (v) => (v ? new Date(v).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 

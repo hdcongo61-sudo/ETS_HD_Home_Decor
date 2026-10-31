@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css'; // Import crucial ici
 import { bootstrapBrandTheme } from './utils/appBranding';
+import { bootstrapCurrency } from './utils/format';
 import {
   register as registerServiceWorker,
   unregister as unregisterServiceWorker
@@ -11,6 +12,9 @@ import {
 // Theme the very first paint from the last-known brand colour (avoids a flash
 // of the default accent before app settings load).
 bootstrapBrandTheme();
+// Same for the shop currency: restore it before render so money is formatted
+// with the tenant currency from the very first paint.
+bootstrapCurrency();
 
 const root = createRoot(document.getElementById('root'));
 

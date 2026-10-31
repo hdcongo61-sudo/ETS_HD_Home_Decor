@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { DEFAULT_APP_SETTINGS, normalizeAppSettings, applyBrandTheme } from '../utils/appBranding';
+import { setActiveCurrency, DEFAULT_CURRENCY } from '../utils/format';
 
 const AppSettingsContext = createContext({
   appSettings: DEFAULT_APP_SETTINGS,
@@ -91,6 +92,12 @@ export const AppSettingsProvider = ({ children }) => {
   useEffect(() => {
     applyBrandTheme(appSettings.branding.primaryColor);
   }, [appSettings.branding.primaryColor]);
+
+  // Apply the tenant currency to the shared money formatter, so every
+  // `formatCfa`/`formatMoney` call site follows the shop's currency.
+  useEffect(() => {
+    setActiveCurrency(appSettings.currency || DEFAULT_CURRENCY);
+  }, [appSettings.currency]);
 
   const value = useMemo(
     () => ({

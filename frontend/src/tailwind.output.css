@@ -845,6 +845,10 @@ video {
   bottom: calc(5rem + env(safe-area-inset-bottom,0px));
 }
 
+.bottom-\[calc\(9rem\+env\(safe-area-inset-bottom\2c 0px\)\)\] {
+  bottom: calc(9rem + env(safe-area-inset-bottom,0px));
+}
+
 .left-0 {
   left: 0px;
 }
@@ -1449,6 +1453,10 @@ video {
 
 .max-h-44 {
   max-height: 11rem;
+}
+
+.max-h-56 {
+  max-height: 14rem;
 }
 
 .max-h-72 {
@@ -4727,6 +4735,7 @@ body {
   font-family: "Segoe UI", Inter, system-ui, sans-serif;
   line-height: 1.47;
   letter-spacing: 0;
+  overflow-x: hidden;
   /* Safe area for notched devices (iOS/Android PWA) */
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
@@ -4871,7 +4880,9 @@ body {
 /* Main content when bottom tab bar is visible (mobile): reserve space + safe area */
 
 .main-with-tab-bar {
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  /* AppLayout already reserves the bottom tab bar through
+     --page-bottom-pad. Avoid stacking a second mobile spacer here. */
+  padding-bottom: 0;
 }
 
 .footer-mobile-tab-clearance {
@@ -7506,6 +7517,10 @@ form input[type="radio"],
     grid-column: span 2 / span 2;
   }
 
+  .sm\:col-span-4 {
+    grid-column: span 4 / span 4;
+  }
+
   .sm\:-mx-6 {
     margin-left: -1.5rem;
     margin-right: -1.5rem;
@@ -8048,8 +8063,20 @@ form input[type="radio"],
     position: sticky;
   }
 
+  .md\:bottom-6 {
+    bottom: 1.5rem;
+  }
+
   .md\:bottom-\[calc\(1\.5rem\+env\(safe-area-inset-bottom\2c 0px\)\)\] {
     bottom: calc(1.5rem + env(safe-area-inset-bottom,0px));
+  }
+
+  .md\:left-6 {
+    left: 1.5rem;
+  }
+
+  .md\:right-auto {
+    right: auto;
   }
 
   .md\:top-2 {

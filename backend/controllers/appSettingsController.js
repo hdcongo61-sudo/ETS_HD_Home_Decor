@@ -18,6 +18,16 @@ const DEFAULT_BRANDING = {
   address: '',
 };
 
+const DEFAULT_CURRENCY = {
+  code: 'XOF',
+  symbol: 'CFA',
+  label: 'Franc CFA (UEMOA)',
+  decimals: 0,
+  locale: 'fr-FR',
+};
+
+const CURRENCY_CODES = new Set(['XOF', 'XAF', 'CDF', 'GNF', 'NGN', 'GHS', 'MAD', 'EUR', 'USD', 'GBP']);
+
 const HEX_COLOR_PATTERN = /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i;
 
 const uploadBrandLogo = (buffer) => new Promise((resolve, reject) => {
@@ -56,6 +66,27 @@ const normalizeColor = (value, fallback = DEFAULT_BRANDING.primaryColor) => {
   return HEX_COLOR_PATTERN.test(trimmed) ? trimmed.toUpperCase() : fallback;
 };
 
+const normalizeTextOrFallback = (value, fallback, maxLength = 60) => {
+  if (typeof value !== 'string' || !value.trim()) return fallback;
+  return value.trim().slice(0, maxLength);
+};
+
+const normalizeDecimals = (value, fallback = DEFAULT_CURRENCY.decimals) => {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 4) return fallback;
+  return n;
+};
+
+const normalizeCurrency = (currency = {}, fallback = DEFAULT_CURRENCY) => ({
+  code: CURRENCY_CODES.has(normalizeTextOrFallback(currency.code, fallback.code, 8))
+    ? normalizeTextOrFallback(currency.code, fallback.code, 8)
+    : fallback.code,
+  symbol: normalizeTextOrFallback(currency.symbol, fallback.symbol, 8),
+  label: normalizeTextOrFallback(currency.label, fallback.label, 60),
+  decimals: normalizeDecimals(currency.decimals, fallback.decimals),
+  locale: normalizeTextOrFallback(currency.locale, fallback.locale, 16),
+});
+
 const sanitizeSettings = (doc) => {
   const settings = doc?.toObject ? doc.toObject() : doc || {};
   const branding = settings.branding || {};
@@ -75,6 +106,7 @@ const sanitizeSettings = (doc) => {
       supportEmail: normalizeOptionalText(branding.supportEmail),
       address: normalizeOptionalText(branding.address),
     },
+    currency: normalizeCurrency(settings.currency),
     updatedAt: settings.updatedAt || null,
   };
 };
@@ -97,6 +129,7 @@ const getOrCreateSettings = async (req) => {
       tenantId,
       key: settingsKeyFor(tenantId),
       branding: DEFAULT_BRANDING,
+      currency: DEFAULT_CURRENCY,
     });
   } catch (err) {
     // Race or stale-index collision: fall back to whatever now exists.
@@ -155,7 +188,18 @@ const updateAppSettings = asyncHandler(async (req, res) => {
     nextBranding.logoUrl = await uploadBrandLogo(req.file.buffer);
   }
 
+  let currencyInput = req.body.currency;
+  if (typeof currencyInput === 'string') {
+    try {
+      currencyInput = JSON.parse(currencyInput);
+    } catch {
+      currencyInput = {};
+    }
+  }
+  const nextCurrency = normalizeCurrency(currencyInput, settings.currency || DEFAULT_CURRENCY);
+
   settings.branding = nextBranding;
+  settings.currency = nextCurrency;
   await settings.save();
 
   res.json(sanitizeSettings(settings));
@@ -192,7 +236,12 @@ const seedTenantSettings = async ({ tenantId, shopName, ownerEmail, ownerPhone, 
   };
 
   try {
-    return await AppSettings.create({ tenantId, key: settingsKeyFor(tenantId), branding });
+    return await AppSettings.create({
+      tenantId,
+      key: settingsKeyFor(tenantId),
+      branding,
+      currency: DEFAULT_CURRENCY,
+    });
   } catch (err) {
     // If a settings doc was created concurrently, return it instead of failing signup.
     return AppSettings.findOne({ tenantId });

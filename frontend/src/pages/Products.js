@@ -6,6 +6,7 @@ import { catalogApi } from '../features/catalog/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
+import { formatCfa } from '../utils/format';
 import LoaderOverlay from '../components/LoaderOverlay';
 import SectionError from '../components/SectionError';
 import { matchesProductSearch } from './products-shared/productSearch';
@@ -396,7 +397,6 @@ const Products = () => {
   const lowStockCount = products.filter((product) => Number(product.stock) > 0 && Number(product.stock) <= 5).length;
   const outOfStockCount = products.filter((product) => Number(product.stock) <= 0).length;
   const stockValue = products.reduce((sum, product) => sum + ((Number(product.stock) || 0) * (Number(product.price) || 0)), 0);
-  const formatCfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
 
   if (!loading && loadError && products.length === 0) {
     return (

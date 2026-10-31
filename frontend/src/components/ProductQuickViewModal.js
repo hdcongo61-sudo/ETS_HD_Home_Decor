@@ -6,8 +6,7 @@ import { ExternalLink, Package, Pencil } from 'lucide-react';
 import Modal from './Modal';
 import { StatusBadge } from './business';
 import { productPath } from '../utils/paths';
-
-const formatCfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+import { formatCfa } from '../utils/format';
 
 const getStockStatus = (stock) => {
   const numeric = Number(stock) || 0;

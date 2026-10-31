@@ -12,6 +12,13 @@ export const DEFAULT_APP_SETTINGS = {
     supportEmail: '',
     address: '',
   },
+  currency: {
+    code: 'XOF',
+    symbol: 'CFA',
+    label: 'Franc CFA (UEMOA)',
+    decimals: 0,
+    locale: 'fr-FR',
+  },
   updatedAt: null,
 };
 
@@ -29,6 +36,10 @@ export const normalizeAppSettings = (settings) => {
       primaryColor: HEX_COLOR_PATTERN.test(branding.primaryColor || '')
         ? branding.primaryColor.toUpperCase()
         : DEFAULT_APP_SETTINGS.branding.primaryColor,
+    },
+    currency: {
+      ...DEFAULT_APP_SETTINGS.currency,
+      ...(settings?.currency || {}),
     },
   };
 };
