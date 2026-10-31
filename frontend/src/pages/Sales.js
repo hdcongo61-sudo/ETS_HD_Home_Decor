@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from "react";
 import { Link, useNavigate, useLocation, useNavigationType } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { formatCfa as cfa } from "../utils/format";
 import {
   AlertTriangle,
@@ -1062,6 +1063,7 @@ const calculateAdvancedKPIs = (salesData, clientsData) => {
    Composant principal
    =============================== */
 const Sales = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -2126,7 +2128,7 @@ const Sales = () => {
     return (
       <Workspace>
         <PageHeader
-          eyebrow="Ventes"
+          eyebrow={t('sales.title', 'Ventes')}
           title="Gestion des ventes"
           description="Enregistrez une vente, suivez les paiements et les livraisons du jour."
           actions={
@@ -2175,7 +2177,7 @@ const Sales = () => {
                 <div className="ms-command-bar mb-5 flex-wrap gap-y-2">
                   <h2 id="history-heading-main" className="fui-subtitle1 flex items-center gap-2" style={{ color: 'var(--colorNeutralForeground1)' }}>
                     <span className="ms-kpi-icon shrink-0" aria-hidden="true"><ReceiptText className="h-4 w-4" /></span>
-                    Historique des Ventes
+                    {t('sales.salesList', 'Historique des Ventes')}
                   </h2>
                   <div className="flex flex-wrap items-center gap-2 ml-auto">
                     <button type="button" onClick={() => setShowHistoryModal(true)} className="ms-button ms-button-secondary ms-button-sm">

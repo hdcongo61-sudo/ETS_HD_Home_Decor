@@ -7,6 +7,7 @@ import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
 import { formatCfa } from '../utils/format';
+import { useTranslation } from 'react-i18next';
 import LoaderOverlay from '../components/LoaderOverlay';
 import SectionError from '../components/SectionError';
 import { matchesProductSearch } from './products-shared/productSearch';
@@ -151,6 +152,7 @@ const restoreScrollTo = (y) => {
 };
 
 const Products = () => {
+  const { t } = useTranslation();
   const { auth } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
@@ -466,7 +468,7 @@ const Products = () => {
                 setIsFormOpen(true);
               }}
             >
-              <Plus className="h-4 w-4 shrink-0" /> Nouveau produit
+              <Plus className="h-4 w-4 shrink-0" /> {t('products.newProduct', 'Nouveau produit')}
             </Button>
           </div>
         )}
@@ -598,7 +600,7 @@ const Products = () => {
             setIsFormOpen(false);
             setEditingProduct(null);
           }}
-          title={editingProduct ? 'Modifier le produit' : 'Nouveau produit'}
+          title={editingProduct ? t('products.editProduct', 'Modifier le produit') : t('products.newProduct', 'Nouveau produit')}
           subtitle={editingProduct ? 'Mettez à jour les informations du produit.' : 'Renseignez les informations du nouveau produit.'}
           footer={
             <>
@@ -610,7 +612,7 @@ const Products = () => {
                 }}
                 disabled={formSubmitting}
               >
-                Annuler
+                {t('products.cancel', 'Annuler')}
               </Button>
               <Button
                 type="submit"
@@ -618,7 +620,7 @@ const Products = () => {
                 variant="primary"
                 disabled={formSubmitting}
               >
-                {editingProduct ? 'Enregistrer les modifications' : 'Créer le produit'}
+                {editingProduct ? t('products.save', 'Enregistrer les modifications') : t('products.create', 'Créer le produit')}
               </Button>
             </>
           }
@@ -708,6 +710,7 @@ const getProductFormDefaults = (product) => ({
 });
 
 const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, onRetryLookups }) => {
+  const { t } = useTranslation();
   const { categories = [], containers = [], warehouses = [], suppliers = [] } = lookups;
   const [formData, setFormData] = useState(() => getProductFormDefaults(product));
   const [profitMargin, setProfitMargin] = useState(0);
@@ -813,29 +816,29 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, on
     <form id="product-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
       {lookupError && <SectionError title="Référentiels indisponibles" error={lookupError} onRetry={onRetryLookups} />}
       {/* Section: Informations générales */}
-      <FormSection step={1} icon={<Package className="h-4 w-4" />} title="Informations générales" description="Identité du produit dans le catalogue">
-        <Input label="Nom du produit" name="name" value={formData.name} onChange={handleChange} required className="sm:col-span-2 lg:col-span-4" />
-        <Select label="Catégorie" name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} emptyHint="Catégories produits" />
-        <Select label="Conteneur" name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} emptyHint="Conteneurs" />
-        <Select label="Entrepôt" name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} emptyHint="Entrepôts" />
-        <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} rows={3} className="sm:col-span-2 lg:col-span-4" />
+      <FormSection step={1} icon={<Package className="h-4 w-4" />} title={t('products.generalInfo', 'Informations générales')} description={t('products.generalInfoDesc', 'Identité du produit dans le catalogue')}>
+        <Input label={t('products.name', 'Nom du produit')} name="name" value={formData.name} onChange={handleChange} required className="sm:col-span-2 lg:col-span-4" />
+        <Select label={t('products.category', 'Catégorie')} name="category" value={formData.category} onChange={handleChange} options={categories.map((c) => c.name)} emptyHint="Catégories produits" />
+        <Select label={t('products.container', 'Conteneur')} name="container" value={formData.container} onChange={handleChange} options={containers.map((c) => c.name)} emptyHint="Conteneurs" />
+        <Select label={t('products.warehouse', 'Entrepôt')} name="warehouse" value={formData.warehouse} onChange={handleChange} options={warehouses.map((w) => w.name)} emptyHint="Entrepôts" />
+        <Textarea label={t('products.description', 'Description')} name="description" value={formData.description} onChange={handleChange} rows={3} className="sm:col-span-2 lg:col-span-4" />
       </FormSection>
 
       {/* Section: Prix & stock */}
-      <FormSection step={2} icon={<Wallet className="h-4 w-4" />} title="Prix & stock" description="Marge et disponibilité">
-        <Input label="Prix de revient (CFA)" name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
-        <Input label="Prix de vente (CFA)" name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
+      <FormSection step={2} icon={<Wallet className="h-4 w-4" />} title={t('products.priceAndStock', 'Prix & stock')} description={t('products.priceAndStockDesc', 'Marge et disponibilité')}>
+        <Input label={t('products.costPrice', 'Prix de revient (CFA)')} name="costPrice" type="number" min="0" step="0.01" value={formData.costPrice} onChange={handleChange} />
+        <Input label={t('products.price', 'Prix de vente (CFA)')} name="price" type="number" min="0" step="0.01" value={formData.price} onChange={handleChange} />
         <div>
-          <Input label="Stock disponible" name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
+          <Input label={t('products.stock', 'Stock disponible')} name="stock" type="number" min="0" value={formData.stock} onChange={handleChange} />
           {product && (
             <Link to={productPath(product)} className="mt-1 inline-block text-xs font-medium text-[var(--colorBrandForeground1)] hover:underline">Voir les mouvements de stock</Link>
           )}
         </div>
-        <Input label="Code-barres (EAN / UPC)" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Ex: 0123456789012" />
-        <Input label="Numéro de lot" name="batchNumber" value={formData.batchNumber} onChange={handleChange} placeholder="Ex: LOT-2026-01" />
-        <Input label="Date d'expiration" name="expiryDate" type="date" value={formData.expiryDate} onChange={handleChange} />
+        <Input label={t('products.barcode', 'Code-barres (EAN / UPC)')} name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Ex: 0123456789012" />
+        <Input label={t('products.batchNumber', 'Numéro de lot')} name="batchNumber" value={formData.batchNumber} onChange={handleChange} placeholder="Ex: LOT-2026-01" />
+        <Input label={t('products.expiryDate', "Date d'expiration")} name="expiryDate" type="date" value={formData.expiryDate} onChange={handleChange} />
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-col justify-center">
-          <p className="text-xs font-medium text-slate-500 uppercase">Marge</p>
+          <p className="text-xs font-medium text-slate-500 uppercase">{t('products.margin', 'Marge')}</p>
           <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-emerald-700' : profitMargin < 0 ? 'text-rose-700' : 'text-slate-700'}`}>
             {Number(profitMargin).toFixed(1)}%
           </p>
@@ -843,13 +846,13 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, on
       </FormSection>
 
       {/* Section: Fournisseur */}
-      <FormSection step={3} icon={<Truck className="h-4 w-4" />} title="Fournisseur" description="Origine et contact d'approvisionnement" columns={2}>
-        <Select label="Fournisseur" name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} emptyHint="Fournisseurs" />
-        <Input label="Téléphone" name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
+      <FormSection step={3} icon={<Truck className="h-4 w-4" />} title={t('products.supplier', 'Fournisseur')} description={t('products.supplierDesc', "Origine et contact d'approvisionnement")} columns={2}>
+        <Select label={t('products.supplier', 'Fournisseur')} name="supplierName" value={formData.supplierName} onChange={handleSupplierChange} options={suppliers.map((s) => s.name)} emptyHint="Fournisseurs" />
+        <Input label={t('products.phone', 'Téléphone')} name="supplierPhone" value={formData.supplierPhone} onChange={handleChange} readOnly />
       </FormSection>
 
       {/* Section: Image */}
-      <FormSection step={4} icon={<ImagePlus className="h-4 w-4" />} title="Image" description="Visuel affiché dans le catalogue" columns={1}>
+      <FormSection step={4} icon={<ImagePlus className="h-4 w-4" />} title={t('products.image', 'Image')} description={t('products.imageDesc', 'Visuel affiché dans le catalogue')} columns={1}>
         {previewUrl ? (
           <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <img src={previewUrl} alt="Aperçu" className="h-16 w-16 shrink-0 rounded-xl object-cover border border-slate-200 shadow-sm" />
