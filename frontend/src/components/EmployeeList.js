@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Edit3,
+  FileSpreadsheet,
   FileText,
   Filter,
   HandCoins,
@@ -26,6 +27,8 @@ import {
 } from '../utils/paths';
 import AppLoader from './AppLoader';
 import { formatCfa } from '../utils/format';
+import { saveAs } from 'file-saver';
+import { reportingApi } from '../features/reporting/api';
 import {
   Button,
   CommandBar,
@@ -89,6 +92,18 @@ const EmployeeList = () => {
     };
     fetchEmployees();
   }, []);
+
+  const handlePayrollExport = async () => {
+    try {
+      const response = await reportingApi.payrollSummary();
+      saveAs(
+        new Blob([response.data], { type: 'text/csv;charset=utf-8' }),
+        `Recapitulatif_paie_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+    } catch (err) {
+      console.error('Payroll export error:', err);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (await confirmDialog('Confirmer la suppression de cet employé ?')) {
@@ -202,9 +217,14 @@ const EmployeeList = () => {
         title="Gestion des employés"
         description="Employés, salaires, et suivi de la paie du mois."
         actions={
-          <Button variant="primary" onClick={() => window.location.href = '/employees/new'}>
-            <Plus className="h-4 w-4" /> Nouvel Employé
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={handlePayrollExport}>
+              <FileSpreadsheet className="h-4 w-4" /> Export paie
+            </Button>
+            <Button variant="primary" onClick={() => window.location.href = '/employees/new'}>
+              <Plus className="h-4 w-4" /> Nouvel Employé
+            </Button>
+          </div>
         }
       />
 

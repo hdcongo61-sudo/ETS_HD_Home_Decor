@@ -38,6 +38,10 @@ export const reportingApi = {
   // Comptabilité v1 (finance & pilotage).
   comptabiliteSummary: (params) => api.get('/comptabilite/summary', { params }),
   comptabiliteJournal: (params) => api.get('/comptabilite/journal', { params }),
+
+  // Exports de conformité (CSV).
+  vatDeclaration: (params) => api.get('/v2/reports/vat-declaration', { params, responseType: 'blob' }),
+  payrollSummary: () => api.get('/v2/reports/payroll-summary', { responseType: 'blob' }),
 };
 
 export default reportingApi;

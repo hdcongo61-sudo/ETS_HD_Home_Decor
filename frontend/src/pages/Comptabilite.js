@@ -279,6 +279,23 @@ const Comptabilite = () => {
 
   // Génère un classeur Excel multi-feuilles à partir des données réelles
   // chargées (synthèse + journal) puis déclenche le téléchargement.
+  const handleVatExport = useCallback(async () => {
+    try {
+      const iso = (d) => d.toISOString().slice(0, 10);
+      const response = await reportingApi.vatDeclaration({
+        from: iso(range.start),
+        to: iso(range.end),
+      });
+      saveAs(
+        new Blob([response.data], { type: 'text/csv;charset=utf-8' }),
+        `Declaration_TVA_${iso(range.start)}_${iso(range.end)}.csv`
+      );
+      toast.success('Déclaration TVA exportée');
+    } catch (err) {
+      toast.error("Erreur lors de l'export de la déclaration TVA");
+    }
+  }, [range]);
+
   const handleExport = useCallback(() => {
     if (!summary || !journal) return;
     try {
@@ -351,6 +368,13 @@ const Comptabilite = () => {
               className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
             >
               <FileSpreadsheet className="h-4 w-4" /> Exporter
+            </button>
+            <button
+              type="button"
+              onClick={handleVatExport}
+              className="ms-button ms-button-secondary ms-button-md flex-1 sm:flex-none"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Déclaration TVA
             </button>
             </div>
           </div>
