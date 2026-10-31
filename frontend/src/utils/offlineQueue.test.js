@@ -2,6 +2,7 @@ import {
   enqueueMutation,
   drainMutations,
   pendingMutationCount,
+  staleMutationCount,
   createClientRequestId,
 } from './offlineQueue';
 
@@ -69,6 +70,57 @@ describe('offlineQueue (spike PoC)', () => {
 
     expect(result.sent).toBe(0);
     expect(await pendingMutationCount(storage)).toBe(1);
+  });
+
+  it('marque une opération en conflit (409) comme stale sans la supprimer', async () => {
+    const storage = memoryStorage();
+    await enqueueMutation({ method: 'post', url: '/sales', data: { amount: 40 } }, storage);
+
+    const result = await drainMutations({
+      storage,
+      send: async () => {
+        const err = new Error('Stock insuffisant');
+        err.response = { status: 409 };
+        throw err;
+      },
+    });
+
+    expect(result.sent).toBe(0);
+    expect(await staleMutationCount(storage)).toBe(1);
+    expect(await pendingMutationCount(storage)).toBe(1);
+  });
+
+  it('ne rejoue pas automatiquement une opération stale (sauf includeStale)', async () => {
+    const storage = memoryStorage();
+    await enqueueMutation({ method: 'post', url: '/sales', data: { amount: 50 } }, storage);
+    // Premier passage : conflit → stale.
+    await drainMutations({
+      storage,
+      send: async () => {
+        const err = new Error('Stock insuffisant');
+        err.response = { status: 409 };
+        throw err;
+      },
+    });
+
+    let attempts = 0;
+    const auto = await drainMutations({
+      storage,
+      send: async () => {
+        attempts += 1;
+        return { status: 201 };
+      },
+    });
+    expect(attempts).toBe(0); // stale non rejoué par défaut
+    expect(auto.sent).toBe(0);
+
+    const manual = await drainMutations({
+      storage,
+      includeStale: true,
+      send: async () => ({ status: 201 }),
+    });
+    expect(manual.sent).toBe(1);
+    expect(await pendingMutationCount(storage)).toBe(0);
   });
 
   it('génère des clientRequestId uniques', () => {

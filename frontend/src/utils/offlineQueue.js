@@ -92,17 +92,24 @@ export const enqueueMutation = async (op, storage = idbStorage) => {
 //    signifie que le serveur l'avait déjà — l'op est simplement retirée.
 //  - `isOfflineError(err)` : détermine si l'erreur est un souci réseau
 //    (dans ce cas on s'arrête pour réessayer plus tard).
+//  - `isConflict(err)` : détermine si l'erreur est un conflit (ex. 409 stock).
+//    L'op est alors marquée `stale` et laissée en file pour correction humaine.
 export const drainMutations = async ({
   send,
   storage = idbStorage,
   isOfflineError = (err) => !err?.response,
+  isConflict = (err) => err?.response?.status === 409,
   maxAttempts = 10,
+  includeStale = false,
 } = {}) => {
   const queue = await storage.all();
   let sent = 0;
   let remaining = queue.length;
 
   for (const op of queue) {
+    if (op.stale && !includeStale) {
+      continue; // bloqué : à corriger manuellement, pas de rejeu automatique
+    }
     try {
       const response = await send(op);
       const deduplicated = Boolean(response?.deduplicated || response?.data?.deduplicated);
@@ -112,6 +119,10 @@ export const drainMutations = async ({
     } catch (error) {
       if (isOfflineError(error)) {
         break; // réseau indisponible : on retentera à la prochaine occasion
+      }
+      if (isConflict(error)) {
+        await storage.put({ ...op, stale: true, conflict: true });
+        break;
       }
       const attempts = (Number(op.attempts) || 0) + 1;
       if (attempts >= maxAttempts) {
@@ -129,4 +140,13 @@ export const drainMutations = async ({
 
 export const pendingMutationCount = async (storage = idbStorage) => (await storage.all()).length;
 
-export default { enqueueMutation, drainMutations, pendingMutationCount, createClientRequestId };
+export const staleMutationCount = async (storage = idbStorage) =>
+  (await storage.all()).filter((op) => op.stale).length;
+
+export default {
+  enqueueMutation,
+  drainMutations,
+  pendingMutationCount,
+  staleMutationCount,
+  createClientRequestId,
+};

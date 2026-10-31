@@ -18,8 +18,12 @@ export const sendQueuedWith = (client) => (op) =>
     data: op.data,
   });
 
-export const flushOfflineQueue = async (client, storage) => {
-  const result = await drainMutations({ send: sendQueuedWith(client), storage });
+export const flushOfflineQueue = async (client, storage, options = {}) => {
+  const result = await drainMutations({
+    send: sendQueuedWith(client),
+    storage,
+    includeStale: options.includeStale,
+  });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('app:offline-queue-changed'));
   }
