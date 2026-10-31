@@ -6,7 +6,7 @@ import { salesApi } from '../features/sales/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Check, X, RotateCcw, Save,
-  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight, Printer, FileSpreadsheet, Smartphone,
+  Tag, Receipt, Boxes, Warehouse, Truck, Palette, Sparkles, CalendarClock, FileDown, CreditCard, ArrowUpRight, Printer, FileSpreadsheet, Smartphone, KeyRound,
 } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -30,6 +30,7 @@ const SETTINGS_SECTIONS = [
   { key: 'identite',    label: 'Identité',           icon: Sparkles,      adminOnly: true },
   { key: 'preferences', label: 'Préférences',        icon: CalendarClock, adminOnly: true },
   { key: 'abonnement',  label: 'Abonnement',         icon: CreditCard,    adminOnly: true },
+  { key: 'api',         label: 'API publique',       icon: KeyRound,      adminOnly: true },
   { key: 'documents',   label: 'Documents',          icon: FileDown,      adminOnly: true },
   { key: 'listes',      label: 'Listes de référence', icon: Tag,          adminOnly: false },
 ];
@@ -193,6 +194,8 @@ const Settings = () => {
     ...(appSettings?.tax || {}),
   }));
   const [savingTaxSettings, setSavingTaxSettings] = useState(false);
+  const [apiKeyResult, setApiKeyResult] = useState(null);
+  const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [dateSettings, setDateSettings] = useState({
     manualSaleDateEnabled: false,
     manualExpenseDateEnabled: false,
@@ -363,6 +366,20 @@ const Settings = () => {
       toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
     } finally {
       setSavingTaxSettings(false);
+    }
+  };
+
+  const handleGenerateApiKey = async () => {
+    if (!isAdmin) return;
+    setGeneratingApiKey(true);
+    try {
+      const { data } = await api.post('/tenants/me/api-key');
+      setApiKeyResult(data);
+      toast.success('Clé API générée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de génération');
+    } finally {
+      setGeneratingApiKey(false);
     }
   };
 
@@ -1222,6 +1239,42 @@ const Settings = () => {
 
         {/* Contenu de la section active */}
         <div className="min-w-0 space-y-5">
+
+      {isAdmin && activeSection === 'api' && (
+        <section className="fluent-card-filled p-4 sm:p-6">
+          <div className="mb-4 flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>
+              <KeyRound className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>API publique</h2>
+              <p className="fui-caption1 mt-0.5 max-w-xl" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                Une clé d'API permet à des outils externes de lire vos produits et vos ventes (lecture seule).
+              </p>
+            </div>
+          </div>
+
+          {apiKeyResult ? (
+            <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-4">
+              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Copiez cette clé maintenant — elle ne sera plus affichée ensuite.</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-[var(--radiusMedium)] bg-[var(--ms-white)] px-3 py-2 text-sm">{apiKeyResult.apiKey}</code>
+                <button type="button" onClick={() => { navigator.clipboard?.writeText(apiKeyResult.apiKey); toast.success('Clé copiée'); }} className="ms-button ms-button-secondary ms-button-md shrink-0">Copier</button>
+              </div>
+            </div>
+          ) : (
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              {myTenant?.apiKeyHint ? `Clé actuelle : ${myTenant.apiKeyHint}` : 'Aucune clé générée pour le moment.'}
+            </p>
+          )}
+
+          <div className="mt-4">
+            <button type="button" onClick={handleGenerateApiKey} disabled={generatingApiKey} className="ms-button ms-button-secondary ms-button-md disabled:opacity-60">
+              <KeyRound className="h-4 w-4" /> {generatingApiKey ? 'Génération…' : myTenant?.apiKeyHint ? 'Régénérer la clé' : 'Générer une clé'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {isAdmin && activeSection === 'abonnement' && myTenant && (() => {
         const cur = planCatalog[myTenant.plan] || {};

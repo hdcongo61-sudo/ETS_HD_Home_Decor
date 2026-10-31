@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const PDFDocument = require('pdfkit');
 const Tenant = require('../models/tenantModel');
@@ -991,6 +992,26 @@ const resolvePlanRequest = asyncHandler(async (req, res) => {
   res.json({ success: true, tenant });
 });
 
+const sha256 = (value) => crypto.createHash('sha256').update(String(value || '')).digest('hex');
+
+// @desc    (Re)génère la clé d'API publique d'une boutique.
+// @route   POST /api/tenants/me/api-key (admin) ou /api/tenants/:id/api-key (super-admin)
+// @access  Private
+const generateApiKey = asyncHandler(async (req, res) => {
+  const tenantId = req.params.id || req.tenantId;
+  const tenant = await Tenant.findById(tenantId);
+  if (!tenant) {
+    return res.status(404).json({ message: 'Boutique introuvable' });
+  }
+
+  const rawKey = `hd_${crypto.randomBytes(24).toString('hex')}`;
+  tenant.apiKeyHash = sha256(rawKey);
+  tenant.apiKeyHint = `${rawKey.slice(0, 4)}…${rawKey.slice(-4)}`;
+  await tenant.save();
+
+  res.json({ apiKey: rawKey, apiKeyHint: tenant.apiKeyHint });
+});
+
 module.exports = {
   registerTenant,
   createTenant,
@@ -1011,4 +1032,5 @@ module.exports = {
   getPlans,
   updatePlans,
   getTenantStats,
+  generateApiKey,
 };

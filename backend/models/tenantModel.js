@@ -108,6 +108,10 @@ const tenantSchema = new mongoose.Schema(
       saleCount: { type: Number, default: 0 },
       lastActiveAt: { type: Date, default: null },
     },
+    // API publique : clé d'accès (hash SHA-256 + indice d'affichage).
+    // La clé brute n'est jamais stockée ni renvoyée.
+    apiKeyHash: { type: String, default: null, select: false },
+    apiKeyHint: { type: String, default: null }, // ex. "hk3f…9a2b"
   },
   { timestamps: true }
 );

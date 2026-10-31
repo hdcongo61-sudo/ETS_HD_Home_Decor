@@ -21,6 +21,7 @@ const {
   getPlans,
   updatePlans,
   getTenantStats,
+  generateApiKey,
 } = require('../controllers/tenantController');
 const {
   getPawaPayConfig,
@@ -36,6 +37,8 @@ router.post('/payment/pawapay/webhook', pawaPayWebhook);
 
 // ── Authenticated (any tenant user) ─────────────────────
 router.get('/me', protect, getMyTenant);
+// Clé d'API publique — self-service (admin de la boutique).
+router.post('/me/api-key', protect, admin, generateApiKey);
 router.get('/plan-catalog', protect, getPlanCatalog);
 router.post('/plan-request', protect, admin, requestPlanChange);
 
@@ -47,6 +50,7 @@ router.get('/payment/pawapay/:depositId', protectForBilling, getPawaPayPaymentSt
 // ── Super-admin only ─────────────────────────────────────
 // Static paths BEFORE '/:id' so they are not captured as an id.
 router.put('/:id/plan-request', protect, superAdmin, resolvePlanRequest);
+router.post('/:id/api-key', protect, superAdmin, generateApiKey);
 router.get('/export/csv',     protect, superAdmin, exportTenantsCsv);
 router.get('/stats/overview', protect, superAdmin, getOverviewStats);
 router.get('/audit',          protect, superAdmin, getAuditLog);
