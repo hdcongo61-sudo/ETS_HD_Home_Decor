@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { salesApi } from '../features/sales/api';
+import { useTranslation } from 'react-i18next';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import {
   Button,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const Bank = () => {
+  const { t } = useTranslation();
   const tableRef = useRef(null);
   const [transactions, setTransactions] = useState([]);
   const [formData, setFormData] = useState({
@@ -128,7 +130,7 @@ const Bank = () => {
   return (
     <Workspace className="space-y-5">
       <PageHeader
-        title="Caisse personnelle"
+        title={t('bank.title', 'Caisse personnelle')}
         description="Dépôts et retraits visibles uniquement par vous"
       />
 
@@ -141,25 +143,25 @@ const Bank = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="Dépôts"
+          title={t('bank.deposits', 'Dépôts')}
           value={`${stats.deposits.toLocaleString('fr-FR')} CFA`}
           tone="success"
           icon={<ArrowDownCircle className="h-4 w-4" />}
         />
         <KPICard
-          title="Retraits"
+          title={t('bank.withdrawals', 'Retraits')}
           value={`${stats.withdrawals.toLocaleString('fr-FR')} CFA`}
           tone="danger"
           icon={<ArrowUpCircle className="h-4 w-4" />}
         />
         <KPICard
-          title="Solde"
+          title={t('bank.balance', 'Solde')}
           value={`${stats.balance.toLocaleString('fr-FR')} CFA`}
           tone={stats.balance >= 0 ? 'neutral' : 'danger'}
           icon={<Wallet className="h-4 w-4" />}
         />
         <KPICard
-          title="Mouvements"
+          title={t('bank.movements', 'Mouvements')}
           value={stats.count.toLocaleString('fr-FR')}
           tone="neutral"
           icon={<Banknote className="h-4 w-4" />}
@@ -168,22 +170,22 @@ const Bank = () => {
 
       {/* New Transaction Form */}
       <section className="ms-surface p-5">
-        <h2 className="ms-section-title mb-4">Nouveau mouvement</h2>
+        <h2 className="ms-section-title mb-4">{t('bank.newMovement', 'Nouveau mouvement')}</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="form-label block mb-1">Type</label>
+            <label className="form-label block mb-1">{t('bank.type', 'Type')}</label>
             <select
               name="type"
               value={formData.type}
               onChange={handleChange}
               className="form-control"
             >
-              <option value="deposit">Dépôt</option>
-              <option value="withdraw">Retrait</option>
+              <option value="deposit">{t('bank.deposit', 'Dépôt')}</option>
+              <option value="withdraw">{t('bank.withdraw', 'Retrait')}</option>
             </select>
           </div>
           <div>
-            <label className="form-label block mb-1">Montant</label>
+            <label className="form-label block mb-1">{t('bank.amount', 'Montant')}</label>
             <input
               type="number"
               name="amount"
@@ -196,7 +198,7 @@ const Bank = () => {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="form-label block mb-1">Libellé</label>
+            <label className="form-label block mb-1">{t('bank.label', 'Libellé')}</label>
             <input
               type="text"
               name="label"
@@ -212,7 +214,7 @@ const Bank = () => {
               variant="primary"
               disabled={submitting}
             >
-              {submitting ? 'Enregistrement...' : 'Ajouter'}
+              {submitting ? t('bank.saving', 'Enregistrement...') : t('bank.add', 'Ajouter')}
             </Button>
           </div>
         </form>
@@ -221,7 +223,7 @@ const Bank = () => {
       {/* History */}
       <section className="ms-surface">
         <CommandBar>
-          <h2 className="ms-section-title">Historique</h2>
+          <h2 className="ms-section-title">{t('bank.history', 'Historique')}</h2>
           <div className="flex flex-col sm:flex-row gap-3">
             <SearchBox
               label="Rechercher un libellé"
@@ -245,7 +247,7 @@ const Bank = () => {
           <LoadingSkeleton rows={5} />
         ) : transactions.length === 0 ? (
           <EmptyState
-            title="Aucun mouvement enregistré"
+            title={t('bank.none', 'Aucun mouvement enregistré')}
             description="Ajoutez votre premier dépôt ou retrait ci-dessus."
           />
         ) : (
