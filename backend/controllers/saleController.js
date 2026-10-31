@@ -22,6 +22,7 @@ const { recordPayment } = require('../services/paymentService');
 const { nextNumber } = require('../services/cashService');
 const { findStalePartialSales } = require('../utils/staleBalanceDetection');
 const { getTenantTax, computeTaxFromTotal } = require('../utils/tax');
+const { sendEmail } = require('../utils/mailer');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -2932,7 +2933,7 @@ const getUpcomingReminders = asyncHandler(async (req, res) => {
 // @access  Private
 const sendReminder = asyncHandler(async (req, res) => {
   try {
-    const sale = await Sale.findById(req.params.id);
+    const sale = await Sale.findById(req.params.id).populate('client', 'name email');
     const access = assertSaleAccess(sale, req.user, 'edit');
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
@@ -2942,20 +2943,88 @@ const sendReminder = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Rappel non trouvé' });
     }
 
-    // Here you would integrate with your email/SMS service
-    // For now, we'll just update the status
+    // Envoi réel par email quand le client a une adresse et que le SMTP est
+    // configuré ; sinon le rappel reste simplement marqué "envoyé".
+    const totalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const balance = Math.max((Number(sale.totalAmount) || 0) - totalPaid, 0);
+    let emailResult = { sent: false, reason: 'missing_recipient' };
+    const clientEmail = sale.client?.email;
+    if (clientEmail) {
+      emailResult = await sendEmail({
+        to: clientEmail,
+        subject: `Rappel de paiement — ${sale.reference || 'votre commande'}`,
+        text: `Bonjour ${sale.client?.name || ''},\n\nVotre commande ${sale.reference || ''} présente un solde restant de ${balance} CFA.\n\nMerci de procéder au règlement.`,
+      });
+    }
+
     sale.paymentReminder.status = 'sent';
     sale.paymentReminder.sentAt = new Date();
     sale.paymentReminder.sentBy = req.user._id;
+    if (emailResult.sent) {
+      sale.reminderLog.push({
+        channel: 'email',
+        user: req.user._id,
+        userName: req.user?.name || '',
+        note: `Email envoyé à ${clientEmail}`,
+      });
+      sale.lastRemindedAt = new Date();
+    }
 
     await sale.save();
 
-    res.json(sale);
+    res.json({ ...sale.toObject(), emailResult });
   } catch (error) {
     res.status(500).json({ 
       message: 'Erreur lors de l\'envoi du rappel',
       error: error.message 
     });
+  }
+});
+
+// @desc    Envoyer un relevé de paiement par email (action ponctuelle)
+// @route   POST /api/sales/:id/send-email
+// @access  Private
+const sendStatementEmail = asyncHandler(async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id).populate('client', 'name email');
+    const access = assertSaleAccess(sale, req.user, 'view');
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const clientEmail = sale.client?.email;
+    if (!clientEmail) {
+      return res.status(400).json({ message: "Ce client n'a pas d'adresse email." });
+    }
+
+    const totalPaid = (sale.payments || []).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const balance = Math.max((Number(sale.totalAmount) || 0) - totalPaid, 0);
+
+    const result = await sendEmail({
+      to: clientEmail,
+      subject: `Relevé de votre commande ${sale.reference || ''}`,
+      text: `Bonjour ${sale.client?.name || ''},\n\nCommande : ${sale.reference || ''}\nTotal : ${Number(sale.totalAmount) || 0} CFA\nPayé : ${totalPaid} CFA\nSolde restant : ${balance} CFA\n\nMerci de votre confiance.`,
+    });
+
+    if (!result.sent) {
+      const message = result.reason === 'smtp_not_configured'
+        ? 'SMTP non configuré côté serveur.'
+        : result.error || "Échec de l'envoi de l'email.";
+      return res.status(502).json({ message });
+    }
+
+    sale.reminderLog.push({
+      channel: 'email',
+      user: req.user._id,
+      userName: req.user?.name || '',
+      note: 'Relevé envoyé',
+    });
+    sale.lastRemindedAt = new Date();
+    await sale.save();
+
+    res.json({ sent: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -3356,6 +3425,7 @@ module.exports = {
   deletePayment,
   getUpcomingReminders,
   sendReminder,
+  sendStatementEmail,
   updateReminder,
   deleteReminder,
   deleteSale,

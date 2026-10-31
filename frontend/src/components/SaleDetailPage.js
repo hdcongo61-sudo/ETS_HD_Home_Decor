@@ -2,6 +2,7 @@ import { confirmDialog } from './ConfirmProvider';
 import React, { useState, useEffect, useContext, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, formatReminderAgo, REMINDER_CHANNEL_LABEL } from '../utils/clientReminder';
@@ -673,6 +674,15 @@ const SaleDetailPage = () => {
             reminderLog: [...(prev.reminderLog || []), { channel, userName: auth?.user?.name || '', createdAt: new Date().toISOString() }],
         } : prev);
     };
+    const handleSendEmail = async () => {
+        try {
+            await api.post(`/sales/${id}/send-email`);
+            toast.success('Relevé envoyé par email');
+            logReminder('email');
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Échec de l'envoi de l'email");
+        }
+    };
     const filteredPayments = payments.filter((payment) => {
         const rawDate = payment?.paymentDate || payment?.createdAt;
         if (!rawDate) return !paymentStartDate && !paymentEndDate;
@@ -928,6 +938,20 @@ const SaleDetailPage = () => {
                                         <span className="sm:hidden">WhatsApp</span>
                                         <span className="hidden sm:inline">Rappel WhatsApp</span>
                                     </a>
+                                )}
+                                {(sale.status === 'pending' || sale.status === 'partially_paid') && sale.client?.email && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSendEmail}
+                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:min-h-[44px] sm:px-4 sm:py-2.5"
+                                        title="Envoyer un relevé par email au client"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="sm:hidden">Email</span>
+                                        <span className="hidden sm:inline">Relevé email</span>
+                                    </button>
                                 )}
                                 {sale.status === 'completed' && sale.deliveryStatus === 'delivered' && <button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={openDelivery}>Modifier la livraison</button>}
                                 {sale.modificationHistory && sale.modificationHistory.length > 0 && (

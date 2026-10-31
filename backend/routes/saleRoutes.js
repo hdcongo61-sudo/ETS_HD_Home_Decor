@@ -20,6 +20,7 @@ const {
   getPaymentsByDateRange,
   getUpcomingReminders,
   sendReminder,
+  sendStatementEmail,
   updateReminder,
   deleteReminder,
   getDeliveryStats,
@@ -51,6 +52,7 @@ router.get('/reminders/upcoming', protect, requireTenant, getUpcomingReminders);
 
 // Send reminder
 router.post('/:id/send-reminder', protect, requireTenant, sendReminder);
+router.post('/:id/send-email', protect, requireTenant, sendStatementEmail);
 
 // Update reminder
 router.put('/:id/reminder', protect, requireTenant, updateReminder);

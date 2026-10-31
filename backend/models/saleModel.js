@@ -175,7 +175,7 @@ const saleSchema = mongoose.Schema(
     reminderLog: [{
       channel: {
         type: String,
-        enum: ['whatsapp', 'call', 'sms', 'manual'],
+        enum: ['whatsapp', 'call', 'sms', 'email', 'manual'],
         default: 'manual'
       },
       user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
