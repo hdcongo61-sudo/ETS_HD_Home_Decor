@@ -11,7 +11,7 @@ const { issueStock, receiveStock } = require('../services/inventoryService');
 
 const STOCK_MOVEMENT_REASONS = ['casse', 'cadeau', 'vol', 'peremption', 'usage_personnel', 'correction', 'autre'];
 const PRODUCT_LIST_FIELDS =
-  'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku barcode isActive minStockLevel';
+  'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku barcode batchNumber expiryDate isActive minStockLevel';
 
 const normaliseId = (value) => {
   if (!value) return null;
@@ -608,6 +608,8 @@ const createProduct = async (req, res) => {
       container,
       warehouse,
       barcode,
+      batchNumber,
+      expiryDate,
     } = req.body;
     const numericPrice = parseNumberField(price);
     const numericCost = parseNumberField(costPrice);
@@ -616,6 +618,10 @@ const createProduct = async (req, res) => {
     const cleanedWarehouse = typeof warehouse === 'string' ? warehouse.trim() : '';
     const cleanedName = typeof name === 'string' ? name.trim() : '';
     const cleanedBarcode = typeof barcode === 'string' ? barcode.trim() : '';
+    const cleanedBatchNumber = typeof batchNumber === 'string' ? batchNumber.trim() : '';
+    const parsedExpiryDate = expiryDate && !Number.isNaN(new Date(expiryDate).getTime())
+      ? new Date(expiryDate)
+      : null;
     const resolvedName = buildProductNameWithContainer(cleanedName, cleanedContainer);
     const cleanedSupplierName = typeof supplierName === 'string' ? supplierName.trim() : '';
     const supplierPhoneMap = await buildSupplierPhoneMap(req);
@@ -642,6 +648,8 @@ const createProduct = async (req, res) => {
       container: cleanedContainer,
       warehouse: cleanedWarehouse,
       barcode: cleanedBarcode || undefined,
+      batchNumber: cleanedBatchNumber || undefined,
+      expiryDate: parsedExpiryDate || undefined,
       createdBy: userId,
       updatedBy: userId,
       activities: [
@@ -753,6 +761,8 @@ const updateProduct = async (req, res) => {
       container,
       warehouse,
       barcode,
+      batchNumber,
+      expiryDate,
     } = req.body;
 
     let resolvedImageUrl;
@@ -787,6 +797,10 @@ const updateProduct = async (req, res) => {
     const incomingSupplierName = typeof supplierName === 'string' ? supplierName.trim() : undefined;
     const incomingSupplierPhone = typeof supplierPhone === 'string' ? supplierPhone.trim() : undefined;
     const incomingBarcode = typeof barcode === 'string' ? barcode.trim() : undefined;
+    const incomingBatchNumber = typeof batchNumber === 'string' ? batchNumber.trim() : undefined;
+    const incomingExpiryDate = expiryDate !== undefined
+      ? (expiryDate && !Number.isNaN(new Date(expiryDate).getTime()) ? new Date(expiryDate) : null)
+      : undefined;
     const supplierPhoneMap = incomingSupplierName !== undefined ? await buildSupplierPhoneMap(req) : null;
     const resolvedSupplierPhone = incomingSupplierName !== undefined
       ? resolveSupplierPhone(incomingSupplierName, incomingSupplierPhone, supplierPhoneMap)
@@ -806,6 +820,8 @@ const updateProduct = async (req, res) => {
       container: incomingContainer,
       warehouse: incomingWarehouse,
       barcode: incomingBarcode,
+      batchNumber: incomingBatchNumber,
+      expiryDate: incomingExpiryDate,
     };
 
     for (const [key, newValue] of Object.entries(fieldsToCheck)) {
@@ -2210,6 +2226,33 @@ const bulkUpdateProducts = async (req, res) => {
   }
 };
 
+// @desc    Produits dont la date d'expiration arrive dans `days` jours
+// @route   GET /api/products/expiring?days=30
+// @access  Private/Admin
+const getExpiringProducts = async (req, res) => {
+  try {
+    const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+    const now = new Date();
+    const until = new Date(now.getTime() + days * 86400000);
+    const products = await Product.find({
+      ...tenantFilter(req),
+      expiryDate: { $gte: now, $lte: until },
+    })
+      .select('name sku stock expiryDate batchNumber category')
+      .sort({ expiryDate: 1 })
+      .lean();
+
+    const result = products.map((product) => ({
+      ...product,
+      daysLeft: Math.max(0, Math.ceil((new Date(product.expiryDate) - now) / 86400000)),
+    }));
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Erreur produits expirants :', error);
+    res.status(500).json({ message: 'Erreur du serveur' });
+  }
+};
+
 // @desc    Find a product by barcode (EAN/UPC) — scan-to-add in sales
 // @route   GET /api/products/by-barcode?code=...
 // @access  Private
@@ -2242,6 +2285,7 @@ module.exports = {
   getProducts,
   getProductById,
   getProductByBarcode,
+  getExpiringProducts,
   createProduct,
   duplicateProduct,
   updateProduct,

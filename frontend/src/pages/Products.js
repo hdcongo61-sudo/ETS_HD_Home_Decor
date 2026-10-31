@@ -703,6 +703,8 @@ const getProductFormDefaults = (product) => ({
   container: product?.container || '',
   warehouse: product?.warehouse || '',
   barcode: product?.barcode || '',
+  batchNumber: product?.batchNumber || '',
+  expiryDate: product?.expiryDate ? String(product.expiryDate).slice(0, 10) : '',
 });
 
 const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, onRetryLookups }) => {
@@ -830,6 +832,8 @@ const ProductForm = ({ product, onSubmit, loading, lookups = {}, lookupError, on
           )}
         </div>
         <Input label="Code-barres (EAN / UPC)" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Ex: 0123456789012" />
+        <Input label="Numéro de lot" name="batchNumber" value={formData.batchNumber} onChange={handleChange} placeholder="Ex: LOT-2026-01" />
+        <Input label="Date d'expiration" name="expiryDate" type="date" value={formData.expiryDate} onChange={handleChange} />
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-col justify-center">
           <p className="text-xs font-medium text-slate-500 uppercase">Marge</p>
           <p className={`text-lg font-semibold tabular-nums ${profitMargin > 0 ? 'text-emerald-700' : profitMargin < 0 ? 'text-rose-700' : 'text-slate-700'}`}>

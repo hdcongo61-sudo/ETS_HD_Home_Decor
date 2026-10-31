@@ -4,6 +4,7 @@ const {
   getProducts,
   getProductById,
   getProductByBarcode,
+  getExpiringProducts,
   createProduct,
   duplicateProduct,
   updateProduct,
@@ -60,6 +61,9 @@ router.route('/by-category')
 
 router.route('/by-barcode')
   .get(protect, requireTenant, getProductByBarcode);
+
+router.route('/expiring')
+  .get(protect, requireTenant, admin, getExpiringProducts);
 
 router.route('/field-values')
   .get(protect, requireTenant, getProductFieldValues);

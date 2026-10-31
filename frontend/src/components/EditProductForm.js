@@ -70,7 +70,9 @@ const EditProductForm = () => {
     supplierPhone: '',
     container: '',
     warehouse: '',
-    barcode: ''
+    barcode: '',
+    batchNumber: '',
+    expiryDate: ''
   });
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
@@ -109,7 +111,9 @@ const EditProductForm = () => {
           supplierPhone: productRes.data.supplierPhone || '',
           container: productRes.data.container || '',
           warehouse: productRes.data.warehouse || '',
-          barcode: productRes.data.barcode || ''
+          barcode: productRes.data.barcode || '',
+          batchNumber: productRes.data.batchNumber || '',
+          expiryDate: productRes.data.expiryDate ? productRes.data.expiryDate.slice(0, 10) : ''
         });
         setLookups({
           categories: cats.data,
@@ -234,7 +238,9 @@ const EditProductForm = () => {
         supplierPhone: formData.supplierPhone.trim(),
         container: formData.container.trim(),
         warehouse: formData.warehouse.trim(),
-        barcode: formData.barcode.trim()
+        barcode: formData.barcode.trim(),
+        batchNumber: formData.batchNumber.trim(),
+        expiryDate: formData.expiryDate || null
       };
 
       await api.put(`/products/${id}`, productData);
@@ -371,6 +377,14 @@ const EditProductForm = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Code-barres (EAN / UPC)</label>
                   <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} className={inputClass('barcode')} placeholder="Ex: 0123456789012" />
                   <p className="mt-1 text-xs text-gray-500">Saisi au scanner pour ajouter le produit à une vente.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Numéro de lot</label>
+                  <input type="text" name="batchNumber" value={formData.batchNumber} onChange={handleChange} className={inputClass('batchNumber')} placeholder="Ex: LOT-2026-01" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Date d'expiration</label>
+                  <input type="date" name="expiryDate" value={formData.expiryDate} onChange={handleChange} className={inputClass('expiryDate')} />
                 </div>
                 <div className="flex flex-col justify-center border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3">
                   <p className="ms-kpi-title">Marge</p>

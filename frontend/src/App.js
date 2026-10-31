@@ -56,6 +56,7 @@ const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases
 const Bank = lazy(() => import('./pages/Bank'));
 const Comptabilite = lazy(() => import('./pages/Comptabilite'));
 const Promotions = lazy(() => import('./pages/Promotions'));
+const ExpiringProducts = lazy(() => import('./pages/ExpiringProducts'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -315,6 +316,14 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <OutOfStockProducts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products/expiring"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <ExpiringProducts />
                     </ProtectedRoute>
                   }
                 />

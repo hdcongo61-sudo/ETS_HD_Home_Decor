@@ -106,6 +106,15 @@ const productSchema = mongoose.Schema(
       sparse: true,
       trim: true
     },
+    batchNumber: {
+      type: String,
+      trim: true
+    },
+    expiryDate: {
+      type: Date,
+      default: null,
+      index: true
+    },
     viewsCount: {
       type: Number,
       default: 0,

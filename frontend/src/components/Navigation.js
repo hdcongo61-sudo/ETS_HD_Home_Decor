@@ -39,6 +39,7 @@ import {
   RotateCcw,
   Workflow,
   Tag,
+  CalendarClock,
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -975,6 +976,7 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
         { to: '/products/top-sellers', icon: TrendingUp,    label: 'Meilleures ventes' },
         { to: '/products/critical',    icon: AlertTriangle, label: 'Stock critique' },
         { to: '/products/out-of-stock',icon: AlertTriangle, label: 'Rupture de stock' },
+        { to: '/products/expiring',    icon: CalendarClock, label: 'Expiration proche' },
         { to: '/products/by-supplier', icon: Building2,     label: 'Par fournisseur' },
       ] : []),
     ],
