@@ -55,6 +55,7 @@ const purchaseOrderSchema = new mongoose.Schema(
       required: true,
     },
     code: { type: String, required: true, trim: true, uppercase: true },
+    sourceRequestId: { type: String, trim: true, default: null },
     status: {
       type: String,
       enum: [
@@ -92,5 +93,9 @@ const purchaseOrderSchema = new mongoose.Schema(
 
 purchaseOrderSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 purchaseOrderSchema.index({ tenantId: 1, supplierId: 1, status: 1 });
+purchaseOrderSchema.index(
+  { tenantId: 1, sourceRequestId: 1 },
+  { unique: true, partialFilterExpression: { sourceRequestId: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('PurchaseOrder', purchaseOrderSchema);

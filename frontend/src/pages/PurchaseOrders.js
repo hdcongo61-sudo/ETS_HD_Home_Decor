@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Truck, Send, Check, X, Ban, PackageCheck, Receipt, Wallet,
-  Plus, RefreshCw, ClipboardList, Ship, Undo2,
+  Plus, RefreshCw, ClipboardList, Ship, Undo2, BadgeCheck,
 } from 'lucide-react';
 import {
   Workspace, PageHeader, Surface, StatusBadge, KPICard, EmptyState,
@@ -14,6 +14,8 @@ import { catalogApi } from '../features/catalog/api';
 import { platformApi } from '../features/platform/api';
 import { formatCfa as cfa } from '../utils/format';
 import { formatDate } from '../utils/saleUtils';
+import { createClientRequestId } from '../utils/offlineQueue';
+import AuthContext from '../context/AuthContext';
 
 const PO_STATUS = {
   draft: { label: 'Brouillon', tone: 'neutral' },
@@ -42,11 +44,19 @@ const INV_STATUS = {
 };
 
 const TABS = [
-  { key: 'orders', label: 'Bons de commande', icon: ClipboardList },
-  { key: 'shipments', label: 'Expéditions', icon: Ship },
-  { key: 'invoices', label: 'Factures fournisseur', icon: Receipt },
-  { key: 'payables', label: 'À payer', icon: Wallet },
+  { key: 'register', label: 'Enregistrer un achat', icon: Receipt },
+  { key: 'orders', label: 'Commandes à recevoir', icon: ClipboardList },
+  { key: 'shipments', label: 'Expéditions', icon: Ship, advanced: true },
+  { key: 'invoices', label: 'Factures & paiements', icon: Wallet, advanced: true },
+  { key: 'payables', label: 'Soldes fournisseurs', icon: BadgeCheck, advanced: true },
 ];
+
+const EMPTY_PURCHASE_LINE = () => ({
+  productId: '',
+  quantity: 1,
+  unitCost: '',
+  newProduct: null,
+});
 
 const asList = (data, field) => {
   if (Array.isArray(data)) return data;
@@ -54,7 +64,10 @@ const asList = (data, field) => {
 };
 
 const PurchaseOrders = () => {
-  const [tab, setTab] = useState('orders');
+  const { auth } = useContext(AuthContext);
+  const canCreateProducts = Boolean(auth?.user?.isAdmin);
+  const [tab, setTab] = useState('register');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
@@ -69,6 +82,19 @@ const PurchaseOrders = () => {
   const [showPoForm, setShowPoForm] = useState(false);
   const [showShipForm, setShowShipForm] = useState(false);
   const [showInvForm, setShowInvForm] = useState(false);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [savingSupplier, setSavingSupplier] = useState(false);
+  const [supplierDraft, setSupplierDraft] = useState({ name: '', phone: '' });
+  const [savingPurchase, setSavingPurchase] = useState(false);
+  const [purchaseForm, setPurchaseForm] = useState({
+    sourceRequestId: createClientRequestId(),
+    supplierId: '',
+    invoiceNumber: '',
+    purchaseDate: new Date().toISOString().slice(0, 10),
+    paymentMethod: 'cash',
+    note: '',
+    lines: [EMPTY_PURCHASE_LINE()],
+  });
 
   const [poForm, setPoForm] = useState({
     supplierId: '', note: '', expectedDate: '',
@@ -80,7 +106,7 @@ const PurchaseOrders = () => {
     insuranceCost: 0, note: '',
   });
   const [invForm, setInvForm] = useState({
-    supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '',
+    supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '', purchaseOrderIds: [],
   });
 
   // Lookups statiques : chargés une seule fois, jamais re-téléchargés après une mutation.
@@ -212,6 +238,90 @@ const PurchaseOrders = () => {
     }
   };
 
+  const updatePurchaseLine = (index, updates) => {
+    setPurchaseForm((current) => ({
+      ...current,
+      lines: current.lines.map((line, lineIndex) => (
+        lineIndex === index ? { ...line, ...updates } : line
+      )),
+    }));
+  };
+
+  const resetPurchaseForm = () => setPurchaseForm({
+    sourceRequestId: createClientRequestId(),
+    supplierId: '',
+    invoiceNumber: '',
+    purchaseDate: new Date().toISOString().slice(0, 10),
+    paymentMethod: 'cash',
+    note: '',
+    lines: [EMPTY_PURCHASE_LINE()],
+  });
+
+  const recordPurchase = async (e) => {
+    e.preventDefault();
+    if (!purchaseForm.supplierId || purchaseForm.lines.some((line) => (
+      !Number.isFinite(Number(line.quantity))
+      || Number(line.quantity) <= 0
+      || line.unitCost === ''
+      || !Number.isFinite(Number(line.unitCost))
+      || Number(line.unitCost) < 0
+      || (line.newProduct
+        ? !line.newProduct.name?.trim() || !line.newProduct.category?.trim()
+          || line.newProduct.price === '' || !Number.isFinite(Number(line.newProduct.price))
+          || Number(line.newProduct.price) < 0
+        : !line.productId)
+    ))) {
+      toast.error('Vérifiez le fournisseur, les produits, les quantités et les prix.');
+      return;
+    }
+
+    try {
+      setSavingPurchase(true);
+      const { data } = await purchasingApi.recordReceivedPurchase({
+        sourceRequestId: purchaseForm.sourceRequestId,
+        supplierId: purchaseForm.supplierId,
+        invoiceNumber: purchaseForm.invoiceNumber.trim() || undefined,
+        purchaseDate: purchaseForm.purchaseDate,
+        paymentMethod: purchaseForm.paymentMethod,
+        note: purchaseForm.note,
+        lines: purchaseForm.lines.map((line) => ({
+          productId: line.newProduct ? undefined : line.productId,
+          newProduct: line.newProduct || undefined,
+          quantity: Number(line.quantity),
+          unitCost: Number(line.unitCost),
+        })),
+      });
+      toast.success(`Achat enregistré et payé (${data.order.code}). Le stock a été mis à jour.`);
+      resetPurchaseForm();
+      await loadAll(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible d’enregistrer cet achat. Vos saisies sont conservées.');
+    } finally {
+      setSavingPurchase(false);
+    }
+  };
+
+  const createSupplier = async () => {
+    const name = supplierDraft.name.trim();
+    if (!name || savingSupplier) return;
+    try {
+      setSavingSupplier(true);
+      const { data } = await purchasingApi.createSupplier({
+        name,
+        phone: supplierDraft.phone.trim(),
+      });
+      setSuppliers((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+      setPurchaseForm((current) => ({ ...current, supplierId: data._id }));
+      setSupplierDraft({ name: '', phone: '' });
+      setShowSupplierForm(false);
+      toast.success('Fournisseur ajouté.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible d’ajouter ce fournisseur.');
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
+
   const cancelPoForm = () => {
     setPoForm({ supplierId: '', note: '', expectedDate: '', lines: [{ product: '', orderedQuantity: 1, unitCost: 0 }] });
     setShowPoForm(false);
@@ -269,20 +379,21 @@ const PurchaseOrders = () => {
 
   const createInvoice = async (e) => {
     e.preventDefault();
-    if (!invForm.supplierId || !invForm.invoiceNumber.trim()) {
-      toast.error('Fournisseur et numéro de facture requis.');
+    if (!invForm.supplierId || !invForm.invoiceNumber.trim() || invForm.purchaseOrderIds.length === 0) {
+      toast.error('Fournisseur, commande reçue et numéro de facture requis.');
       return;
     }
     try {
       await purchasingApi.createInvoice({
         supplierId: invForm.supplierId,
         invoiceNumber: invForm.invoiceNumber,
+        purchaseOrderIds: invForm.purchaseOrderIds,
         issueDate: invForm.issueDate || null,
         dueDate: invForm.dueDate || null,
         note: invForm.note,
       });
       toast.success('Facture créée.');
-      setInvForm({ supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '' });
+      setInvForm({ supplierId: '', invoiceNumber: '', issueDate: '', dueDate: '', note: '', purchaseOrderIds: [] });
       setShowInvForm(false);
       await loadInvoices();
     } catch (err) {
@@ -318,20 +429,25 @@ const PurchaseOrders = () => {
 
   const kpis = useMemo(() => {
     const openOrders = orders.filter((o) => ['draft', 'submitted', 'approved', 'partially_received'].includes(o.status));
-    const pendingInvoices = invoices.filter((i) => ['posted', 'partially_paid'].includes(i.status));
     const outstanding = Number(payables.totalOutstanding || 0);
     return {
-      orders: orders.length,
+      orders: orders.filter((o) => o.status === 'received').length,
       openOrders: openOrders.length,
-      pendingInvoices: pendingInvoices.length,
       outstanding,
     };
-  }, [orders, invoices, payables]);
+  }, [orders, payables]);
+  const billableOrders = orders.filter((order) => (
+    order.status === 'received'
+    && String(order.supplierId?._id || order.supplierId) === invForm.supplierId
+    && !invoices.some((invoice) => (invoice.purchaseOrderIds || []).some(
+      (invoiceOrder) => String(invoiceOrder?._id || invoiceOrder) === String(order._id)
+    ))
+  ));
 
   if (loading) {
     return (
       <Workspace>
-        <PageHeader eyebrow="Achats v2" title="Achats & fournisseurs" description="Bons de commande, expéditions, factures et dettes fournisseur." />
+        <PageHeader eyebrow="Achats & fournisseurs" title="Achats & fournisseurs" description="Enregistrez les achats reçus, les commandes en cours et les paiements fournisseur." />
         <LoadingSkeleton rows={6} />
       </Workspace>
     );
@@ -340,9 +456,9 @@ const PurchaseOrders = () => {
   return (
     <Workspace>
       <PageHeader
-        eyebrow="Achats v2"
+        eyebrow="Achats & fournisseurs"
         title="Achats & fournisseurs"
-        description="Cycle d'achat complet : bon de commande → expédition → facture → règlement."
+        description="Enregistrez simplement les achats reçus. Les outils de commande et de suivi avancé restent disponibles à part."
         actions={
           <button type="button" className="ms-button ms-button-secondary ms-button-md" onClick={() => loadAll(true)}>
             <RefreshCw size={16} /> Actualiser
@@ -350,32 +466,353 @@ const PurchaseOrders = () => {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KPICard title="Bons de commande" value={kpis.orders} context={`${kpis.openOrders} en cours`} />
-        <KPICard title="Expéditions" value={shipments.length} context={`${shipments.filter((s) => s.status === 'in_transit').length} en transit`} />
-        <KPICard title="Factures à régler" value={kpis.pendingInvoices} context="Comptabilisées non soldées" tone="warning" />
-        <KPICard title="Dettes fournisseur" value={cfa(kpis.outstanding)} context="Total à payer" tone="danger" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KPICard title="Achats reçus" value={kpis.orders} context="Stock et paiement enregistrés" />
+        <KPICard title="Commandes en cours" value={kpis.openOrders} context="À réceptionner" tone="info" />
+        <KPICard title="Reste à payer" value={cfa(kpis.outstanding)} context="Factures fournisseur" tone={kpis.outstanding > 0 ? 'warning' : 'success'} />
       </div>
 
-      {/* Onglets */}
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections achats">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={tab === key ? 'ms-button ms-button-primary ms-button-md' : 'ms-button ms-button-secondary ms-button-md'}
-          >
-            <Icon size={16} /> {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections achats">
+          {TABS.filter((item) => !item.advanced || showAdvanced).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={tab === key ? 'ms-button ms-button-primary ms-button-md' : 'ms-button ms-button-secondary ms-button-md'}
+            >
+              <Icon size={16} /> {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-expanded={showAdvanced}
+          onClick={() => {
+            const nextVisible = !showAdvanced;
+            if (!nextVisible && TABS.find((item) => item.key === tab)?.advanced) setTab('register');
+            setShowAdvanced(nextVisible);
+          }}
+          className="ms-button ms-button-secondary ms-button-md"
+        >
+          {showAdvanced ? 'Masquer les options avancées' : 'Options avancées'}
+        </button>
       </div>
+
+      {tab === 'register' && (
+        <div className="space-y-4">
+          <Surface className="p-4 sm:p-6">
+            <div className="mb-5">
+              <h2 className="fui-subtitle1">Enregistrer un achat reçu</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Pour une commande déjà livrée : ajoutez les articles, le stock et le paiement seront enregistrés ensemble.
+              </p>
+            </div>
+            <form onSubmit={recordPurchase} className="space-y-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="form-control">
+                  <span className="fui-caption1 mb-1">Fournisseur *</span>
+                  <select
+                    className="form-control"
+                    value={purchaseForm.supplierId}
+                    onChange={(e) => setPurchaseForm((current) => ({ ...current, supplierId: e.target.value }))}
+                    required
+                  >
+                    <option value="">Choisir un fournisseur</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier._id} value={supplier._id}>{supplier.name}</option>
+                    ))}
+                  </select>
+                  {!canCreateProducts && products.length === 0 && (
+                    <span className="mt-1 block text-xs text-amber-700">
+                      Le catalogue est vide. Demandez à un administrateur d’ajouter le produit avant de saisir l’achat.
+                    </span>
+                  )}
+                </label>
+                <label className="form-control">
+                  <span className="fui-caption1 mb-1">Date de l’achat *</span>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={purchaseForm.purchaseDate}
+                    onChange={(e) => setPurchaseForm((current) => ({ ...current, purchaseDate: e.target.value }))}
+                    required
+                  />
+                </label>
+                <label className="form-control">
+                  <span className="fui-caption1 mb-1">N° de facture ou reçu <span className="font-normal">(facultatif)</span></span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={purchaseForm.invoiceNumber}
+                    onChange={(e) => setPurchaseForm((current) => ({ ...current, invoiceNumber: e.target.value }))}
+                    placeholder="Généré automatiquement si absent"
+                  />
+                </label>
+                <label className="form-control">
+                  <span className="fui-caption1 mb-1">Payé en totalité par *</span>
+                  <select
+                    className="form-control"
+                    value={purchaseForm.paymentMethod}
+                    onChange={(e) => setPurchaseForm((current) => ({ ...current, paymentMethod: e.target.value }))}
+                  >
+                    <option value="cash">Espèces</option>
+                    <option value="bank_transfer">Virement bancaire</option>
+                    <option value="MobileMoney">Mobile Money</option>
+                    <option value="check">Chèque</option>
+                    <option value="other">Autre</option>
+                  </select>
+                </label>
+              </div>
+              <div className="rounded-xl border border-gray-200 p-3">
+                <button
+                  type="button"
+                  className="text-sm font-medium text-blue-700 hover:underline"
+                  aria-expanded={showSupplierForm}
+                  onClick={() => setShowSupplierForm((visible) => !visible)}
+                >
+                  {showSupplierForm ? 'Fermer' : '+ Ajouter un fournisseur'}
+                </button>
+                {showSupplierForm && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <label className="form-control sm:col-span-1">
+                      <span className="fui-caption1 mb-1">Nom du fournisseur *</span>
+                      <input
+                        className="form-control"
+                        value={supplierDraft.name}
+                        onChange={(e) => setSupplierDraft((current) => ({ ...current, name: e.target.value }))}
+                        required
+                      />
+                    </label>
+                    <label className="form-control sm:col-span-1">
+                      <span className="fui-caption1 mb-1">Téléphone (facultatif)</span>
+                      <input
+                        className="form-control"
+                        value={supplierDraft.phone}
+                        onChange={(e) => setSupplierDraft((current) => ({ ...current, phone: e.target.value }))}
+                      />
+                    </label>
+                    <div className="flex items-end">
+                      <button type="button" className="ms-button ms-button-secondary ms-button-sm" onClick={createSupplier} disabled={savingSupplier || !supplierDraft.name.trim()}>
+                        <Plus size={15} /> {savingSupplier ? 'Enregistrement…' : 'Enregistrer le fournisseur'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Articles achetés</h3>
+                    <p className="text-xs text-gray-600">Choisissez un produit existant ou ajoutez-en un nouveau.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ms-button ms-button-secondary ms-button-sm"
+                    onClick={() => setPurchaseForm((current) => ({ ...current, lines: [...current.lines, EMPTY_PURCHASE_LINE()] }))}
+                  >
+                    <Plus size={15} /> Ajouter un article
+                  </button>
+                </div>
+
+                {purchaseForm.lines.map((line, index) => (
+                  <div key={index} className="rounded-xl border border-gray-200 p-3 sm:p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-gray-800">Article {index + 1}</span>
+                      <div className="flex items-center gap-2">
+                        {canCreateProducts && (
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-blue-700 underline-offset-2 hover:underline"
+                            onClick={() => updatePurchaseLine(index, {
+                              productId: '',
+                              newProduct: line.newProduct ? null : { name: '', category: '', price: '', description: '' },
+                            })}
+                          >
+                            {line.newProduct ? 'Choisir un produit existant' : 'Créer un nouveau produit'}
+                          </button>
+                        )}
+                        {purchaseForm.lines.length > 1 && (
+                          <button
+                            type="button"
+                            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-rose-700"
+                            aria-label={`Retirer l’article ${index + 1}`}
+                            onClick={() => setPurchaseForm((current) => ({
+                              ...current,
+                              lines: current.lines.filter((_, lineIndex) => lineIndex !== index),
+                            }))}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {line.newProduct ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="form-control">
+                          <span className="fui-caption1 mb-1">Nom du produit *</span>
+                          <input
+                            className="form-control"
+                            value={line.newProduct.name}
+                            onChange={(e) => updatePurchaseLine(index, { newProduct: { ...line.newProduct, name: e.target.value } })}
+                            required
+                          />
+                        </label>
+                        <label className="form-control">
+                          <span className="fui-caption1 mb-1">Catégorie *</span>
+                          <input
+                            className="form-control"
+                            value={line.newProduct.category}
+                            onChange={(e) => updatePurchaseLine(index, { newProduct: { ...line.newProduct, category: e.target.value } })}
+                            placeholder="Ex. Salon"
+                            required
+                          />
+                        </label>
+                        <label className="form-control sm:col-span-2">
+                          <span className="fui-caption1 mb-1">Prix de vente unitaire (CFA) *</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control"
+                            value={line.newProduct.price}
+                            onChange={(e) => updatePurchaseLine(index, { newProduct: { ...line.newProduct, price: e.target.value } })}
+                            placeholder="À quel prix le vendre ?"
+                            required
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="form-control mb-3">
+                        <span className="fui-caption1 mb-1">Produit du catalogue *</span>
+                        <select
+                          className="form-control"
+                          value={line.productId}
+                          onChange={(e) => updatePurchaseLine(index, { productId: e.target.value })}
+                          required
+                        >
+                          <option value="">Choisir un produit</option>
+                          {products.map((product) => (
+                            <option key={product._id} value={product._id}>
+                              {product.name}{product.sku ? ` (${product.sku})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="form-control">
+                        <span className="fui-caption1 mb-1">Quantité reçue *</span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          className="form-control"
+                          value={line.quantity}
+                          onChange={(e) => updatePurchaseLine(index, { quantity: e.target.value })}
+                          required
+                        />
+                      </label>
+                      <label className="form-control">
+                        <span className="fui-caption1 mb-1">Prix d’achat unitaire (CFA) *</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="form-control"
+                          value={line.unitCost}
+                          onChange={(e) => updatePurchaseLine(index, { unitCost: e.target.value })}
+                          required
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <label className="form-control">
+                <span className="fui-caption1 mb-1">Note <span className="font-normal">(facultatif)</span></span>
+                <textarea
+                  className="form-control"
+                  rows="2"
+                  value={purchaseForm.note}
+                  onChange={(e) => setPurchaseForm((current) => ({ ...current, note: e.target.value }))}
+                  placeholder="Détail utile sur cet achat…"
+                />
+              </label>
+
+              <div className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total à enregistrer comme payé</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {cfa(purchaseForm.lines.reduce((sum, line) => (
+                      sum + (Number(line.quantity) || 0) * (Number(line.unitCost) || 0)
+                    ), 0))}
+                  </p>
+                  <p className="text-xs text-gray-600">Le stock, la facture et le règlement complet seront enregistrés ensemble.</p>
+                </div>
+                <button type="submit" className="ms-button ms-button-primary ms-button-md" disabled={savingPurchase}>
+                  <Check size={16} /> {savingPurchase ? 'Enregistrement…' : 'Enregistrer et payer en totalité'}
+                </button>
+              </div>
+            </form>
+          </Surface>
+          <Surface className="p-4">
+            <h2 className="fui-subtitle1 mb-3">Achats récemment enregistrés</h2>
+            {orders.filter((order) => order.status === 'received').length === 0 ? (
+              <EmptyState
+                title="Aucun achat enregistré"
+                description="Les achats ajoutés avec le formulaire apparaîtront ici."
+              />
+            ) : (
+              <DataTable>
+                <table className="ms-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th><th>Référence</th><th>Fournisseur</th>
+                      <th>Articles</th><th className="text-right">Total payé</th><th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders
+                      .filter((order) => order.status === 'received')
+                      .slice(0, 8)
+                      .map((order) => {
+                        const invoice = invoices.find((candidate) => (
+                          (candidate.purchaseOrderIds || []).some(
+                            (purchaseOrder) => String(purchaseOrder?._id || purchaseOrder) === String(order._id)
+                          )
+                        ));
+                        return (
+                          <tr key={order._id}>
+                            <td>{formatDate(invoice?.issueDate || order.createdAt)}</td>
+                            <td className="font-mono">{order.code}</td>
+                            <td>{supplierName(order.supplierId)}</td>
+                            <td>{(order.lines || []).length}</td>
+                            <td className="text-right">{cfa(order.totalAmount || 0)}</td>
+                            <td><StatusBadge tone="success">Reçu et payé</StatusBadge></td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </DataTable>
+            )}
+          </Surface>
+        </div>
+      )}
 
       {/* ── Bons de commande ── */}
       {tab === 'orders' && (
         <Surface className="p-4">
+          <p className="mb-4 text-sm text-gray-600">
+            Pour une commande passée mais pas encore reçue. Le parcours est : brouillon → soumission → approbation par un autre utilisateur → réception. Le stock n’augmente qu’à la réception. Si les articles sont déjà livrés, utilisez « Enregistrer un achat ».
+          </p>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Bons de commande</h2>
             <button type="button" className="ms-button ms-button-primary ms-button-md" onClick={() => setShowPoForm((v) => !v)}>
@@ -505,6 +942,9 @@ const PurchaseOrders = () => {
       {/* ── Expéditions ── */}
       {tab === 'shipments' && (
         <Surface className="p-4">
+          <p className="mb-4 text-sm text-gray-600">
+            Réservé aux marchandises expédiées en transit (par exemple, un conteneur) et aux frais de fret, douane ou assurance. Pour un achat reçu normalement, cette étape n’est pas nécessaire.
+          </p>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Expéditions entrantes</h2>
             <button type="button" className="ms-button ms-button-primary ms-button-md" onClick={() => setShowShipForm((v) => !v)}>
@@ -608,6 +1048,9 @@ const PurchaseOrders = () => {
       {/* ── Factures ── */}
       {tab === 'invoices' && (
         <Surface className="p-4">
+          <p className="mb-4 text-sm text-gray-600">
+            À utiliser pour les commandes reçues via le parcours avancé. Les achats enregistrés depuis l’écran principal sont déjà facturés et soldés.
+          </p>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="fui-subtitle1">Factures fournisseur</h2>
             <button type="button" className="ms-button ms-button-primary ms-button-md" onClick={() => setShowInvForm((v) => !v)}>
@@ -620,7 +1063,7 @@ const PurchaseOrders = () => {
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <label className="form-control">
                   <span className="fui-caption1 mb-1">Fournisseur *</span>
-                  <select className="form-control" value={invForm.supplierId} onChange={(e) => setInvForm({ ...invForm, supplierId: e.target.value })} required>
+                  <select className="form-control" value={invForm.supplierId} onChange={(e) => setInvForm({ ...invForm, supplierId: e.target.value, purchaseOrderIds: [] })} required>
                     <option value="">— Choisir —</option>
                     {suppliers.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
                   </select>
@@ -628,6 +1071,30 @@ const PurchaseOrders = () => {
                 <label className="form-control">
                   <span className="fui-caption1 mb-1">N° de facture *</span>
                   <input type="text" className="form-control" value={invForm.invoiceNumber} onChange={(e) => setInvForm({ ...invForm, invoiceNumber: e.target.value })} required />
+                </label>
+                <label className="form-control md:col-span-2">
+                  <span className="fui-caption1 mb-1">Commande(s) reçue(s) à facturer *</span>
+                  <select
+                    multiple
+                    size={Math.min(4, Math.max(2, billableOrders.length))}
+                    className="form-control min-h-[5rem]"
+                    value={invForm.purchaseOrderIds}
+                    onChange={(e) => setInvForm({
+                      ...invForm,
+                      purchaseOrderIds: Array.from(e.target.selectedOptions, (option) => option.value),
+                    })}
+                    disabled={!invForm.supplierId || billableOrders.length === 0}
+                    required
+                  >
+                    {billableOrders.map((order) => (
+                      <option key={order._id} value={order._id}>{order.code} — {cfa(order.totalAmount || 0)}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-600">
+                    {billableOrders.length === 0
+                      ? 'Aucune commande reçue non facturée pour ce fournisseur.'
+                      : 'Maintenez Ctrl (Windows) ou ⌘ (Mac) pour sélectionner plusieurs commandes.'}
+                  </span>
                 </label>
                 <label className="form-control">
                   <span className="fui-caption1 mb-1">Date d'émission</span>
@@ -694,6 +1161,9 @@ const PurchaseOrders = () => {
       {tab === 'payables' && (
         <Surface className="p-4">
           <h2 className="fui-subtitle1 mb-4">Dettes fournisseur</h2>
+          <p className="mb-4 text-sm text-gray-600">
+            Ce résumé ne comprend que les factures restant à payer. Les achats enregistrés comme payés en totalité n’y apparaissent pas.
+          </p>
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KPICard title="Total facturé" value={cfa(payables.totalInvoiced || 0)} />
             <KPICard title="Total payé" value={cfa(payables.totalPaid || 0)} tone="success" />

@@ -25,6 +25,7 @@ if (process.env.RUN_TENANT_TESTS !== '1') {
   const StockMovement = require('../models/stockMovementModel');
   const User = require('../models/userModel');
   const Supplier = require('../models/supplierModel');
+  const SupplierInvoice = require('../models/supplierInvoiceModel');
   const SupplierProduct = require('../models/supplierProductModel');
   const PurchaseOrder = require('../models/purchaseOrderModel');
   const NumberSequence = require('../models/numberSequenceModel');
@@ -72,6 +73,7 @@ if (process.env.RUN_TENANT_TESTS !== '1') {
 
   test.after(async () => {
     await PurchaseOrder.deleteMany({ tenantId: tenant._id });
+    await SupplierInvoice.deleteMany({ tenantId: tenant._id });
     await SupplierProduct.deleteMany({ tenantId: tenant._id });
     await Supplier.deleteMany({ tenantId: tenant._id });
     await NumberSequence.deleteMany({ tenantId: tenant._id });
@@ -95,6 +97,50 @@ if (process.env.RUN_TENANT_TESTS !== '1') {
 
     const second = await makeOrder();
     assert.notStrictEqual(second.code, order.code, 'numéro suivant différent');
+  });
+
+  test('enregistrement direct d’un achat reçu : stock, nouveau produit et paiement intégral atomiques', async () => {
+    const sourceRequestId = `received:${SUFFIX}`;
+    const result = await purchaseService.recordReceivedPurchase({
+      tenantId: tenant._id,
+      locationId: location._id,
+      supplierId: supplier._id,
+      sourceRequestId,
+      isAdmin: true,
+      userId: requester._id,
+      paymentMethod: 'bank_transfer',
+      invoiceNumber: `FACT-${SUFFIX}`,
+      lines: [
+        { productId: product._id, quantity: 2, unitCost: 1250 },
+        {
+          newProduct: { name: `Nouveau ${SUFFIX}`, category: 'Meubles', price: 4000 },
+          quantity: 1,
+          unitCost: 2000,
+        },
+      ],
+    });
+
+    assert.strictEqual(result.order.status, 'received');
+    assert.strictEqual(result.order.totalAmount, 4500);
+    assert.strictEqual(result.invoice.status, 'paid');
+    assert.strictEqual(result.invoice.totalAmount, 4500);
+    assert.strictEqual(result.invoice.paidAmount, 4500);
+    assert.strictEqual(result.invoice.payments[0].method, 'bank_transfer');
+    assert.strictEqual((await Product.findById(product._id).lean()).stock, 2);
+
+    const newProduct = await Product.findOne({ tenantId: tenant._id, name: `Nouveau ${SUFFIX}` }).lean();
+    assert.ok(newProduct);
+    assert.strictEqual(newProduct.stock, 1);
+    const retry = await purchaseService.recordReceivedPurchase({
+      tenantId: tenant._id,
+      locationId: location._id,
+      supplierId: supplier._id,
+      sourceRequestId,
+      isAdmin: true,
+      lines: [],
+    });
+    assert.strictEqual(retry.alreadyApplied, true);
+    assert.strictEqual(await Product.countDocuments({ tenantId: tenant._id, name: `Nouveau ${SUFFIX}` }), 1);
   });
 
   test('machine à états : soumission, approbation avec séparation', async () => {

@@ -45,6 +45,24 @@ const createOrder = asyncRoute(async (req, res) => {
   res.status(201).json(order);
 });
 
+// @route   POST /api/v2/purchases/received
+const recordReceivedPurchase = asyncRoute(async (req, res) => {
+  const result = await purchaseService.recordReceivedPurchase({
+    tenantId: req.tenantId,
+    locationId: req.body.locationId || req.locationId,
+    supplierId: req.body.supplierId,
+    lines: req.body.lines,
+    invoiceNumber: req.body.invoiceNumber,
+    purchaseDate: req.body.purchaseDate,
+    paymentMethod: req.body.paymentMethod,
+    note: req.body.note,
+    sourceRequestId: req.body.sourceRequestId,
+    isAdmin: Boolean(req.user?.isAdmin),
+    userId: req.user ? req.user._id : null,
+  });
+  res.status(result.alreadyApplied ? 200 : 201).json(result);
+});
+
 // @route   POST /api/v2/purchase-orders/:id/submit
 const submitOrder = asyncRoute(async (req, res) => {
   const order = await purchaseService.submitOrder({
@@ -101,6 +119,6 @@ const receiveOrder = asyncRoute(async (req, res) => {
 });
 
 module.exports = {
-  getOrders, getOrder, createOrder,
+  getOrders, getOrder, createOrder, recordReceivedPurchase,
   submitOrder, approveOrder, rejectOrder, cancelOrder, closeOrder, receiveOrder,
 };

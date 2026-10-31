@@ -21,6 +21,7 @@ export const purchasingApi = {
   orders: (params) => api.get('/v2/purchase-orders', { params }),
   order: (id) => api.get(`/v2/purchase-orders/${id}`),
   createOrder: (data) => api.post('/v2/purchase-orders', data),
+  recordReceivedPurchase: (data) => api.post('/v2/purchases/received', data),
   submitOrder: (id) => api.post(`/v2/purchase-orders/${id}/submit`),
   approveOrder: (id) => api.post(`/v2/purchase-orders/${id}/approve`),
   rejectOrder: (id, reason) => api.post(`/v2/purchase-orders/${id}/reject`, { reason }),

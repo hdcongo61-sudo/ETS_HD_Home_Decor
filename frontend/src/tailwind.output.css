@@ -754,6 +754,10 @@ video {
   pointer-events: auto;
 }
 
+.\!visible {
+  visibility: visible !important;
+}
+
 .visible {
   visibility: visible;
 }
@@ -1605,6 +1609,10 @@ video {
 
 .min-h-\[58px\] {
   min-height: 58px;
+}
+
+.min-h-\[5rem\] {
+  min-height: 5rem;
 }
 
 .min-h-\[60px\] {

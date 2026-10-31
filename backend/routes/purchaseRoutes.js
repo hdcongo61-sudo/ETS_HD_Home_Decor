@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, requireTenant, resolveLocation, requirePermission } = require('../middlewares/authMiddleware');
 const {
   getOrders, getOrder, createOrder,
+  recordReceivedPurchase,
   submitOrder, approveOrder, rejectOrder, cancelOrder, closeOrder, receiveOrder,
 } = require('../controllers/purchaseController');
 
@@ -10,6 +11,7 @@ const {
 router.get('/purchase-orders', protect, requireTenant, getOrders);
 router.get('/purchase-orders/:id', protect, requireTenant, getOrder);
 router.post('/purchase-orders', protect, requireTenant, resolveLocation, requirePermission('purchasing.manage'), createOrder);
+router.post('/purchases/received', protect, requireTenant, resolveLocation, requirePermission('purchasing.manage'), recordReceivedPurchase);
 router.post('/purchase-orders/:id/submit', protect, requireTenant, requirePermission('purchasing.manage'), submitOrder);
 router.post('/purchase-orders/:id/approve', protect, requireTenant, requirePermission('purchasing.manage'), approveOrder);
 router.post('/purchase-orders/:id/reject', protect, requireTenant, requirePermission('purchasing.manage'), rejectOrder);
