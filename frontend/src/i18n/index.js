@@ -54,6 +54,13 @@ const resources = {
       login: {
         welcome: 'Connexion',
         subtitle: 'Accédez à votre espace professionnel',
+        phoneOrEmail: 'Téléphone ou email',
+        shopCode: 'Code boutique',
+        optional: 'optionnel',
+        password: 'Mot de passe',
+        signingIn: 'Connexion en cours...',
+        locked: 'Compte verrouillé',
+        signIn: 'Se connecter',
       },
       settings: {
         identite: 'Identité',
@@ -261,6 +268,13 @@ const resources = {
       login: {
         welcome: 'Sign in',
         subtitle: 'Access your business workspace',
+        phoneOrEmail: 'Phone or email',
+        shopCode: 'Shop code',
+        optional: 'optional',
+        password: 'Password',
+        signingIn: 'Signing in...',
+        locked: 'Account locked',
+        signIn: 'Sign in',
       },
       settings: {
         identite: 'Identity',

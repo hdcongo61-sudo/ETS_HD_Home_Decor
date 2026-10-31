@@ -4,11 +4,13 @@ import toast from 'react-hot-toast';
 import { authApi } from '../features/auth/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useTranslation } from 'react-i18next';
 import { mixHexColors, resolveAppLogo } from '../utils/appBranding';
 
 const cfaFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 
 const Login = () => {
+  const { t } = useTranslation();
   const [loginId, setLoginId] = useState(''); // téléphone ou email
   const [password, setPassword] = useState('');
   const [tenantCode, setTenantCode] = useState(''); // code boutique (optionnel)
@@ -242,7 +244,7 @@ const Login = () => {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="loginId" className="form-label mb-2 block">Téléphone ou email</label>
+            <label htmlFor="loginId" className="form-label mb-2 block">{t('login.phoneOrEmail', 'Téléphone ou email')}</label>
             <div className="relative">
               <input
                 id="loginId"
@@ -284,7 +286,7 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="tenantCode" className="form-label mb-2 block">Code boutique <span className="text-gray-400">(optionnel)</span></label>
+            <label htmlFor="tenantCode" className="form-label mb-2 block">{t('login.shopCode', 'Code boutique')} <span className="text-gray-400">({t('login.optional', 'optionnel')})</span></label>
             <input
               id="tenantCode"
               type="text"
@@ -298,7 +300,7 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="form-label mb-2 block">Mot de passe</label>
+            <label htmlFor="password" className="form-label mb-2 block">{t('login.password', 'Mot de passe')}</label>
             <div className="relative">
               <input
                 id="password"
@@ -378,7 +380,7 @@ const Login = () => {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Connexion en cours...
+                {t('login.signingIn', 'Connexion en cours...')}
               </>
             ) : (
               <>
@@ -395,7 +397,7 @@ const Login = () => {
                     d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                   />
                 </svg>
-                {lockoutTime ? 'Compte verrouillé' : 'Se connecter'}
+                {lockoutTime ? t('login.locked', 'Compte verrouillé') : t('login.signIn', 'Se connecter')}
               </>
             )}
           </button>
