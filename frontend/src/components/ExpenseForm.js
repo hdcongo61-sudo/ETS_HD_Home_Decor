@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useId } from 'react';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import DOMPurify from 'dompurify';
-import { Save } from 'lucide-react';
+import { ChevronDown, Save } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import api from '../services/api';
+import { useTranslation } from 'react-i18next';
 import { Button } from './business';
 
 const toDateTimeLocalValue = (value) => {
@@ -50,7 +51,9 @@ const toMonthValue = (month, year, fallbackDate) => {
 };
 
 const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = false, formId, hideSubmit = false }) => {
+  const { t } = useTranslation();
   const { auth } = useContext(AuthContext);
+  const detailsId = useId();
   const manualExpenseDateEnabled = Boolean(auth?.user?.isAdmin) && Boolean(auth?.user?.adminPreferences?.manualExpenseDateEnabled);
   const [formData, setFormData] = useState({
     date: '',
@@ -65,6 +68,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
   const [errors, setErrors] = useState({});
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [detailsOpen, setDetailsOpen] = useState(Boolean(initialData || manualExpenseDateEnabled));
 
   useEffect(() => {
     const fetchExpenseCategories = async () => {
@@ -127,6 +131,10 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     }
   }, [initialData]);
 
+  useEffect(() => {
+    setDetailsOpen(Boolean(initialData || manualExpenseDateEnabled));
+  }, [initialData, manualExpenseDateEnabled]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -136,7 +144,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
 
@@ -151,8 +159,9 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
         salaryYear: isSalaryCategory(formData.category) ? salaryYear : undefined
       };
       delete sanitizedData.salaryPeriod;
-      onSubmit(sanitizedData);
-      if (!initialData) { // Seulement si c'est une nouvelle dépense
+      const submitted = await onSubmit(sanitizedData);
+      if (submitted === false) return;
+      if (!initialData) {
         setFormData({
           description: '',
           amount: '',
@@ -162,6 +171,8 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           employee: '',
           salaryPeriod: toMonthValue()
         });
+        setErrors({});
+        setDetailsOpen(Boolean(manualExpenseDateEnabled));
       }
     } else {
       setErrors(validationErrors);
@@ -192,11 +203,61 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
 
   return (
     <form id={formId} onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('expenses.amount', 'Montant (CFA)')} <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="decimal"
+              name="amount"
+              value={formData.amount}
+              onChange={handleChange}
+              step="0.01"
+              min="0.01"
+              className={`${controlClass(errors.amount)} pr-12`}
+              aria-invalid={Boolean(errors.amount)}
+              placeholder="0"
+              required
+            />
+            <span className="absolute right-3 top-2.5 text-gray-400">CFA</span>
+          </div>
+          {errors.amount && <p className="form-error">{errors.amount}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('expenses.category', 'Catégorie')} <span className="text-red-500">*</span>
+          </label>
+          <select
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            className={controlClass(errors.category)}
+            aria-invalid={Boolean(errors.category)}
+            required
+          >
+            <option value="">{t('expenses.selectCategory', 'Sélectionner une catégorie')}</option>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>
+                {legacyCategoryLabels[category] || category}
+              </option>
+            ))}
+          </select>
+          {categoryOptions.length === 0 && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              Aucune catégorie. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → Catégories dépenses</Link>
+            </p>
+          )}
+          {errors.category && <p className="form-error">{errors.category}</p>}
+        </div>
+
         {manualExpenseDateEnabled && (
-          <div className="space-y-1">
+          <div className="space-y-1 sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700">
-              Date réelle de dépense <span className="text-red-500">*</span>
+              {t('expenses.realDate', 'Date réelle de dépense')} <span className="text-red-500">*</span>
             </label>
             <input
               type="datetime-local"
@@ -213,34 +274,11 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             {errors.date && <p className="form-error">{errors.date}</p>}
           </div>
         )}
-
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
-            Montant (CFA) <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              inputMode="decimal"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              step="0.01"
-              className={`${controlClass(errors.amount)} pr-12`}
-              aria-invalid={Boolean(errors.amount)}
-              placeholder="0.00"
-              required
-            />
-            <span className="absolute right-3 top-2.5 text-gray-400">CFA</span>
-          </div>
-          {errors.amount && <p className="form-error">{errors.amount}</p>}
-        </div>
       </div>
 
-      {/* Description Field */}
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">
-          Description <span className="text-red-500">*</span>
+          {t('expenses.whatFor', 'À quoi correspond cette dépense ?')} <span className="text-red-500">*</span>
         </label>
         <textarea
           name="description"
@@ -248,66 +286,50 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           onChange={handleChange}
           className={controlClass(errors.description)}
           aria-invalid={Boolean(errors.description)}
-          rows="3"
-          placeholder="Détails de la dépense..."
+          rows="2"
+          placeholder="Ex. achat de fournitures, transport..."
           required
         />
         {errors.description && <p className="form-error">{errors.description}</p>}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Category Field */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
-            Catégorie <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className={controlClass(errors.category)}
-            aria-invalid={Boolean(errors.category)}
-            required
-          >
-            <option value="">Sélectionner une catégorie</option>
-            {categoryOptions.map((category) => (
-              <option key={category} value={category}>
-                {legacyCategoryLabels[category] || category}
-              </option>
-            ))}
-          </select>
-          {categoryOptions.length === 0 && (
-            <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>
-              Aucune catégorie. <Link to="/settings" className="font-medium hover:underline" style={{ color: 'var(--colorBrandForeground1)' }}>Créez-en dans Paramètres → Catégories dépenses</Link>
-            </p>
-          )}
-          {errors.category && <p className="form-error">{errors.category}</p>}
-        </div>
-
-        {/* Payment Method Field */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
-            Méthode de paiement <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="paymentMethod"
-            value={formData.paymentMethod}
-            onChange={handleChange}
-            className="form-control"
-            required
-          >
-            <option value="cash">Espèces</option>
-            <option value="paymentMethod">Mobile Money</option>
-            <option value="check">Chèque</option>
-            <option value="bank_transfer">Virement bancaire</option>
-          </select>
-        </div>
+      <div className="overflow-hidden rounded-xl border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((open) => !open)}
+          aria-expanded={detailsOpen}
+          aria-controls={detailsId}
+          className="flex min-h-[44px] w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600"
+        >
+          <span>{t('expenses.options', 'Options complémentaires')}</span>
+          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+        {detailsOpen && (
+          <div id={detailsId} className="border-t border-gray-200 p-3">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('expenses.paymentMethod', 'Mode de paiement')}
+              </label>
+              <select
+                name="paymentMethod"
+                value={formData.paymentMethod}
+                onChange={handleChange}
+                className="form-control"
+              >
+                <option value="cash">{t('expenses.cash', 'Espèces')}</option>
+                <option value="paymentMethod">{t('expenses.mobileMoney', 'Mobile Money')}</option>
+                <option value="check">{t('expenses.check', 'Chèque')}</option>
+                <option value="bank_transfer">{t('expenses.bankTransfer', 'Virement bancaire')}</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {salaryCategorySelected && (
         <div className="form-panel p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Paiement de salaire</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('expenses.salaryPayment', 'Paiement de salaire')}</h3>
             <p className="form-help mt-1">
               Le montant sera déduit du salaire mensuel restant de l'employé pour le mois choisi.
             </p>
@@ -316,7 +338,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">
-                Employé <span className="text-red-500">*</span>
+                {t('expenses.employee', 'Employé')} <span className="text-red-500">*</span>
               </label>
               <select
                 name="employee"
@@ -326,7 +348,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
                 aria-invalid={Boolean(errors.employee)}
                 required
               >
-                <option value="">Sélectionner un employé</option>
+                <option value="">{t('expenses.selectEmployee', 'Sélectionner un employé')}</option>
                 {employees.map((employee) => (
                   <option key={employee._id} value={employee._id}>
                     {employee.name} {employee.position ? `- ${employee.position}` : ''}
@@ -341,7 +363,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
 
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">
-                Mois du salaire <span className="text-red-500">*</span>
+                {t('expenses.salaryMonth', 'Mois du salaire')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="month"

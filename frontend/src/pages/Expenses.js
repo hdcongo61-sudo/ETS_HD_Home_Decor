@@ -4,6 +4,7 @@ import { Pencil, Plus, ReceiptText, RefreshCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { expensesApi } from '../features/expenses/api';
+import { useTranslation } from 'react-i18next';
 import ExpenseForm from '../components/ExpenseForm';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { confirmAlert } from 'react-confirm-alert';
@@ -53,6 +54,7 @@ const formatSalaryPeriod = (expense) => {
 };
 
 const Expenses = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const linkedDate = new URLSearchParams(location.search).get('date') || '';
   const safeLinkedDate = /^\d{4}-\d{2}-\d{2}$/.test(linkedDate) && !Number.isNaN(new Date(linkedDate + 'T00:00:00').getTime()) ? linkedDate : '';
@@ -174,6 +176,7 @@ const Expenses = () => {
         });
         setEditingExpense(null);
         setFormPanelOpen(false);
+        return true;
       } else {
         const { data } = await expensesApi.create(expenseData);
         if (data?.queued) {
@@ -184,9 +187,11 @@ const Expenses = () => {
           );
         }
         setFormPanelOpen(false);
+        return true;
       }
     } catch (err) {
       setError(err.response?.data?.message || "Erreur lors de l'enregistrement");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -340,13 +345,13 @@ const Expenses = () => {
     <Workspace>
       <PageHeader
         eyebrow="Caisse & charges"
-        title="Gestion des dépenses"
+        title={t('expenses.management', 'Gestion des dépenses')}
         description="Suivi des sorties, salaires, catégories et historique de paiement."
         actions={
           <>
             <Button type="button" onClick={handleCreate} variant="primary">
               <Plus className="h-4 w-4" />
-              Nouvelle dépense
+              {t('expenses.newExpense', 'Nouvelle dépense')}
             </Button>
             <Link to="/expenses/monthly-plan" className="ms-button ms-button-secondary ms-button-md">
               Plan mensuel
@@ -711,7 +716,7 @@ const Expenses = () => {
         isOpen={formPanelOpen}
         onClose={handleCancelEdit}
         title={editingExpense ? 'Modifier la dépense' : 'Nouvelle dépense'}
-        subtitle={editingExpense ? 'Mettez à jour les informations enregistrées.' : 'Ajoutez une sortie avec sa catégorie et son mode de paiement.'}
+        subtitle={editingExpense ? 'Mettez à jour les informations enregistrées.' : 'Saisissez le montant, la catégorie et le motif. Le mode de paiement est facultatif.'}
       >
         <ExpenseForm
           onSubmit={handleSubmit}

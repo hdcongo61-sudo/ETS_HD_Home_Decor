@@ -4,6 +4,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import { customersApi } from '../features/customers/api';
+import { useTranslation } from 'react-i18next';
 import AuthContext from '../context/AuthContext';
 import useResponsiveTable from '../hooks/useResponsiveTable';
 import { clientPath } from '../utils/paths';
@@ -68,6 +69,7 @@ const buildClientSearchUrl = (currentSearch, searchTerm) => {
 };
 
 const Clients = () => {
+  const { t } = useTranslation();
   const { auth } = useContext(AuthContext);
   const isAdmin = auth.user?.isAdmin || false;
   const navigate = useNavigate();
@@ -505,7 +507,7 @@ const Clients = () => {
 
       <PageHeader
         eyebrow="Relation client"
-        title="Clients"
+        title={t('clients.management', 'Clients')}
         description="Recherchez, gérez et suivez les profils clients."
         meta={`${clients.length} client${clients.length > 1 ? 's' : ''} affiché${clients.length > 1 ? 's' : ''}`}
         actions={
@@ -518,7 +520,7 @@ const Clients = () => {
             }}
           >
             <Plus className="h-4 w-4" />
-            Nouveau client
+            {t('clients.newClient', 'Nouveau client')}
           </Button>
         }
       />
@@ -653,7 +655,7 @@ const Clients = () => {
           setIsFormOpen(false);
           setEditingClient(null);
         }}
-        title={editingClient ? 'Modifier le client' : 'Nouveau client'}
+        title={editingClient ? t('clients.editClient', 'Modifier le client') : t('clients.newClient', 'Nouveau client')}
         subtitle={editingClient ? 'Mettez à jour le profil client.' : 'Ajoutez un nouveau profil client au portefeuille.'}
         footer={
           <>
