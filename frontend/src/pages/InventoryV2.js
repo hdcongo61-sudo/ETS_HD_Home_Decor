@@ -10,6 +10,7 @@ import {
 } from '../components/business';
 import { confirmDialog } from '../components/ConfirmProvider';
 import { inventoryApi } from '../features/inventory/api';
+import { useTranslation } from 'react-i18next';
 import { catalogApi } from '../features/catalog/api';
 import { platformApi } from '../features/platform/api';
 import InventoryAdjustmentForm from '../components/stock/InventoryAdjustmentForm';
@@ -44,6 +45,7 @@ const TABS = [
 const asList = (data, field) => (Array.isArray(data) ? data : (Array.isArray(data?.[field]) ? data[field] : []));
 
 const InventoryWorkspace = ({ auth }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('balances');
   const { activeLocationId } = useLocations() || {};
   const [adjustBusy, setAdjustBusy] = useState(false);
@@ -252,21 +254,21 @@ const InventoryWorkspace = ({ auth }) => {
   return (
     <Workspace>
       <PageHeader
-        eyebrow="Inventaire v2"
-        title="Inventaire"
+        eyebrow={t('inventory.eyebrow', 'Inventaire v2')}
+        title={t('inventory.title', 'Inventaire')}
         description="Moteur d'inventaire transactionnel : soldes par boutique, transferts, comptages et rapprochement."
         actions={
           <button type="button" className="ms-button ms-button-secondary ms-button-md" disabled={adjustBusy || refreshing} onClick={() => loadAll()}>
-            <RefreshCw size={16} /> {refreshing ? 'Actualisation…' : 'Actualiser'}
+            <RefreshCw size={16} /> {refreshing ? t('inventory.refreshing', 'Actualisation…') : t('inventory.refresh', 'Actualiser')}
           </button>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KPICard title="Stock total" value={metric(balancesSection, totalOnHand)} context={freshness(balancesSection, balances.length + ' soldes')} />
-        <KPICard title="Transferts en route" value={metric(transfersSection, shippedTransfers.length)} context={freshness(transfersSection, transfers.length + ' au total')} tone="info" />
-        <KPICard title="Inventaires ouverts" value={metric(countsSection, openCounts.length)} context={freshness(countsSection, 'À publier')} tone="warning" />
-        <KPICard title="Écarts de rapprochement" value={metric(reconciliationSection, mismatches.length)} context={freshness(reconciliationSection, reconciliation?.coherent ? 'Cohérent' : 'À corriger')} tone={!reconciliationSection.loaded || reconciliationSection.error || reconciliationSection.pending ? 'neutral' : reconciliation?.coherent ? 'success' : 'danger'} />
+        <KPICard title={t('inventory.stockTotal', 'Stock total')} value={metric(balancesSection, totalOnHand)} context={freshness(balancesSection, balances.length + ' soldes')} />
+        <KPICard title={t('inventory.transfersInRoute', 'Transferts en route')} value={metric(transfersSection, shippedTransfers.length)} context={freshness(transfersSection, transfers.length + ' au total')} tone="info" />
+        <KPICard title={t('inventory.openCounts', 'Inventaires ouverts')} value={metric(countsSection, openCounts.length)} context={freshness(countsSection, 'À publier')} tone="warning" />
+        <KPICard title={t('inventory.reconciliationGaps', 'Écarts de rapprochement')} value={metric(reconciliationSection, mismatches.length)} context={freshness(reconciliationSection, reconciliation?.coherent ? 'Cohérent' : 'À corriger')} tone={!reconciliationSection.loaded || reconciliationSection.error || reconciliationSection.pending ? 'neutral' : reconciliation?.coherent ? 'success' : 'danger'} />
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Sections inventaire">
@@ -279,7 +281,7 @@ const InventoryWorkspace = ({ auth }) => {
             disabled={adjustBusy} onClick={() => setTab(key)}
             className={tab === key ? 'ms-button ms-button-primary ms-button-md' : 'ms-button ms-button-secondary ms-button-md'}
           >
-            <Icon size={16} /> {label}
+            <Icon size={16} /> {t('inventory.' + key, label)}
           </button>
         ))}
       </div>
@@ -289,7 +291,7 @@ const InventoryWorkspace = ({ auth }) => {
       {/* ── Soldes ── */}
       {tab === 'balances' && (
         <Surface className="p-4">
-          <h2 className="fui-subtitle1 mb-4">Soldes par boutique</h2>
+          <h2 className="fui-subtitle1 mb-4">{t('inventory.balancesByShop', 'Soldes par boutique')}</h2>
           <InventorySectionState section={balancesSection}>
           {balances.length === 0 ? (
             <EmptyState title="Aucun solde" description="Aucun mouvement d'inventaire v2 enregistré pour l'instant." />
