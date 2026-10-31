@@ -83,6 +83,15 @@ const saleSchema = mongoose.Schema(
       trim: true,
       index: true
     },
+    // Client-generated idempotency key for offline/queued submissions. Lets the
+    // server recognise a replayed request and return the existing sale instead
+    // of creating a duplicate.
+    clientRequestId: {
+      type: String,
+      sparse: true,
+      trim: true,
+      maxlength: 80
+    },
     paymentMethod: {
       type: String,
       enum: ['cash', 'MobileMoney', 'credit'],
@@ -267,6 +276,18 @@ saleSchema.index(
   {
     unique: true,
     partialFilterExpression: { sourceProforma: { $type: 'objectId' } },
+  }
+);
+// Unicité du clientRequestId par boutique : idempotence des ventes rejouées
+// (offline sync). Le filtre partiel exclut les docs sans tenant ET sans clé.
+saleSchema.index(
+  { tenantId: 1, clientRequestId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      tenantId: { $type: 'objectId' },
+      clientRequestId: { $type: 'string' },
+    },
   }
 );
 

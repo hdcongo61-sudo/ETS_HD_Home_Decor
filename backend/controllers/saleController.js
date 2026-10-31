@@ -588,12 +588,29 @@ const createSale = asyncHandler(async (req, res) => {
     initialPaymentAmount,
     markAsDelivered,
     saleDate,
-    proformaId
+    proformaId,
+    clientRequestId
   } = req.body;
 
   let session;
 
   try {
+    // Idempotent replay (offline / queued submissions): if the client already
+    // sent this exact request, return the sale created by the first attempt
+    // instead of duplicating it.
+    const normalizedClientRequestId = typeof clientRequestId === 'string'
+      ? clientRequestId.trim().slice(0, 80)
+      : '';
+    if (normalizedClientRequestId) {
+      const existing = await Sale.findOne({
+        ...tenantFilter(req),
+        clientRequestId: normalizedClientRequestId,
+      }).lean();
+      if (existing) {
+        return res.status(200).json({ ...existing, deduplicated: true });
+      }
+    }
+
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: 'Ajoutez au moins un produit à la vente' });
     }
@@ -733,6 +750,7 @@ const createSale = asyncHandler(async (req, res) => {
       client,
       locationId: req.locationId || null,
       reference: saleReference,
+      clientRequestId: normalizedClientRequestId || undefined,
       products: populatedProducts,
       totalAmount,
       taxRate,
