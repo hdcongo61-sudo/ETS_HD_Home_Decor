@@ -64,6 +64,15 @@ const employeeSchema = mongoose.Schema(
         year: { type: Number, required: true },
         baseSalary: { type: Number, required: true },
         deductions: { type: Number, default: 0 },
+        // Retenues détaillées (ex. CNSS, impôt) — la somme est stockée dans
+        // `deductions` pour compatibilité.
+        deductionItems: [
+          {
+            _id: false,
+            label: { type: String, trim: true, maxlength: 60 },
+            amount: { type: Number, min: 0, default: 0 },
+          },
+        ],
         bonuses: { type: Number, default: 0 },
         netSalary: { type: Number, required: true },
         paymentDate: { type: Date, default: Date.now },

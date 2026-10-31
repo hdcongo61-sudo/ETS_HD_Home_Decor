@@ -302,12 +302,21 @@ const PaySlipPrint = () => {
                                 </tr>
                             )}
 
-                            {paySlip.deductions > 0 && (
-                                <tr className="border-b">
-                                    <td className="p-3 text-[var(--ms-text)]">Déductions</td>
-                                    <td className="p-3 text-right font-semibold text-[var(--ms-danger)]">- {formatMoney(paySlip.deductions)}</td>
-                                </tr>
-                            )}
+                            {Array.isArray(paySlip.deductionItems) && paySlip.deductionItems.length > 0
+                                ? paySlip.deductionItems
+                                    .filter((item) => (Number(item.amount) || 0) > 0)
+                                    .map((item, index) => (
+                                        <tr key={index} className="border-b">
+                                            <td className="p-3 text-[var(--ms-text)]">{item.label || 'Retenue'}</td>
+                                            <td className="p-3 text-right font-semibold text-[var(--ms-danger)]">- {formatMoney(item.amount)}</td>
+                                        </tr>
+                                    ))
+                                : paySlip.deductions > 0 && (
+                                    <tr className="border-b">
+                                        <td className="p-3 text-[var(--ms-text)]">Déductions</td>
+                                        <td className="p-3 text-right font-semibold text-[var(--ms-danger)]">- {formatMoney(paySlip.deductions)}</td>
+                                    </tr>
+                                )}
 
                             <tr className="bg-gray-950 font-bold text-white">
                                 <td className="p-3">Salaire net</td>

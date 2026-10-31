@@ -1,12 +1,23 @@
 const Employee = require('../models/employeeModel');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
 
+// Normalise les retenues détaillées (ex. [{ label: 'CNSS', amount: 25000 }]).
+const normalizeDeductionItems = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item.label === 'string' && item.label.trim())
+    .map((item) => ({
+      label: item.label.trim().slice(0, 60),
+      amount: Math.max(0, Number(item.amount) || 0),
+    }));
+};
+
 // @desc    Create a pay slip for employee
 // @route   POST /api/employees/:id/payroll
 // @access  Private/Admin
 const createPaySlip = async (req, res) => {
     try {
-        const { month, year, deductions, bonuses } = req.body;
+        const { month, year, deductions, bonuses, deductionItems } = req.body;
         const employee = await Employee.findById(req.params.id);
 
         if (!employee) {
@@ -27,13 +38,19 @@ const createPaySlip = async (req, res) => {
             });
         }
 
-        const netSalary = employee.salary + (parseFloat(bonuses) || 0) - (parseFloat(deductions) || 0);
+        const items = normalizeDeductionItems(deductionItems);
+        const totalDeductions = items.length
+            ? items.reduce((sum, item) => sum + item.amount, 0)
+            : (parseFloat(deductions) || 0);
+
+        const netSalary = employee.salary + (parseFloat(bonuses) || 0) - totalDeductions;
 
         const paySlip = {
             month: parseInt(month),
             year: parseInt(year),
             baseSalary: employee.salary,
-            deductions: parseFloat(deductions) || 0,
+            deductions: totalDeductions,
+            deductionItems: items,
             bonuses: parseFloat(bonuses) || 0,
             netSalary,
             status: 'pending',
@@ -86,7 +103,7 @@ const getPaySlip = async (req, res) => {
 // @access  Private/Admin
 const updatePaySlip = async (req, res) => {
     try {
-        const { month, year, deductions, bonuses, status } = req.body;
+        const { month, year, deductions, bonuses, status, deductionItems } = req.body;
         const employee = await Employee.findById(req.params.id);
 
         if (!employee) {
@@ -101,7 +118,14 @@ const updatePaySlip = async (req, res) => {
         // Mise à jour des champs
         if (month) paySlip.month = parseInt(month);
         if (year) paySlip.year = parseInt(year);
-        if (deductions !== undefined) paySlip.deductions = parseFloat(deductions);
+        if (deductionItems !== undefined) {
+            const items = normalizeDeductionItems(deductionItems);
+            paySlip.deductionItems = items;
+            paySlip.deductions = items.reduce((sum, item) => sum + item.amount, 0);
+        } else if (deductions !== undefined) {
+            paySlip.deductions = parseFloat(deductions);
+            paySlip.deductionItems = [];
+        }
         if (bonuses !== undefined) paySlip.bonuses = parseFloat(bonuses);
         if (status) paySlip.status = status;
 

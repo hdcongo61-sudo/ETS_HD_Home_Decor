@@ -37,6 +37,7 @@ const PaySlipForm = () => {
         bonuses: 0,
         status: 'pending'
     });
+    const [deductionItems, setDeductionItems] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [employee, setEmployee] = useState(null);
@@ -64,6 +65,7 @@ const PaySlipForm = () => {
                         bonuses: payslipData.bonuses,
                         status: payslipData.status || 'pending'
                     });
+                    setDeductionItems(Array.isArray(payslipData.deductionItems) ? payslipData.deductionItems : []);
                 }
                 setErrors({});
             } catch (err) {
@@ -116,7 +118,9 @@ const PaySlipForm = () => {
                 month: parseInt(formData.month),
                 year: parseInt(formData.year),
                 baseSalary: employee.salary,
-                netSalary: employee.salary + (parseFloat(formData.bonuses) || 0) - (parseFloat(formData.deductions) || 0)
+                deductions: effectiveDeductions,
+                deductionItems,
+                netSalary: employee.salary + (parseFloat(formData.bonuses) || 0) - effectiveDeductions
             };
 
             if (isEditMode) {
@@ -138,6 +142,17 @@ const PaySlipForm = () => {
         setErrors(prev => ({ ...prev, [name]: '' }));
     };
 
+    const addDeductionItem = () => setDeductionItems((prev) => [...prev, { label: '', amount: '' }]);
+    const updateDeductionItem = (index, field, value) =>
+        setDeductionItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+    const removeDeductionItem = (index) =>
+        setDeductionItems((prev) => prev.filter((_, i) => i !== index));
+
+    const itemsTotal = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const effectiveDeductions = deductionItems.length > 0
+        ? itemsTotal
+        : (parseFloat(formData.deductions) || 0);
+
     if (loading) {
         return (
             <Workspace className="flex items-center justify-center min-h-[60vh]">
@@ -147,7 +162,7 @@ const PaySlipForm = () => {
     }
 
     const netSalary = employee
-        ? employee.salary + (parseFloat(formData.bonuses) || 0) - (parseFloat(formData.deductions) || 0)
+        ? employee.salary + (parseFloat(formData.bonuses) || 0) - effectiveDeductions
         : 0;
     const salaryExpensesTotal = salaryExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
@@ -247,6 +262,25 @@ const PaySlipForm = () => {
                                         <p className="mt-2 text-xs text-[var(--ms-text-muted)]">Aucune dépense de salaire liée à ce mois.</p>
                                     )}
                                 </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="mb-1.5 flex items-center justify-between">
+                                <label className="block text-sm font-medium text-[var(--ms-text)]">Retenues détaillées (CNSS, impôt…)</label>
+                                <button type="button" onClick={addDeductionItem} className="text-xs font-semibold text-[var(--colorBrandForeground1)] hover:underline">+ Ajouter une retenue</button>
+                            </div>
+                            {deductionItems.map((item, index) => (
+                                <div key={index} className="mb-2 flex gap-2">
+                                    <input type="text" placeholder="Libellé (ex: CNSS)" value={item.label} onChange={(e) => updateDeductionItem(index, 'label', e.target.value)} className="form-control min-w-0 flex-1" />
+                                    <input type="number" min="0" step="0.01" placeholder="Montant" value={item.amount} onChange={(e) => updateDeductionItem(index, 'amount', e.target.value)} className="form-control w-28 shrink-0" />
+                                    <button type="button" onClick={() => removeDeductionItem(index)} className="ms-icon-button shrink-0" aria-label="Supprimer la retenue">×</button>
+                                </div>
+                            ))}
+                            {deductionItems.length > 0 && (
+                                <p className="text-xs text-[var(--ms-text-muted)]">
+                                    Total des retenues détaillées : {itemsTotal.toLocaleString('fr-FR')} CFA
+                                </p>
                             )}
                         </div>
 
