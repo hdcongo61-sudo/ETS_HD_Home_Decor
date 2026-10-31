@@ -23,6 +23,7 @@ const { nextNumber } = require('../services/cashService');
 const { findStalePartialSales } = require('../utils/staleBalanceDetection');
 const { getTenantTax, computeTaxFromTotal } = require('../utils/tax');
 const { sendEmail } = require('../utils/mailer');
+const { dispatchWebhookEvent } = require('../services/webhookService');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -940,6 +941,15 @@ const createSale = asyncHandler(async (req, res) => {
       console.error('Push notification error (sale created):', error);
     });
 
+    // Webhooks sortants (fire-and-forget, jamais bloquant).
+    dispatchWebhookEvent(req.tenantId, 'sale.created', {
+      id: sale._id,
+      reference: sale.reference,
+      clientName: clientNameForNotification,
+      totalAmount,
+      status: sale.status,
+    });
+
     res.status(201).json(sale);
 
   } catch (error) {
@@ -1092,6 +1102,13 @@ const addPayment = asyncHandler(async (req, res) => {
       actorId: req.user?._id
     }).catch((error) => {
       console.error('Push notification error (payment recorded):', error);
+    });
+
+    dispatchWebhookEvent(req.tenantId, 'payment.received', {
+      saleId: sale._id,
+      amount: paymentAmount,
+      method,
+      remainingBalance,
     });
 
     const saleObject = sale.toObject();

@@ -72,6 +72,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const apiKeyAuth = require('./middlewares/apiKeyAuth');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
 
@@ -236,6 +237,7 @@ app.use('/api/v2', shipmentRoutes);
 app.use('/api/v2', supplierInvoiceRoutes);
 app.use('/api/v2', replenishmentRoutes);
 app.use('/api/v2', moduleRoutes);
+app.use('/api/v2', webhookRoutes);
 app.use('/api/v2', reportRoutes);
 app.use('/api/v2', importRoutes);
 app.use('/api/v2', cutoverRoutes);

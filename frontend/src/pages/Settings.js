@@ -196,6 +196,9 @@ const Settings = () => {
   const [savingTaxSettings, setSavingTaxSettings] = useState(false);
   const [apiKeyResult, setApiKeyResult] = useState(null);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhookForm, setWebhookForm] = useState({ url: '', secret: '', events: ['sale.created'] });
+  const [savingWebhook, setSavingWebhook] = useState(false);
   const [dateSettings, setDateSettings] = useState({
     manualSaleDateEnabled: false,
     manualExpenseDateEnabled: false,
@@ -258,6 +261,13 @@ const Settings = () => {
       .then(({ data }) => setEmployees(Array.isArray(data) ? data : []))
       .catch(() => setEmployees([]));
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin || activeSection !== 'api') return;
+    api.get('/v2/webhooks')
+      .then(({ data }) => setWebhooks(Array.isArray(data) ? data : []))
+      .catch(() => setWebhooks([]));
+  }, [isAdmin, activeSection]);
 
   // Si on arrive via le bandeau d'essai (#abonnement), défiler jusqu'à la section.
   useEffect(() => {
@@ -380,6 +390,41 @@ const Settings = () => {
       toast.error(error.response?.data?.message || 'Erreur de génération');
     } finally {
       setGeneratingApiKey(false);
+    }
+  };
+
+  const toggleWebhookEvent = (event) => {
+    setWebhookForm((prev) => ({
+      ...prev,
+      events: prev.events.includes(event)
+        ? prev.events.filter((e) => e !== event)
+        : [...prev.events, event],
+    }));
+  };
+
+  const handleCreateWebhook = async () => {
+    if (!isAdmin || !webhookForm.url.trim()) return;
+    setSavingWebhook(true);
+    try {
+      await api.post('/v2/webhooks', webhookForm);
+      setWebhookForm({ url: '', secret: '', events: ['sale.created'] });
+      toast.success('Webhook ajouté');
+      const { data } = await api.get('/v2/webhooks');
+      setWebhooks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur d'ajout du webhook");
+    } finally {
+      setSavingWebhook(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (id) => {
+    try {
+      await api.delete(`/v2/webhooks/${id}`);
+      toast.success('Webhook supprimé');
+      setWebhooks((prev) => prev.filter((w) => w._id !== id));
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de suppression');
     }
   };
 
@@ -1272,6 +1317,48 @@ const Settings = () => {
             <button type="button" onClick={handleGenerateApiKey} disabled={generatingApiKey} className="ms-button ms-button-secondary ms-button-md disabled:opacity-60">
               <KeyRound className="h-4 w-4" /> {generatingApiKey ? 'Génération…' : myTenant?.apiKeyHint ? 'Régénérer la clé' : 'Générer une clé'}
             </button>
+          </div>
+
+          <div className="mt-6 border-t border-[var(--ms-border)] pt-5">
+            <h3 className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Webhooks</h3>
+            <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
+              Recevez les événements (vente créée, paiement reçu) sur votre URL.
+            </p>
+
+            <div className="mt-3 grid gap-3">
+              <input type="url" value={webhookForm.url} onChange={(e) => setWebhookForm((p) => ({ ...p, url: e.target.value }))} placeholder="https://exemple.com/webhook" className="form-input w-full rounded-[var(--radiusMedium)] border border-[var(--ms-border)] px-3 py-2 text-sm" />
+              <input type="text" value={webhookForm.secret} onChange={(e) => setWebhookForm((p) => ({ ...p, secret: e.target.value }))} placeholder="Secret de signature (optionnel)" className="form-input w-full rounded-[var(--radiusMedium)] border border-[var(--ms-border)] px-3 py-2 text-sm" />
+              <div className="flex flex-wrap gap-3">
+                {['sale.created', 'payment.received', 'stock.updated'].map((event) => (
+                  <label key={event} className="flex items-center gap-2 text-sm text-[var(--colorNeutralForeground2)]">
+                    <input type="checkbox" checked={webhookForm.events.includes(event)} onChange={() => toggleWebhookEvent(event)} className="h-4 w-4 rounded border-[var(--ms-border)] text-[var(--ms-blue)]" />
+                    {event}
+                  </label>
+                ))}
+              </div>
+              <button type="button" onClick={handleCreateWebhook} disabled={savingWebhook || !webhookForm.url.trim()} className="ms-button ms-button-secondary ms-button-md w-fit disabled:opacity-60">
+                {savingWebhook ? 'Ajout…' : 'Ajouter le webhook'}
+              </button>
+            </div>
+
+            {webhooks.length > 0 && (
+              <ul className="mt-4 space-y-2">
+                {webhooks.map((webhook) => (
+                  <li key={webhook._id} className="flex items-center justify-between gap-3 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--colorNeutralForeground1)]">{webhook.url}</p>
+                      <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                        {webhook.events.join(', ')}
+                        {webhook.lastStatus != null ? ` · dernier statut ${webhook.lastStatus}` : ''}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => handleDeleteWebhook(webhook._id)} className="ms-icon-button shrink-0" aria-label="Supprimer">
+                      <Trash2 className="h-4 w-4 text-[var(--ms-danger)]" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       )}
