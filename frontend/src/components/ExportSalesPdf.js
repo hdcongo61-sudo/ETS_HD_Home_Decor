@@ -3,9 +3,6 @@ import autoTable from 'jspdf-autotable';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity, getLogoDataUrl } from '../utils/appBranding';
 
-const formatAmount = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
-
 const formatDate = (value) => {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return new Date().toLocaleDateString('fr-FR');
@@ -42,6 +39,12 @@ const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] item
       0
     );
     const balance = Math.max((Number(sale.totalAmount) || 0) - totalPaid, 0);
+    const currencySymbol = appSettings.currency?.symbol || 'CFA';
+    const formatAmount = (value) =>
+      `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} ${currencySymbol}`;
+    const taxAmount = Number(sale.taxAmount) || 0;
+    const taxRate = Number(sale.taxRate) || 0;
+    const taxLabel = sale.taxLabel || 'Taxe';
 
     doc.setFillColor(248, 249, 251);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
@@ -149,24 +152,37 @@ const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] item
     // Totals
     const finalY = doc.lastAutoTable.finalY + 10;
     const totalBoxX = pageWidth - margin - 72;
+    const rows = 2 + (taxAmount > 0 ? 1 : 0) + (balance > 0 ? 1 : 0);
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(totalBoxX, finalY, 72, balance > 0 ? 34 : 25, 5, 5, 'F');
+    doc.roundedRect(totalBoxX, finalY, 72, rows * 9 + 7, 5, 5, 'F');
+
+    let rowY = finalY + 8;
     doc.setFontSize(9);
     doc.setTextColor(107, 114, 128);
-    doc.text('Total', totalBoxX + 6, finalY + 8);
+    doc.text('Total', totalBoxX + 6, rowY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(17, 24, 39);
-    doc.text(formatAmount(sale.totalAmount), totalBoxX + 66, finalY + 8, { align: 'right' });
+    doc.text(formatAmount(sale.totalAmount), totalBoxX + 66, rowY, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(107, 114, 128);
-    doc.text('Payé', totalBoxX + 6, finalY + 17);
-    doc.text(formatAmount(totalPaid), totalBoxX + 66, finalY + 17, { align: 'right' });
+
+    if (taxAmount > 0) {
+      rowY += 9;
+      doc.text(`dont ${taxLabel} (${taxRate}%)`, totalBoxX + 6, rowY);
+      doc.text(formatAmount(taxAmount), totalBoxX + 66, rowY, { align: 'right' });
+    }
+
+    rowY += 9;
+    doc.text('Payé', totalBoxX + 6, rowY);
+    doc.text(formatAmount(totalPaid), totalBoxX + 66, rowY, { align: 'right' });
+
     if (balance > 0) {
+      rowY += 9;
       doc.setTextColor(190, 18, 60);
-      doc.text('Solde', totalBoxX + 6, finalY + 26);
-      doc.text(formatAmount(balance), totalBoxX + 66, finalY + 26, { align: 'right' });
+      doc.text('Solde', totalBoxX + 6, rowY);
+      doc.text(formatAmount(balance), totalBoxX + 66, rowY, { align: 'right' });
     }
 
     // Section signature
