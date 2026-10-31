@@ -32,11 +32,15 @@ const GlobalExpenseModal = () => {
   const handleSubmit = async (payload) => {
     setIsSubmitting(true);
     try {
-      await api.post('/expenses', payload);
+      const { data } = await api.post('/expenses', payload, { __queueOffline: true });
       setIsDirty(false);
       closeModal();
-      toast.success('Dépense enregistrée — données à jour.');
-      window.dispatchEvent(new CustomEvent('expenseCreated'));
+      if (data?.queued) {
+        toast.success('Dépense enregistrée hors-ligne — sera synchronisée.');
+      } else {
+        toast.success('Dépense enregistrée — données à jour.');
+        window.dispatchEvent(new CustomEvent('expenseCreated'));
+      }
     } catch (error) {
       console.error('Error creating expense:', error);
       toast.error(getErrorMessage(error, "Erreur lors de l'enregistrement de la dépense."));

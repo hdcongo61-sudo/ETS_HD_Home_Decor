@@ -11,6 +11,7 @@ import Navigation from './components/Navigation';
 import { ModalProvider } from './context/ModalContext';
 import GlobalModals from './components/GlobalModals';
 import OfflineIndicator from './components/OfflineIndicator';
+import SyncStatusIndicator from './components/SyncStatusIndicator';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import SiteFooter from './components/SiteFooter';
 import PushNotificationManager from './components/PushNotificationManager';
@@ -110,6 +111,7 @@ function ApplicationShell() {
           <Suspense fallback={null}><ImpersonationBanner /></Suspense>
           <Navigation />
           <OfflineIndicator />
+          <SyncStatusIndicator />
           <DesktopNavRail />
         </>
       )}

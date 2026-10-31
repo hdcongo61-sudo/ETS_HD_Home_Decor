@@ -18,8 +18,13 @@ export const sendQueuedWith = (client) => (op) =>
     data: op.data,
   });
 
-export const flushOfflineQueue = (client, storage) =>
-  drainMutations({ send: sendQueuedWith(client), storage });
+export const flushOfflineQueue = async (client, storage) => {
+  const result = await drainMutations({ send: sendQueuedWith(client), storage });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('app:offline-queue-changed'));
+  }
+  return result;
+};
 
 export const pendingSyncCount = () => pendingMutationCount();
 

@@ -172,6 +172,9 @@ api.interceptors.response.use(
         data,
         clientRequestId,
       });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:offline-queue-changed'));
+      }
       return {
         data: { queued: true, clientRequestId },
         status: 202,

@@ -176,7 +176,9 @@ const Expenses = () => {
         setFormPanelOpen(false);
       } else {
         const { data } = await expensesApi.create(expenseData);
-        if (matchesExpenseFilter(data)) {
+        if (data?.queued) {
+          toast.success('Dépense enregistrée hors-ligne — sera synchronisée.');
+        } else if (matchesExpenseFilter(data)) {
           setExpenses((prev) =>
             [data, ...prev].sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime())
           );
