@@ -1,3 +1,6 @@
+import { formatCfa } from '../../utils/format';
+
+
 export const getSaleWorkflow = sale => {
   const total = Number(sale.totalAmount) || 0;
   const paid = Array.isArray(sale.payments)
@@ -19,7 +22,7 @@ export const getSaleActivity = sale => {
     events.push({ id, date, label, detail });
   };
   add('created', sale.saleDate || sale.createdAt, 'Vente enregistrée');
-  (sale.payments || []).forEach((payment, index) => add('payment-' + (payment._id || index), payment.paymentDate || payment.createdAt, 'Paiement reçu', (Number(payment.amount) || 0).toLocaleString('fr-FR') + ' CFA'));
+  (sale.payments || []).forEach((payment, index) => add('payment-' + (payment._id || index), payment.paymentDate || payment.createdAt, 'Paiement reçu', formatCfa(payment.amount)));
   if (sale.deliveryStatus === 'delivered') add('delivered', sale.deliveryDate, 'Livraison effectuée', sale.deliveryNote);
   (sale.modificationHistory || []).forEach((entry, index) => add('edit-' + (entry._id || index), entry.modifiedAt || entry.date || entry.createdAt, 'Vente modifiée', entry.note || entry.reason));
   (sale.reminderLog || []).forEach((entry, index) => add('reminder-' + index, entry.createdAt, 'Relance client', entry.channel));

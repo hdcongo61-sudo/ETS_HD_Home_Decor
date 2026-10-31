@@ -246,7 +246,7 @@ const SupplierProfile = () => {
         </div>
         <div className="grid grid-cols-5 gap-1 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white p-1" role="group" aria-label="Période d'analyse">
           {RANGE_OPTIONS.map((o) => (
-            <button key={o.value} onClick={() => setRange(o.value)} aria-pressed={range === o.value} className={`min-h-[36px] rounded-[var(--radiusSmall,4px)] px-2 text-xs font-semibold transition sm:px-3 ${range === o.value ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]'}`}>{o.label}</button>
+            <button key={o.value} onClick={() => setRange(o.value)} aria-pressed={range === o.value} className={`min-h-[44px] rounded-[var(--radiusSmall,4px)] px-2 text-xs font-semibold transition sm:px-3 ${range === o.value ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]'}`}>{o.label}</button>
           ))}
         </div>
       </section>

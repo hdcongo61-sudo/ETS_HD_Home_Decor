@@ -8,10 +8,9 @@ import { resolveAppLogo } from "../../utils/appBranding";
 import { calculateSaleTotals, getPaymentStructureKey, getStatusText } from "../../utils/saleUtils";
 import { useFeature, LockedFeatureButton } from "../../components/FeatureGate";
 import { FEATURE_KEYS } from "../../config/features";
+import { formatMoney } from "../../utils/format";
 
-const formatAmount = (value) => Number(value || 0).toLocaleString("fr-FR").replace(/\s/g, ".");
-
-const formatCurrency = (value) => `${formatAmount(value)} CFA`;
+const formatCurrency = (value) => formatMoney(value);
 
 const formatDate = (value) => {
   if (!value) return "";

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ import {
 } from '../utils/paths';
 import AppLoader from './AppLoader';
 import {
+
   Button,
   CommandBar,
   DataTable,
@@ -36,7 +38,6 @@ import {
 const STATUS_TONE = { pending: 'warning', paid: 'success', cancelled: 'danger' };
 const STATUS_LABEL = { pending: 'En attente', paid: 'Payé', cancelled: 'Annulé' };
 
-const fmt = (v) => new Intl.NumberFormat('fr-FR').format(Number(v) || 0);
 const formatPeriod = (month, year) =>
   new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
@@ -207,9 +208,9 @@ const PaySlipList = () => {
             <span className="text-xs text-[var(--ms-text-muted)]">{filteredPaySlips.length} fiche(s)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <KPICard title="Total salaire brut" value={`${fmt(totals.base)} CFA`} tone="brand" icon={<Banknote className="h-4 w-4" />} />
-            <KPICard title="Total déductions" value={`${fmt(totals.deductions)} CFA`} tone="danger" icon={<Minus className="h-4 w-4" />} />
-            <KPICard title="Total salaire net" value={`${fmt(totals.net)} CFA`} tone="success" icon={<Wallet className="h-4 w-4" />} />
+            <KPICard title="Total salaire brut" value={`${formatCfa(totals.base)}`} tone="brand" icon={<Banknote className="h-4 w-4" />} />
+            <KPICard title="Total déductions" value={`${formatCfa(totals.deductions)}`} tone="danger" icon={<Minus className="h-4 w-4" />} />
+            <KPICard title="Total salaire net" value={`${formatCfa(totals.net)}`} tone="success" icon={<Wallet className="h-4 w-4" />} />
           </div>
         </div>
       )}
@@ -244,7 +245,7 @@ const PaySlipList = () => {
                         {formatPeriod(slip.month, slip.year)}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--ms-text-muted)]">
-                        Net : <span className="font-semibold text-[var(--ms-blue)]">{fmt(slip.netSalary)} CFA</span>
+                        Net : <span className="font-semibold text-[var(--ms-blue)]">{formatCfa(slip.netSalary)}</span>
                       </p>
                     </div>
                     <StatusBadge tone={STATUS_TONE[slip.status] || 'neutral'}>
@@ -254,15 +255,15 @@ const PaySlipList = () => {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)] p-2.5">
                       <p className="text-[var(--ms-text-muted)]">Salaire de base</p>
-                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-text-strong)]">{fmt(slip.baseSalary)} CFA</p>
+                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-text-strong)]">{formatCfa(slip.baseSalary)}</p>
                     </div>
                     <div className="rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)] p-2.5">
                       <p className="text-[var(--ms-text-muted)]">Primes</p>
-                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-success)]">+ {fmt(slip.bonuses)} CFA</p>
+                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-success)]">+ {formatCfa(slip.bonuses)}</p>
                     </div>
                     <div className="rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)] p-2.5">
                       <p className="text-[var(--ms-text-muted)]">Déductions</p>
-                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-danger)]">- {fmt(slip.deductions)} CFA</p>
+                      <p className="mt-0.5 text-sm font-semibold text-[var(--ms-danger)]">- {formatCfa(slip.deductions)}</p>
                     </div>
                     <div className="rounded-[var(--radiusMedium)] bg-[var(--ms-bg-subtle)] p-2.5">
                       <p className="text-[var(--ms-text-muted)]">Créé le</p>
@@ -308,10 +309,10 @@ const PaySlipList = () => {
                     {filteredPaySlips.map((slip) => (
                       <tr key={slip._id}>
                         <td className="font-medium text-[var(--ms-text-strong)] capitalize">{formatPeriod(slip.month, slip.year)}</td>
-                        <td className="text-[var(--ms-text)]">{fmt(slip.baseSalary)} CFA</td>
-                        <td className="text-[var(--ms-danger)]">- {fmt(slip.deductions)} CFA</td>
-                        <td className="text-[var(--ms-success)]">+ {fmt(slip.bonuses)} CFA</td>
-                        <td className="font-semibold text-[var(--ms-text-strong)]">{fmt(slip.netSalary)} CFA</td>
+                        <td className="text-[var(--ms-text)]">{formatCfa(slip.baseSalary)}</td>
+                        <td className="text-[var(--ms-danger)]">- {formatCfa(slip.deductions)}</td>
+                        <td className="text-[var(--ms-success)]">+ {formatCfa(slip.bonuses)}</td>
+                        <td className="font-semibold text-[var(--ms-text-strong)]">{formatCfa(slip.netSalary)}</td>
                         <td>
                           <StatusBadge tone={STATUS_TONE[slip.status] || 'neutral'}>
                             {STATUS_LABEL[slip.status] || slip.status}

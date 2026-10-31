@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -22,7 +23,7 @@ import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const formatCFA = (value) =>
-  `${Math.round(value || 0).toLocaleString("fr-FR")} CFA`;
+  `${formatCfa(Math.round(value || 0))}`;
 
 const STAT_TONES = {
   green: { iconBg: 'var(--colorStatusSuccessBackground1)', iconFg: 'var(--colorStatusSuccessForeground1)' },

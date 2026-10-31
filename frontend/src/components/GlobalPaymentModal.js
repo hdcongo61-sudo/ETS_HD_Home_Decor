@@ -1,5 +1,6 @@
 // components/GlobalPaymentModal.js
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatCfa } from '../utils/format';
 import {
   AlertCircle,
   Banknote,
@@ -25,8 +26,7 @@ import { StatusBadge } from './business';
 import { getSaleTypeText, getStatusText } from '../utils/saleUtils';
 import { confirmDialog } from './ConfirmProvider';
 
-const formatAmount = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
+const formatAmount = (value) => formatCfa(value);
 
 const getTotalPaid = (sale) =>
   sale?.payments?.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0) || 0;

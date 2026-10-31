@@ -7,6 +7,7 @@ import AuthContext from '../context/AuthContext';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { Button } from './business';
+import { formatCfa, getActiveCurrency } from '../utils/format';
 
 const toDateTimeLocalValue = (value) => {
   if (!value) return '';
@@ -200,13 +201,14 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
     categoryOptions.push(selectedCategory);
   }
   const controlClass = (error) => `form-control ${error ? 'form-control-error' : ''}`;
+  const currencySymbol = getActiveCurrency().symbol;
 
   return (
     <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">
-            {t('expenses.amount', 'Montant (CFA)')} <span className="text-red-500">*</span>
+            {t('expenses.amount', 'Montant')} ({currencySymbol}) <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -222,7 +224,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               placeholder="0"
               required
             />
-            <span className="absolute right-3 top-2.5 text-gray-400">CFA</span>
+            <span className="absolute right-3 top-2.5 text-gray-400">{currencySymbol}</span>
           </div>
           {errors.amount && <p className="form-error">{errors.amount}</p>}
         </div>
@@ -382,7 +384,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
             <div className="rounded-2xl bg-white/85 p-3 text-sm text-gray-700 border border-gray-200/80">
               Salaire mensuel :
               <span className="ml-1 font-semibold text-gray-900">
-                {Number(selectedEmployee.salary || 0).toLocaleString('fr-FR')} CFA
+                {formatCfa(Number(selectedEmployee.salary || 0))}
               </span>
             </div>
           )}

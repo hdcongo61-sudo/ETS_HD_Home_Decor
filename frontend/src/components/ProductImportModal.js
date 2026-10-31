@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../services/api';
@@ -64,7 +65,7 @@ const normalizeForDisplay = (row, supplierPhoneByName = new Map()) => {
 
 const fmtPrice = (v) => {
   const n = toNumber(v);
-  return Number.isNaN(n) ? String(v ?? '') : `${n.toLocaleString('fr-FR')} CFA`;
+  return Number.isNaN(n) ? String(v ?? '') : `${formatCfa(n)}`;
 };
 
 const MAX_RENDER = 250; // safety cap so very large files stay responsive

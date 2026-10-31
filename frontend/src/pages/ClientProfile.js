@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { customersApi } from '../features/customers/api';
@@ -18,6 +19,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import {
+
   Button,
   ChartCard,
   DataTable,
@@ -250,7 +252,7 @@ const ClientProfile = () => {
       alerts.push({
         type: 'success',
         title: 'Client Premium',
-        message: `Ce client a dépassé ${spendingLimit.toLocaleString('fr-FR')} CFA de dépenses cumulées.`,
+        message: `Ce client a dépassé ${formatCfa(spendingLimit)} de dépenses cumulées.`,
         color: 'green'
       });
     }
@@ -259,7 +261,7 @@ const ClientProfile = () => {
       alerts.push({
         type: 'warning',
         title: 'Solde restant à suivre',
-        message: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA restent à encaisser sur ${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''}.`,
+        message: `${formatCfa(stats.totalOutstanding)} restent à encaisser sur ${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''}.`,
         color: 'yellow'
       });
     }
@@ -268,11 +270,11 @@ const ClientProfile = () => {
   }, [stats]);
 
   const insightCards = useMemo(() => ([
-    { label: 'Vente en gros',       value: `${stats.wholesaleAmount.toLocaleString('fr-FR')} CFA`,     helper: `${stats.wholesaleCount} vente${stats.wholesaleCount > 1 ? 's' : ''}`,           tone: 'warning' },
-    { label: 'Paiement unique',     value: `${stats.singlePaymentAmount.toLocaleString('fr-FR')} CFA`, helper: `${stats.singlePaymentCount} vente${stats.singlePaymentCount > 1 ? 's' : ''}`,   tone: 'success' },
-    { label: 'Paiements multiples', value: `${stats.multiplePaymentAmount.toLocaleString('fr-FR')} CFA`,helper: `${stats.multiplePaymentCount} vente${stats.multiplePaymentCount > 1 ? 's' : ''}`, tone: 'neutral' },
-    { label: 'Solde restant',       value: `${stats.totalOutstanding.toLocaleString('fr-FR')} CFA`,    helper: `${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''} à suivre`, tone: stats.totalOutstanding > 0 ? 'danger' : 'success' },
-    { label: 'Mode favori',         value: stats.favoritePaymentMethod?.label || '—',                  helper: stats.favoritePaymentMethod ? `${stats.favoritePaymentMethod.amount.toLocaleString('fr-FR')} CFA encaissés` : 'Aucun paiement', tone: 'neutral' },
+    { label: 'Vente en gros',       value: `${formatCfa(stats.wholesaleAmount)}`,     helper: `${stats.wholesaleCount} vente${stats.wholesaleCount > 1 ? 's' : ''}`,           tone: 'warning' },
+    { label: 'Paiement unique',     value: `${formatCfa(stats.singlePaymentAmount)}`, helper: `${stats.singlePaymentCount} vente${stats.singlePaymentCount > 1 ? 's' : ''}`,   tone: 'success' },
+    { label: 'Paiements multiples', value: `${formatCfa(stats.multiplePaymentAmount)}`,helper: `${stats.multiplePaymentCount} vente${stats.multiplePaymentCount > 1 ? 's' : ''}`, tone: 'neutral' },
+    { label: 'Solde restant',       value: `${formatCfa(stats.totalOutstanding)}`,    helper: `${stats.unpaidSalesCount} vente${stats.unpaidSalesCount > 1 ? 's' : ''} à suivre`, tone: stats.totalOutstanding > 0 ? 'danger' : 'success' },
+    { label: 'Mode favori',         value: stats.favoritePaymentMethod?.label || '—',                  helper: stats.favoritePaymentMethod ? `${formatCfa(stats.favoritePaymentMethod.amount)} encaissés` : 'Aucun paiement', tone: 'neutral' },
     { label: 'Rythme moyen',        value: stats.averagePurchaseGapDays !== null ? `${Math.round(stats.averagePurchaseGapDays)} j` : '—', helper: stats.bestMonthLabel ? `Mois fort : ${stats.bestMonthLabel}` : 'Pas assez d\'historique', tone: 'neutral' },
   ]), [stats]);
 
@@ -389,7 +391,7 @@ const ClientProfile = () => {
           </div>
           <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
             <KPICard title="Achats" value={stats.purchaseCount} tone="neutral" />
-            <KPICard title="Total" value={`${stats.totalSpent.toLocaleString('fr-FR')} CFA`} tone="success" />
+            <KPICard title="Total" value={`${formatCfa(stats.totalSpent)}`} tone="success" />
           </div>
         </div>
         <div className="grid gap-3 border-t border-[var(--ms-border)] pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -408,7 +410,7 @@ const ClientProfile = () => {
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-            <KPICard title="Panier moyen" value={`${stats.averagePurchase.toLocaleString('fr-FR')} CFA`} context="Moyenne par vente" tone="neutral" />
+            <KPICard title="Panier moyen" value={`${formatCfa(stats.averagePurchase)}`} context="Moyenne par vente" tone="neutral" />
             <KPICard title="Articles/vente" value={stats.averageItemsPerSale.toFixed(1)} context="Volume moyen" tone="neutral" />
             <KPICard title="Profil de paiement" value={stats.multiplePaymentCount > stats.singlePaymentCount ? 'Echelonne' : 'Direct'} context={stats.multiplePaymentCount > stats.singlePaymentCount ? 'Paie en plusieurs fois' : 'Un seul paiement'} tone="neutral" />
           </div>
@@ -424,7 +426,7 @@ const ClientProfile = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
+                <Tooltip formatter={(v) => `${formatCfa(v)}`} />
                 <Line type="monotone" dataKey="total" stroke="#0078D4" strokeWidth={2} dot />
               </LineChart>
             </ResponsiveContainer>
@@ -436,7 +438,7 @@ const ClientProfile = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip formatter={(v) => `${v.toLocaleString('fr-FR')} CFA`} />
+                <Tooltip formatter={(v) => `${formatCfa(v)}`} />
                 <Bar dataKey="total" fill="#107C10" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -453,7 +455,7 @@ const ClientProfile = () => {
                   {purchases.map((p) => (
                     <tr key={p._id} className="cursor-pointer" onClick={() => navigate(`/sales/${p._id}`)}>
                       <td className="font-medium">{formatDate(p.saleDate)}</td>
-                      <td className="font-semibold">{p.totalAmount.toLocaleString('fr-FR')} CFA</td>
+                      <td className="font-semibold">{formatCfa(p.totalAmount)}</td>
                       <td><StatusBadge tone={p.status === 'completed' ? 'success' : p.status === 'partially_paid' ? 'warning' : p.status === 'cancelled' ? 'danger' : 'neutral'}>{p.status === 'partially_paid' ? 'Partiel' : p.status === 'completed' ? 'Paye' : p.status === 'pending' ? 'En attente' : p.status === 'cancelled' ? 'Annule' : 'Inconnu'}</StatusBadge></td>
                       <td className="text-right">
                         <Link to={`/sales/${p._id}`} className="ms-button ms-button-secondary ms-button-sm" onClick={(e) => e.stopPropagation()}><ArrowRight className="h-4 w-4" /> Details</Link>
@@ -469,7 +471,7 @@ const ClientProfile = () => {
               {purchases.map((p) => (
                 <div key={p._id} className="ms-surface p-4 cursor-pointer" onClick={() => navigate(`/sales/${p._id}`)}>
                   <div className="flex justify-between items-center mb-2">
-                    <div><p className="font-semibold text-[var(--ms-text)]">{p.totalAmount.toLocaleString('fr-FR')} CFA</p><p className="text-xs text-[var(--ms-text-muted)]">{formatDate(p.saleDate)}</p></div>
+                    <div><p className="font-semibold text-[var(--ms-text)]">{formatCfa(p.totalAmount)}</p><p className="text-xs text-[var(--ms-text-muted)]">{formatDate(p.saleDate)}</p></div>
                     <StatusBadge tone={p.status === 'completed' ? 'success' : p.status === 'partially_paid' ? 'warning' : p.status === 'cancelled' ? 'danger' : 'neutral'}>{p.status === 'partially_paid' ? 'Partiel' : p.status === 'completed' ? 'Paye' : 'En attente'}</StatusBadge>
                   </div>
                   <Button variant="secondary" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); navigate(`/sales/${p._id}`); }}><ArrowRight className="h-4 w-4" /> Voir details</Button>

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Tag, Trash2 } from 'lucide-react';
@@ -65,7 +66,7 @@ const Promotions = () => {
 
   const formatValue = (promotion) =>
     promotion.type === 'amount'
-      ? `${Number(promotion.value).toLocaleString('fr-FR')} CFA`
+      ? `${formatCfa(Number(promotion.value))}`
       : `${Number(promotion.value).toLocaleString('fr-FR')} %`;
 
   return (

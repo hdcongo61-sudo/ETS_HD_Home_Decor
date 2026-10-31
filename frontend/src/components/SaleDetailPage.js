@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from './ConfirmProvider';
 import React, { useState, useEffect, useContext, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
@@ -6,7 +7,7 @@ import toast from 'react-hot-toast';
 import { clientPath, productPath } from '../utils/paths';
 import { getSaleTypeClass, getSaleTypeText } from '../utils/saleUtils';
 import { buildReminderMessage, whatsAppLink, canWhatsApp, recordReminder, formatReminderAgo, REMINDER_CHANNEL_LABEL } from '../utils/clientReminder';
-import { formatCfa } from '../utils/format';
+
 import PaymentModal from '../components/PaymentModal';
 import Modal from './Modal';
 import { ExternalLink } from 'lucide-react';
@@ -592,7 +593,7 @@ const SaleDetailPage = () => {
     };
 
     const formatHistoryPrice = (value) =>
-        `${(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
+        `${formatCfa((Number(value) || 0))}`;
 
     const getHistoryProductStatus = (change) => {
         const oldQuantity = Number(change.oldQuantity || 0);
@@ -1242,7 +1243,7 @@ const SaleDetailPage = () => {
                             <div className="space-y-3">
                                 <div className="flex items-start justify-between gap-3">
                                     <span className="text-sm">Total de la vente:</span>
-                                    <span className="text-right text-sm font-semibold">{(Number(sale.totalAmount) || 0).toFixed(0)} CFA</span>
+                                    <span className="text-right text-sm font-semibold">{formatCfa((Number(sale.totalAmount) || 0))}</span>
                                 </div>
                                 {Number(sale.taxAmount) > 0 && (
                                     <div className="flex items-start justify-between gap-3">
@@ -1252,12 +1253,12 @@ const SaleDetailPage = () => {
                                 )}
                                 <div className="flex items-start justify-between gap-3">
                                     <span className="text-sm">Total payé:</span>
-                                    <span className="text-right text-sm font-semibold text-green-600">{(Number(sale.totalPaid) || 0).toFixed(0)} CFA</span>
+                                    <span className="text-right text-sm font-semibold text-green-600">{formatCfa((Number(sale.totalPaid) || 0))}</span>
                                 </div>
                                 <div className="flex items-start justify-between gap-3 border-t pt-2">
                                     <span className="text-sm font-medium">Solde restant:</span>
                                     <span className={`text-right text-sm font-semibold ${Number(sale.balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                        {Math.abs(Number(sale.balance) || 0).toFixed(0)} CFA
+                                        {formatCfa(Math.abs(Number(sale.balance) || 0))}
                                     </span>
                                 </div>
                             </div>
@@ -1279,20 +1280,20 @@ const SaleDetailPage = () => {
                                 <div className="flex items-center justify-between gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 px-3 py-2">
                                     <span className="text-sm font-medium">Bénéfice encaissé:</span>
                                     <span className={`text-base font-bold ${realizedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {realizedProfit?.toFixed(0)} CFA
+                                        {formatCfa(realizedProfit)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm">Bénéfice total attendu:</span>
                                     <span className={`text-sm font-semibold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {totalProfit?.toFixed(0)} CFA
+                                        {formatCfa(totalProfit)}
                                     </span>
                                 </div>
                                 {outstandingProfit > 0.5 && (
                                     <div className="flex justify-between">
                                         <span className="text-sm">Bénéfice restant à encaisser:</span>
                                         <span className="text-sm font-semibold text-amber-600">
-                                            {outstandingProfit?.toFixed(0)} CFA
+                                            {formatCfa(outstandingProfit)}
                                         </span>
                                     </div>
                                 )}
@@ -1305,7 +1306,7 @@ const SaleDetailPage = () => {
                                 <div className="flex justify-between border-t pt-2">
                                     <span className="text-sm font-medium">Coût total:</span>
                                     <span className="text-sm font-semibold text-gray-600">
-                                        {(sale.totalAmount - totalProfit)?.toFixed(0)} CFA
+                                        {formatCfa((sale.totalAmount - totalProfit))}
                                     </span>
                                 </div>
                             </div>
@@ -1357,7 +1358,7 @@ const SaleDetailPage = () => {
                                                             <p className="text-sm font-semibold text-gray-900">Produit supprimé</p>
                                                         )}
                                                         <p className="text-xs text-gray-500">
-                                                            Prix unitaire : <span className="font-medium text-gray-900">{item.priceAtSale?.toFixed(0)} CFA</span>
+                                                            Prix unitaire : <span className="font-medium text-gray-900">{formatCfa(item.priceAtSale)}</span>
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1368,14 +1369,14 @@ const SaleDetailPage = () => {
                                                     <div>
                                                         <div>Profit unitaire</div>
                                                         <div className={`font-semibold ${profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
+                                                            {costPrice > 0 ? `${formatCfa(profit.perItem)}` : 'N/A'}
                                                         </div>
                                                     </div>
                                                 )}
                                                 <div>
                                                     <div>Total</div>
                                                     <div className="font-semibold text-gray-900">
-                                                        {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
+                                                        {formatCfa((item.quantity * item.priceAtSale))}
                                                     </div>
                                                 </div>
                                                 {isAdmin && showProfitSections && (
@@ -1383,7 +1384,7 @@ const SaleDetailPage = () => {
                                                         <div>
                                                             <div>Profit total</div>
                                                             <div className={`font-semibold ${profit.total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                {costPrice > 0 ? `${profit.total?.toFixed(0)} CFA` : 'N/A'}
+                                                                {costPrice > 0 ? `${formatCfa(profit.total)}` : 'N/A'}
                                                             </div>
                                                         </div>
                                                         <div>
@@ -1454,16 +1455,16 @@ const SaleDetailPage = () => {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                            {item.priceAtSale?.toFixed(0)} CFA
+                                                            {formatCfa(item.priceAtSale)}
                                                         </td>
                                                         {isAdmin && showProfitSections && (
                                                             <>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                    {costPrice > 0 ? `${costPrice?.toFixed(0)} CFA` : 'N/A'}
+                                                                    {costPrice > 0 ? `${formatCfa(costPrice)}` : 'N/A'}
                                                                 </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                                                     <span className={profit.perItem >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                                        {costPrice > 0 ? `${profit.perItem?.toFixed(0)} CFA` : 'N/A'}
+                                                                        {costPrice > 0 ? `${formatCfa(profit.perItem)}` : 'N/A'}
                                                                     </span>
                                                                 </td>
                                                             </>
@@ -1472,13 +1473,13 @@ const SaleDetailPage = () => {
                                                             {item.quantity}
                                                         </td>
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                            {(item.quantity * item.priceAtSale)?.toFixed(0)} CFA
+                                                            {formatCfa((item.quantity * item.priceAtSale))}
                                                         </td>
                                                         {isAdmin && showProfitSections && (
                                                             <>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                                                     <span className={profit.total >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                                        {costPrice > 0 ? `${profit.total?.toFixed(0)} CFA` : 'N/A'}
+                                                                        {costPrice > 0 ? `${formatCfa(profit.total)}` : 'N/A'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
@@ -1530,13 +1531,13 @@ const SaleDetailPage = () => {
                                                     {item.name || 'Service'}
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {Number(item.priceAtSale || 0).toFixed(0)} CFA
+                                                    {formatCfa(Number(item.priceAtSale || 0))}
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     {item.quantity}
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                                    {(Number(item.quantity || 0) * Number(item.priceAtSale || 0)).toFixed(0)} CFA
+                                                    {formatCfa((Number(item.quantity || 0) * Number(item.priceAtSale || 0)))}
                                                 </td>
                                             </tr>
                                         ))}
@@ -1545,7 +1546,6 @@ const SaleDetailPage = () => {
                             </div>
                         </div>
                     )}
-
 
                     <div id="paiements-vente" className="scroll-mt-20 md:hidden mb-4 px-4">
                         <div className="flex gap-2">
@@ -1588,7 +1588,7 @@ const SaleDetailPage = () => {
                                 </h3>
 
                                 <div className="text-sm text-gray-500">
-                                    {filteredPayments.length} / {payments.length} paiement(s) · {filteredPaymentsTotal.toLocaleString('fr-FR')} CFA
+                                    {filteredPayments.length} / {payments.length} paiement(s) · {formatCfa(filteredPaymentsTotal)}
                                 </div>
                             </div>
 
@@ -1698,7 +1698,7 @@ const SaleDetailPage = () => {
                                                                     type: 'payment.delete',
                                                                     targetModel: 'Sale',
                                                                     targetId: sale._id,
-                                                                    targetLabel: `Paiement ${(Number(payment.amount) || 0).toLocaleString('fr-FR')} CFA`,
+                                                                    targetLabel: `Paiement ${formatCfa((Number(payment.amount) || 0))}`,
                                                                     metadata: {
                                                                         paymentId: payment._id,
                                                                         amount: payment.amount,
@@ -1743,11 +1743,11 @@ const SaleDetailPage = () => {
                                                         {payment.method === 'MobileMoney' ? 'Mobile Money' : payment.method}
                                                     </td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                                        {payment.amount?.toFixed(0)} CFA
+                                                        {formatCfa(payment.amount)}
                                                     </td>
                                                     {isAdmin && showProfitSections && (
                                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-[var(--ms-blue)]">
-                                                            {profitRatio > 0 ? `${((Number(payment.amount) || 0) * profitRatio).toFixed(0)} CFA` : '—'}
+                                                            {profitRatio > 0 ? `${formatCfa(((Number(payment.amount) || 0) * profitRatio))}` : '—'}
                                                         </td>
                                                     )}
                                                     <td className="px-4 py-4 whitespace-nowrap">
@@ -1784,7 +1784,7 @@ const SaleDetailPage = () => {
                                                                     type: 'payment.delete',
                                                                     targetModel: 'Sale',
                                                                     targetId: sale._id,
-                                                                    targetLabel: `Paiement ${(Number(payment.amount) || 0).toLocaleString('fr-FR')} CFA`,
+                                                                    targetLabel: `Paiement ${formatCfa((Number(payment.amount) || 0))}`,
                                                                     metadata: {
                                                                         paymentId: payment._id,
                                                                         amount: payment.amount,

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,6 +23,7 @@ import {
 import api from "../services/api";
 import { employeePayrollNewPath } from "../utils/paths";
 import {
+
   buildReminderMessage,
   whatsAppLink,
   telLink,
@@ -111,7 +113,7 @@ const ReminderCard = ({ sale, color, label }) => (
         <p className="fui-caption1">
           Solde restant :{" "}
           <span className="font-medium" style={{ color: 'var(--colorNeutralForeground2)' }}>
-            {sale.balance?.toLocaleString("fr-FR")} CFA
+            {formatCfa(sale.balance)}
           </span>
         </p>
         {sale.nextPaymentDate && (
@@ -163,7 +165,7 @@ const SalaryReminderCard = ({ employee }) => (
         <p className="mt-3 text-sm text-white/75">
           Salaire prévu :{" "}
           <span className="font-semibold text-white">
-            {Number(employee.salary || 0).toLocaleString("fr-FR")} CFA
+            {formatCfa(Number(employee.salary || 0))}
           </span>
         </p>
       </div>
@@ -274,7 +276,7 @@ const FollowUpCard = ({ sale, badge, helperLabel, helperValue, amountLabel, amou
           <p className="fui-caption1 mt-1">
             {amountLabel} :{" "}
             <span className="font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
-              {Number(amount || 0).toLocaleString("fr-FR")} CFA
+              {formatCfa(Number(amount || 0))}
             </span>
           </p>
         </div>
@@ -548,7 +550,7 @@ const RemindersPanel = ({
               </p>
             </div>
             <span className="ms-status-badge ms-status-danger w-fit">
-              {clientRisk.reduce((sum, c) => sum + c.totalBalance, 0).toLocaleString('fr-FR')} CFA au total
+              {formatCfa(clientRisk.reduce((sum, c) => sum + c.totalBalance, 0))} au total
             </span>
           </div>
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -570,7 +572,7 @@ const RemindersPanel = ({
                         {entry.saleCount} vente{entry.saleCount > 1 ? 's' : ''} impayée{entry.saleCount > 1 ? 's' : ''} · {entry.oldestAge} j max
                       </p>
                     </div>
-                    <span className="ms-status-badge ms-status-danger shrink-0">{entry.totalBalance.toLocaleString('fr-FR')} CFA</span>
+                    <span className="ms-status-badge ms-status-danger shrink-0">{formatCfa(entry.totalBalance)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {wa ? (
@@ -728,7 +730,7 @@ const RemindersPanel = ({
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
               <p className="fui-caption1-strong uppercase tracking-wide" style={{ color: 'var(--colorNeutralForeground3)' }}>À recouvrer</p>
-              <p className="mt-0.5 text-sm font-bold" style={{ color: 'var(--colorNeutralForeground1)' }}>{partialSummary.total.toLocaleString("fr-FR")} CFA</p>
+              <p className="mt-0.5 text-sm font-bold" style={{ color: 'var(--colorNeutralForeground1)' }}>{formatCfa(partialSummary.total)}</p>
             </div>
             <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
               <p className="fui-caption1-strong uppercase tracking-wide" style={{ color: 'var(--colorNeutralForeground3)' }}>Clients</p>

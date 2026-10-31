@@ -208,7 +208,7 @@ const RankedBarList = ({ caption, rows, color = 'var(--colorBrandForeground1)' }
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-sm font-medium" style={{ color: 'var(--colorNeutralForeground1)' }}>{row.label}</span>
                     <span className="shrink-0 fui-caption1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground2)' }}>
-                      {row.value.toLocaleString('fr-FR')} CFA
+                      {formatCfa(row.value)}
                     </span>
                   </div>
                   <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full" style={{ background: 'var(--ms-bg-subtle)' }} aria-hidden="true">
@@ -1618,14 +1618,14 @@ const DashboardWorkspace = () => {
       label: "Ventes",
       description: "Enregistrer, encaisser et suivre les commandes.",
       icon: ShoppingCart,
-      meta: `${totalSales.toLocaleString("fr-FR")} CFA`,
+      meta: `${formatCfa(totalSales)}`,
     },
     {
       to: "/bank",
       label: "Caisse",
       description: "Voir les encaissements et mouvements.",
       icon: Landmark,
-      meta: `${totalPaid.toLocaleString("fr-FR")} CFA`,
+      meta: `${formatCfa(totalPaid)}`,
     },
     {
       to: "/products",
@@ -1646,7 +1646,7 @@ const DashboardWorkspace = () => {
       label: "Dépenses",
       description: "Charges, salaires et sorties de caisse.",
       icon: Receipt,
-      meta: `${totalExpenses.toLocaleString("fr-FR")} CFA`,
+      meta: `${formatCfa(totalExpenses)}`,
     },
     {
       to: "/employees",
@@ -1868,13 +1868,13 @@ const DashboardWorkspace = () => {
                   {stat.title}
                 </h2>
                 <p className="mt-1 fui-title2 tabular-nums" style={{ color: stat.style.color }}>
-                  {stat.value.toLocaleString('fr-FR')} <span className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>CFA</span>
+                  {formatCfa(stat.value)}
                 </p>
                 {stat.trend != null && (
                   <p className="mt-1.5 fui-caption1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>
                     {isNoiseDrop
                       ? "Pas encore d'activité sur cette période."
-                      : <>Vs {trendBaseLabel} : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{Number(stat.prevValue).toLocaleString('fr-FR')} CFA</span></>}
+                      : <>Vs {trendBaseLabel} : <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{formatCfa(Number(stat.prevValue))}</span></>}
                   </p>
                 )}
               </article>
@@ -2125,7 +2125,7 @@ const DashboardWorkspace = () => {
                 />
                 <Tooltip
                   formatter={(v, n, props) => {
-                    const val = `${Number(v).toLocaleString("fr-FR")} CFA`;
+                    const val = `${formatCfa(Number(v))}`;
                     // Sur les séries comparées, rappelle la date réelle du point
                     const isPrev = typeof props?.dataKey === "string" && props.dataKey.startsWith("prev");
                     const prevDate = props?.payload?.prevDate;
@@ -2225,7 +2225,7 @@ const DashboardWorkspace = () => {
                   {encaissementHighlights.best.label}
                 </p>
                 <p className="fui-title3 mt-2 tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
-                  {Math.round(encaissementHighlights.best.total).toLocaleString("fr-FR")} CFA
+                  {formatCfa(Math.round(encaissementHighlights.best.total))}
                 </p>
                 <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {encaissementHighlights.helperText}
@@ -2240,7 +2240,7 @@ const DashboardWorkspace = () => {
                   {encaissementHighlights.lowest.label}
                 </p>
                 <p className="fui-title3 mt-2 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
-                  {Math.round(encaissementHighlights.lowest.total).toLocaleString("fr-FR")} CFA
+                  {formatCfa(Math.round(encaissementHighlights.lowest.total))}
                 </p>
                 <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                   {encaissementHighlights.helperText}
@@ -2322,7 +2322,7 @@ const DashboardWorkspace = () => {
                 <div className="col-span-2 rounded-[var(--radiusLarge)] px-3 py-2" style={{ background: 'var(--colorStatusInfoBackground1)', border: '1px solid rgba(15,108,189,0.2)' }}>
                   <p className="fui-caption1-strong uppercase" style={{ color: 'var(--colorBrandForeground1)' }}>Stock concerne</p>
                   <p className="fui-subtitle1 mt-0.5 tabular-nums" style={{ color: 'var(--colorBrandForeground1)' }}>
-                    {Math.round(productSuggestionStockValue).toLocaleString("fr-FR")} CFA
+                    {formatCfa(Math.round(productSuggestionStockValue))}
                   </p>
                 </div>
               </div>
@@ -2394,7 +2394,7 @@ const DashboardWorkspace = () => {
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="text-sm font-bold text-[var(--ms-text-strong)] dark:text-gray-100">
-                        {Math.round(product.price || 0).toLocaleString("fr-FR")} CFA
+                        {formatCfa(Math.round(product.price || 0))}
                       </span>
                       <Link
                         to={`/products/${product._id}`}
@@ -2416,7 +2416,7 @@ const DashboardWorkspace = () => {
               <div className="mt-4 flex justify-end">
                 <Link
                   to="/product-dashboard"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[var(--ms-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--ms-blue-dark)]"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--ms-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--ms-blue-dark)]"
                 >
                   Voir tout le dashboard produits <ArrowRight size={16} />
                 </Link>
@@ -2503,11 +2503,11 @@ const DashboardWorkspace = () => {
               {/* Résumé (cartes KPI unifiées) */}
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 lg:col-span-4">
                 <SalesMetricCard title="Nombre de ventes" value={salesStatsData.salesCount || 0} icon={ShoppingCart} tone="violet" />
-                <SalesMetricCard title="Vente moyenne" value={`${Math.round(salesStatsData.averageSale || 0).toLocaleString("fr-FR")} CFA`} icon={TrendingUp} tone="blue" />
+                <SalesMetricCard title="Vente moyenne" value={`${formatCfa(Math.round(salesStatsData.averageSale || 0))}`} icon={TrendingUp} tone="blue" />
                 <SalesMetricCard title="Produits vendus" value={salesStatsData.totalProducts || 0} icon={Package} tone="amber" />
                 <SalesMetricCard
                   title="Montant encaissé"
-                  value={`${Math.round(salesStatsData.paymentsSummary?.paymentsTotal || 0).toLocaleString("fr-FR")} CFA`}
+                  value={`${formatCfa(Math.round(salesStatsData.paymentsSummary?.paymentsTotal || 0))}`}
                   icon={Coins}
                   tone="emerald"
                   sub={`${salesStatsData.paymentsSummary?.paymentsCount || 0} paiement${(salesStatsData.paymentsSummary?.paymentsCount || 0) > 1 ? "s" : ""}`}
@@ -2577,7 +2577,7 @@ const DashboardWorkspace = () => {
                             <div className="mt-0.5 flex items-center gap-1.5 pl-[18px] text-xs text-[var(--ms-text-muted)]">
                               <span className="font-semibold text-[var(--ms-text)] dark:text-gray-300">{s.count}</span> vente{s.count > 1 ? 's' : ''}
                               <span className="text-gray-300">·</span>
-                              {Math.round(s.amount).toLocaleString("fr-FR")} CFA
+                              {formatCfa(Math.round(s.amount))}
                               {s.linkTo && <span className="ml-auto font-medium text-[var(--ms-blue)] dark:text-[var(--ms-blue)]">Voir →</span>}
                             </div>
                           </>
@@ -2616,7 +2616,7 @@ const DashboardWorkspace = () => {
                     <YAxis tick={{ fontSize: 11, fill: 'var(--colorNeutralForeground3)' }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => Number(v).toLocaleString("fr-FR")} />
                     <Tooltip
                       contentStyle={{ borderRadius: 12, border: '1px solid var(--colorNeutralStroke2)', fontSize: 12 }}
-                      formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} CFA`, 'Ventes']}
+                      formatter={(v) => [`${formatCfa(Number(v))}`, 'Ventes']}
                     />
                     <Line type="monotone" dataKey="total" stroke="#0F6CBD" strokeWidth={3} dot={false} />
                   </LineChart>
@@ -2650,7 +2650,7 @@ const DashboardWorkspace = () => {
                     />
                     <Tooltip
                       contentStyle={{ borderRadius: 12, border: '1px solid var(--colorNeutralStroke2)', fontSize: 12 }}
-                      formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} CFA`, 'Total']}
+                      formatter={(v) => [`${formatCfa(Number(v))}`, 'Total']}
                     />
                     <Bar dataKey="total" fill="#107C10" radius={[6, 6, 0, 0]} maxBarSize={48} />
                   </BarChart>
@@ -2905,7 +2905,7 @@ const PerfTile = ({ meta, entry, total = 0, prevTotal }) => {
       </div>
 
       <p className="mt-3 text-xl font-bold tabular-nums" style={{ color: hasTotal ? meta.fg : "var(--ms-text-muted)" }}>
-        {hasTotal ? `${Math.round(total).toLocaleString("fr-FR")} CFA` : "—"}
+        {hasTotal ? `${formatCfa(Math.round(total))}` : "—"}
       </p>
       <p className="text-[11px] text-[var(--ms-text-muted)]">Total de la période</p>
 
@@ -2913,7 +2913,7 @@ const PerfTile = ({ meta, entry, total = 0, prevTotal }) => {
         {hasRecord ? (
           <p className="text-[11px] text-[var(--ms-text-muted)]">
             <span className="font-semibold capitalize text-[var(--ms-text)] dark:text-gray-300">Record : {recordDate}</span>
-            {" · "}{Math.round(entry.totalAmount).toLocaleString("fr-FR")} CFA
+            {" · "}{formatCfa(Math.round(entry.totalAmount))}
             {entry.count > 0 ? ` (${entry.count} ${meta.noun}${entry.count > 1 ? "s" : ""})` : ""}
           </p>
         ) : (

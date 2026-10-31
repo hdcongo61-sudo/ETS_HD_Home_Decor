@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useResponsiveTable from '../hooks/useResponsiveTable';
@@ -12,6 +13,7 @@ import {
 import { expensesApi } from '../features/expenses/api';
 import { salesApi } from '../features/sales/api';
 import {
+
   ChartCard,
   CommandBar,
   DataTable,
@@ -31,7 +33,7 @@ const categoryLabels = {
 };
 
 const formatCFA = (value) =>
-  `${Math.round(Number(value) || 0).toLocaleString('fr-FR')} CFA`;
+  `${formatCfa(Math.round(Number(value) || 0))}`;
 
 const getMonthValue = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;

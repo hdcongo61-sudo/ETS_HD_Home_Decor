@@ -1,6 +1,6 @@
+import { formatCfa } from '../../utils/format';
 import React from 'react';
 import { getSaleActivity, getSaleWorkflow } from './saleWorkflow';
-import { formatCfa } from '../../utils/format';
 
 export default function SaleWorkflowPanel({ sale, onPayment, onDelivery, renderReceipt, onRefresh }) {
   const workflow = getSaleWorkflow(sale);

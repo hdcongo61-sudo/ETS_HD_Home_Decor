@@ -1,5 +1,6 @@
 // Exemple d'utilisation d'AdvancedFilters dans la page Sales
 
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useMemo } from 'react';
 import AdvancedFilters from '../components/AdvancedFilters';
 import { SALES_FILTERS, populateDynamicOptions } from '../config/filterConfigs';
@@ -146,7 +147,7 @@ const SalesWithFilters = () => {
       sale.reference || '',
       new Date(sale.createdAt).toLocaleDateString('fr-FR'),
       sale.client?.name || 'Client inconnu',
-      (sale.totalAmount || 0).toLocaleString('fr-FR') + ' CFA',
+      formatCfa(sale.totalAmount || 0),
       sale.paymentStatus || '',
       sale.deliveryStatus || '',
     ]);
@@ -264,7 +265,7 @@ const SalesWithFilters = () => {
                     <td>{sale.reference}</td>
                     <td>{new Date(sale.createdAt).toLocaleDateString('fr-FR')}</td>
                     <td>{sale.client?.name || 'Client inconnu'}</td>
-                    <td>{(sale.totalAmount || 0).toLocaleString('fr-FR')} CFA</td>
+                    <td>{formatCfa((sale.totalAmount || 0))}</td>
                     <td>{sale.paymentStatus}</td>
                     <td>
                       <button>Voir</button>

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -75,7 +76,7 @@ const SaleSummary = ({ sales = [], dateRange = {} }) => {
     new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   // Formateur de montant pour le tooltip
-  const formatCurrency = (value) => `${value.toLocaleString('fr-FR')} CFA`;
+  const formatCurrency = (value) => `${formatCfa(value)}`;
 
   if (sales.length === 0) {
     return (

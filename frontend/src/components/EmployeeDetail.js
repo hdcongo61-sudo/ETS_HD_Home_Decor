@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import AppLoader from './AppLoader';
 import AuthContext from '../context/AuthContext';
-import { formatCfa } from '../utils/format';
+
 import { KPICard, StatusBadge } from './business';
 import {
   employeeEditPath,
@@ -436,7 +437,7 @@ const EmployeeDetail = () => {
                   </svg>
                 }
                 label="Salaire"
-                value={`${new Intl.NumberFormat('fr-FR').format(employee.salary)} CFA`}
+                value={formatCfa(employee.salary)}
               />
 
               <DetailItem
@@ -574,19 +575,19 @@ const EmployeeDetail = () => {
                             <div className="rounded-md bg-white/80 p-3 shadow-inner">
                               <p className="font-medium text-[var(--ms-text-muted)]">Salaire de base</p>
                               <p className="mt-1 text-sm font-semibold text-[var(--ms-text-strong)]">
-                                {new Intl.NumberFormat('fr-FR').format(slip.baseSalary)} CFA
+                                {formatCfa(slip.baseSalary)}
                               </p>
                             </div>
                             <div className="rounded-md bg-white/80 p-3 shadow-inner">
                               <p className="font-medium text-[var(--ms-text-muted)]">Primes</p>
                               <p className="mt-1 text-sm font-semibold text-[var(--ms-success)]">
-                                + {new Intl.NumberFormat('fr-FR').format(slip.bonuses || 0)} CFA
+                                + {formatCfa(slip.bonuses || 0)}
                               </p>
                             </div>
                             <div className="rounded-md bg-white/80 p-3 shadow-inner">
                               <p className="font-medium text-[var(--ms-text-muted)]">Déductions</p>
                               <p className="mt-1 text-sm font-semibold text-red-500">
-                                - {new Intl.NumberFormat('fr-FR').format(slip.deductions || 0)} CFA
+                                - {formatCfa(slip.deductions || 0)}
                               </p>
                             </div>
                             <div className="rounded-md bg-white/80 p-3 shadow-inner">
@@ -747,7 +748,7 @@ const EmployeeDetail = () => {
                   <div className="rounded-[var(--radiusLarge)] bg-[var(--ms-bg-subtle)] px-4 py-2 sm:text-right">
                     <div className="text-xs uppercase tracking-wide text-[var(--ms-text-muted)]">Cumul des avances</div>
                     <div className="text-lg font-semibold text-[var(--ms-text-strong)]">
-                      {new Intl.NumberFormat('fr-FR').format(advancesTotal)} CFA
+                      {formatCfa(advancesTotal)}
                     </div>
                   </div>
                 )}
@@ -781,7 +782,7 @@ const EmployeeDetail = () => {
                         </p>
                       </div>
                       <span className="shrink-0 font-semibold text-[var(--ms-danger)]">
-                        - {new Intl.NumberFormat('fr-FR').format(item.amount)} CFA
+                        - {formatCfa(item.amount)}
                       </span>
                     </div>
                   ))}

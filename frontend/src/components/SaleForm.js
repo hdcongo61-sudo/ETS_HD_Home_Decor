@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useContext, useMemo, useRef, lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
 import toast from 'react-hot-toast';
@@ -172,8 +173,6 @@ const SaleFormFields = ({
     } catch { setDraftStorageError(true); }
   }, [draftReady, draftKey, selectedClient, selectedProducts, selectedServices, saleType, paymentMethod, paymentAmount, note, saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil]);
 
-
-	
   useEffect(() => {
     if (normalizedInitialProducts.length > 0) {
       setProducts(normalizedInitialProducts);
@@ -293,7 +292,7 @@ const SaleFormFields = ({
       if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) return 'Quantité invalide';
       if (totals.get(item.product) > Number(product.stock)) return `Stock insuffisant (${product.stock} disponibles au total)`;
       if (!Number.isFinite(Number(item.price)) || Number(item.price) < 0) return 'Prix invalide';
-      if (item.price < product.costPrice) return `Prix trop bas (min: ${product.costPrice} CFA)`;
+      if (item.price < product.costPrice) return `Prix trop bas (min: ${formatCfa(product.costPrice)})`;
       return null;
     });
     setErrors(newErrors);
@@ -670,9 +669,9 @@ const SaleFormFields = ({
           </div>
         </header>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Total</dt><dd className="mt-1 font-semibold tabular-nums">{saleTotal.toLocaleString('fr-FR')} CFA</dd></div>
-          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Encaissé</dt><dd className="mt-1 font-semibold tabular-nums">{paid.toLocaleString('fr-FR')} CFA</dd></div>
-          <div className="col-span-2 rounded-md border border-[var(--ms-border)] p-3 sm:col-span-1"><dt className="text-xs text-[var(--ms-text-muted)]">À suivre</dt><dd className="mt-1 font-semibold tabular-nums">{balance > 0 ? `${balance.toLocaleString('fr-FR')} CFA à encaisser` : markAsDelivered ? 'Livraison confirmée' : 'Paiement complet'}</dd></div>
+          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Total</dt><dd className="mt-1 font-semibold tabular-nums">{formatCfa(saleTotal)}</dd></div>
+          <div className="rounded-md border border-[var(--ms-border)] p-3"><dt className="text-xs text-[var(--ms-text-muted)]">Encaissé</dt><dd className="mt-1 font-semibold tabular-nums">{formatCfa(paid)}</dd></div>
+          <div className="col-span-2 rounded-md border border-[var(--ms-border)] p-3 sm:col-span-1"><dt className="text-xs text-[var(--ms-text-muted)]">À suivre</dt><dd className="mt-1 font-semibold tabular-nums">{balance > 0 ? `${formatCfa(balance)} à encaisser` : markAsDelivered ? 'Livraison confirmée' : 'Paiement complet'}</dd></div>
         </dl>
         <div className="space-y-2">
           <p className="text-sm font-semibold text-[var(--ms-text)]">Prochaine étape</p>
@@ -743,7 +742,7 @@ const SaleFormFields = ({
                 setDocumentMode(mode.key);
                 setFormError('');
               }}
-              className={`min-h-[40px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${
+              className={`min-h-[44px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${
                 documentMode === mode.key
                   ? 'bg-[var(--ms-blue)] text-white shadow-[var(--ms-shadow-sm)]'
                   : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'
@@ -801,7 +800,7 @@ const SaleFormFields = ({
               <button
                 type="button"
                 onClick={() => setShowScanner((v) => !v)}
-                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-[var(--radiusMedium)] border px-2.5 text-xs font-semibold transition-colors ${showScanner ? 'border-transparent bg-[var(--ms-blue)] text-white' : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-[var(--ms-surface-muted)]'}`}
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radiusMedium)] border px-2.5 text-xs font-semibold transition-colors ${showScanner ? 'border-transparent bg-[var(--ms-blue)] text-white' : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] text-[var(--ms-text)] hover:bg-[var(--ms-surface-muted)]'}`}
                 aria-pressed={showScanner}
               >
                 <ScanLine className="h-3.5 w-3.5" /> Scanner
@@ -870,7 +869,7 @@ const SaleFormFields = ({
                       <button
                         type="button"
                         onClick={() => removeProduct(index)}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
                         aria-label={`Supprimer l'article ${index + 1}`}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -930,7 +929,7 @@ const SaleFormFields = ({
                                     {p.name}
                                   </span>
                                   <span className="mt-0.5 block text-xs text-[var(--ms-text-muted)]">
-                                    Stock : {p.stock} · Prix : {(p.price || 0).toLocaleString('fr-FR')} CFA
+                                    Stock : {p.stock} · Prix : {formatCfa((p.price || 0))}
                                   </span>
                                 </span>
                                 {isSelected && (
@@ -987,7 +986,7 @@ const SaleFormFields = ({
                       />
                       <div className="text-sm text-[var(--ms-text-muted)] min-w-0">
                         <p className="font-medium text-[var(--ms-text)] truncate">{selectedProduct.name}</p>
-                        <p>Stock : {selectedProduct.stock} · Catalogue : {(selectedProduct.price || 0).toLocaleString('fr-FR')} CFA</p>
+                        <p>Stock : {selectedProduct.stock} · Catalogue : {formatCfa((selectedProduct.price || 0))}</p>
                       </div>
                     </div>
                   )}
@@ -1037,7 +1036,7 @@ const SaleFormFields = ({
                       <button
                         type="button"
                         onClick={() => removeService(index)}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
                         aria-label={`Supprimer le service ${index + 1}`}
                       >
                         Retirer
@@ -1055,7 +1054,7 @@ const SaleFormFields = ({
                     >
                       <option value="">Sélectionner un service…</option>
                       {services.map((s) => (
-                        <option key={s._id} value={s._id}>{s.name} ({(s.price || 0).toLocaleString('fr-FR')} CFA)</option>
+                        <option key={s._id} value={s._id}>{s.name} ({formatCfa((s.price || 0))})</option>
                       ))}
                     </select>
                   </div>
@@ -1307,7 +1306,7 @@ const SaleFormFields = ({
             </div>
             {promoApplied && (
               <p className="text-sm text-[var(--ms-success)]">
-                {promoApplied.label || promoApplied.code} : −{promoDiscount.toLocaleString('fr-FR')} CFA
+                {promoApplied.label || promoApplied.code} : −{formatCfa(promoDiscount)}
               </p>
             )}
           </div>
@@ -1342,18 +1341,18 @@ const SaleFormFields = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
               <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
                 <p className="text-[var(--ms-text-muted)]">Total vente</p>
-                <p className="font-semibold text-[var(--ms-text)]">{payableTotal.toLocaleString('fr-FR')} CFA</p>
+                <p className="font-semibold text-[var(--ms-text)]">{formatCfa(payableTotal)}</p>
                 {promoDiscount > 0 && (
-                  <p className="text-xs text-[var(--ms-success)]">Remise −{promoDiscount.toLocaleString('fr-FR')} CFA</p>
+                  <p className="text-xs text-[var(--ms-success)]">Remise −{formatCfa(promoDiscount)}</p>
                 )}
               </div>
               <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
                 <p className="text-[var(--ms-text-muted)]">Paye</p>
-                <p className="font-semibold text-[var(--ms-success)]">{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</p>
+                <p className="font-semibold text-[var(--ms-success)]">{formatCfa(normalizedPaymentAmount)}</p>
               </div>
               <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
                 <p className="text-[var(--ms-text-muted)]">Reste</p>
-                <p className="font-semibold text-[var(--ms-warning)]">{remainingBalance.toLocaleString('fr-FR')} CFA</p>
+                <p className="font-semibold text-[var(--ms-warning)]">{formatCfa(remainingBalance)}</p>
               </div>
             </div>
 
@@ -1378,24 +1377,24 @@ const SaleFormFields = ({
         {/* TOTAL */}
         <div className={`${stageClass(3)} rounded-lg border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-5 py-4`}>
           <div className="mb-3 flex items-center justify-between"><h4 id="sale-review-title" tabIndex={-1} className="font-semibold">{documentMode === 'proforma' ? 'Vérification de la proforma' : 'Vérification finale'}</h4><button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => goToStage(2)}>Modifier</button></div>
-          <div className="grid gap-2 text-sm sm:grid-cols-2"><p>Client : <strong>{safeClients.find(client => client._id === selectedClient)?.name || '—'}</strong></p><p>Mode : <strong>{documentMode === 'proforma' ? 'Facture proforma' : getSaleTypeText(saleType)}</strong></p>{documentMode === 'sale' && <><p>Paiement : <strong>{paymentMethod === 'MobileMoney' ? 'Mobile Money' : paymentMethod === 'credit' ? 'Crédit' : 'Espèces'}</strong></p><p>Payé maintenant : <strong>{normalizedPaymentAmount.toLocaleString('fr-FR')} CFA</strong></p><p>Reste à payer : <strong>{remainingBalance.toLocaleString('fr-FR')} CFA</strong></p></>}{documentMode === 'proforma' && <p>Valide jusqu’au : <strong>{validUntil || '—'}</strong></p>}</div>
+          <div className="grid gap-2 text-sm sm:grid-cols-2"><p>Client : <strong>{safeClients.find(client => client._id === selectedClient)?.name || '—'}</strong></p><p>Mode : <strong>{documentMode === 'proforma' ? 'Facture proforma' : getSaleTypeText(saleType)}</strong></p>{documentMode === 'sale' && <><p>Paiement : <strong>{paymentMethod === 'MobileMoney' ? 'Mobile Money' : paymentMethod === 'credit' ? 'Crédit' : 'Espèces'}</strong></p><p>Payé maintenant : <strong>{formatCfa(normalizedPaymentAmount)}</strong></p><p>Reste à payer : <strong>{formatCfa(remainingBalance)}</strong></p></>}{documentMode === 'proforma' && <p>Valide jusqu’au : <strong>{validUntil || '—'}</strong></p>}</div>
           <ul className="mt-3 divide-y divide-[var(--ms-border)] rounded-lg border border-[var(--ms-border)] bg-[var(--ms-white)]" aria-label="Articles à vérifier">
             {selectedProducts.filter(item => item.product).map((item, index) => {
               const product = products.find(candidate => candidate._id === item.product);
-              return <li key={`${item.product}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">{product?.name || 'Produit à sélectionner'}</strong><span>{item.quantity} × {Number(item.price || 0).toLocaleString('fr-FR')} CFA</span></span><strong className="shrink-0 tabular-nums">{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('fr-FR')} CFA</strong></li>;
+              return <li key={`${item.product}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">{product?.name || 'Produit à sélectionner'}</strong><span>{item.quantity} × {formatCfa(Number(item.price || 0))}</span></span><strong className="shrink-0 tabular-nums">{formatCfa((Number(item.quantity || 0) * Number(item.price || 0)))}</strong></li>;
             })}
             {selectedServices.filter(item => item.service).map((item, index) => {
               const service = services.find(candidate => candidate._id === item.service);
-              return <li key={`${item.service}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">🛠️ {service?.name || 'Service à sélectionner'}</strong><span>{item.quantity} × {Number(item.price || 0).toLocaleString('fr-FR')} CFA</span></span><strong className="shrink-0 tabular-nums">{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('fr-FR')} CFA</strong></li>;
+              return <li key={`${item.service}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">{service?.name || 'Service à sélectionner'}</strong><span className="text-[var(--ms-text-muted)]">{item.quantity} × {formatCfa(Number(item.price || 0))}</span></span><strong className="shrink-0 tabular-nums">{formatCfa((Number(item.quantity || 0) * Number(item.price || 0)))}</strong></li>;
             })}
           </ul>
           {note && <p className="mt-2 text-sm">Note : {note}</p>}
           <div className="mt-3 space-y-1 border-t border-[var(--ms-border)] pt-3">
-            <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-text-muted)]">Sous-total</span><span className="tabular-nums">{totalAmount.toLocaleString('fr-FR')} CFA</span></div>
+            <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-text-muted)]">Sous-total</span><span className="tabular-nums">{formatCfa(totalAmount)}</span></div>
             {promoDiscount > 0 && (
-              <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-success)]">Remise {promoApplied?.code ? `(${promoApplied.code})` : ''}</span><span className="tabular-nums text-[var(--ms-success)]">−{promoDiscount.toLocaleString('fr-FR')} CFA</span></div>
+              <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-success)]">Remise {promoApplied?.code ? `(${promoApplied.code})` : ''}</span><span className="tabular-nums text-[var(--ms-success)]">−{formatCfa(promoDiscount)}</span></div>
             )}
-            <div className="flex items-center justify-between"><span className="font-semibold">Total</span><span className="text-xl font-bold tabular-nums">{payableTotal.toLocaleString('fr-FR')} CFA</span></div>
+            <div className="flex items-center justify-between"><span className="font-semibold">Total</span><span className="text-xl font-bold tabular-nums">{formatCfa(payableTotal)}</span></div>
           </div>
         </div>
 

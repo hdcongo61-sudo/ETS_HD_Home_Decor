@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React from 'react';
 import { AlertTriangle, FileText, RefreshCw, WifiOff } from 'lucide-react';
 import useOfflineSync from '../hooks/useOfflineSync';
@@ -30,7 +31,7 @@ const describeOperation = (operation) => {
     const details = [
       data.description,
       data.category,
-      Number.isFinite(Number(data.amount)) && data.amount !== '' ? `${Number(data.amount).toLocaleString('fr-FR')} CFA` : null,
+      Number.isFinite(Number(data.amount)) && data.amount !== '' ? `${formatCfa(Number(data.amount))}` : null,
     ].filter(Boolean);
     return { title: 'Nouvelle dépense', details };
   }

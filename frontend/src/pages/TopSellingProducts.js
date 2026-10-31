@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { catalogApi } from '../features/catalog/api';
@@ -59,13 +60,13 @@ const TopSellingProducts = () => {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <ProductMetricCard
           title="Revenu Total"
-          value={`${data.reduce((sum, p) => sum + (p.revenue || 0), 0).toLocaleString()} CFA`}
+          value={`${formatCfa(data.reduce((sum, p) => sum + (p.revenue || 0), 0))}`}
           tone="sky"
           icon={Wallet}
         />
         <ProductMetricCard
           title="Profit Total"
-          value={`${data.reduce((sum, p) => sum + (p.profit || 0), 0).toLocaleString()} CFA`}
+          value={`${formatCfa(data.reduce((sum, p) => sum + (p.profit || 0), 0))}`}
           tone="emerald"
           icon={TrendingUp}
         />
@@ -127,7 +128,7 @@ const TopSellingProducts = () => {
               </div>
               <div>
                 <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix unitaire</p>
-                <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+                <p className="fui-body1-strong tabular-nums">{formatCfa((p.price || 0))}</p>
               </div>
             </div>
 
@@ -135,13 +136,13 @@ const TopSellingProducts = () => {
               <div>
                 <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Revenu</p>
                 <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusSuccessForeground1)'}}>
-                  {(p.revenue || 0).toLocaleString('fr-FR')} CFA
+                  {formatCfa((p.revenue || 0))}
                 </p>
               </div>
               <div>
                 <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Profit</p>
                 <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusSuccessForeground1)'}}>
-                  {(p.profit || 0).toLocaleString('fr-FR')} CFA
+                  {formatCfa((p.profit || 0))}
                 </p>
               </div>
               <div>
@@ -194,10 +195,10 @@ const TopSellingProducts = () => {
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground2)]">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground2)]">{p.sold?.toLocaleString() || 0}</td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground1)] font-semibold">
-                  {p.revenue?.toLocaleString() || '—'} CFA
+                  {p.revenue != null ? formatCfa(p.revenue) : '—'}
                 </td>
                 <td className="px-6 py-4 text-emerald-700 font-semibold">
-                  {p.profit?.toLocaleString() || '—'} CFA
+                  {p.profit != null ? formatCfa(p.profit) : '—'}
                 </td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground2)] font-semibold">
                   {p.margin ? p.margin.toFixed(1) + '%' : '—'}

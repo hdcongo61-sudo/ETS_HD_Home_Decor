@@ -275,7 +275,7 @@ const UserForm = ({ user, onSubmit, onCancel, embedded = false, linkedEmployeeId
                         </div>
                     )}
                     {photoPreview && (
-                        <button type="button" onClick={handlePhotoRemove} className="absolute -top-2 -right-2 bg-[var(--ms-white)] border border-[var(--ms-border)] text-[var(--ms-text-muted)] rounded-full p-1.5 shadow-[var(--ms-shadow-sm)] hover:bg-[var(--ms-bg-subtle)] min-h-[32px] min-w-[32px] flex items-center justify-center" aria-label="Retirer la photo">
+                        <button type="button" onClick={handlePhotoRemove} className="absolute -top-2 -right-2 bg-[var(--ms-white)] border border-[var(--ms-border)] text-[var(--ms-text-muted)] rounded-full p-1.5 shadow-[var(--ms-shadow-sm)] hover:bg-[var(--ms-bg-subtle)] min-h-[44px] min-w-[32px] flex items-center justify-center" aria-label="Retirer la photo">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     )}

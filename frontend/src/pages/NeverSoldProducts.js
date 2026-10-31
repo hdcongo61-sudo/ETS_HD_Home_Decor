@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -147,7 +148,7 @@ const exportToPDF = async () => {
   doc.setFontSize(12);
   doc.setTextColor(30, 30, 30);
   doc.text(
-    `Valeur totale du stock des produits jamais vendus : ${totalStockValue.toLocaleString()} CFA`,
+    `Valeur totale du stock des produits jamais vendus : ${formatCfa(totalStockValue)}`,
     40,
     doc.lastAutoTable.finalY + 30
   );
@@ -166,7 +167,6 @@ const exportToPDF = async () => {
   const pdfName = `Produits_Jamais_Vendus_${new Date().toLocaleDateString()}.pdf`;
   doc.save(pdfName);
 };
-
 
   if (loading)
     return (
@@ -201,7 +201,7 @@ const exportToPDF = async () => {
       {/* Barre résumé */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ProductMetricCard label="Produits Jamais Vendus" title="Produits jamais vendus" value={stats.total} tone="violet" icon={PackageX} />
-        <ProductMetricCard title="Valeur du stock" value={`${(stats.stockValue || 0).toLocaleString()} CFA`} tone="emerald" icon={Wallet} />
+        <ProductMetricCard title="Valeur du stock" value={`${formatCfa((stats.stockValue || 0))}`} tone="emerald" icon={Wallet} />
         <ProductMetricCard title="% produits" value={stats.totalProducts ? ((stats.total / stats.totalProducts) * 100).toFixed(1) + '%' : '0%'} tone="sky" icon={Percent} />
         <ProductMetricCard title="% valeur totale" value={stats.totalStockValue ? ((stats.stockValue / stats.totalStockValue) * 100).toFixed(1) + '%' : '0%'} tone="amber" icon={PackageCheck} />
       </div>
@@ -268,7 +268,7 @@ const exportToPDF = async () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(v) => [`${v.toLocaleString()} CFA`, 'Valeur']} />
+              <Tooltip formatter={(v) => [`${formatCfa(v)}`, 'Valeur']} />
               <Bar
                 dataKey={(p) => (p.stock || 0) * (p.price || 0)}
                 name="Valeur du Stock"
@@ -323,7 +323,7 @@ const exportToPDF = async () => {
                         {product.supplierName || '—'}
                       </td>
                       <td className="px-6 py-3 text-[var(--colorNeutralForeground2)] font-medium">
-                        {product.price?.toLocaleString()} CFA
+                        {formatCfa(product.price)}
                       </td>
                       <td className="px-6 py-3 text-[var(--colorNeutralForeground2)]">{product.stock}</td>
                       <td className="px-6 py-3 flex gap-3">
@@ -361,7 +361,7 @@ const exportToPDF = async () => {
                       <p className="text-xs text-[var(--colorNeutralForeground3)]">{product.category || 'Non catégorisé'}</p>
                     </div>
                     <span className="text-xs text-[var(--colorNeutralForeground3)]">
-                      {product.price?.toLocaleString()} CFA
+                      {formatCfa(product.price)}
                     </span>
                   </div>
                   <p className="text-sm text-[var(--colorNeutralForeground3)] mt-1">

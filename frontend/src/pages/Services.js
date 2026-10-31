@@ -1,8 +1,8 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Briefcase, Plus, Trash2 } from 'lucide-react';
 import api from '../services/api';
-import { formatCfa } from '../utils/format';
 
 // Catalogue de services (hors-stock) — vertical « services ».
 const Services = () => {

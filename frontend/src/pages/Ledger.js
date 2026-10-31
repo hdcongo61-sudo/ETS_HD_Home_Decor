@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -10,7 +11,6 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
-import { formatCfa } from '../utils/format';
 
 const ACCOUNT_TYPES = {
   asset: 'Actif',
@@ -209,7 +209,7 @@ const Ledger = () => {
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-[var(--radiusMedium)] px-3 text-sm font-semibold transition-colors ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radiusMedium)] px-3 text-sm font-semibold transition-colors ${
               tab === key ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'
             }`}
           >
@@ -270,7 +270,7 @@ const Ledger = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button type="button" onClick={addLine} className="ms-button ms-button-secondary min-h-[40px]">
+                    <button type="button" onClick={addLine} className="ms-button ms-button-secondary min-h-[44px]">
                       <Plus className="h-4 w-4" /> Ajouter une ligne
                     </button>
                     <div className="flex items-center gap-4 text-sm">

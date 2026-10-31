@@ -77,7 +77,7 @@ const AdjustModal = ({ client, onClose, onDone }) => {
               key={m.key}
               type="button"
               onClick={() => setMode(m.key)}
-              className={`min-h-[40px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${mode === m.key ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'}`}
+              className={`min-h-[44px] rounded-[var(--radiusMedium)] text-sm font-semibold transition-colors ${mode === m.key ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)] hover:text-[var(--ms-text)]'}`}
             >
               {m.label}
             </button>

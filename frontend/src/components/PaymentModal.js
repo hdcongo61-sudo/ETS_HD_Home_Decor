@@ -1,11 +1,12 @@
 import React, { useEffect, useContext, useState, useRef } from 'react';
+import { formatCfa } from '../utils/format';
 import { Banknote, CreditCard, Smartphone } from 'lucide-react';
 import Modal from './Modal';
 import AuthContext from '../context/AuthContext';
 import { getErrorMessage } from '../utils/errorModel';
 
 const noop = () => {};
-const formatAmount = (value) => `${Number(value || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} CFA`;
+const formatAmount = (value) => formatCfa(value);
 
 export const PaymentForm = ({
   sale,

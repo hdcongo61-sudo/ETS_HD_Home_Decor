@@ -1472,7 +1472,7 @@ const Settings = () => {
                             {p.method === 'mobile_money' ? 'Mobile money' : p.method === 'cash' ? 'Espèces' : p.method === 'transfer' ? 'Virement' : p.method}
                             {p.note ? ` · ${p.note}` : ''}
                           </span>
-                          <span className="fui-body1-strong">{Number(p.amount || 0).toLocaleString('fr-FR')} CFA</span>
+                          <span className="fui-body1-strong">{formatCfa(Number(p.amount || 0))}</span>
                         </li>
                       );
                     })}

@@ -1,7 +1,7 @@
+import { formatCfa } from './format';
 import { getLogoDataUrl } from './appBranding';
 
-const formatAmount = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, '.')} CFA`;
+const formatAmount = (value) => formatCfa(value);
 
 const formatDate = (value) => {
   const date = value ? new Date(value) : new Date();

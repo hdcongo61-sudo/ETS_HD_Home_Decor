@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { catalogApi } from '../features/catalog/api';
@@ -92,7 +93,7 @@ const CriticalStockProducts = () => {
         <ProductMetricCard title="Produits critiques" value={products.length} tone="amber" icon={AlertTriangle} />
         <ProductMetricCard
           title="Valeur Totale du Stock"
-          value={`${totalValue.toLocaleString()} CFA`}
+          value={`${formatCfa(totalValue)}`}
           tone="sky"
           icon={Wallet}
         />
@@ -155,12 +156,12 @@ const CriticalStockProducts = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix</p>
-                <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+                <p className="fui-body1-strong tabular-nums">{formatCfa((p.price || 0))}</p>
               </div>
               <div>
                 <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Valeur Totale</p>
                 <p className="fui-body1-strong tabular-nums" style={{color: 'var(--colorStatusDangerForeground1)'}}>
-                  {((p.stock || 0) * (p.price || 0)).toLocaleString('fr-FR')} CFA
+                  {formatCfa(((p.stock || 0) * (p.price || 0)))}
                 </p>
               </div>
             </div>
@@ -211,7 +212,7 @@ const CriticalStockProducts = () => {
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground2)]">{p.price?.toLocaleString() || '—'}</td>
                 <td className="px-6 py-4 text-[var(--colorStatusDangerForeground1)] font-semibold">{p.stock}</td>
                 <td className="px-6 py-4 text-[var(--colorNeutralForeground1)] font-semibold">
-                  {((p.stock || 0) * (p.price || 0)).toLocaleString()} CFA
+                  {formatCfa(((p.stock || 0) * (p.price || 0)))}
                 </td>
                 <td className="px-6 py-4">
                   <button

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import api from '../services/api';
@@ -145,7 +146,7 @@ const ProfitAnalysis = () => {
         <div className={`${cardClass} p-4 sm:p-5`}>
           <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Bénéfice total</p>
           <p className="text-base sm:text-lg font-semibold text-[var(--ms-success)] tabular-nums break-words">
-            {generalStats.totalProfit?.toLocaleString('fr-FR')} CFA
+            {formatCfa(generalStats.totalProfit)}
           </p>
         </div>
         <div className={`${cardClass} p-4 sm:p-5`}>
@@ -157,7 +158,7 @@ const ProfitAnalysis = () => {
         <div className={`${cardClass} p-4 sm:p-5`}>
           <p className="text-xs sm:text-sm font-medium text-[var(--ms-text-muted)] mb-1">Bénéfice moyen/vente</p>
           <p className="text-base sm:text-lg font-semibold text-purple-600 tabular-nums break-words">
-            {generalStats.averageProfitPerSale?.toLocaleString('fr-FR')} CFA
+            {formatCfa(generalStats.averageProfitPerSale)}
           </p>
         </div>
         <div className={`${cardClass} p-4 sm:p-5`}>
@@ -209,10 +210,10 @@ const ProfitAnalysis = () => {
                   <tr key={index} className="border-b border-[var(--ms-border)] last:border-0 hover:bg-[var(--ms-bg-subtle)]/50">
                     <td className="py-3 pr-4 font-medium text-[var(--ms-text-strong)]">{product.productName}</td>
                     <td className="py-3 px-2 text-right tabular-nums">{product.totalQuantity}</td>
-                    <td className="py-3 px-2 text-right tabular-nums">{product.totalRevenue?.toLocaleString('fr-FR')} CFA</td>
-                    <td className="py-3 px-2 text-right tabular-nums">{product.totalCost?.toLocaleString('fr-FR')} CFA</td>
+                    <td className="py-3 px-2 text-right tabular-nums">{formatCfa(product.totalRevenue)}</td>
+                    <td className="py-3 px-2 text-right tabular-nums">{formatCfa(product.totalCost)}</td>
                     <td className="py-3 px-2 text-right tabular-nums font-semibold text-[var(--ms-success)]">
-                      {product.totalProfit?.toLocaleString('fr-FR')} CFA
+                      {formatCfa(product.totalProfit)}
                     </td>
                     <td className="py-3 pl-2 text-right tabular-nums">{product.profitMargin?.toFixed(2)}%</td>
                   </tr>

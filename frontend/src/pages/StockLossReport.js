@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { catalogApi } from '../features/catalog/api';
@@ -7,7 +8,7 @@ import {
 } from '../components/ProductAnalyticsUI';
 import { PackageMinus, Coins, Hammer, Gift, Boxes } from 'lucide-react';
 
-const fmtCFA = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
+const fmtCFA = (v) => `${formatCfa(Number(v || 0))}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 
 const REASON = {

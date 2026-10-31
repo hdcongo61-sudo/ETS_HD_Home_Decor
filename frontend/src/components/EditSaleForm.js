@@ -121,7 +121,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
             const priceValue = Number(item.price);
             if (!Number.isFinite(priceValue) || priceValue <= 0) return "Prix doit être positif";
             if (priceValue < (stockInfos[item.product]?.costPrice || 0)) {
-                return `Prix trop bas (min: ${stockInfos[item.product]?.costPrice} CFA)`;
+                return `Prix trop bas (min: ${cfa(stockInfos[item.product]?.costPrice)})`;
             }
             return null;
         });
@@ -321,7 +321,7 @@ const EditSaleForm = ({ sale, clients, onUpdate, onCancel }) => {
                                             <button
                                                 type="button"
                                                 onClick={() => removeProduct(index)}
-                                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
+                                                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
                                                 aria-label={`Supprimer la ligne ${index + 1}`}
                                             >
                                                 <Trash2 className="h-4 w-4" />

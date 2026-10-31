@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { format, isValid } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -119,7 +120,7 @@ const DayDetailsModal = ({
   /* ------------------- Utilities ------------------- */
   const formatCurrency = (v) => {
     if (!v || isNaN(v)) return "0 CFA";
-    return `${Number(v).toLocaleString("fr-FR")} CFA`;
+    return `${formatCfa(Number(v))}`;
   };
 
   const safeFormatDate = (d, fmt = "dd MMMM yyyy") => {
@@ -396,7 +397,7 @@ const DayDetailsModal = ({
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id)}
-                className={`min-h-[40px] flex-1 rounded-lg px-1.5 text-xs font-semibold transition-colors ${
+                className={`min-h-[44px] flex-1 rounded-lg px-1.5 text-xs font-semibold transition-colors ${
                   activeTab === t.id
                     ? "bg-[var(--ms-blue)] text-white"
                     : "text-[var(--ms-text-muted)] hover:bg-[var(--ms-bg-subtle)]"

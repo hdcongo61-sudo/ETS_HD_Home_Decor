@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Pencil, Plus, ReceiptText, RefreshCcw, Trash2 } from 'lucide-react';
@@ -11,6 +12,7 @@ import { confirmAlert } from 'react-confirm-alert';
 import AuthContext from '../context/AuthContext';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import {
+
   Button,
   ChartCard,
   CommandBar,
@@ -411,19 +413,19 @@ const Expenses = () => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KPICard
             title="Total dépensé"
-            value={`${dashboardData.total.toLocaleString('fr-FR')} CFA`}
+            value={`${formatCfa(dashboardData.total)}`}
             tone="info"
             icon={<ReceiptText className="h-5 w-5" />}
           />
           <KPICard title="Nombre de dépenses" value={dashboardData.count} tone="success" />
           <KPICard
             title="Dépense moyenne"
-            value={`${dashboardData.average.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} CFA`}
+            value={formatCfa(dashboardData.average)}
             tone="neutral"
           />
           <KPICard
             title="Dépense max"
-            value={dashboardData.mostExpensive ? `${dashboardData.mostExpensive.amount.toLocaleString('fr-FR')} CFA` : 'Aucune'}
+            value={dashboardData.mostExpensive ? `${formatCfa(dashboardData.mostExpensive.amount)}` : 'Aucune'}
             tone="danger"
           />
         </div>
@@ -477,7 +479,7 @@ const Expenses = () => {
                   <div key={category}>
                     <div className="mb-1 flex justify-between text-sm">
                       <span className="font-medium text-[var(--ms-text)]">{getCategoryLabel(category)}</span>
-                      <span className="font-semibold text-[var(--ms-text)]">{total.toLocaleString('fr-FR')} CFA</span>
+                      <span className="font-semibold text-[var(--ms-text)]">{formatCfa(total)}</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--ms-bg-muted)]">
                       <div
@@ -542,7 +544,7 @@ const Expenses = () => {
                           <div>
                             <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Montant</p>
                             <p className="fui-title3 tabular-nums" style={{ color: 'var(--colorStatusDangerForeground1)' }}>
-                              {expense.amount.toLocaleString('fr-FR')} CFA
+                              {formatCfa(expense.amount)}
                             </p>
                           </div>
                           <div>
@@ -653,7 +655,7 @@ const Expenses = () => {
                                 )}
                               </td>
                               <td data-title="Montant" className="font-semibold tabular-nums">
-                                {expense.amount.toLocaleString('fr-FR')} CFA
+                                {formatCfa(expense.amount)}
                               </td>
                               <td data-title="Catégorie">
                                 <StatusBadge>{getCategoryLabel(expense.category)}</StatusBadge>
@@ -758,7 +760,7 @@ const Expenses = () => {
               <p className="text-sm text-gray-600">
                 {requestAction === 'delete' ? 'Suppression' : 'Modification'} de la dépense{' '}
                 <span className="font-semibold text-gray-900">« {requestExpense.description} »</span>{' '}
-                ({Number(requestExpense.amount || 0).toLocaleString('fr-FR')} CFA).
+                ({formatCfa(Number(requestExpense.amount || 0))}).
               </p>
               <div>
                 <label htmlFor="expense-request-reason" className="block text-sm font-medium text-gray-700 mb-2">

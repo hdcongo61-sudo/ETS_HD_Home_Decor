@@ -661,7 +661,7 @@ const DashboardAdmin = () => {
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to="/"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3.5 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 hover:bg-white"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-3.5 py-2 text-sm font-medium text-[var(--ms-text)] transition hover:border-slate-300 hover:bg-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Accueil

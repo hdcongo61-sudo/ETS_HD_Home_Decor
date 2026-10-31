@@ -909,6 +909,10 @@ video {
   top: 50%;
 }
 
+.top-16 {
+  top: 4rem;
+}
+
 .top-2\.5 {
   top: 0.625rem;
 }
@@ -1523,6 +1527,10 @@ video {
   min-height: 0px;
 }
 
+.min-h-36 {
+  min-height: 9rem;
+}
+
 .min-h-\[100dvh\] {
   min-height: 100dvh;
 }
@@ -1711,10 +1719,6 @@ video {
   width: 0.875rem;
 }
 
-.w-32 {
-  width: 8rem;
-}
-
 .w-36 {
   width: 9rem;
 }
@@ -1783,6 +1787,10 @@ video {
   width: 21px;
 }
 
+.w-\[min\(26rem\2c calc\(100vw-1\.5rem\)\)\] {
+  width: min(26rem,calc(100vw - 1.5rem));
+}
+
 .w-\[min\(420px\2c 90vw\)\] {
   width: min(420px,90vw);
 }
@@ -1823,6 +1831,10 @@ video {
 
 .min-w-28 {
   min-width: 7rem;
+}
+
+.min-w-40 {
+  min-width: 10rem;
 }
 
 .min-w-5 {
@@ -1885,8 +1897,16 @@ video {
   min-width: 32px;
 }
 
+.min-w-\[38rem\] {
+  min-width: 38rem;
+}
+
 .min-w-\[44px\] {
   min-width: 44px;
+}
+
+.min-w-\[460px\] {
+  min-width: 460px;
 }
 
 .min-w-\[600px\] {
@@ -7004,6 +7024,10 @@ form input[type="radio"],
   border-color: var(--colorBrandBackground);
 }
 
+.hover\:border-\[var\(--colorBrandStroke1\)\]:hover {
+  border-color: var(--colorBrandStroke1);
+}
+
 .hover\:border-\[var\(--ms-blue\)\]:hover {
   border-color: var(--ms-blue);
 }
@@ -7387,8 +7411,16 @@ form input[type="radio"],
   outline-width: 2px;
 }
 
+.focus-visible\:outline-offset-2:focus-visible {
+  outline-offset: 2px;
+}
+
 .focus-visible\:outline-offset-\[-2px\]:focus-visible {
   outline-offset: -2px;
+}
+
+.focus-visible\:outline-\[var\(--colorBrandForeground1\)\]:focus-visible {
+  outline-color: var(--colorBrandForeground1);
 }
 
 .focus-visible\:outline-\[var\(--ms-blue\)\]:focus-visible {
@@ -7565,6 +7597,10 @@ form input[type="radio"],
 @media (min-width: 640px) {
   .sm\:right-4 {
     right: 1rem;
+  }
+
+  .sm\:right-5 {
+    right: 1.25rem;
   }
 
   .sm\:top-4 {

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from '../components/ConfirmProvider';
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -23,6 +24,7 @@ import {
   Workspace,
 } from '../components/business';
 import {
+
   BarChart3,
   Download,
   Edit3,
@@ -219,7 +221,7 @@ const Clients = () => {
 
   const formatCurrency = (value) => {
     if (!value) return '0 CFA';
-    return `${Number(value).toLocaleString('fr-FR')} CFA`;
+    return `${formatCfa(Number(value))}`;
   };
 
   const formatGender = (gender) => {
@@ -490,7 +492,6 @@ const Clients = () => {
     }
   };
 
-
   useEffect(() => {
     document.body.style.overflow = isFormOpen ? 'hidden' : 'auto';
   }, [isFormOpen]);
@@ -545,7 +546,7 @@ const Clients = () => {
                           <Cell key={entry.clientId || entry._id || i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v) => `${Number(v).toLocaleString('fr-FR')} CFA`} />
+                      <Tooltip formatter={(v) => `${formatCfa(Number(v))}`} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -556,13 +557,13 @@ const Clients = () => {
                       key={`${client.clientId || client._id || index}-link`}
                       to={`${clientPath({ _id: client.clientId || client._id, slug: client.slug })}?returnToClients=${encodeURIComponent(`${location.pathname}${location.search}`)}`}
                       state={{ returnToClients: `${location.pathname}${location.search}` }}
-                      className="flex min-h-[40px] items-center justify-between rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm transition hover:border-[var(--ms-blue)] hover:bg-[var(--ms-bg)]"
+                      className="flex min-h-[44px] items-center justify-between rounded-md border border-[var(--ms-border)] px-3 py-2 text-sm transition hover:border-[var(--ms-blue)] hover:bg-[var(--ms-bg)]"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <StatusBadge tone={index === 0 ? 'success' : 'neutral'}>#{index + 1}</StatusBadge>
                         <span className="truncate font-semibold text-[var(--ms-text-strong)]">{client.name}</span>
                       </div>
-                      <span className="ml-2 shrink-0 text-[var(--ms-text-muted)]">{client.totalSpent?.toLocaleString('fr-FR')} CFA</span>
+                      <span className="ml-2 shrink-0 text-[var(--ms-text-muted)]">{formatCfa(client.totalSpent)}</span>
                     </Link>
                   ))}
                 </div>

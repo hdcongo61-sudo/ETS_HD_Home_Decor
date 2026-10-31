@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import { employeePayrollPath } from '../utils/paths';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
+import { formatCfa } from '../utils/format';
 
 const PaySlipPrint = () => {
   const { appSettings } = useAppSettings();
@@ -17,7 +18,7 @@ const PaySlipPrint = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const employeeReference = employee || { _id: id };
-    const formatMoney = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(value) || 0)} CFA`;
+    const formatMoney = (value) => formatCfa(value);
     const periodLabel = paySlip
         ? new Date(paySlip.year, paySlip.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
         : '';

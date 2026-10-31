@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { salesApi } from '../features/sales/api';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ import {
   Workspace,
 } from '../components/business';
 import {
+
   ArrowDownCircle,
   ArrowUpCircle,
   Banknote,
@@ -144,19 +146,19 @@ const Bank = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title={t('bank.deposits', 'Dépôts')}
-          value={`${stats.deposits.toLocaleString('fr-FR')} CFA`}
+          value={`${formatCfa(stats.deposits)}`}
           tone="success"
           icon={<ArrowDownCircle className="h-4 w-4" />}
         />
         <KPICard
           title={t('bank.withdrawals', 'Retraits')}
-          value={`${stats.withdrawals.toLocaleString('fr-FR')} CFA`}
+          value={`${formatCfa(stats.withdrawals)}`}
           tone="danger"
           icon={<ArrowUpCircle className="h-4 w-4" />}
         />
         <KPICard
           title={t('bank.balance', 'Solde')}
-          value={`${stats.balance.toLocaleString('fr-FR')} CFA`}
+          value={`${formatCfa(stats.balance)}`}
           tone={stats.balance >= 0 ? 'neutral' : 'danger'}
           icon={<Wallet className="h-4 w-4" />}
         />
@@ -272,7 +274,7 @@ const Bank = () => {
                       </StatusBadge>
                     </td>
                     <td className={`text-right font-semibold ${t.type === 'deposit' ? 'text-[var(--ms-success)]' : 'text-[var(--ms-danger)]'}`}>
-                      {Number(t.amount || 0).toLocaleString('fr-FR')} CFA
+                      {formatCfa(Number(t.amount || 0))}
                     </td>
                   </tr>
                 ))}

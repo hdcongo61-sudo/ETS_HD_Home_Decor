@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -22,7 +23,7 @@ const PLAN_COLORS = { trial: '#F59E0B', basic: '#0EA5E9', pro: '#0F6CBD', enterp
 
 /* ─── Helpers ─────────────────────────────────────────── */
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR');
-const money = (n) => `${fmt(Math.round(n || 0))} CFA`;
+const money = (n) => `${formatCfa(Math.round(n || 0))}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('fr-FR') : '—');
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
 const daysLeft = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 86400000) : null);

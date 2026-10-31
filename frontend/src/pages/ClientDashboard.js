@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -88,7 +89,7 @@ const ClientDashboard = () => {
     return () => window.removeEventListener('saleCreated', refresh);
   }, [fetchDashboardData]);
 
-  const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+  const formatCurrency = (value) => `${formatCfa(Number(value || 0))}`;
   const formatDate = (value) =>
     value
       ? new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })

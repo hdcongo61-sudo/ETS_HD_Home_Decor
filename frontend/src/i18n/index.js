@@ -120,7 +120,7 @@ const resources = {
       expenses: {
         management: 'Gestion des dépenses',
         newExpense: 'Nouvelle dépense',
-        amount: 'Montant (CFA)',
+        amount: 'Montant',
         category: 'Catégorie',
         selectCategory: 'Sélectionner une catégorie',
         realDate: 'Date réelle de dépense',
@@ -343,7 +343,7 @@ const resources = {
       expenses: {
         management: 'Expense management',
         newExpense: 'New expense',
-        amount: 'Amount (CFA)',
+        amount: 'Amount',
         category: 'Category',
         selectCategory: 'Select a category',
         realDate: 'Actual expense date',

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from './ConfirmProvider';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -26,7 +27,7 @@ import {
   employeePayrollNewPath,
 } from '../utils/paths';
 import AppLoader from './AppLoader';
-import { formatCfa } from '../utils/format';
+
 import { saveAs } from 'file-saver';
 import { reportingApi } from '../features/reporting/api';
 import { useTranslation } from 'react-i18next';

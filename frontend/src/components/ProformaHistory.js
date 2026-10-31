@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Download, Edit3, FileText, RefreshCw, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,7 +17,7 @@ const STATUS_META = {
   cancelled: { label: 'Annulée', className: 'ms-status-danger' },
 };
 
-const formatAmount = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+const formatAmount = (value) => `${formatCfa(Number(value || 0))}`;
 const dateInputValue = (value) => {
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
@@ -329,7 +330,7 @@ const ProformaHistory = ({ clients = [], products = [] }) => {
                     {searchTerm.trim() && <div id={`proforma-product-options-${index}`} role="listbox" aria-label={`Résultats produit ${index + 1}`} className="mt-1 max-h-56 overflow-y-auto rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-white shadow-[var(--ms-shadow-sm)]">
                       {matches.length ? matches.map((product) => <button key={product._id} type="button" role="option" aria-selected={product._id === line.product} onClick={() => { updateEditLine(index, { product: product._id }); setEditProductSearchTerms((current) => current.map((term, termIndex) => termIndex === index ? '' : term)); }} className={`flex min-h-[56px] w-full items-center gap-3 border-b border-[var(--ms-border)] px-3 py-2 text-left last:border-b-0 hover:bg-[var(--ms-bg-subtle)] ${product._id === line.product ? 'bg-[var(--ms-blue-soft)]' : ''}`}>
                         <img src={product.image || '/placeholder.png'} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-md border border-[var(--ms-border)] object-cover" />
-                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{product.name}</span><span className="block text-xs text-[var(--ms-text-muted)]">Stock : {product.stock ?? '—'} · Prix : {Number(product.price || 0).toLocaleString('fr-FR')} CFA</span></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{product.name}</span><span className="block text-xs text-[var(--ms-text-muted)]">Stock : {product.stock ?? '—'} · Prix : {formatCfa(Number(product.price || 0))}</span></span>
                       </button>) : <p className="p-3 text-sm text-[var(--ms-text-muted)]">Aucun produit correspondant.</p>}
                     </div>}
                   </div>

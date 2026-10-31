@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, TrendingDown, Target, PieChart } from "lucide-react";
@@ -27,7 +28,7 @@ const AnalyticsSection = ({ metrics }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Bénéfice Brut"
-          value={`${metrics.grossProfit.toLocaleString()} CFA`}
+          value={`${formatCfa(metrics.grossProfit)}`}
           change={metrics.dailyGrowth}
           trend={metrics.dailyGrowth >= 0 ? "up" : "down"}
           color={{ bg: "bg-green-50 dark:bg-green-900/30", text: "green-700" }}

@@ -1,3 +1,4 @@
+import { formatCfa } from '../../utils/format';
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -104,7 +105,7 @@ const SaleCard = ({
               Encaissé <span className="fui-caption1-strong tabular-nums" style={{ color: "var(--colorNeutralForeground1)" }}>{paidRatio}%</span>
             </p>
             <p className="fui-caption1 tabular-nums" style={{ color: "var(--colorNeutralForeground3)" }}>
-              {totalPaid.toLocaleString("fr-FR")} / {totalAmount.toLocaleString("fr-FR")} CFA
+              {totalPaid.toLocaleString("fr-FR")} / {formatCfa(totalAmount)}
             </p>
           </div>
           <PaymentProgress
@@ -119,13 +120,13 @@ const SaleCard = ({
           <div className="rounded-[var(--radiusMedium)] border p-2.5" style={{ borderColor: "var(--ms-border)", background: "var(--colorNeutralBackground2)" }}>
             <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Total</p>
             <p className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm" style={{ color: "var(--colorNeutralForeground1)" }}>
-              {totalAmount.toLocaleString("fr-FR")} CFA
+              {formatCfa(totalAmount)}
             </p>
           </div>
           <div className="rounded-[var(--radiusMedium)] border p-2.5" style={{ borderColor: "var(--colorStatusSuccessStroke1)", background: "var(--colorStatusSuccessBackground1)" }}>
             <p className="fui-caption1" style={{ color: "var(--colorNeutralForeground3)" }}>Payé</p>
             <p className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm" style={{ color: "var(--colorStatusSuccessForeground1)" }}>
-              {totalPaid.toLocaleString("fr-FR")} CFA
+              {formatCfa(totalPaid)}
             </p>
           </div>
           <div
@@ -141,7 +142,7 @@ const SaleCard = ({
               className="mt-0.5 fui-caption1-strong tabular-nums sm:text-sm"
               style={{ color: balance > 0 ? "var(--colorStatusDangerForeground1)" : "var(--colorNeutralForeground1)" }}
             >
-              {balance.toLocaleString("fr-FR")} CFA
+              {formatCfa(balance)}
             </p>
           </div>
         </div>

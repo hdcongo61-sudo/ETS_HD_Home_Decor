@@ -2,6 +2,7 @@
 // The shop's international dialing code (e.g. "+242") is configured per tenant
 // by the super-admin and exposed on auth.tenant.dialCode.
 
+import { formatCfa } from './format';
 import api from '../services/api';
 
 const onlyDigits = (s) => String(s || '').replace(/\D/g, '');
@@ -26,7 +27,7 @@ export const formatReminderAgo = (date) => {
   return `il y a ${days} j`;
 };
 
-const fmtCFA = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
+const fmtCFA = (n) => `${formatCfa(Number(n || 0))}`;
 
 /**
  * Normalise a client phone number to an international, digits-only form

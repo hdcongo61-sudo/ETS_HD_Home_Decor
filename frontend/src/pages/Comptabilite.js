@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { reportingApi } from '../features/reporting/api';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ import {
   Workspace,
 } from '../components/business';
 import {
+
   ArrowDownRight,
   ArrowUpRight,
   AlertTriangle,
@@ -34,8 +36,8 @@ import {
   Wallet,
 } from 'lucide-react';
 
-const fmt = (n) => `${Number(n || 0).toLocaleString('fr-FR')} CFA`;
-const fmtSigned = (n) => `${n > 0 ? '+' : ''}${Number(n || 0).toLocaleString('fr-FR')} CFA`;
+const fmt = (n) => `${formatCfa(Number(n || 0))}`;
+const fmtSigned = (n) => `${n > 0 ? '+' : ''}${formatCfa(Number(n || 0))}`;
 
 // Build a [start, end] ISO window from a named preset.
 const presetRange = (preset) => {
@@ -533,7 +535,7 @@ const Comptabilite = () => {
                   </h2>
                   <p className="mt-1 fui-body1 text-[var(--ms-text)]">
                     {positive
-                      ? `Chaque 100 CFA encaissés génère environ ${Math.max(0, Number(cr.resultatNetPct || 0))} CFA de résultat net.`
+                      ? `Chaque ${fmt(100)} encaissés génère environ ${fmt(Math.max(0, Number(cr.resultatNetPct || 0)))} de résultat net.`
                       : 'Les coûts et charges dépassent les encaissements sur la période sélectionnée.'}
                     {hasReceivables ? ` ${fmt(summary.creances.clients)} restent à encaisser auprès des clients.` : ' Aucun impayé client à signaler.'}
                   </p>
@@ -892,7 +894,7 @@ const Comptabilite = () => {
 const SectionLink = ({ href, icon, label }) => (
   <a
     href={href}
-    className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-3.5 py-2 fui-body1-strong text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:bg-[var(--ms-bg-subtle)]"
+    className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-3.5 py-2 fui-body1-strong text-[var(--ms-text)] shadow-[var(--ms-shadow-sm)] transition hover:border-[var(--ms-border-strong)] hover:bg-[var(--ms-bg-subtle)]"
   >
     <span className="text-[var(--ms-blue)]">{icon}</span>
     {label}

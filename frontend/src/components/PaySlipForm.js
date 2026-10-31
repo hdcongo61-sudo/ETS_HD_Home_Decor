@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Check, Loader2 } from 'lucide-react';
@@ -25,7 +26,7 @@ const isSalaryCategory = (category) => {
     return normalized === 'salaries' || normalized === 'salary' || normalized.includes('salaire');
 };
 
-const formatCurrency = (value) => `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+const formatCurrency = (value) => `${formatCfa(Number(value || 0))}`;
 
 const PaySlipForm = () => {
     const { id, payslipId } = useParams();
@@ -279,7 +280,7 @@ const PaySlipForm = () => {
                             ))}
                             {deductionItems.length > 0 && (
                                 <p className="text-xs text-[var(--ms-text-muted)]">
-                                    Total des retenues détaillées : {itemsTotal.toLocaleString('fr-FR')} CFA
+                                    Total des retenues détaillées : {formatCfa(itemsTotal)}
                                 </p>
                             )}
                         </div>
@@ -318,19 +319,19 @@ const PaySlipForm = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between">
                                 <span className="text-[var(--ms-text)]">Salaire de base</span>
-                                <span className="font-medium text-[var(--ms-text-strong)]">{employee?.salary?.toLocaleString('fr-FR')} CFA</span>
+                                <span className="font-medium text-[var(--ms-text-strong)]">{formatCfa(employee?.salary)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-[var(--ms-text)]">+ Primes</span>
-                                <span className="font-medium text-[var(--ms-success)]">+ {parseFloat(formData.bonuses || 0).toLocaleString('fr-FR')} CFA</span>
+                                <span className="font-medium text-[var(--ms-success)]">+ {formatCfa(parseFloat(formData.bonuses || 0))}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-[var(--ms-text)]">- Déductions</span>
-                                <span className="font-medium text-[var(--ms-danger)]">- {parseFloat(formData.deductions || 0).toLocaleString('fr-FR')} CFA</span>
+                                <span className="font-medium text-[var(--ms-danger)]">- {formatCfa(parseFloat(formData.deductions || 0))}</span>
                             </div>
                             <div className="mt-2 flex justify-between border-t border-[var(--ms-border)] pt-3">
                                 <span className="font-semibold text-[var(--ms-text-strong)]">Salaire net</span>
-                                <span className="text-xl font-bold text-[var(--ms-blue)]">{netSalary.toLocaleString('fr-FR')} CFA</span>
+                                <span className="text-xl font-bold text-[var(--ms-blue)]">{formatCfa(netSalary)}</span>
                             </div>
                         </div>
                     </div>

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../features/catalog/api';
@@ -7,10 +8,11 @@ import {
   ProductPageShell, ProductHero, ProductMetricCard, ProductSection,
 } from '../components/ProductAnalyticsUI';
 import {
+
   Lightbulb, Coins, PackageX, Moon, Snail, ArrowRight, Tag, Boxes, Clock, Sparkles,
 } from 'lucide-react';
 
-const fmtCFA = (v) => `${Number(v || 0).toLocaleString('fr-FR')} CFA`;
+const fmtCFA = (v) => `${formatCfa(Number(v || 0))}`;
 
 const SEVERITY = {
   critical: { label: 'Jamais vendu', badge: 'ms-status-danger', tone: 'rose', icon: PackageX },

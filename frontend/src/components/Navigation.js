@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import i18n from "../i18n";
@@ -1206,7 +1207,7 @@ const getResultDescription = (item) => {
   }
   if (item.type === "sale") {
     return item.totalAmount
-      ? `${Number(item.totalAmount || 0).toLocaleString("fr-FR")} CFA`
+      ? `${formatCfa(Number(item.totalAmount || 0))}`
       : "Détail de vente";
   }
   if (item.type === "employee") {

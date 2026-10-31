@@ -1,12 +1,12 @@
 // src/components/ProductQuickViewModal.js
 // Aperçu rapide d'un produit depuis la liste (desktop uniquement).
 // Aucun appel réseau : toutes les données proviennent déjà de la liste.
+import { formatCfa } from '../utils/format';
 import React from 'react';
 import { ExternalLink, Package, Pencil } from 'lucide-react';
 import Modal from './Modal';
 import { StatusBadge } from './business';
 import { productPath } from '../utils/paths';
-import { formatCfa } from '../utils/format';
 
 const getStockStatus = (stock) => {
   const numeric = Number(stock) || 0;

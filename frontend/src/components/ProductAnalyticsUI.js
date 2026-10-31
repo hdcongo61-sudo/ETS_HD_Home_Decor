@@ -1,7 +1,9 @@
+import { formatCfa } from '../utils/format';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, PackageSearch } from 'lucide-react';
 import {
+
   Button,
   ChartCard,
   EmptyState,
@@ -11,7 +13,7 @@ import {
 } from './business';
 
 export const formatProductCurrency = (value) =>
-  `${Number(value || 0).toLocaleString('fr-FR')} CFA`;
+  `${formatCfa(Number(value || 0))}`;
 
 export const formatProductNumber = (value) =>
   Number(value || 0).toLocaleString('fr-FR');

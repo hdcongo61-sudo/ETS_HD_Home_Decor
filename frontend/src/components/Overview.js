@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -16,7 +17,7 @@ import AuthContext from '../context/AuthContext';
 import { useDashboardData } from '../context/DashboardDataContext';
 import { useModal } from '../context/ModalContext';
 import { FEATURE_KEYS } from '../config/features';
-import { formatCfa } from '../utils/format';
+
 import { useTranslation } from 'react-i18next';
 import { KPICard, LoadingSkeleton, EmptyState } from './business';
 import SectionError from './SectionError';

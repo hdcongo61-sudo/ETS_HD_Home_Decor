@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -37,6 +38,7 @@ import {
 import { SalesFiltersBar, SaleCard, SalesListExportButtons } from "./sales-shared";
 import AppLoader from "../components/AppLoader";
 import {
+
   Button,
   DataTable,
   EmptyState,
@@ -51,7 +53,7 @@ import {
 const ExportSalesPdf = lazy(() => import("../components/ExportSalesPdf"));
 
 const formatCurrency = (value) =>
-  `${Number(value || 0).toLocaleString("fr-FR")} CFA`;
+  `${formatCfa(Number(value || 0))}`;
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("fr-FR");
 

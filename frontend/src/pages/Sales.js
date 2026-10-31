@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { Link, useNavigate, useLocation, useNavigationType } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { formatCfa as cfa } from "../utils/format";
+import { formatCfa as cfa, formatCfa } from "../utils/format";
 import {
   AlertTriangle,
   Award,
@@ -223,7 +223,7 @@ const ProfitCompositionBar = ({ total, segments }) => {
             key={s.label}
             className="h-full transition-all duration-300"
             style={{ width: `${(s.value / safeTotal) * 100}%`, background: s.color }}
-            title={`${s.label} : ${Math.round(Number(s.value) || 0).toLocaleString("fr-FR")} CFA`}
+            title={`${s.label} : ${formatCfa(Math.round(Number(s.value) || 0))}`}
           />
         ))}
       </div>
@@ -368,7 +368,7 @@ const ClientAnalysisPanel = ({ segmentation, navigate }) => {
               </div>
               <p className="ms-kpi-title mt-3">{SEGMENT_META[seg]?.label || seg}</p>
               <p className="ms-kpi-value" style={{ fontSize: 22 }}>{m.count}</p>
-              <p className="ms-kpi-context">{Math.round(m.spent).toLocaleString("fr-FR")} CFA</p>
+              <p className="ms-kpi-context">{formatCfa(Math.round(m.spent))}</p>
             </div>
           );
         })}
@@ -379,7 +379,7 @@ const ClientAnalysisPanel = ({ segmentation, navigate }) => {
         <div className="fluent-card-filled p-5 lg:col-span-2">
           <h3 className="fui-subtitle2 mb-1" style={{ color: 'var(--colorNeutralForeground1)' }}>Répartition des segments</h3>
           <p className="fui-caption1 mb-3" style={{ color: 'var(--colorNeutralForeground3)' }}>
-            {totalClients} clients · {Math.round(grandSpent).toLocaleString("fr-FR")} CFA
+            {totalClients} clients · {formatCfa(Math.round(grandSpent))}
           </p>
           <ClientSegmentationChart segmentation={segmentation} />
         </div>
@@ -2049,18 +2049,18 @@ const Sales = () => {
       {
         label: "Ventes filtrées",
         value: filteredHistoryStats.salesCount.toLocaleString("fr-FR"),
-        helper: `${filteredHistoryStats.salesTotal.toLocaleString("fr-FR")} CFA vendus`,
+        helper: `${formatCfa(filteredHistoryStats.salesTotal)} vendus`,
         color: "border-[var(--ms-blue-soft)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]",
       },
       {
         label: "Encaissé sur ventes",
-        value: `${filteredHistoryStats.salesCollected.toLocaleString("fr-FR")} CFA`,
+        value: `${formatCfa(filteredHistoryStats.salesCollected)}`,
         helper: "Paiements attachés aux ventes affichées",
         color: "border-emerald-100 bg-emerald-50 text-emerald-700",
       },
       {
         label: paymentTitle,
-        value: `${filteredHistoryStats.paymentsOnSelectedDate.toLocaleString("fr-FR")} CFA`,
+        value: `${formatCfa(filteredHistoryStats.paymentsOnSelectedDate)}`,
         helper: `${filteredHistoryStats.paymentsOnSelectedDateCount} paiement(s). ${paymentHelper}`,
         color: "border-[var(--ms-blue-soft)] bg-[var(--ms-blue-soft)] text-[var(--ms-blue-dark)]",
         clickable: dateFilter,
@@ -2068,7 +2068,7 @@ const Sales = () => {
       },
       {
         label: "Reste à encaisser",
-        value: `${filteredHistoryStats.remaining.toLocaleString("fr-FR")} CFA`,
+        value: `${formatCfa(filteredHistoryStats.remaining)}`,
         helper: "Solde restant des ventes affichées",
         color: "border-amber-100 bg-amber-50 text-amber-700",
       },
@@ -2510,7 +2510,7 @@ const Sales = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               <AdvancedMetricCard
                 title="Prévision 30 jours"
-                value={`${Math.round(predictiveData?.next30Days || 0).toLocaleString("fr-FR")} CFA`}
+                value={`${formatCfa(Math.round(predictiveData?.next30Days || 0))}`}
                 change={predictiveData?.growthRate}
                 icon={<BarChart3 className="h-5 w-5" />}
                 tone="brand"
@@ -2518,7 +2518,7 @@ const Sales = () => {
               />
               <AdvancedMetricCard
                 title="CLV (Valeur Client)"
-                value={`${Math.round(dashboardData.kpis.customerLifetimeValue).toLocaleString("fr-FR")} CFA`}
+                value={`${formatCfa(Math.round(dashboardData.kpis.customerLifetimeValue))}`}
                 icon={<Users className="h-5 w-5" />}
                 tone="success"
                 description="Revenus moyens par client"
@@ -2582,7 +2582,7 @@ const Sales = () => {
                             {a.reference || ("Vente #" + (a._id?.slice(-6) || "N/A"))}
                           </p>
                           <p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                            {a.client?.name || "Client inconnu"} · {formatDate(a.saleDate)} · {(a.totalAmount || 0).toLocaleString("fr-FR")} CFA
+                            {a.client?.name || "Client inconnu"} · {formatDate(a.saleDate)} · {formatCfa((a.totalAmount || 0))}
                           </p>
                         </div>
                         <span className={`ms-status-badge ${high ? 'ms-status-danger' : 'ms-status-success'} shrink-0`}>
@@ -2672,14 +2672,14 @@ const Sales = () => {
           <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Activité du jour">
             <KPICard
               title="CA du jour"
-              value={`${(dashboardData.dailySummary.totalAmount || 0).toLocaleString("fr-FR")} CFA`}
+              value={`${formatCfa((dashboardData.dailySummary.totalAmount || 0))}`}
               context={`${dashboardData.dailySummary.salesCount || 0} vente(s) aujourd'hui`}
               icon={<Wallet className="h-4 w-4" />}
               tone="brand"
             />
             <KPICard
               title="Encaissé aujourd'hui"
-              value={`${(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA`}
+              value={`${formatCfa((dashboardData.dailySummary.paymentsTotal || 0))}`}
               context={`${dashboardData.dailySummary.paymentsCount || 0} paiement(s)`}
               icon={<CheckCircle2 className="h-4 w-4" />}
               tone="success"
@@ -2738,7 +2738,7 @@ const Sales = () => {
                 >
                   <StatCard
                     title="Chiffre d'affaires"
-                    value={`${dashboardData.totalSales.toLocaleString("fr-FR")} CFA`}
+                    value={`${formatCfa(dashboardData.totalSales)}`}
                     icon={<Wallet className="h-5 w-5" />}
                     color="bg-sky-50 text-sky-700"
                   />
@@ -2750,7 +2750,7 @@ const Sales = () => {
                   />
                   <StatCard
                     title="Vente moyenne"
-                    value={`${dashboardData.averageSale.toLocaleString("fr-FR")} CFA`}
+                    value={`${formatCfa(dashboardData.averageSale)}`}
                     icon={<BarChart3 className="h-5 w-5" />}
                     color="bg-violet-50 text-violet-700"
                   />
@@ -2768,7 +2768,7 @@ const Sales = () => {
                   />
                   <StatCard
                     title="Total payé"
-                    value={`${dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA`}
+                    value={`${formatCfa(dashboardData.paymentsSummary.paymentsTotal)}`}
                     icon={<CheckCircle2 className="h-5 w-5" />}
                     color="bg-emerald-50 text-emerald-700"
                   />
@@ -2785,7 +2785,7 @@ const Sales = () => {
                           {card.count}
                         </div>
                         <p className="fui-body1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
-                          {card.amount.toLocaleString("fr-FR")} CFA
+                          {formatCfa(card.amount)}
                         </p>
                         <div className="mt-3 flex items-center justify-between rounded-[var(--radiusMedium)] px-3 py-2 fui-caption1" style={{ background: 'var(--colorNeutralBackground2)' }}>
                           <span style={{ color: 'var(--colorNeutralForeground3)' }}>Part des ventes</span>
@@ -2825,7 +2825,7 @@ const Sales = () => {
                         <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                           {dashboardData.paymentsSummary.paymentsCount} paiements — total{' '}
                           <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                            {dashboardData.paymentsSummary.paymentsTotal.toLocaleString("fr-FR")} CFA
+                            {formatCfa(dashboardData.paymentsSummary.paymentsTotal)}
                           </span>
                         </p>
                       </div>
@@ -2834,7 +2834,7 @@ const Sales = () => {
                       <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusInfoBackground1)', border: '1px solid rgba(15,108,189,0.15)' }}>
                         <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aujourd'hui</p>
                         <p className="fui-title3 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                          {(dashboardData.dailySummary.paymentsTotal || 0).toLocaleString("fr-FR")} CFA
+                          {formatCfa((dashboardData.dailySummary.paymentsTotal || 0))}
                         </p>
                         <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                           {dashboardData.dailySummary.paymentsCount || 0} paiements
@@ -2843,7 +2843,7 @@ const Sales = () => {
                       <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorStatusSuccessBackground1)', border: '1px solid var(--colorStatusSuccessStroke1)' }}>
                         <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Moyenne / vente</p>
                         <p className="fui-title3 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                          {dashboardData.salesCount ? Math.round(dashboardData.paymentsSummary.paymentsTotal / dashboardData.salesCount).toLocaleString("fr-FR") : 0} CFA
+                          {dashboardData.salesCount ? formatCfa(Math.round(dashboardData.paymentsSummary.paymentsTotal / dashboardData.salesCount)) : formatCfa(0)}
                         </p>
                         <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                           Sur {dashboardData.salesCount} ventes
@@ -2906,7 +2906,7 @@ const Sales = () => {
                         </button>
                       </div>
                       <div className="h-48 sm:h-52 min-h-[180px]">
-                        <Line data={salesTrendChart} options={{ responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${Math.round(c.parsed.y).toLocaleString("fr-FR")} CFA` } } }, scales: { y: { beginAtZero: true, border: { display: false }, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${Math.round(v / 1000)}k` } }, x: { border: { display: false }, grid: { display: false }, ticks: { font: CHART_LABEL_FONT } } } }} />
+                        <Line data={salesTrendChart} options={{ responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${formatCfa(Math.round(c.parsed.y))}` } } }, scales: { y: { beginAtZero: true, border: { display: false }, grid: { color: "rgba(0,0,0,.05)" }, ticks: { font: CHART_LABEL_FONT, callback: (v) => `${Math.round(v / 1000)}k` } }, x: { border: { display: false }, grid: { display: false }, ticks: { font: CHART_LABEL_FONT } } } }} />
                       </div>
                     </div>
                   </GlassCard>
@@ -2947,7 +2947,7 @@ const Sales = () => {
                             <div key={key} className="rounded-[var(--radiusLarge)] p-4" style={{ background: bg, border }}>
                               <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p>
                               <p className="fui-title3 mt-1 tabular-nums" style={{ color }}>{count}</p>
-                              <p className="fui-caption1 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{amount.toLocaleString("fr-FR")} CFA</p>
+                              <p className="fui-caption1 mt-1 tabular-nums" style={{ color: 'var(--colorNeutralForeground3)' }}>{formatCfa(amount)}</p>
                             </div>
                           );
                         })}
@@ -3354,7 +3354,7 @@ const Sales = () => {
                       <div className="grid shrink-0 grid-cols-3 divide-x divide-[var(--ms-border)] border-b border-[var(--ms-border)] bg-[var(--ms-white)]">
                         <div className="px-4 py-3">
                           <p className="ms-kpi-title">Encaissé</p>
-                          <p className="fui-subtitle2" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{totalEncaisse.toLocaleString('fr-FR')} CFA</p>
+                          <p className="fui-subtitle2" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>{formatCfa(totalEncaisse)}</p>
                         </div>
                         <div className="px-4 py-3">
                           <p className="ms-kpi-title">Paiements</p>
@@ -3362,7 +3362,7 @@ const Sales = () => {
                         </div>
                         <div className="px-4 py-3">
                           <p className="ms-kpi-title">Moyenne</p>
-                          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{avgEncaisse.toLocaleString('fr-FR')} CFA</p>
+                          <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>{formatCfa(avgEncaisse)}</p>
                         </div>
                       </div>
                     )}
@@ -3386,7 +3386,7 @@ const Sales = () => {
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                                        {payment.amount?.toLocaleString('fr-FR')} CFA
+                                        {formatCfa(payment.amount)}
                                       </p>
                                       <span className={`ms-status-badge ${m.cls}`}>{m.label}</span>
                                     </div>

@@ -1,3 +1,4 @@
+import { formatCfa } from '../utils/format';
 import { confirmDialog } from '../components/ConfirmProvider';
 // src/pages/Products.jsx
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
@@ -6,7 +7,7 @@ import { catalogApi } from '../features/catalog/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getCompanyIdentity } from '../utils/appBranding';
-import { formatCfa } from '../utils/format';
+
 import { useTranslation } from 'react-i18next';
 import LoaderOverlay from '../components/LoaderOverlay';
 import SectionError from '../components/SectionError';
@@ -1639,9 +1640,9 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
       { label: 'Rupture', value: resultStats.out.toLocaleString('fr-FR'), tone: 'danger' },
       ...(isAdmin ? [
         { label: 'Unités vendues', value: resultStats.soldUnits.toLocaleString('fr-FR'), tone: 'brand' },
-        { label: 'Bénéfice gagné', value: `${resultStats.realizedProfit.toLocaleString('fr-FR')} CFA`, tone: resultStats.realizedProfit >= 0 ? 'success' : 'danger' },
-        { label: 'Restant (valeur)', value: `${resultStats.sellValue.toLocaleString('fr-FR')} CFA`, tone: 'neutral' },
-        { label: 'Marge potentielle', value: `${resultStats.potentialMargin.toLocaleString('fr-FR')} CFA`, tone: 'success' },
+        { label: 'Bénéfice gagné', value: `${formatCfa(resultStats.realizedProfit)}`, tone: resultStats.realizedProfit >= 0 ? 'success' : 'danger' },
+        { label: 'Restant (valeur)', value: `${formatCfa(resultStats.sellValue)}`, tone: 'neutral' },
+        { label: 'Marge potentielle', value: `${formatCfa(resultStats.potentialMargin)}`, tone: 'success' },
       ] : []),
     ];
     const toneColors = {
@@ -1753,7 +1754,7 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
         <button
           type="button"
           onClick={() => setVisibleCount((count) => count + PRODUCT_PAGE_SIZE)}
-          className="inline-flex min-h-[40px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white"
         >
           Afficher plus de produits
         </button>
@@ -1815,7 +1816,7 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
                       <StatusBadge tone={getStockStatus(p.stock).tone}>{getStockStatus(p.stock).label}</StatusBadge>
                     </p>
                     <p className="text-right font-semibold text-slate-950 tabular-nums">
-                      {p.price?.toLocaleString('fr-FR')} CFA
+                      {formatCfa(p.price)}
                     </p>
                   </div>
                 </div>
@@ -1892,7 +1893,7 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <div>
                       <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Prix</p>
-                      <p className="fui-body1-strong tabular-nums">{(p.price || 0).toLocaleString('fr-FR')} CFA</p>
+                      <p className="fui-body1-strong tabular-nums">{formatCfa((p.price || 0))}</p>
                     </div>
                     <div>
                       <p className="fui-caption2 text-[var(--colorNeutralForeground3)]">Stock</p>
@@ -2031,7 +2032,7 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
                   </StatusBadge>
                 </td>
                 <td className="px-4 py-3 lg:px-6 lg:py-4 text-right font-semibold text-slate-950 tabular-nums">
-                  {p.price?.toLocaleString('fr-FR')} CFA
+                  {formatCfa(p.price)}
                 </td>
                 <td className="px-4 py-3 text-right font-medium tabular-nums lg:px-6 lg:py-4">
                   <div className="flex flex-col items-end gap-1">
@@ -2095,7 +2096,6 @@ export const ProductList = ({ products, loading, onDelete, onEdit, onDuplicate, 
           </tbody>
         </table>
       </div>
-
 
       {renderLoadMore()}
 

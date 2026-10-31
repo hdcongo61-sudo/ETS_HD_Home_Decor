@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import { formatCfa } from '../utils/format';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -144,7 +145,7 @@ const UserProfile = () => {
   const lastLoginDisplay = user?.lastLogin
     ? new Date(user.lastLogin).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : 'Non disponible';
-  const formatMoney = (value) => `${new Intl.NumberFormat('fr-FR').format(Math.round(value || 0))} CFA`;
+  const formatMoney = (value) => formatCfa(value);
   const userInitials = (user?.name || user?.email || 'U')
     .split(' ').filter(Boolean).slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase()).join('');
