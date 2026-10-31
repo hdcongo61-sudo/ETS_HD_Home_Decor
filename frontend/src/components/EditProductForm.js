@@ -69,7 +69,8 @@ const EditProductForm = () => {
     supplierName: '',
     supplierPhone: '',
     container: '',
-    warehouse: ''
+    warehouse: '',
+    barcode: ''
   });
   const [profitMargin, setProfitMargin] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
@@ -107,7 +108,8 @@ const EditProductForm = () => {
           supplierName: productRes.data.supplierName || '',
           supplierPhone: productRes.data.supplierPhone || '',
           container: productRes.data.container || '',
-          warehouse: productRes.data.warehouse || ''
+          warehouse: productRes.data.warehouse || '',
+          barcode: productRes.data.barcode || ''
         });
         setLookups({
           categories: cats.data,
@@ -231,7 +233,8 @@ const EditProductForm = () => {
         supplierName: formData.supplierName.trim(),
         supplierPhone: formData.supplierPhone.trim(),
         container: formData.container.trim(),
-        warehouse: formData.warehouse.trim()
+        warehouse: formData.warehouse.trim(),
+        barcode: formData.barcode.trim()
       };
 
       await api.put(`/products/${id}`, productData);
@@ -363,6 +366,11 @@ const EditProductForm = () => {
                   <input type="number" inputMode="numeric" name="stock" value={formData.stock} onChange={handleChange} min="0" step="1" className={inputClass('stock')} />
                   {validationErrors.stock && <p className="mt-1 text-xs text-[var(--ms-danger)]">{validationErrors.stock}</p>}
                   <Link to={productPath(product || id)} className="mt-1 inline-block text-xs font-medium text-[var(--colorBrandForeground1)] hover:underline">Voir les mouvements de stock</Link>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Code-barres (EAN / UPC)</label>
+                  <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} className={inputClass('barcode')} placeholder="Ex: 0123456789012" />
+                  <p className="mt-1 text-xs text-gray-500">Saisi au scanner pour ajouter le produit à une vente.</p>
                 </div>
                 <div className="flex flex-col justify-center border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] px-4 py-3">
                   <p className="ms-kpi-title">Marge</p>

@@ -101,6 +101,11 @@ const productSchema = mongoose.Schema(
       uppercase: true,
       trim: true
     },
+    barcode: {
+      type: String,
+      sparse: true,
+      trim: true
+    },
     viewsCount: {
       type: Number,
       default: 0,
@@ -166,6 +171,15 @@ productSchema.index(
   {
     unique: true,
     partialFilterExpression: { tenantId: { $type: 'objectId' }, sku: { $type: 'string' } },
+  }
+);
+
+// Unicité du code-barres par boutique (même stratégie sparse que le SKU).
+productSchema.index(
+  { tenantId: 1, barcode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { tenantId: { $type: 'objectId' }, barcode: { $type: 'string' } },
   }
 );
 

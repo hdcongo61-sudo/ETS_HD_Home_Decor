@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getProducts,
   getProductById,
+  getProductByBarcode,
   createProduct,
   duplicateProduct,
   updateProduct,
@@ -56,6 +57,9 @@ router.route('/by-warehouse')
 
 router.route('/by-category')
   .get(protect, requireTenant, admin, getProductsByCategory);
+
+router.route('/by-barcode')
+  .get(protect, requireTenant, getProductByBarcode);
 
 router.route('/field-values')
   .get(protect, requireTenant, getProductFieldValues);

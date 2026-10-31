@@ -90,6 +90,7 @@ const SaleFormFields = ({
   const [productSearchTerms, setProductSearchTerms] = useState(['']);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [scanMode, setScanMode] = useState('qr'); // 'qr' | 'barcode'
   const canProforma = useFeature(FEATURE_KEYS.PROFORMA);
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
@@ -297,14 +298,9 @@ const SaleFormFields = ({
     setProductSearchTerms([...productSearchTerms, '']);
   };
 
-  // QR scan → add the product to the form (increment if already present).
-  const handleScannedProduct = (text) => {
-    const pid = parseScannedProductId(text);
-    if (!pid) { toast.error('QR produit non reconnu.'); return; }
-    const prod = products.find((p) => p._id === pid);
-    if (!prod) { toast.error('Produit introuvable dans le catalogue.'); return; }
-
-    const idx = selectedProducts.findIndex((l) => l.product === pid);
+  // Add (or increment) a scanned/looked-up product on the sale lines.
+  const addScannedProduct = (prod) => {
+    const idx = selectedProducts.findIndex((l) => l.product === prod._id);
     if (idx >= 0) {
       const next = [...selectedProducts];
       next[idx] = { ...next[idx], quantity: (Number(next[idx].quantity) || 0) + 1 };
@@ -325,6 +321,31 @@ const SaleFormFields = ({
       setErrors([...errors, null]);
     }
     toast.success(`${prod.name} ajouté`);
+  };
+
+  // QR / barcode scan → add the product to the form.
+  const handleScannedProduct = async (text) => {
+    const pid = parseScannedProductId(text);
+    if (pid) {
+      const prod = products.find((p) => p._id === pid);
+      if (!prod) { toast.error('Produit introuvable dans le catalogue.'); return; }
+      addScannedProduct(prod);
+      return;
+    }
+
+    // Not a product id → treat as a barcode (EAN/UPC).
+    const code = String(text || '').trim();
+    if (!code) { toast.error('Code scanné non reconnu.'); return; }
+    try {
+      const { data } = await api.get('/products/by-barcode', { params: { code } });
+      addScannedProduct(data);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        toast.error('Aucun produit avec ce code-barres.');
+      } else {
+        toast.error('Erreur de recherche du code-barres.');
+      }
+    }
   };
 
   const removeProduct = (index) => {
@@ -681,12 +702,32 @@ const SaleFormFields = ({
 
           {showScanner && (
             <div className="rounded-[var(--radiusLarge)] border border-[var(--ms-border)] bg-[var(--ms-bg-subtle)] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-[var(--ms-text)]">Scannez le QR d'un produit pour l'ajouter</span>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="inline-flex rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-surface-muted)] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setScanMode('qr')}
+                    className={`min-h-[28px] rounded-[var(--radiusSmall)] px-2.5 text-xs font-semibold transition-colors ${scanMode === 'qr' ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)]'}`}
+                  >
+                    QR produit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanMode('barcode')}
+                    className={`min-h-[28px] rounded-[var(--radiusSmall)] px-2.5 text-xs font-semibold transition-colors ${scanMode === 'barcode' ? 'bg-[var(--ms-blue)] text-white' : 'text-[var(--ms-text-muted)]'}`}
+                  >
+                    Code-barres
+                  </button>
+                </div>
+                <span className="text-xs font-medium text-[var(--ms-text)]">
+                  {scanMode === 'barcode' ? "Scannez le code-barres d'un produit pour l'ajouter" : "Scannez le QR d'un produit pour l'ajouter"}
+                </span>
                 <button type="button" onClick={() => setShowScanner(false)} className="ms-icon-button" aria-label="Fermer le scanner"><X className="h-4 w-4" /></button>
               </div>
               <Suspense fallback={<div className="py-8 text-center text-sm text-[var(--ms-text-muted)]">Activation de la caméra…</div>}>
                 <ProductQrScanner
+                  key={scanMode}
+                  mode={scanMode}
                   onDetect={handleScannedProduct}
                   onError={() => toast.error("Impossible d'accéder à la caméra. Autorisez l'accès et réessayez.")}
                 />

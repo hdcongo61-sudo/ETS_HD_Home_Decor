@@ -11,7 +11,7 @@ const { issueStock, receiveStock } = require('../services/inventoryService');
 
 const STOCK_MOVEMENT_REASONS = ['casse', 'cadeau', 'vol', 'peremption', 'usage_personnel', 'correction', 'autre'];
 const PRODUCT_LIST_FIELDS =
-  'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku isActive minStockLevel';
+  'name description price costPrice stock category image supplierName supplierPhone container warehouse slug sku barcode isActive minStockLevel';
 
 const normaliseId = (value) => {
   if (!value) return null;
@@ -607,6 +607,7 @@ const createProduct = async (req, res) => {
       supplierPhone,
       container,
       warehouse,
+      barcode,
     } = req.body;
     const numericPrice = parseNumberField(price);
     const numericCost = parseNumberField(costPrice);
@@ -614,6 +615,7 @@ const createProduct = async (req, res) => {
     const cleanedContainer = typeof container === 'string' ? container.trim() : '';
     const cleanedWarehouse = typeof warehouse === 'string' ? warehouse.trim() : '';
     const cleanedName = typeof name === 'string' ? name.trim() : '';
+    const cleanedBarcode = typeof barcode === 'string' ? barcode.trim() : '';
     const resolvedName = buildProductNameWithContainer(cleanedName, cleanedContainer);
     const cleanedSupplierName = typeof supplierName === 'string' ? supplierName.trim() : '';
     const supplierPhoneMap = await buildSupplierPhoneMap(req);
@@ -639,6 +641,7 @@ const createProduct = async (req, res) => {
       supplierPhone: resolvedSupplierPhone,
       container: cleanedContainer,
       warehouse: cleanedWarehouse,
+      barcode: cleanedBarcode || undefined,
       createdBy: userId,
       updatedBy: userId,
       activities: [
@@ -659,7 +662,7 @@ const createProduct = async (req, res) => {
         productId: createdProduct._id,
         optionValues: {},
         sku: createdProduct.sku || undefined,
-        barcodes: [],
+        barcodes: cleanedBarcode ? [cleanedBarcode] : [],
         status: 'active',
         isDefault: true,
       });
@@ -749,6 +752,7 @@ const updateProduct = async (req, res) => {
       supplierPhone,
       container,
       warehouse,
+      barcode,
     } = req.body;
 
     let resolvedImageUrl;
@@ -782,6 +786,7 @@ const updateProduct = async (req, res) => {
     const resolvedName = buildProductNameWithContainer(baseName, containerForName);
     const incomingSupplierName = typeof supplierName === 'string' ? supplierName.trim() : undefined;
     const incomingSupplierPhone = typeof supplierPhone === 'string' ? supplierPhone.trim() : undefined;
+    const incomingBarcode = typeof barcode === 'string' ? barcode.trim() : undefined;
     const supplierPhoneMap = incomingSupplierName !== undefined ? await buildSupplierPhoneMap(req) : null;
     const resolvedSupplierPhone = incomingSupplierName !== undefined
       ? resolveSupplierPhone(incomingSupplierName, incomingSupplierPhone, supplierPhoneMap)
@@ -800,6 +805,7 @@ const updateProduct = async (req, res) => {
       supplierPhone: resolvedSupplierPhone,
       container: incomingContainer,
       warehouse: incomingWarehouse,
+      barcode: incomingBarcode,
     };
 
     for (const [key, newValue] of Object.entries(fieldsToCheck)) {
@@ -2204,9 +2210,38 @@ const bulkUpdateProducts = async (req, res) => {
   }
 };
 
+// @desc    Find a product by barcode (EAN/UPC) — scan-to-add in sales
+// @route   GET /api/products/by-barcode?code=...
+// @access  Private
+const getProductByBarcode = async (req, res) => {
+  try {
+    const code = String(req.query.code || '').trim();
+    if (!code) return res.status(400).json({ message: 'Code-barres manquant' });
+    if (code.length > 64) return res.status(400).json({ message: 'Code-barres trop long' });
+
+    const tf = tenantFilter(req);
+    let product = await Product.findOne({ ...tf, barcode: code }).select(PRODUCT_LIST_FIELDS);
+
+    if (!product) {
+      const variant = await ProductVariant.findOne({ ...tf, barcodes: code }).select('productId');
+      if (variant?.productId) {
+        product = await Product.findById(variant.productId).select(PRODUCT_LIST_FIELDS);
+      }
+    }
+
+    if (!product) return res.status(404).json({ message: 'Aucun produit avec ce code-barres' });
+
+    res.json(stripSensitiveProductFields(product, req.user));
+  } catch (error) {
+    console.error('❌ Erreur lookup code-barres :', error);
+    res.status(500).json({ message: 'Erreur du serveur' });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
+  getProductByBarcode,
   createProduct,
   duplicateProduct,
   updateProduct,
