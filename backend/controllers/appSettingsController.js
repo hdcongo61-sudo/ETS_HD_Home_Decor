@@ -3,6 +3,7 @@ const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
 const AppSettings = require('../models/appSettingsModel');
 const { tenantFilter, applyTenant } = require('../utils/tenantQuery');
+const { DEFAULT_TAX, normalizeTax } = require('../utils/tax');
 
 const DEFAULT_BRANDING = {
   appName: 'ETS HD Gestion',
@@ -107,6 +108,7 @@ const sanitizeSettings = (doc) => {
       address: normalizeOptionalText(branding.address),
     },
     currency: normalizeCurrency(settings.currency),
+    tax: normalizeTax(settings.tax),
     updatedAt: settings.updatedAt || null,
   };
 };
@@ -130,6 +132,7 @@ const getOrCreateSettings = async (req) => {
       key: settingsKeyFor(tenantId),
       branding: DEFAULT_BRANDING,
       currency: DEFAULT_CURRENCY,
+      tax: DEFAULT_TAX,
     });
   } catch (err) {
     // Race or stale-index collision: fall back to whatever now exists.
@@ -198,8 +201,19 @@ const updateAppSettings = asyncHandler(async (req, res) => {
   }
   const nextCurrency = normalizeCurrency(currencyInput, settings.currency || DEFAULT_CURRENCY);
 
+  let taxInput = req.body.tax;
+  if (typeof taxInput === 'string') {
+    try {
+      taxInput = JSON.parse(taxInput);
+    } catch {
+      taxInput = {};
+    }
+  }
+  const nextTax = normalizeTax(taxInput || settings.tax);
+
   settings.branding = nextBranding;
   settings.currency = nextCurrency;
+  settings.tax = nextTax;
   await settings.save();
 
   res.json(sanitizeSettings(settings));
@@ -241,6 +255,7 @@ const seedTenantSettings = async ({ tenantId, shopName, ownerEmail, ownerPhone, 
       key: settingsKeyFor(tenantId),
       branding,
       currency: DEFAULT_CURRENCY,
+      tax: DEFAULT_TAX,
     });
   } catch (err) {
     // If a settings doc was created concurrently, return it instead of failing signup.

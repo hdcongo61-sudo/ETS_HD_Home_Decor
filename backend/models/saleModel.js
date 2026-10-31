@@ -49,6 +49,29 @@ const saleSchema = mongoose.Schema(
       min: [0, 'Le montant total ne peut pas être négatif'],
       default: 0
     },
+    // Tax snapshot (TVA) — stored at sale time so later rate edits never
+    // change past documents. Zero when the shop has tax disabled.
+    taxRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    },
+    taxAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    taxInclusive: {
+      type: Boolean,
+      default: true
+    },
+    taxLabel: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: ''
+    },
     saleType: {
       type: String,
       enum: ['normal', 'wholesale'],

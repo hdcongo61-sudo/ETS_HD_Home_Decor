@@ -185,6 +185,14 @@ const Settings = () => {
     ...(appSettings?.currency || {}),
   }));
   const [savingCurrencySettings, setSavingCurrencySettings] = useState(false);
+  const [taxSettings, setTaxSettings] = useState(() => ({
+    enabled: false,
+    rate: 0,
+    label: 'TVA',
+    inclusive: true,
+    ...(appSettings?.tax || {}),
+  }));
+  const [savingTaxSettings, setSavingTaxSettings] = useState(false);
   const [dateSettings, setDateSettings] = useState({
     manualSaleDateEnabled: false,
     manualExpenseDateEnabled: false,
@@ -337,6 +345,24 @@ const Settings = () => {
       toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
     } finally {
       setSavingCurrencySettings(false);
+    }
+  };
+
+  const handleTaxFieldChange = (field, value) => {
+    setTaxSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveTaxSettings = async () => {
+    if (!isAdmin) return;
+    try {
+      setSavingTaxSettings(true);
+      const { data } = await platformApi.updateAppSettings({ tax: taxSettings });
+      setAppSettings(data);
+      toast.success('Taxe enregistrée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur de sauvegarde');
+    } finally {
+      setSavingTaxSettings(false);
     }
   };
 
@@ -1488,6 +1514,28 @@ const Settings = () => {
                   <div className="flex items-end">
                     <button type="button" onClick={handleSaveCurrencySettings} disabled={savingCurrencySettings} className="ms-button ms-button-secondary ms-button-md w-full justify-center disabled:opacity-60" style={{ minHeight: '44px' }}>
                       {savingCurrencySettings ? 'Enregistrement...' : 'Enregistrer la devise'}
+                    </button>
+                  </div>
+                </div>
+              </BrandingField>
+
+              <BrandingField label="Taxe (TVA)" description="Optionnelle. Quand activée, chaque vente enregistre le montant de taxe inclus dans le total (affiché sur la facture et dans les rapports).">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="flex min-h-[44px] items-center gap-3 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                    <input type="checkbox" checked={Boolean(taxSettings.enabled)} onChange={(e) => handleTaxFieldChange('enabled', e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 rounded border-[var(--ms-border)] text-[var(--ms-blue)] focus:ring-[var(--ms-blue)]" />
+                    Activer la taxe
+                  </label>
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Taux (%)</label>
+                    <input type="number" inputMode="decimal" min="0" max="100" step="0.01" value={taxSettings.rate} onChange={(e) => handleTaxFieldChange('rate', Number(e.target.value))} className={settingInputClass} placeholder="Ex: 18" />
+                  </div>
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Libellé</label>
+                    <input type="text" value={taxSettings.label} onChange={(e) => handleTaxFieldChange('label', e.target.value)} className={settingInputClass} placeholder="TVA" maxLength={20} />
+                  </div>
+                  <div className="flex items-end">
+                    <button type="button" onClick={handleSaveTaxSettings} disabled={savingTaxSettings} className="ms-button ms-button-secondary ms-button-md w-full justify-center disabled:opacity-60" style={{ minHeight: '44px' }}>
+                      {savingTaxSettings ? 'Enregistrement...' : 'Enregistrer la taxe'}
                     </button>
                   </div>
                 </div>

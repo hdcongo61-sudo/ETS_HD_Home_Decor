@@ -19,6 +19,12 @@ export const DEFAULT_APP_SETTINGS = {
     decimals: 0,
     locale: 'fr-FR',
   },
+  tax: {
+    enabled: false,
+    rate: 0,
+    label: 'TVA',
+    inclusive: true,
+  },
   updatedAt: null,
 };
 
@@ -40,6 +46,10 @@ export const normalizeAppSettings = (settings) => {
     currency: {
       ...DEFAULT_APP_SETTINGS.currency,
       ...(settings?.currency || {}),
+    },
+    tax: {
+      ...DEFAULT_APP_SETTINGS.tax,
+      ...(settings?.tax || {}),
     },
   };
 };

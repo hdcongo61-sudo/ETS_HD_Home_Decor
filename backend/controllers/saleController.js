@@ -20,6 +20,7 @@ const { issueStock, receiveStock } = require('../services/inventoryService');
 const { recordPayment } = require('../services/paymentService');
 const { nextNumber } = require('../services/cashService');
 const { findStalePartialSales } = require('../utils/staleBalanceDetection');
+const { getTenantTax, computeTaxFromTotal } = require('../utils/tax');
 
 const normalizeSaleType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -704,6 +705,11 @@ const createSale = asyncHandler(async (req, res) => {
 
     const effectiveSaleDate = parsedSaleDate.value || new Date();
 
+    // Tax (TVA) snapshot — inclusive model: totalAmount already contains tax.
+    const tenantTax = await getTenantTax(req.tenantId);
+    const taxAmount = computeTaxFromTotal(totalAmount, tenantTax);
+    const taxRate = tenantTax.enabled ? tenantTax.rate : 0;
+
     // Create sale with reminder data
     const resolvedSaleType = isAdminUser(req.user)
       ? normalizeSaleType(saleType)
@@ -729,6 +735,10 @@ const createSale = asyncHandler(async (req, res) => {
       reference: saleReference,
       products: populatedProducts,
       totalAmount,
+      taxRate,
+      taxAmount,
+      taxInclusive: tenantTax.inclusive,
+      taxLabel: taxAmount > 0 ? tenantTax.label : '',
       saleType: resolvedSaleType,
       paymentMethod,
       note,

@@ -70,6 +70,35 @@ const brandingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Tax configuration for this tenant. Disabled by default so existing shops
+// keep their exact current totals; when enabled, sales store a tax snapshot
+// (rate + amount) so past invoices never change if the rate is edited later.
+const taxSchema = new mongoose.Schema(
+  {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    rate: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    label: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: 'TVA',
+    },
+    inclusive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false }
+);
+
 // Currency used for every money display, invoice and export of this tenant.
 // Stored as a subdocument so a shop can override symbol/decimals without
 // touching the code. Default preserves the legacy CFA behaviour.
@@ -129,6 +158,10 @@ const appSettingsSchema = new mongoose.Schema(
     },
     currency: {
       type: currencySchema,
+      default: () => ({}),
+    },
+    tax: {
+      type: taxSchema,
       default: () => ({}),
     },
   },

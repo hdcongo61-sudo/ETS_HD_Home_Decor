@@ -1220,6 +1220,12 @@ const SaleDetailPage = () => {
                                     <span className="text-sm">Total de la vente:</span>
                                     <span className="text-right text-sm font-semibold">{(Number(sale.totalAmount) || 0).toFixed(0)} CFA</span>
                                 </div>
+                                {Number(sale.taxAmount) > 0 && (
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-sm">dont {sale.taxLabel || 'Taxe'} ({Number(sale.taxRate) || 0}%):</span>
+                                        <span className="text-right text-sm text-gray-500">{formatCfa(sale.taxAmount)}</span>
+                                    </div>
+                                )}
                                 <div className="flex items-start justify-between gap-3">
                                     <span className="text-sm">Total payé:</span>
                                     <span className="text-right text-sm font-semibold text-green-600">{(Number(sale.totalPaid) || 0).toFixed(0)} CFA</span>
