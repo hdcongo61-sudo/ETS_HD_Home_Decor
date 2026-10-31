@@ -73,6 +73,9 @@ const SaleFormFields = ({
   );
   const [products, setProducts] = useState(normalizedInitialProducts);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: '', price: 0 }]);
+  const [services, setServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([{ service: '', quantity: 1, price: 0 }]);
+  const [serviceErrors, setServiceErrors] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
   const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -132,6 +135,7 @@ const SaleFormFields = ({
     }
     setSelectedClient(missingClient ? '' : draft.selectedClient);
     setSelectedProducts(draft.selectedProducts.length ? draft.selectedProducts.map(line => ({ ...line, product: products.some(product => product._id === line.product) ? line.product : '' })) : [{ product: '', quantity: '', price: 0 }]);
+    setSelectedServices(Array.isArray(draft.selectedServices) && draft.selectedServices.length ? draft.selectedServices.map(line => ({ ...line, service: services.some(service => service._id === line.service) ? line.service : '' })) : [{ service: '', quantity: 1, price: 0 }]);
     setSaleType(draft.saleType || 'normal');
     setPaymentMethod(draft.paymentMethod || 'cash');
     setPaymentAmount(draft.paymentAmount ?? '');
@@ -157,7 +161,7 @@ const SaleFormFields = ({
     if (!draftKey) { setDraftStorageError(true); return; }
     const draft = {
       version: SALE_DRAFT_VERSION, updatedAt: new Date().toISOString(),
-      selectedClient, selectedProducts, saleType, paymentMethod, paymentAmount, note,
+      selectedClient, selectedProducts, selectedServices, saleType, paymentMethod, paymentAmount, note,
       saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil,
     };
     try {
@@ -166,7 +170,7 @@ const SaleFormFields = ({
         setDraftStorageError(false);
       } else window.localStorage.removeItem(draftKey);
     } catch { setDraftStorageError(true); }
-  }, [draftReady, draftKey, selectedClient, selectedProducts, saleType, paymentMethod, paymentAmount, note, saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil]);
+  }, [draftReady, draftKey, selectedClient, selectedProducts, selectedServices, saleType, paymentMethod, paymentAmount, note, saleDate, setReminder, reminderDate, reminderNote, markAsDelivered, validUntil]);
 
 
 	
@@ -194,6 +198,20 @@ const SaleFormFields = ({
     return undefined;
   }, [normalizedInitialProducts]);
 
+  /** Fetch services (catalogue hors-stock) **/
+  useEffect(() => {
+    let active = true;
+    Promise.resolve(api.get('/services'))
+      .then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : [];
+        if (active) setServices(list.filter((s) => s.active));
+      })
+      .catch(() => {
+        // Service catalogue optional — a failure must not block product sales.
+      });
+    return () => { active = false; };
+  }, []);
+
   /** Scan-to-sell: preselect the product passed via the QR/URL (once loaded) **/
   const appliedInitialProductRef = useRef(false);
   useEffect(() => {
@@ -206,15 +224,20 @@ const SaleFormFields = ({
     setErrors([null]);
   }, [initialProductId, products]);
 
-  /** Calculate total **/
+  /** Calculate total (produits + services) **/
   useEffect(() => {
-    const total = selectedProducts.reduce((sum, item) => {
+    const productsTotal = selectedProducts.reduce((sum, item) => {
       const q = Number(item.quantity) || 0;
       const p = Number(item.price) || 0;
       return sum + q * p;
     }, 0);
-    setTotalAmount(total);
-  }, [selectedProducts]);
+    const servicesTotal = selectedServices.reduce((sum, item) => {
+      const q = Number(item.quantity) || 0;
+      const p = Number(item.price) || 0;
+      return sum + q * p;
+    }, 0);
+    setTotalAmount(productsTotal + servicesTotal);
+  }, [selectedProducts, selectedServices]);
 
   const normalizedPaymentAmount = Math.max(0, Number(paymentAmount) || 0);
   const promoDiscount = promoApplied
@@ -277,6 +300,19 @@ const SaleFormFields = ({
     return newErrors.every(e => !e);
   };
 
+  const validateServices = () => {
+    const newErrors = selectedServices.map((item) => {
+      if (!item.service) return null; // ligne vide : ignorée
+      const service = services.find(s => s._id === item.service);
+      if (!service) return 'Service invalide';
+      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) return 'Quantité invalide';
+      if (!Number.isFinite(Number(item.price)) || Number(item.price) < 0) return 'Prix invalide';
+      return null;
+    });
+    setServiceErrors(newErrors);
+    return newErrors.every(e => !e);
+  };
+
   /** Handlers **/
   const handleProductChange = (index, id) => {
     const newArr = [...selectedProducts];
@@ -307,6 +343,42 @@ const SaleFormFields = ({
     setSelectedProducts([...selectedProducts, { product: '', quantity: '', price: 0 }]);
     setErrors([...errors, null]);
     setProductSearchTerms([...productSearchTerms, '']);
+  };
+
+  const handleServiceChange = (index, id) => {
+    const newArr = [...selectedServices];
+    const service = services.find(s => s._id === id);
+    newArr[index] = {
+      service: id,
+      quantity: newArr[index]?.quantity ?? 1,
+      price: service?.price ?? 0,
+    };
+    setSelectedServices(newArr);
+  };
+
+  const handleServiceQuantityChange = (index, val) => {
+    const newArr = [...selectedServices];
+    const q = parseInt(val, 10);
+    newArr[index].quantity = Number.isNaN(q) ? 1 : Math.max(1, q);
+    setSelectedServices(newArr);
+  };
+
+  const handleServicePriceChange = (index, val) => {
+    const newArr = [...selectedServices];
+    newArr[index].price = Math.max(0, parseFloat(val) || 0);
+    setSelectedServices(newArr);
+  };
+
+  const addService = () => {
+    setSelectedServices([...selectedServices, { service: '', quantity: 1, price: 0 }]);
+    setServiceErrors([...serviceErrors, null]);
+  };
+
+  const removeService = (index) => {
+    if (selectedServices.length > 1) {
+      setSelectedServices(selectedServices.filter((_, i) => i !== index));
+      setServiceErrors(serviceErrors.filter((_, i) => i !== index));
+    }
   };
 
   // Add (or increment) a scanned/looked-up product on the sale lines.
@@ -386,6 +458,8 @@ const SaleFormFields = ({
   const resetForm = () => {
     setSelectedClient('');
     setSelectedProducts([{ product: '', quantity: '', price: 0 }]);
+    setSelectedServices([{ service: '', quantity: 1, price: 0 }]);
+    setServiceErrors([]);
     setSaleType('normal');
     setPaymentMethod('cash');
     setPaymentAmount('');
@@ -425,7 +499,7 @@ const SaleFormFields = ({
       setIsSubmitting(false);
       return;
     }
-    if (!validatePrices()) {
+    if (!validatePrices() || !validateServices()) {
       setFormError('Corrigez les erreurs du formulaire.');
       submitLock.current = false;
       setIsSubmitting(false);
@@ -499,6 +573,11 @@ const SaleFormFields = ({
           quantity: Number(p.quantity),
           price: Number(p.price),
         })),
+        services: selectedServices.filter(s => s.service).map(s => ({
+          service: s.service,
+          quantity: Number(s.quantity),
+          price: Number(s.price),
+        })),
         saleType,
         paymentMethod,
         initialPaymentAmount: normalizedPaymentAmount,
@@ -536,7 +615,7 @@ const SaleFormFields = ({
   const sectionTitleClass = 'text-sm font-semibold text-[var(--ms-text)] uppercase tracking-[0.12em]';
   const workflowSteps = [
     { label: 'Client', complete: Boolean(selectedClient) },
-    { label: 'Produits', complete: selectedProducts.some((item) => item.product && Number(item.quantity) > 0) },
+    { label: 'Produits', complete: selectedProducts.some((item) => item.product && Number(item.quantity) > 0) || selectedServices.some((item) => item.service && Number(item.quantity) > 0) },
     { label: 'Paiement', complete: totalAmount > 0 && paymentAmount !== '' },
     { label: 'Confirmation', complete: false },
   ];
@@ -931,6 +1010,102 @@ const SaleFormFields = ({
             <span className="text-lg leading-none" aria-hidden>+</span>
             Ajouter un produit
           </button>
+
+          {documentMode === 'sale' && (
+            <div className="space-y-3 border-t border-dashed border-[var(--ms-border)] pt-4">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold text-[var(--ms-text)] uppercase tracking-[0.12em]">
+                  Services
+                </h4>
+                <span className="text-xs text-[var(--ms-text-muted)]">{selectedServices.length} ligne(s)</span>
+              </div>
+
+              {selectedServices.map((item, index) => (
+                <div
+                  key={index}
+                  className={`rounded-[20px] border p-4 space-y-3 transition-colors ${
+                    serviceErrors[index]
+                      ? 'border-[var(--ms-danger)]/30 bg-[#FDF3F4]'
+                      : 'border-[var(--ms-border)] bg-[var(--ms-bg-subtle)]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">
+                      Service {index + 1}
+                    </span>
+                    {selectedServices.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeService(index)}
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
+                        aria-label={`Supprimer le service ${index + 1}`}
+                      >
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-${index}`}>Service</label>
+                    <select
+                      id={`service-${index}`}
+                      className={inputBase}
+                      value={item.service}
+                      onChange={(e) => handleServiceChange(index, e.target.value)}
+                    >
+                      <option value="">Sélectionner un service…</option>
+                      {services.map((s) => (
+                        <option key={s._id} value={s._id}>{s.name} ({(s.price || 0).toLocaleString('fr-FR')} CFA)</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-qty-${index}`}>Quantité</label>
+                      <input
+                        id={`service-qty-${index}`}
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        className={inputBase}
+                        value={item.quantity}
+                        onChange={(e) => handleServiceQuantityChange(index, e.target.value)}
+                        placeholder="Qté"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-price-${index}`}>Prix unitaire (CFA)</label>
+                      <input
+                        id={`service-price-${index}`}
+                        type="number"
+                        inputMode="decimal"
+                        className={inputBase}
+                        value={item.price}
+                        onChange={(e) => handleServicePriceChange(index, e.target.value)}
+                        placeholder="Prix"
+                      />
+                    </div>
+                  </div>
+
+                  {serviceErrors[index] && (
+                    <p id={`service-error-${index}`} className="text-sm text-[var(--ms-danger)]" role="alert">
+                      {serviceErrors[index]}
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addService}
+                className="form-button-secondary flex w-full items-center justify-center gap-2 text-sm"
+              >
+                <span className="text-lg leading-none" aria-hidden>+</span>
+                Ajouter un service
+              </button>
+            </div>
+          )}
         </section>
 
         {activeStage === 1 && <div className="flex justify-between gap-2"><button type="button" className="ms-button ms-button-secondary min-h-[44px]" onClick={() => goToStage(0)}>Retour</button><button type="button" className="ms-button ms-button-primary min-h-[44px]" onClick={() => goToStage(2)}>{SALE_STAGE_CONTINUE_LABELS[1]} <ArrowRightIcon /></button></div>}
@@ -1208,6 +1383,10 @@ const SaleFormFields = ({
             {selectedProducts.filter(item => item.product).map((item, index) => {
               const product = products.find(candidate => candidate._id === item.product);
               return <li key={`${item.product}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">{product?.name || 'Produit à sélectionner'}</strong><span>{item.quantity} × {Number(item.price || 0).toLocaleString('fr-FR')} CFA</span></span><strong className="shrink-0 tabular-nums">{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('fr-FR')} CFA</strong></li>;
+            })}
+            {selectedServices.filter(item => item.service).map((item, index) => {
+              const service = services.find(candidate => candidate._id === item.service);
+              return <li key={`${item.service}-${index}`} className="flex items-start justify-between gap-3 p-3 text-sm"><span className="min-w-0"><strong className="block truncate">🛠️ {service?.name || 'Service à sélectionner'}</strong><span>{item.quantity} × {Number(item.price || 0).toLocaleString('fr-FR')} CFA</span></span><strong className="shrink-0 tabular-nums">{(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('fr-FR')} CFA</strong></li>;
             })}
           </ul>
           {note && <p className="mt-2 text-sm">Note : {note}</p>}

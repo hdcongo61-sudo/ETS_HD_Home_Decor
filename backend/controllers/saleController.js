@@ -10,6 +10,7 @@ const DeletedSale = require('../models/deletedSaleModel');
 const Employee = require('../models/employeeModel');
 const Refund = require('../models/refundModel');
 const Promotion = require('../models/promotionModel');
+const Service = require('../models/serviceModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -583,6 +584,7 @@ const createSale = asyncHandler(async (req, res) => {
   const {
     client,
     products,
+    services,
     paymentMethod,
     note,
     reminderDate,
@@ -615,8 +617,10 @@ const createSale = asyncHandler(async (req, res) => {
       }
     }
 
-    if (!Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ message: 'Ajoutez au moins un produit à la vente' });
+    const normalizedProducts = Array.isArray(products) ? products : [];
+    const normalizedServices = Array.isArray(services) ? services : [];
+    if (normalizedProducts.length === 0 && normalizedServices.length === 0) {
+      return res.status(400).json({ message: 'Ajoutez au moins un produit ou un service à la vente' });
     }
 
     let sourceProforma = null;
@@ -646,7 +650,7 @@ const createSale = asyncHandler(async (req, res) => {
 
     let totalAmount = 0;
     const populatedProducts = [];
-    const requestedItems = products.map((item) => ({
+    const requestedItems = normalizedProducts.map((item) => ({
       productId: normalizeObjectId(item.product),
       quantity: Number(item.quantity),
       salePrice: Number(item.price)
@@ -704,6 +708,52 @@ const createSale = asyncHandler(async (req, res) => {
         quantity: quantity,
         priceAtSale: salePrice
       });
+    }
+
+    // Lignes de services (hors stock) : validation + sous-total. Aucun
+    // mouvement d'inventaire n'est généré pour les services.
+    const populatedServices = [];
+    if (normalizedServices.length > 0) {
+      const requestedServiceItems = normalizedServices.map((item) => ({
+        serviceId: normalizeObjectId(item.service),
+        quantity: Number(item.quantity),
+        salePrice: Number(item.price)
+      }));
+      const uniqueServiceIds = [...new Set(requestedServiceItems.map((item) => item.serviceId).filter(Boolean))];
+      const serviceDocuments = await Service.find({ ...tenantFilter(req), _id: { $in: uniqueServiceIds } })
+        .select('_id name active')
+        .lean();
+      const serviceMap = new Map(serviceDocuments.map((service) => [String(service._id), service]));
+
+      for (const item of requestedServiceItems) {
+        const service = serviceMap.get(item.serviceId);
+
+        if (!service) {
+          return res.status(404).json({ message: 'Service introuvable' });
+        }
+        if (service.active === false) {
+          return res.status(400).json({ message: `Service désactivé : ${service.name}` });
+        }
+
+        const quantity = item.quantity;
+        const salePrice = item.salePrice;
+
+        if (isNaN(quantity) || quantity <= 0) {
+          return res.status(400).json({ message: `Quantité invalide pour ${service.name}` });
+        }
+        if (isNaN(salePrice) || salePrice < 0) {
+          return res.status(400).json({ message: `Prix invalide pour ${service.name}` });
+        }
+
+        totalAmount += salePrice * quantity;
+
+        populatedServices.push({
+          service: service._id,
+          name: service.name,
+          quantity,
+          priceAtSale: salePrice
+        });
+      }
     }
 
     // Remise (code promo) — appliquée au sous-total. Le total final dû est
@@ -792,6 +842,7 @@ const createSale = asyncHandler(async (req, res) => {
       reference: saleReference,
       clientRequestId: normalizedClientRequestId || undefined,
       products: populatedProducts,
+      services: populatedServices,
       totalAmount,
       taxRate,
       taxAmount,
@@ -2509,6 +2560,15 @@ const updateSale = asyncHandler(async (req, res) => {
         priceAtSale: salePrice
       });
     }
+
+    // Les lignes de services d'une vente ne sont pas modifiées ici : on les
+    // conserve telles quelles et on réintègre leur sous-total dans le total.
+    const preservedServices = Array.isArray(existingSale.services) ? existingSale.services : [];
+    const servicesSubtotal = preservedServices.reduce(
+      (sum, item) => sum + (Number(item.priceAtSale) || 0) * (Number(item.quantity) || 0),
+      0
+    );
+    newTotalAmount += servicesSubtotal;
 
     // Mise à jour des stocks en transaction
     const session = await mongoose.startSession();

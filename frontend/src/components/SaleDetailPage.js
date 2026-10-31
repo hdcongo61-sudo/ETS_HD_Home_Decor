@@ -1498,6 +1498,54 @@ const SaleDetailPage = () => {
                         </div>
                     </div>
 
+                    {/* Services facturés (hors stock) */}
+                    {(sale.services || []).length > 0 && (
+                        <div id="services-vente" className="scroll-mt-20 mb-6 px-4 sm:px-6">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40">
+                                        <svg className="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                    </span>
+                                    Services
+                                </h3>
+                                <span className="text-sm text-gray-500">{(sale.services || []).length} ligne(s)</span>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantité</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {(sale.services || []).map((item, index) => (
+                                            <tr key={index}>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {item.name || 'Service'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {Number(item.priceAtSale || 0).toFixed(0)} CFA
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {item.quantity}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                                    {(Number(item.quantity || 0) * Number(item.priceAtSale || 0)).toFixed(0)} CFA
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
 
                     <div id="paiements-vente" className="scroll-mt-20 md:hidden mb-4 px-4">
                         <div className="flex gap-2">

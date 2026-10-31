@@ -113,14 +113,21 @@ const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] item
     doc.text(`Date: ${saleDate}`, rightCardX + 6, infoY + 26);
     doc.text(`Statut: ${balance <= 0 ? 'Payée' : 'Solde restant'}`, rightCardX + 6, infoY + 33);
 
-    // Tableau des produits
+    // Tableau des produits + services
     const headers = [['Produit', 'Prix unitaire', 'Quantité', 'Total']];
-    const data = (sale.products || []).map(item => [
+    const productData = (sale.products || []).map(item => [
       item.product?.name || 'Produit supprimé',
       formatAmount(item.priceAtSale),
       item.quantity,
       formatAmount((Number(item.priceAtSale) || 0) * (Number(item.quantity) || 0))
     ]);
+    const serviceData = (sale.services || []).map(item => [
+      `${item.name || 'Service'} (service)`,
+      formatAmount(item.priceAtSale),
+      item.quantity,
+      formatAmount((Number(item.priceAtSale) || 0) * (Number(item.quantity) || 0))
+    ]);
+    const data = [...productData, ...serviceData];
 
     autoTable(doc, {
       startY: 106,

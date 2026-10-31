@@ -43,6 +43,34 @@ const saleSchema = mongoose.Schema(
         },
       },
     ],
+    // Lignes de services (prestations hors stock, ex: coiffure, réparation).
+    // `name` est figé à la vente pour préserver l'historique même si le
+    // service est ensuite supprimé du catalogue.
+    services: [
+      {
+        service: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Service',
+          required: true,
+        },
+        name: {
+          type: String,
+          trim: true,
+          maxlength: 120,
+          default: '',
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: [1, 'La quantité ne peut pas être inférieure à 1']
+        },
+        priceAtSale: {
+          type: Number,
+          required: true,
+          min: [0, 'Le prix ne peut pas être négatif']
+        },
+      },
+    ],
     totalAmount: {
       type: Number,
       required: true,
