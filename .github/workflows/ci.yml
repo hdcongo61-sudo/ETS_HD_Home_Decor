@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend — syntaxe + tests unitaires
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        run: npm ci --prefix backend || npm install --prefix backend
+      - name: Vérification syntaxique
+        run: |
+          find backend -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Tests unitaires (suites DB ignorées sans TEST_MONGO_URI)
+        run: npm run test:isolation --prefix backend
+
+  frontend:
+    name: Frontend — tests + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        run: npm ci --prefix frontend || npm install --prefix frontend
+      - name: Tests
+        env:
+          CI: 'true'
+        run: npm test --prefix frontend -- --watchAll=false
+      - name: Build production
+        run: npm run build --prefix frontend
+
+  integration:
+    name: Intégration multi-tenant (optionnel)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TEST_MONGO_URI != '' && secrets.TEST_JWT_SECRET != '' }}
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend deps
+        run: npm install --prefix backend
+      - name: Run integration suites (Jest + supertest)
+        env:
+          RUN_TENANT_TESTS: '1'
+          TEST_MONGO_URI: ${{ secrets.TEST_MONGO_URI }}
+          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+        run: npm test --prefix backend

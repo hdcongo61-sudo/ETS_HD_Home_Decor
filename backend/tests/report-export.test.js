@@ -13,8 +13,8 @@ const fs = require('fs/promises');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 if (process.env.RUN_TENANT_TESTS !== '1') {
-  test('garde-fou RUN_TENANT_TESTS', () => {
-    assert.fail('RUN_TENANT_TESTS=1 et TEST_MONGO_URI sont requis.');
+  test('garde-fou RUN_TENANT_TESTS', (t) => {
+    t.skip('RUN_TENANT_TESTS=1 et TEST_MONGO_URI sont requis.');
   });
 } else {
   const mongoose = require('mongoose');

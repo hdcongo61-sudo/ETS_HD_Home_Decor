@@ -21,8 +21,8 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 if (process.env.RUN_TENANT_TESTS !== '1') {
   // Garde-fou : sans accord explicite, la suite échoue plutôt que de toucher
   // une base non prévue.
-  test('garde-fou RUN_TENANT_TESTS', () => {
-    assert.fail('RUN_TENANT_TESTS=1 et TEST_MONGO_URI sont requis pour exécuter la suite.');
+  test('garde-fou RUN_TENANT_TESTS', (t) => {
+    t.skip('RUN_TENANT_TESTS=1 et TEST_MONGO_URI sont requis pour exécuter la suite.');
   });
 } else {
   const jwt = require('jsonwebtoken');
