@@ -142,11 +142,3 @@ export const pendingMutationCount = async (storage = idbStorage) => (await stora
 
 export const staleMutationCount = async (storage = idbStorage) =>
   (await storage.all()).filter((op) => op.stale).length;
-
-export default {
-  enqueueMutation,
-  drainMutations,
-  pendingMutationCount,
-  staleMutationCount,
-  createClientRequestId,
-};

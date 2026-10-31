@@ -508,27 +508,6 @@ const DashboardAdmin = () => {
     }
   };
 
-  const exportCurrentWeekSummary = async () => {
-    try {
-      setReportActionLoading('weekly-summary');
-      const response = await reportingApi.weeklyDashboardExport();
-      const blob = new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `resume-analytique-hebdo-${new Date().toISOString().split('T')[0]}.xlsx`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      setAdminMessage('Export du résumé hebdomadaire généré avec succès.');
-    } catch (err) {
-      setAdminMessage(err.response?.data?.message || "Impossible de générer l'export du résumé hebdomadaire.");
-    } finally {
-      setReportActionLoading('');
-    }
-  };
-
   const exportWeeklyPdf = async () => {
     try {
       setReportActionLoading('pdf');

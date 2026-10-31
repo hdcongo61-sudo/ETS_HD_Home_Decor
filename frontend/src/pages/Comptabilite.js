@@ -11,7 +11,6 @@ import {
   EmptyState,
   LoadingSkeleton,
   PageHeader,
-  StatusBadge,
   Workspace,
 } from '../components/business';
 import {
