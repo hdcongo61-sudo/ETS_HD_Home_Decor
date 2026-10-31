@@ -140,5 +140,7 @@ export const drainMutations = async ({
 
 export const pendingMutationCount = async (storage = idbStorage) => (await storage.all()).length;
 
+export const listPendingMutations = async (storage = idbStorage) => storage.all();
+
 export const staleMutationCount = async (storage = idbStorage) =>
   (await storage.all()).filter((op) => op.stale).length;

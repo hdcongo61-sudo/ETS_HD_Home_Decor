@@ -41,9 +41,11 @@ const GlobalExpenseModal = () => {
         toast.success('Dépense enregistrée — données à jour.');
         window.dispatchEvent(new CustomEvent('expenseCreated'));
       }
+      return true;
     } catch (error) {
       console.error('Error creating expense:', error);
       toast.error(getErrorMessage(error, "Erreur lors de l'enregistrement de la dépense."));
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -56,7 +58,7 @@ const GlobalExpenseModal = () => {
       isOpen={isOpen}
       onClose={requestClose}
       title="Nouvelle dépense"
-      subtitle="Enregistrez une sortie sans quitter votre page actuelle."
+      subtitle="Saisissez le montant, la catégorie et le motif. Le mode de paiement est facultatif."
       size="lg"
       mobileFullscreen
       suppressGlobal={false}

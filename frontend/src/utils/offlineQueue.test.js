@@ -2,6 +2,7 @@ import {
   enqueueMutation,
   drainMutations,
   pendingMutationCount,
+  listPendingMutations,
   staleMutationCount,
   createClientRequestId,
 } from './offlineQueue';
@@ -70,6 +71,17 @@ describe('offlineQueue (spike PoC)', () => {
 
     expect(result.sent).toBe(0);
     expect(await pendingMutationCount(storage)).toBe(1);
+  });
+
+  it('expose les opérations en attente avec leurs détails', async () => {
+    const storage = memoryStorage();
+    const operation = await enqueueMutation({
+      method: 'post',
+      url: '/expenses',
+      data: { description: 'Transport', amount: 2500 },
+    }, storage);
+
+    expect(await listPendingMutations(storage)).toEqual([operation]);
   });
 
   it('marque une opération en conflit (409) comme stale sans la supprimer', async () => {

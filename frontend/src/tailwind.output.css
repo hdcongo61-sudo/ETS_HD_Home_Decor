@@ -4270,6 +4270,10 @@ video {
   opacity: 0.8;
 }
 
+.opacity-90 {
+  opacity: 0.9;
+}
+
 .shadow {
   --tw-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 1px 3px 0 var(--tw-shadow-color), 0 1px 2px -1px var(--tw-shadow-color);
@@ -7366,8 +7370,16 @@ form input[type="radio"],
   outline-width: 2px;
 }
 
+.focus-visible\:outline-offset-\[-2px\]:focus-visible {
+  outline-offset: -2px;
+}
+
 .focus-visible\:outline-\[var\(--ms-blue\)\]:focus-visible {
   outline-color: var(--ms-blue);
+}
+
+.focus-visible\:outline-blue-600:focus-visible {
+  outline-color: #2563eb;
 }
 
 .focus-visible\:ring-2:focus-visible {

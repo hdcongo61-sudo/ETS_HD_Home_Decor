@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
-import { flushOfflineQueue, pendingSyncCount } from '../utils/offlineSync';
-import { staleMutationCount } from '../utils/offlineQueue';
+import { flushOfflineQueue } from '../utils/offlineSync';
+import { listPendingMutations } from '../utils/offlineQueue';
 
-// Compteur de mutations en attente de synchronisation + rejeu manuel.
+// Mutations en attente de synchronisation + rejeu manuel.
 export const useOfflineSync = () => {
-  const [pending, setPending] = useState(0);
-  const [stale, setStale] = useState(0);
+  const [operations, setOperations] = useState([]);
   const [flushing, setFlushing] = useState(false);
 
   const refresh = useCallback(() => {
-    pendingSyncCount()
-      .then(setPending)
-      .catch(() => {});
-    staleMutationCount()
-      .then(setStale)
+    listPendingMutations()
+      .then(setOperations)
       .catch(() => {});
   }, []);
 
@@ -40,7 +36,10 @@ export const useOfflineSync = () => {
     }
   }, [refresh]);
 
-  return { pending, stale, flushing, retry, refresh };
+  const pending = operations.length;
+  const stale = operations.filter((operation) => operation.stale).length;
+
+  return { pending, stale, operations, flushing, retry, refresh };
 };
 
 export default useOfflineSync;
