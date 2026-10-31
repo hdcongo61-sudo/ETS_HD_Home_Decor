@@ -29,6 +29,7 @@ import AppLoader from './AppLoader';
 import { formatCfa } from '../utils/format';
 import { saveAs } from 'file-saver';
 import { reportingApi } from '../features/reporting/api';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   CommandBar,
@@ -70,6 +71,7 @@ const getPayState = (employee) => {
 };
 
 const EmployeeList = () => {
+  const { t } = useTranslation();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -214,26 +216,26 @@ const EmployeeList = () => {
   return (
     <Workspace className="space-y-5">
       <PageHeader
-        title="Gestion des employés"
+        title={t('employees.management', 'Gestion des employés')}
         description="Employés, salaires, et suivi de la paie du mois."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={handlePayrollExport}>
-              <FileSpreadsheet className="h-4 w-4" /> Export paie
+              <FileSpreadsheet className="h-4 w-4" /> {t('employees.exportPayroll', 'Export paie')}
             </Button>
             <Button variant="primary" onClick={() => window.location.href = '/employees/new'}>
-              <Plus className="h-4 w-4" /> Nouvel Employé
+              <Plus className="h-4 w-4" /> {t('employees.newEmployee', 'Nouvel Employé')}
             </Button>
           </div>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-        <KPICard title="Actifs" value={payroll.active.length} context={`${dashboardStats.inactiveEmployees} inactif(s)`} tone="success" icon={<UserCheck className="h-4 w-4" />} />
-        <KPICard title="Masse salariale" value={formatCfa(dashboardStats.totalSalary)} context={`Moyenne : ${formatCfa(dashboardStats.averageSalary)}`} tone="neutral" icon={<Banknote className="h-4 w-4" />} />
-        <KPICard title="Salaires payés" value={`${payroll.paid.length}/${payroll.active.length}`} context={formatCfa(payroll.paidTotal)} tone="success" icon={<CheckCircle2 className="h-4 w-4" />} />
-        <KPICard title="À payer" value={formatCfa(payroll.dueTotal)} context={`${payroll.due.length} fiche(s) en attente`} tone={payroll.due.length > 0 ? 'danger' : 'success'} icon={<HandCoins className="h-4 w-4" />} />
-        <KPICard title="Fiches à créer" value={payroll.todo.length} context={`≈ ${formatCfa(payroll.todoTotal)}`} tone={payroll.todo.length > 0 ? 'warning' : 'success'} icon={<CalendarClock className="h-4 w-4" />} />
+        <KPICard title={t('employees.active', 'Actifs')} value={payroll.active.length} context={`${dashboardStats.inactiveEmployees} inactif(s)`} tone="success" icon={<UserCheck className="h-4 w-4" />} />
+        <KPICard title={t('employees.payroll', 'Masse salariale')} value={formatCfa(dashboardStats.totalSalary)} context={`Moyenne : ${formatCfa(dashboardStats.averageSalary)}`} tone="neutral" icon={<Banknote className="h-4 w-4" />} />
+        <KPICard title={t('employees.paidSalaries', 'Salaires payés')} value={`${payroll.paid.length}/${payroll.active.length}`} context={formatCfa(payroll.paidTotal)} tone="success" icon={<CheckCircle2 className="h-4 w-4" />} />
+        <KPICard title={t('employees.toPay', 'À payer')} value={formatCfa(payroll.dueTotal)} context={`${payroll.due.length} fiche(s) en attente`} tone={payroll.due.length > 0 ? 'danger' : 'success'} icon={<HandCoins className="h-4 w-4" />} />
+        <KPICard title={t('employees.payslipsToCreate', 'Fiches à créer')} value={payroll.todo.length} context={`≈ ${formatCfa(payroll.todoTotal)}`} tone={payroll.todo.length > 0 ? 'warning' : 'success'} icon={<CalendarClock className="h-4 w-4" />} />
       </div>
 
       {/* ===== Paie du mois — qui doit être payé ===== */}
@@ -241,7 +243,7 @@ const EmployeeList = () => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="fui-subtitle1 flex items-center gap-2 capitalize" style={{ color: 'var(--colorNeutralForeground1)' }}>
-              <UsersRound size={16} /> Paie de {monthLabel}
+              <UsersRound size={16} /> {t('employees.payrollOf', 'Paie de')} {monthLabel}
             </h2>
             <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
               {toPayCount > 0
@@ -410,7 +412,7 @@ const EmployeeList = () => {
                 );
                 })
               ) : (
-                <tr><td colSpan="7"><EmptyState title="Aucun employe trouve" /></td></tr>
+                <tr><td colSpan="7"><EmptyState title={t('employees.none', 'Aucun employé trouvé')} /></td></tr>
               )}
             </tbody>
           </table>
@@ -457,7 +459,7 @@ const EmployeeList = () => {
           );
           })
         ) : (
-          <EmptyState title="Aucun employe trouve" />
+          <EmptyState title={t('employees.none', 'Aucun employé trouvé')} />
         )}
       </div>
     </Workspace>
