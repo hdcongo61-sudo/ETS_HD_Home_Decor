@@ -45,6 +45,8 @@ const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] item
     const taxAmount = Number(sale.taxAmount) || 0;
     const taxRate = Number(sale.taxRate) || 0;
     const taxLabel = sale.taxLabel || 'Taxe';
+    const discountAmount = Number(sale.discountAmount) || 0;
+    const promotionCode = sale.promotionCode || '';
 
     doc.setFillColor(248, 249, 251);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
@@ -152,13 +154,21 @@ const ExportSalesPdf = ({ sale, buttonClassName = 'inline-flex min-h-[44px] item
     // Totals
     const finalY = doc.lastAutoTable.finalY + 10;
     const totalBoxX = pageWidth - margin - 72;
-    const rows = 2 + (taxAmount > 0 ? 1 : 0) + (balance > 0 ? 1 : 0);
+    const rows =
+      2 + (taxAmount > 0 ? 1 : 0) + (balance > 0 ? 1 : 0) + (discountAmount > 0 ? 1 : 0);
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(totalBoxX, finalY, 72, rows * 9 + 7, 5, 5, 'F');
 
     let rowY = finalY + 8;
     doc.setFontSize(9);
     doc.setTextColor(107, 114, 128);
+
+    if (discountAmount > 0) {
+      doc.text(`Remise${promotionCode ? ` (${promotionCode})` : ''}`, totalBoxX + 6, rowY);
+      doc.text(`-${formatAmount(discountAmount)}`, totalBoxX + 66, rowY, { align: 'right' });
+      rowY += 9;
+    }
+
     doc.text('Total', totalBoxX + 6, rowY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);

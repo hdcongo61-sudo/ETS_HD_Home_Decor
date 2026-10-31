@@ -72,6 +72,24 @@ const saleSchema = mongoose.Schema(
       maxlength: 20,
       default: ''
     },
+    // Remise (code promo) appliquée au sous-total. totalAmount reste le montant
+    // final dû (sous-total − remise).
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    promotionCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 24
+    },
+    promotionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Promotion',
+      default: null
+    },
     saleType: {
       type: String,
       enum: ['normal', 'wholesale'],

@@ -55,6 +55,7 @@ const ClientLoyalty = lazy(() => import('./pages/ClientLoyalty'));
 const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases'));
 const Bank = lazy(() => import('./pages/Bank'));
 const Comptabilite = lazy(() => import('./pages/Comptabilite'));
+const Promotions = lazy(() => import('./pages/Promotions'));
 
 const Home = lazy(() => import('./pages/Home'));
 const Products = lazy(() => import('./pages/Products'));
@@ -354,6 +355,14 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly feature={FEATURE_KEYS.COMPTABILITE}>
                       <Comptabilite />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/promotions"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Promotions />
                     </ProtectedRoute>
                   }
                 />

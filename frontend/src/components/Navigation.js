@@ -959,7 +959,10 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
         { to: '/sales',           icon: ShoppingCart,  label: 'Liste des ventes' },
         { to: '/sales/all',       icon: History,       label: 'Archives ventes' },
         { to: '/sales/partially-paid', icon: CreditCard, label: 'Paiements partiels' },
-        ...(auth.isAdmin ? [{ to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' }] : []),
+        ...(auth.isAdmin ? [
+          { to: '/sales/deleted', icon: Archive, label: 'Ventes supprimées' },
+          { to: '/promotions', icon: Tag, label: 'Codes promo' },
+        ] : []),
       ],
     },
   {

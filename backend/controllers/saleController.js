@@ -9,6 +9,7 @@ const Expense = require('../models/expenseModel');
 const DeletedSale = require('../models/deletedSaleModel');
 const Employee = require('../models/employeeModel');
 const Refund = require('../models/refundModel');
+const Promotion = require('../models/promotionModel');
 const {
   notifySaleCreated,
   notifyPaymentRecorded
@@ -589,7 +590,8 @@ const createSale = asyncHandler(async (req, res) => {
     markAsDelivered,
     saleDate,
     proformaId,
-    clientRequestId
+    clientRequestId,
+    promotionCode
   } = req.body;
 
   let session;
@@ -702,6 +704,42 @@ const createSale = asyncHandler(async (req, res) => {
       });
     }
 
+    // Remise (code promo) — appliquée au sous-total. Le total final dû est
+    // réduit d'autant ; la remise est figée sur la vente.
+    let discountAmount = 0;
+    let resolvedPromotionId = null;
+    let resolvedPromotionCode = '';
+    if (promotionCode) {
+      const normalizedCode = String(promotionCode).trim().toUpperCase().slice(0, 24);
+      const promotion = await Promotion.findOne({
+        ...tenantFilter(req),
+        code: normalizedCode,
+        active: true,
+      });
+      if (!promotion) {
+        return res.status(400).json({ message: 'Code promo inconnu ou désactivé' });
+      }
+      const now = new Date();
+      if (promotion.startsAt && now < promotion.startsAt) {
+        return res.status(400).json({ message: 'Ce code promo n’est pas encore valide' });
+      }
+      if (promotion.endsAt && now > promotion.endsAt) {
+        return res.status(400).json({ message: 'Ce code promo a expiré' });
+      }
+      if (promotion.maxUses != null && promotion.usesCount >= promotion.maxUses) {
+        return res.status(400).json({ message: 'Ce code promo a atteint sa limite d’utilisation' });
+      }
+      if (promotion.type === 'amount') {
+        discountAmount = Math.min(promotion.value, totalAmount);
+      } else {
+        discountAmount = (totalAmount * promotion.value) / 100;
+      }
+      discountAmount = Math.round(discountAmount);
+      totalAmount = Math.max(0, Math.round(totalAmount - discountAmount));
+      resolvedPromotionId = promotion._id;
+      resolvedPromotionCode = normalizedCode;
+    }
+
     const normalizedInitialPayment = Math.max(0, Number(initialPaymentAmount) || 0);
 
     if (normalizedInitialPayment > totalAmount) {
@@ -757,6 +795,9 @@ const createSale = asyncHandler(async (req, res) => {
       taxAmount,
       taxInclusive: tenantTax.inclusive,
       taxLabel: taxAmount > 0 ? tenantTax.label : '',
+      discountAmount,
+      promotionCode: resolvedPromotionCode || undefined,
+      promotionId: resolvedPromotionId || null,
       saleType: resolvedSaleType,
       paymentMethod,
       note,
@@ -795,6 +836,14 @@ const createSale = asyncHandler(async (req, res) => {
     session.startTransaction();
 
     const [sale] = await Sale.create([saleData], { session });
+
+    // Comptabilise l'utilisation du code promo (hors transaction, best-effort).
+    if (resolvedPromotionId) {
+      Promotion.updateOne(
+        { _id: resolvedPromotionId },
+        { $inc: { usesCount: 1 } }
+      ).catch((error) => console.error('Promotion usesCount update error:', error.message));
+    }
 
     const updatedClient = await Client.findByIdAndUpdate(
       client,

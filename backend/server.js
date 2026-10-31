@@ -69,6 +69,7 @@ const tenantRoutes = require('./routes/tenantRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const platformUserRoutes = require('./routes/platformUserRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const promotionRoutes = require('./routes/promotionRoutes');
 
 const app = express();
 
@@ -242,6 +243,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/platform-users', platformUserRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/promotions', promotionRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

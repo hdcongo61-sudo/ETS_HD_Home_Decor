@@ -78,6 +78,9 @@ const SaleFormFields = ({
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [totalAmount, setTotalAmount] = useState(0);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(null); // { code, label, type, value }
+  const [promoApplying, setPromoApplying] = useState(false);
   const [errors, setErrors] = useState([]);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -214,8 +217,16 @@ const SaleFormFields = ({
   }, [selectedProducts]);
 
   const normalizedPaymentAmount = Math.max(0, Number(paymentAmount) || 0);
-  const remainingBalance = Math.max(0, totalAmount - normalizedPaymentAmount);
-  const isFullyPaid = totalAmount > 0 && normalizedPaymentAmount === totalAmount;
+  const promoDiscount = promoApplied
+    ? Math.round(
+        promoApplied.type === 'amount'
+          ? Math.min(promoApplied.value, totalAmount)
+          : (totalAmount * promoApplied.value) / 100
+      )
+    : 0;
+  const payableTotal = Math.max(0, totalAmount - promoDiscount);
+  const remainingBalance = Math.max(0, payableTotal - normalizedPaymentAmount);
+  const isFullyPaid = payableTotal > 0 && normalizedPaymentAmount === payableTotal;
 
   useEffect(() => {
     if (!isFullyPaid && markAsDelivered) {
@@ -348,6 +359,22 @@ const SaleFormFields = ({
     }
   };
 
+  const handleApplyPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    setPromoApplying(true);
+    try {
+      const { data } = await api.post('/promotions/apply', { code, subtotal: totalAmount });
+      setPromoApplied(data.promotion);
+      toast.success(`Code ${data.promotion.code} appliqué`);
+    } catch (error) {
+      setPromoApplied(null);
+      toast.error(error.response?.data?.message || 'Code promo invalide');
+    } finally {
+      setPromoApplying(false);
+    }
+  };
+
   const removeProduct = (index) => {
     if (selectedProducts.length > 1) {
       setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
@@ -369,6 +396,8 @@ const SaleFormFields = ({
     setReminderNote('');
     setMarkAsDelivered(false);
     setTotalAmount(0);
+    setPromoCode('');
+    setPromoApplied(null);
     setActiveStage(0);
     setCompletedSale(null);
     setFormError('');
@@ -455,7 +484,7 @@ const SaleFormFields = ({
       return;
     }
 
-    if (normalizedPaymentAmount > totalAmount) {
+    if (normalizedPaymentAmount > payableTotal) {
       setFormError('Le montant payé ne peut pas dépasser le total de la vente.');
       submitLock.current = false;
       setIsSubmitting(false);
@@ -473,6 +502,7 @@ const SaleFormFields = ({
         saleType,
         paymentMethod,
         initialPaymentAmount: normalizedPaymentAmount,
+        promotionCode: promoApplied?.code || undefined,
         markAsDelivered: isFullyPaid && markAsDelivered,
         note,
         saleDate: manualSaleDateEnabled && saleDate ? saleDate : undefined,
@@ -1080,6 +1110,33 @@ const SaleFormFields = ({
             ))}
           </div>
 
+          <div className="form-panel p-4 space-y-3">
+            <label htmlFor="sale-promo-code" className="form-label block">Code promo (optionnel)</label>
+            <div className="flex gap-2">
+              <input
+                id="sale-promo-code"
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className={inputBase}
+                placeholder="Ex: BIENVENUE10"
+                disabled={Boolean(promoApplied)}
+              />
+              {promoApplied ? (
+                <button type="button" onClick={() => { setPromoApplied(null); setPromoCode(''); }} className="ms-button ms-button-secondary min-h-[44px] shrink-0">Retirer</button>
+              ) : (
+                <button type="button" onClick={handleApplyPromo} disabled={promoApplying || !promoCode.trim()} className="ms-button ms-button-secondary min-h-[44px] shrink-0 disabled:opacity-60">
+                  {promoApplying ? 'Vérification…' : 'Appliquer'}
+                </button>
+              )}
+            </div>
+            {promoApplied && (
+              <p className="text-sm text-[var(--ms-success)]">
+                {promoApplied.label || promoApplied.code} : −{promoDiscount.toLocaleString('fr-FR')} CFA
+              </p>
+            )}
+          </div>
+
           <div className="form-panel p-4 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
@@ -1090,7 +1147,7 @@ const SaleFormFields = ({
                   id="sale-payment-amount"
                   type="number"
                   min="0"
-                  max={totalAmount || undefined}
+                  max={payableTotal || undefined}
                   step="0.01"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
@@ -1100,7 +1157,7 @@ const SaleFormFields = ({
               </div>
               <button
                 type="button"
-                onClick={() => setPaymentAmount(totalAmount > 0 ? String(totalAmount) : '')}
+                onClick={() => setPaymentAmount(payableTotal > 0 ? String(payableTotal) : '')}
                 className="form-button-secondary"
               >
                 Paiement total
@@ -1110,7 +1167,10 @@ const SaleFormFields = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
               <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
                 <p className="text-[var(--ms-text-muted)]">Total vente</p>
-                <p className="font-semibold text-[var(--ms-text)]">{totalAmount.toLocaleString('fr-FR')} CFA</p>
+                <p className="font-semibold text-[var(--ms-text)]">{payableTotal.toLocaleString('fr-FR')} CFA</p>
+                {promoDiscount > 0 && (
+                  <p className="text-xs text-[var(--ms-success)]">Remise −{promoDiscount.toLocaleString('fr-FR')} CFA</p>
+                )}
               </div>
               <div className="rounded-lg bg-[var(--ms-white)] border border-[var(--ms-border)] px-3 py-2.5">
                 <p className="text-[var(--ms-text-muted)]">Paye</p>
@@ -1151,7 +1211,13 @@ const SaleFormFields = ({
             })}
           </ul>
           {note && <p className="mt-2 text-sm">Note : {note}</p>}
-          <div className="mt-3 flex items-center justify-between border-t border-[var(--ms-border)] pt-3"><span className="font-semibold">Total</span><span className="text-xl font-bold tabular-nums">{totalAmount.toLocaleString('fr-FR')} CFA</span></div>
+          <div className="mt-3 space-y-1 border-t border-[var(--ms-border)] pt-3">
+            <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-text-muted)]">Sous-total</span><span className="tabular-nums">{totalAmount.toLocaleString('fr-FR')} CFA</span></div>
+            {promoDiscount > 0 && (
+              <div className="flex items-center justify-between text-sm"><span className="text-[var(--ms-success)]">Remise {promoApplied?.code ? `(${promoApplied.code})` : ''}</span><span className="tabular-nums text-[var(--ms-success)]">−{promoDiscount.toLocaleString('fr-FR')} CFA</span></div>
+            )}
+            <div className="flex items-center justify-between"><span className="font-semibold">Total</span><span className="text-xl font-bold tabular-nums">{payableTotal.toLocaleString('fr-FR')} CFA</span></div>
+          </div>
         </div>
 
         {!hideSubmit && activeStage === 3 && (
