@@ -17,12 +17,14 @@ import { useDashboardData } from '../context/DashboardDataContext';
 import { useModal } from '../context/ModalContext';
 import { FEATURE_KEYS } from '../config/features';
 import { formatCfa } from '../utils/format';
+import { useTranslation } from 'react-i18next';
 import { KPICard, LoadingSkeleton, EmptyState } from './business';
 import SectionError from './SectionError';
 
 const money = (value) => (value != null && Number.isFinite(Number(value)) ? formatCfa(value) : '—');
 
 export default function Overview() {
+  const { t } = useTranslation();
   const { auth, hasFeature } = useContext(AuthContext);
   const { fetchOverviewData } = useDashboardData();
   const { openModal } = useModal();
@@ -126,26 +128,26 @@ export default function Overview() {
 
   const decisionCards = isAdmin
     ? [
-        { label: 'Ventes aujourd’hui', value: money(daily?.total), context: daily?.count != null ? `${daily.count} vente(s)` : 'Ventes indisponibles', icon: ClipboardList },
-        { label: 'Encaissements', value: money(data?.paymentsToday?.total), context: data?.paymentsToday?.count != null ? `${data.paymentsToday.count} paiement(s)` : 'Paiements indisponibles', icon: WalletCards },
-        { label: 'Alertes stock', value: stockAlertCount ? stockAlertCount.toLocaleString('fr-FR') : '0', context: stockAlertCount ? 'À examiner' : 'Aucune alerte détectée', icon: Package },
+        { label: t('home.todaySales', 'Ventes aujourd’hui'), value: money(daily?.total), context: daily?.count != null ? `${daily.count} vente(s)` : 'Ventes indisponibles', icon: ClipboardList },
+        { label: t('home.collections', 'Encaissements'), value: money(data?.paymentsToday?.total), context: data?.paymentsToday?.count != null ? `${data.paymentsToday.count} paiement(s)` : 'Paiements indisponibles', icon: WalletCards },
+        { label: t('home.stockAlerts', 'Alertes stock'), value: stockAlertCount ? stockAlertCount.toLocaleString('fr-FR') : '0', context: stockAlertCount ? 'À examiner' : 'Aucune alerte détectée', icon: Package },
       ]
     : [
-        { label: 'Mes ventes aujourd’hui', value: money(daily?.total), context: daily?.count != null ? `${daily.count} vente(s)` : 'Ventes indisponibles', icon: ClipboardList },
-        { label: 'Paiements reçus', value: money(data?.paymentsToday?.total), context: data?.paymentsToday?.count != null ? `${data.paymentsToday.count} paiement(s)` : 'Paiements indisponibles', icon: WalletCards },
+        { label: t('home.myTodaySales', 'Mes ventes aujourd’hui'), value: money(daily?.total), context: daily?.count != null ? `${daily.count} vente(s)` : 'Ventes indisponibles', icon: ClipboardList },
+        { label: t('home.paymentsReceived', 'Paiements reçus'), value: money(data?.paymentsToday?.total), context: data?.paymentsToday?.count != null ? `${data.paymentsToday.count} paiement(s)` : 'Paiements indisponibles', icon: WalletCards },
       ];
 
   const workflowLinks = isAdmin
     ? [
-        { label: 'Ventes à suivre', description: 'Paiements, livraisons et historique', to: '/sales', icon: ClipboardList },
-        { label: 'Santé du stock', description: 'Ruptures, seuils et mouvements', to: '/products/critical', icon: Package },
-        { label: 'Clients', description: 'Retrouver un client ou une dette', to: '/clients', icon: Users },
-        { label: 'Trésorerie', description: 'Encaissements et dépenses', to: '/bank', icon: WalletCards },
+        { label: t('home.salesToFollow', 'Ventes à suivre'), description: 'Paiements, livraisons et historique', to: '/sales', icon: ClipboardList },
+        { label: t('home.stockHealth', 'Santé du stock'), description: 'Ruptures, seuils et mouvements', to: '/products/critical', icon: Package },
+        { label: t('home.clients', 'Clients'), description: 'Retrouver un client ou une dette', to: '/clients', icon: Users },
+        { label: t('home.cashflow', 'Trésorerie'), description: 'Encaissements et dépenses', to: '/bank', icon: WalletCards },
       ]
     : [
-        { label: 'Mes ventes', description: 'Reprendre une vente ou un paiement', to: mySalesPath, icon: ClipboardList },
-        { label: 'Clients', description: 'Créer ou retrouver un client', to: '/clients', icon: Users },
-        { label: 'Catalogue', description: 'Vérifier un prix ou un stock', to: '/products', icon: Package },
+        { label: t('home.mySales', 'Mes ventes'), description: 'Reprendre une vente ou un paiement', to: mySalesPath, icon: ClipboardList },
+        { label: t('home.clients', 'Clients'), description: 'Créer ou retrouver un client', to: '/clients', icon: Users },
+        { label: t('home.catalog', 'Catalogue'), description: 'Vérifier un prix ou un stock', to: '/products', icon: Package },
       ];
 
   return (
@@ -153,10 +155,10 @@ export default function Overview() {
       <header className="ms-surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="min-w-0">
           <p className="text-xs text-[var(--ms-text-muted)]">
-            {isAdmin ? 'Pilotage de la boutique' : 'Mon espace de vente'}
+            {isAdmin ? t('home.shopSteering', 'Pilotage de la boutique') : t('home.mySalesSpace', 'Mon espace de vente')}
             {auth?.tenant?.name ? ` · ${auth.tenant.name}` : ''}
           </p>
-          <h1 className="ms-page-title mt-1">Bonjour{auth?.user?.name ? `, ${auth.user.name}` : ''}</h1>
+          <h1 className="ms-page-title mt-1">{t('home.hello', 'Bonjour')}{auth?.user?.name ? `, ${auth.user.name}` : ''}</h1>
           <p className="mt-2 text-sm text-[var(--ms-text-muted)]">
             {isAdmin ? 'Traitez les urgences, puis suivez l’activité du jour.' : 'Enregistrez une vente ou reprenez le suivi de vos clients.'}
           </p>
@@ -164,12 +166,12 @@ export default function Overview() {
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <button type="button" onClick={() => openModal('sale')} className="ms-button ms-button-primary ms-button-md w-full sm:w-auto">
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Nouvelle vente
+            {t('home.newSale', 'Nouvelle vente')}
           </button>
           {isAdmin && (
             <Link to="/dashboard" className="ms-button ms-button-secondary ms-button-md w-full sm:w-auto">
               <BarChart3 className="h-4 w-4" aria-hidden="true" />
-              Voir les analyses
+              {t('home.viewAnalytics', 'Voir les analyses')}
             </Link>
           )}
         </div>
@@ -353,7 +355,7 @@ export default function Overview() {
           <section aria-labelledby="home-today-title" className="space-y-3">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 id="home-today-title" className="ms-section-title">Aujourd’hui · activité de la boutique</h2>
+                <h2 id="home-today-title" className="ms-section-title">{t('home.todayActivity', 'Aujourd’hui · activité de la boutique')}</h2>
                 <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Un aperçu rapide pour décider où agir ensuite.</p>
               </div>
               {canViewDashboard && (
@@ -380,20 +382,20 @@ export default function Overview() {
           </section>
 
           <section className="ms-surface p-4 sm:p-5" aria-labelledby="home-actions-title">
-            <h2 id="home-actions-title" className="ms-section-title">Actions courantes</h2>
+            <h2 id="home-actions-title" className="ms-section-title">{t('home.quickActions', 'Actions courantes')}</h2>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <button type="button" onClick={() => openModal('payment')} className="ms-button ms-button-secondary ms-button-md">Encaisser un paiement</button>
-              <Link to="/products" className="ms-button ms-button-secondary ms-button-md">Consulter le stock</Link>
-              <Link to="/clients" className="ms-button ms-button-secondary ms-button-md">Rechercher un client</Link>
+              <button type="button" onClick={() => openModal('payment')} className="ms-button ms-button-secondary ms-button-md">{t('home.collectPayment', 'Encaisser un paiement')}</button>
+              <Link to="/products" className="ms-button ms-button-secondary ms-button-md">{t('home.checkStock', 'Consulter le stock')}</Link>
+              <Link to="/clients" className="ms-button ms-button-secondary ms-button-md">{t('home.findClient', 'Rechercher un client')}</Link>
               {canUseExpenses && (
-                <button type="button" onClick={() => openModal('expense')} className="ms-button ms-button-secondary ms-button-md">Saisir une dépense</button>
+                <button type="button" onClick={() => openModal('expense')} className="ms-button ms-button-secondary ms-button-md">{t('home.addExpense', 'Saisir une dépense')}</button>
               )}
             </div>
           </section>
 
           {canViewDashboard && (
             <Link to="/dashboard" className="ms-button ms-button-secondary ms-button-md w-full sm:w-auto">
-              Ouvrir les analyses détaillées
+              {t('home.openAnalytics', 'Ouvrir les analyses détaillées')}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
