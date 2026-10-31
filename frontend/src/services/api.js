@@ -4,6 +4,8 @@ import { buildCacheKey, writeCache, readCache, clearCache, clearUserCache } from
 import { ACTIVE_LOCATION_STORAGE_KEY } from '../context/LocationContext';
 import { normalizeApiError } from '../utils/errorModel';
 import { startRequest, finishRequest } from '../utils/requestActivity';
+import { enqueueMutation, createClientRequestId } from '../utils/offlineQueue';
+import { registerOfflineReplay } from '../utils/offlineSync';
 
 let lastFeatureToastAt = 0;
 
@@ -142,6 +144,45 @@ api.interceptors.response.use(
   },
   async (error) => {
     finishRequest(error?.config || error?.response?.config);
+
+    // Offline mutation queue (opt-in via config.__queueOffline): when a write
+    // fails because the network is down, park it and reply with a synthetic
+    // success so the caller can continue; it is replayed on reconnect.
+    const queueCfg = error.config || {};
+    const queueMethod = (queueCfg.method || 'get').toLowerCase();
+    if (
+      queueCfg.__queueOffline &&
+      !error.response &&
+      ['post', 'put', 'patch', 'delete'].includes(queueMethod)
+    ) {
+      const clientRequestId = createClientRequestId();
+      let data = queueCfg.data;
+      if (data instanceof FormData) {
+        data = new FormData();
+        (queueCfg.data || new FormData()).forEach((value, key) => data.append(key, value));
+        data.append('clientRequestId', clientRequestId);
+      } else if (data && typeof data === 'object') {
+        data = { ...data, clientRequestId };
+      } else {
+        data = { clientRequestId };
+      }
+      await enqueueMutation({
+        method: queueMethod,
+        url: queueCfg.url,
+        data,
+        clientRequestId,
+      });
+      return {
+        data: { queued: true, clientRequestId },
+        status: 202,
+        statusText: 'Queued offline',
+        headers: {},
+        config: queueCfg,
+        request: error.request,
+        fromOfflineQueue: true,
+      };
+    }
+
     if (isRetriableDevFallback(error)) {
       const currentBaseUrl = error.config.baseURL || api.defaults.baseURL;
       const nextTried = [...(error.config.__devPortTried || []), currentBaseUrl];
@@ -215,5 +256,8 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Rejoue automatiquement les mutations mises en file au retour du réseau.
+registerOfflineReplay(api);
 
 export default api;
