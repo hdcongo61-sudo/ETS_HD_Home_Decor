@@ -41,6 +41,7 @@ import {
   Workflow,
   Tag,
   CalendarClock,
+  BookOpen,
 } from "lucide-react";
 import { clientPath, productPath, employeeBasePath } from "../utils/paths";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -1004,6 +1005,7 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
         { to: '/bank',                  icon: Landmark,  label: i18n.t('nav.cash', 'Caisse'), feature: FEATURE_KEYS.BANK },
         { to: '/expenses',              icon: Receipt,   label: i18n.t('nav.expenses', 'Dépenses') },
         { to: '/expenses/monthly-plan', icon: ClipboardList, label: i18n.t('nav.monthlyPlan', 'Objectif mensuel'), feature: FEATURE_KEYS.MONTHLY_SPENDING_PLAN },
+        { to: '/comptabilite/ledger',   icon: BookOpen,  label: i18n.t('nav.ledger', 'Grand livre'), feature: FEATURE_KEYS.COMPTABILITE },
       ],
     },
     {
