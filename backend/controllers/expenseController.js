@@ -203,6 +203,22 @@ const getExpenses = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const createExpense = async (req, res) => {
   try {
+    // Idempotent replay (offline sync): return the already-created expense
+    // instead of duplicating it.
+    const normalizedClientRequestId = typeof req.body.clientRequestId === 'string'
+      ? req.body.clientRequestId.trim().slice(0, 80)
+      : '';
+    if (normalizedClientRequestId) {
+      const existing = await Expense.findOne({
+        tenantId: req.tenantId || null,
+        clientRequestId: normalizedClientRequestId,
+      }).lean();
+      if (existing) {
+        const createdExpense = await populateExpenseMetadata(Expense.findById(existing._id), req).lean();
+        return res.status(200).json({ ...createdExpense, deduplicated: true });
+      }
+    }
+
     const parsedExpenseDate = parseOptionalExpenseDate(req.body.date);
     if (parsedExpenseDate.error) {
       return res.status(400).json({ message: parsedExpenseDate.error });
@@ -218,6 +234,7 @@ const createExpense = async (req, res) => {
     const expense = new Expense({ tenantId: req.tenantId,
       locationId: req.locationId || null,
       ...salaryValidation.payload,
+      clientRequestId: normalizedClientRequestId || undefined,
       createdBy: req.user ? req.user._id : undefined,
     });
     const savedExpense = await expense.save();

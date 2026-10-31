@@ -36,6 +36,13 @@ const expenseSchema = mongoose.Schema(
       enum: ['cash', 'paymentMethod', 'debit', 'transfer', 'check', 'bank_transfer'],
       default: 'cash',
     },
+    // Idempotence des dépenses rejouées (offline sync).
+    clientRequestId: {
+      type: String,
+      sparse: true,
+      trim: true,
+      maxlength: 80,
+    },
     // Phase 5.7 : dépense liée à une session de caisse (sinon null).
     cashSessionId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -78,5 +85,16 @@ const expenseSchema = mongoose.Schema(
 
 expenseSchema.index({ date: -1 });
 expenseSchema.index({ employee: 1, salaryYear: 1, salaryMonth: 1 });
+// Unicité du clientRequestId par boutique (idempotence des dépenses rejouées).
+expenseSchema.index(
+  { tenantId: 1, clientRequestId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      tenantId: { $type: 'objectId' },
+      clientRequestId: { $type: 'string' },
+    },
+  }
+);
 
 module.exports = mongoose.model('Expense', expenseSchema);

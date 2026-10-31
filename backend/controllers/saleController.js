@@ -909,7 +909,7 @@ const createSale = asyncHandler(async (req, res) => {
 // @access  Private
 const addPayment = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { amount, method, paymentDate, markAsDelivered } = req.body;
+  const { amount, method, paymentDate, markAsDelivered, clientRequestId } = req.body;
 
   try {
     const sale = await Sale.findById(id);
@@ -919,6 +919,30 @@ const addPayment = asyncHandler(async (req, res) => {
 
     if (sale.status === 'cancelled') {
       return res.status(400).json({ message: 'Impossible d\'ajouter un paiement à une vente annulée' });
+    }
+
+    // Idempotent replay (offline sync): a duplicate payment submission with the
+    // same clientRequestId returns the sale unchanged instead of double-posting.
+    const normalizedPaymentClientRequestId = typeof clientRequestId === 'string'
+      ? clientRequestId.trim().slice(0, 80)
+      : '';
+    if (normalizedPaymentClientRequestId) {
+      const alreadyApplied = (sale.payments || []).some(
+        (payment) => payment.clientRequestId === normalizedPaymentClientRequestId
+      );
+      if (alreadyApplied) {
+        const saleObject = sale.toObject();
+        const responseTotalPaid = (saleObject.payments || []).reduce(
+          (sum, payment) => sum + (Number(payment.amount) || 0),
+          0
+        );
+        return res.status(200).json({
+          ...saleObject,
+          totalPaid: responseTotalPaid,
+          balance: (Number(saleObject.totalAmount) || 0) - responseTotalPaid,
+          deduplicated: true,
+        });
+      }
     }
 
     const parsedPaymentDate = parseOptionalSaleDate(paymentDate);
@@ -956,7 +980,8 @@ const addPayment = asyncHandler(async (req, res) => {
       amount: paymentAmount,
       method,
       paymentDate: effectivePaymentDate,
-      user: req.user._id // Inclure l'utilisateur
+      user: req.user._id, // Inclure l'utilisateur
+      clientRequestId: normalizedPaymentClientRequestId || undefined
     });
     const embeddedPaymentIndex = sale.payments.length - 1;
 
