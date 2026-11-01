@@ -224,7 +224,7 @@ const ExpenseForm = ({ initialData = null, onSubmit, onCancel, submitting = fals
               placeholder="0"
               required
             />
-            <span className="absolute right-3 top-2.5 text-gray-400">{currencySymbol}</span>
+            <span className="absolute right-3 top-2.5 text-gray-600">{currencySymbol}</span>
           </div>
           {errors.amount && <p className="form-error">{errors.amount}</p>}
         </div>

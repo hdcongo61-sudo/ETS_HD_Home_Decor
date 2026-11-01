@@ -260,13 +260,13 @@ const Clients = () => {
           }
           return sortClientsByCreatedAt(next);
         });
-        toast.success('✅ Client mis à jour avec succès');
+        toast.success('Client mis à jour avec succès');
       } else {
         const { data } = await customersApi.create(formData);
         if (matchesClientSearch(data)) {
           setClients((prev) => sortClientsByCreatedAt([data, ...prev]));
         }
-        toast.success('✅ Client ajouté avec succès');
+        toast.success('Client ajouté avec succès');
       }
       setIsFormOpen(false);
       setFormData({ name: '', email: '', phone: '', address: '', gender: 'other' });
@@ -293,7 +293,7 @@ const Clients = () => {
     try {
       await customersApi.remove(id);
       setClients((prev) => prev.filter((client) => client._id !== id));
-      toast.success('🗑️ Client supprimé avec succès');
+      toast.success('Client supprimé avec succès');
       fetchStats();
     } catch (err) {
       console.error(err);

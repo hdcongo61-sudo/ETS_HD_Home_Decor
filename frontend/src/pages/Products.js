@@ -325,7 +325,7 @@ const Products = () => {
 
       if (data) {
         toast.success(
-          editingProduct ? 'Produit mis à jour avec succès 🎉' : 'Produit créé avec succès 🚀'
+          editingProduct ? 'Produit mis à jour avec succès' : 'Produit créé avec succès'
         );
         setProducts((prev) => {
           const next = editingProduct
@@ -339,7 +339,7 @@ const Products = () => {
       }
     } catch (error) {
       console.error('Error:', error.response?.data?.message || error.message);
-      toast.error(error.response?.data?.message || 'Échec de l’opération ❌');
+      toast.error(error.response?.data?.message || 'Échec de l’opération');
     } finally {
       setFormSubmitting(false);
     }
@@ -366,11 +366,11 @@ const Products = () => {
         savedScrollRef.current = window.scrollY;
         await catalogApi.remove(productId);
         setProducts((prev) => prev.filter((product) => product._id !== productId));
-        toast.success('Produit supprimé ✅');
+        toast.success('Produit supprimé');
         restoreScrollTo(savedScrollRef.current);
       } catch (error) {
         console.error('Error deleting product:', error);
-        toast.error('Erreur lors de la suppression ❌');
+        toast.error('Erreur lors de la suppression');
       }
     }
   };
@@ -387,11 +387,11 @@ const Products = () => {
       } else {
         fetchProducts({ showLoading: false });
       }
-      toast.success('Produit dupliqué ✅');
+      toast.success('Produit dupliqué');
       restoreScrollTo(savedScrollRef.current);
     } catch (error) {
       console.error('Error duplicating product:', error);
-      toast.error(error.response?.data?.message || 'Erreur lors de la duplication ❌');
+      toast.error(error.response?.data?.message || 'Erreur lors de la duplication');
     }
   };
 

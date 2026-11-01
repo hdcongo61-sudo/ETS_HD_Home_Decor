@@ -1787,13 +1787,13 @@ const Sales = () => {
           : prevSale
       );
       await hydrateDeliveryStats(updatedSales);
-      setMessage("✅ Statut de livraison mis à jour avec succès !");
+      setMessage("Statut de livraison mis à jour avec succès !");
       setShowDeliveryModal(false);
       if (isAdmin) {
         fetchDashboardData(timeRange, dateFilter, { showLoading: false });
       }
     } catch (e) {
-      setMessage("❌ Erreur: " + (e.response?.data?.message || e.message));
+      setMessage("Erreur : " + (e.response?.data?.message || e.message));
     } finally {
       setIsUpdatingDelivery(false);
     }

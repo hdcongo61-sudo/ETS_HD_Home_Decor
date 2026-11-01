@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const DEFAULT_DELAY = 40000; // 40 seconds
-const DEFAULT_KEYWORDS = ['succès', 'success', 'réussi', '✅'];
+const DEFAULT_KEYWORDS = ['succès', 'success', 'réussi', 'envoyé'];
 
 const toLower = (value) => (typeof value === 'string' ? value.toLowerCase() : '');
 

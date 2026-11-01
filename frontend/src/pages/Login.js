@@ -286,7 +286,7 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="tenantCode" className="form-label mb-2 block">{t('login.shopCode', 'Code boutique')} <span className="text-gray-400">({t('login.optional', 'optionnel')})</span></label>
+            <label htmlFor="tenantCode" className="form-label mb-2 block">{t('login.shopCode', 'Code boutique')} <span className="text-gray-600">({t('login.optional', 'optionnel')})</span></label>
             <input
               id="tenantCode"
               type="text"

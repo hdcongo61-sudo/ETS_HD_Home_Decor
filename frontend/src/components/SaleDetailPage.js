@@ -409,7 +409,7 @@ const SaleDetailPage = () => {
             setRequestModal(null);
             setRequestReason('');
             setRequestNote('');
-            setMessage('✅ Demande envoyée à l’administrateur');
+            setMessage('Demande envoyée à l’administrateur');
         } catch (error) {
             console.error('Admin request error:', error.response?.data || error);
             setMessage('Erreur: ' + (error.response?.data?.message || error.message));
@@ -433,7 +433,7 @@ const SaleDetailPage = () => {
             });
             setSale(mergeSaleState(data));
             setShowEditModal(false);
-            setMessage('✅ Vente mise à jour avec succès');
+            setMessage('Vente mise à jour avec succès');
         } catch (err) {
             console.error('Update error:', err.response?.data || err.message);
             throw err; // EditSaleForm surfaces the message inline
@@ -801,10 +801,10 @@ const SaleDetailPage = () => {
                 {message && (
                     <div
                         role="alert"
-                        className={`p-4 rounded-xl flex items-center gap-3 ${message.includes('succès') || message.includes('✅') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}
+                        className={`p-4 rounded-xl flex items-center gap-3 ${message.includes('succès') || message.includes('envoyée') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {message.includes('succès') || message.includes('✅') ? (
+                            {message.includes('succès') || message.includes('envoyée') ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1071,7 +1071,7 @@ const SaleDetailPage = () => {
                                             {REMINDER_CHANNEL_LABEL[r.channel] || r.channel}
                                             {r.userName ? ` · ${r.userName}` : ''}
                                         </span>
-                                        <span className="text-gray-400">
+                                        <span className="text-gray-600">
                                             {r.createdAt ? new Date(r.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
                                         </span>
                                     </li>
