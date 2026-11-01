@@ -58,6 +58,7 @@ const PartiallyPaidPurchases = lazy(() => import('./pages/PartiallyPaidPurchases
 const Bank = lazy(() => import('./pages/Bank'));
 const Comptabilite = lazy(() => import('./pages/Comptabilite'));
 const Ledger = lazy(() => import('./pages/Ledger'));
+const Devis = lazy(() => import('./pages/Devis'));
 const Promotions = lazy(() => import('./pages/Promotions'));
 const ExpiringProducts = lazy(() => import('./pages/ExpiringProducts'));
 const Services = lazy(() => import('./pages/Services'));
@@ -403,6 +404,14 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly>
                       <Promotions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/devis"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <Devis />
                     </ProtectedRoute>
                   }
                 />

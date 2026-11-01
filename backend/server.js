@@ -75,6 +75,7 @@ const apiKeyAuth = require('./middlewares/apiKeyAuth');
 const webhookRoutes = require('./routes/webhookRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const ledgerRoutes = require('./routes/ledgerRoutes');
+const devisRoutes = require('./routes/devisRoutes');
 
 const app = express();
 
@@ -254,6 +255,7 @@ app.use('/api/promotions', promotionRoutes);
 app.use('/api/public', apiKeyAuth, publicRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/ledger', ledgerRoutes);
+app.use('/api/devis', devisRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

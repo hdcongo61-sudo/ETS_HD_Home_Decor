@@ -968,6 +968,7 @@ const QA_GROUPS = (auth, hasFeature = () => true) => {
         ...(auth.isAdmin ? [
           { to: '/sales/deleted', icon: Archive, label: i18n.t('nav.deletedSales', 'Ventes supprimées') },
           { to: '/promotions', icon: Tag, label: i18n.t('nav.promo', 'Codes promo') },
+          { to: '/devis', icon: FileText, label: i18n.t('nav.devis', 'Devis') },
         ] : []),
       ],
     },
