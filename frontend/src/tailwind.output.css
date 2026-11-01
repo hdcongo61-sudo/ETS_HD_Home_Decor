@@ -8737,6 +8737,12 @@ form input[type="radio"],
   }
 }
 
+@media (min-width: 1536px) {
+  .\32xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .dark\:border-\[var\(--ms-blue\)\] {
     border-color: var(--ms-blue);

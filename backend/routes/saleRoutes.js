@@ -31,11 +31,13 @@ const {
 const { getProfitAnalytics, getProfitReport } = require('../controllers/profitController');
 const { requireFeature } = require('../middlewares/featureMiddleware');
 const { FEATURE_KEYS } = require('../config/features');
+const { getCombinedSalesProducts } = require('../controllers/ultimateFilterController');
 
 
 // Nouvelles routes pour l'analyse des bénéfices (forfait Entreprise)
 router.route('/profit-analytics').get(protect, requireTenant, requireFeature(FEATURE_KEYS.PROFIT_ANALYSIS), getProfitAnalytics);
 router.route('/profit-report').get(protect, requireTenant, requireFeature(FEATURE_KEYS.PROFIT_ANALYSIS), getProfitReport);
+router.get('/product-analysis', protect, requireTenant, admin, getCombinedSalesProducts);
 
 router.route('/user/:userId')
   .get(protect, requireTenant, getUserSales)

@@ -552,8 +552,8 @@ export const PAGE_GUIDES = [
 
   // ── Filtres ultimes ──
   GUIDE('/ultimate-filters', 'Filtres ultimes', 'Recherche avancée multi-domaines.',
-    ['Choisissez un domaine (ventes, produits, clients…).', 'Composez vos filtres (date, statut, montant…).', 'Exportez les résultats vers Excel.'],
-    ['Les filtres se combinent entre eux.']),
+    ['Choisissez un domaine (ventes, produits, clients…) ou « Ventes + produits » pour croiser les critères de vente et du catalogue.', 'Dans la recherche combinée, filtrez aussi les lignes par client, paiement, livraison, stock, fournisseur, activité et attributs de variante configurables.', 'Parcourez les lignes de vente avec la pagination, puis exportez les résultats affichés vers Excel, CSV ou PDF.'],
+    ['Chaque ligne combinée représente un produit vendu. Les filtres de variante portent sur les variantes actuellement actives du produit : l’historique ne conserve pas l’identifiant de la variante vendue.', 'Les filtres du domaine combiné se combinent entre eux ; les autres domaines conservent leurs propres critères.']),
 
   // ── Utilisateurs ──
   GUIDE('/users/stats', 'Utilisateurs', 'Tableau de bord utilisateurs : activité et statistiques.',
