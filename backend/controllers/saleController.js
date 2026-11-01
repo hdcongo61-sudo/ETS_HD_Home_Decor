@@ -22,7 +22,7 @@ const { issueStock, receiveStock } = require('../services/inventoryService');
 const { recordPayment } = require('../services/paymentService');
 const { nextNumber } = require('../services/cashService');
 const { findStalePartialSales } = require('../utils/staleBalanceDetection');
-const { getTenantTax, computeTaxFromTotal } = require('../utils/tax');
+const { getTenantTax, computeTaxFromTotal, computeTaxFromSubtotal } = require('../utils/tax');
 const { sendEmail } = require('../utils/mailer');
 const { dispatchWebhookEvent } = require('../services/webhookService');
 
@@ -812,9 +812,18 @@ const createSale = asyncHandler(async (req, res) => {
 
     const effectiveSaleDate = parsedSaleDate.value || new Date();
 
-    // Tax (TVA) snapshot — inclusive model: totalAmount already contains tax.
+    // Tax (TVA) snapshot. Inclusive model: totalAmount already contains tax.
+    // Exclusive model: tax is added on top of the (discounted) subtotal.
     const tenantTax = await getTenantTax(req.tenantId);
-    const taxAmount = computeTaxFromTotal(totalAmount, tenantTax);
+    let taxAmount = 0;
+    if (tenantTax.enabled && tenantTax.rate > 0) {
+      if (tenantTax.inclusive) {
+        taxAmount = computeTaxFromTotal(totalAmount, tenantTax);
+      } else {
+        taxAmount = computeTaxFromSubtotal(totalAmount, tenantTax);
+        totalAmount = Math.round(totalAmount + taxAmount);
+      }
+    }
     const taxRate = tenantTax.enabled ? tenantTax.rate : 0;
 
     // Create sale with reminder data

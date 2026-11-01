@@ -36,4 +36,17 @@ const computeTaxFromTotal = (totalAmount, tax) => {
   return Math.round((Number(totalAmount) || 0) * config.rate / (100 + config.rate));
 };
 
-module.exports = { DEFAULT_TAX, normalizeTax, getTenantTax, computeTaxFromTotal };
+// Exclusive VAT: the tax is added on top of the pre-tax subtotal.
+const computeTaxFromSubtotal = (subtotal, tax) => {
+  const config = normalizeTax(tax);
+  if (!config.enabled || config.rate <= 0) return 0;
+  return Math.round((Number(subtotal) || 0) * config.rate / 100);
+};
+
+module.exports = {
+  DEFAULT_TAX,
+  normalizeTax,
+  getTenantTax,
+  computeTaxFromTotal,
+  computeTaxFromSubtotal,
+};

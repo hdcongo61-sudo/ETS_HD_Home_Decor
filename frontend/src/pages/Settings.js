@@ -1472,7 +1472,7 @@ const Settings = () => {
                             {p.method === 'mobile_money' ? 'Mobile money' : p.method === 'cash' ? 'Espèces' : p.method === 'transfer' ? 'Virement' : p.method}
                             {p.note ? ` · ${p.note}` : ''}
                           </span>
-                          <span className="fui-body1-strong">{formatCfa(Number(p.amount || 0))}</span>
+                          <span className="fui-body1-strong">{cfa(Number(p.amount || 0))}</span>
                         </li>
                       );
                     })}
@@ -1672,7 +1672,7 @@ const Settings = () => {
                 </div>
               </BrandingField>
 
-              <BrandingField label="Taxe (TVA)" description="Optionnelle. Quand activée, chaque vente enregistre le montant de taxe inclus dans le total (affiché sur la facture et dans les rapports).">
+              <BrandingField label="Taxe (TVA)" description="Optionnelle. Taxe incluse dans le prix ou ajoutée au total (HT), figée sur chaque vente et affichée sur la facture et dans les rapports.">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="flex min-h-[44px] items-center gap-3 rounded-[var(--radiusMedium)] border border-[var(--ms-border)] bg-[var(--ms-white)] px-3 py-2.5 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
                     <input type="checkbox" checked={Boolean(taxSettings.enabled)} onChange={(e) => handleTaxFieldChange('enabled', e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 rounded border-[var(--ms-border)] text-[var(--ms-blue)] focus:ring-[var(--ms-blue)]" />
@@ -1685,6 +1685,13 @@ const Settings = () => {
                   <div>
                     <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Libellé</label>
                     <input type="text" value={taxSettings.label} onChange={(e) => handleTaxFieldChange('label', e.target.value)} className={settingInputClass} placeholder="TVA" maxLength={20} />
+                  </div>
+                  <div>
+                    <label className="fui-caption1 mb-1 block" style={{ color: 'var(--colorNeutralForeground3)' }}>Calcul</label>
+                    <select value={taxSettings.inclusive ? 'inclusive' : 'exclusive'} onChange={(e) => handleTaxFieldChange('inclusive', e.target.value === 'inclusive')} className={settingInputClass}>
+                      <option value="inclusive">Taxe incluse dans le prix</option>
+                      <option value="exclusive">Taxe ajoutée au total (HT)</option>
+                    </select>
                   </div>
                   <div className="flex items-end">
                     <button type="button" onClick={handleSaveTaxSettings} disabled={savingTaxSettings} className="ms-button ms-button-secondary ms-button-md w-full justify-center disabled:opacity-60" style={{ minHeight: '44px' }}>
