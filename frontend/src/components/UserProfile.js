@@ -11,7 +11,10 @@ import {
   Camera,
   Clock3,
   Crown,
+  ExternalLink,
   Home,
+  KeyRound,
+  LockKeyhole,
   Mail,
   Phone,
   RefreshCw,
@@ -27,6 +30,7 @@ import AppLoader from './AppLoader';
 import { PageHeader, Workspace, KPICard, Button, Surface, StatusBadge } from './business';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { clearSessionStorage } from '../features/auth/hooks';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -38,6 +42,13 @@ const UserProfile = () => {
   const [, setSalesError] = useState('');
   const [salesRange, setSalesRange] = useState('30days');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    newPasswordConfirmation: '',
+    mfaCode: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
   const fileRef = useRef(null);
   const { auth, setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -63,6 +74,40 @@ const UserProfile = () => {
     }
   };
 
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
+    const { currentPassword, newPassword, newPasswordConfirmation, mfaCode } = passwordForm;
+    if (newPassword.length < 10 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      toast.error('Utilisez au moins 10 caractères, avec une minuscule, une majuscule et un chiffre.');
+      return;
+    }
+    if (newPassword !== newPasswordConfirmation) {
+      toast.error('La confirmation du nouveau mot de passe ne correspond pas.');
+      return;
+    }
+    if (user?.mfaEnabled && !/^\d{6}$/.test(mfaCode)) {
+      toast.error('Saisissez le code à 6 chiffres de votre application d’authentification.');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await api.put('/users/password', {
+        currentPassword,
+        newPassword,
+        newPasswordConfirmation,
+        ...(user?.mfaEnabled ? { mfaCode } : {}),
+      });
+      toast.success('Mot de passe modifié. Reconnectez-vous avec votre nouveau mot de passe.');
+      clearSessionStorage();
+      window.location.replace('/login');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de modifier le mot de passe.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       setLoading(true);
@@ -75,7 +120,7 @@ const UserProfile = () => {
       const { data } = await api.get('/users/profile');
       const profile = data?.user || data;
       setUser(profile);
-      if (profile?.isAdmin) {
+      if (profile?.isAdmin && !profile?.isSuperAdmin) {
         fetchAdminStats();
         fetchSalesStats(profile._id, salesRange);
       }
@@ -121,8 +166,8 @@ const UserProfile = () => {
   };
 
   useEffect(() => {
-    if (user?.isAdmin) fetchSalesStats(user._id, salesRange);
-  }, [user?._id, user?.isAdmin, salesRange]);
+    if (user?.isAdmin && !user?.isSuperAdmin) fetchSalesStats(user._id, salesRange);
+  }, [user?._id, user?.isAdmin, user?.isSuperAdmin, salesRange]);
 
   if (loading) {
     return (
@@ -157,6 +202,235 @@ const UserProfile = () => {
     { value: '90days', label: '90 jours' },
     { value: 'all', label: 'Tout' },
   ];
+
+  if (auth?.isSuperAdmin || user?.isSuperAdmin) {
+    return (
+      <Workspace>
+        <PageHeader
+          eyebrow="Compte plateforme"
+          title="Mon profil"
+          description="Gérez votre compte opérateur et consultez rapidement son état de sécurité."
+          actions={
+            <div className="flex items-center gap-2">
+              <Button onClick={handleRetry} variant="secondary" size="sm">
+                <RefreshCw className="h-4 w-4" />
+                Actualiser
+              </Button>
+            </div>
+          }
+        />
+
+        <Surface>
+          <div className="relative overflow-hidden p-5 sm:p-7">
+            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-sky-50/80 to-transparent sm:block" aria-hidden="true" />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+              <div className="relative shrink-0">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  title="Changer la photo de profil"
+                  aria-label="Changer la photo de profil"
+                  className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-sky-200 bg-sky-50 text-2xl font-semibold text-sky-800 transition-colors hover:border-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 disabled:cursor-wait"
+                >
+                  {user?.photo ? (
+                    <img src={user.photo} alt={user.name || 'Profil'} className="h-full w-full object-cover" />
+                  ) : (
+                    userInitials || <UserRound className="h-8 w-8" />
+                  )}
+                  <span className="absolute inset-0 flex items-center justify-center bg-slate-950/55 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    {uploadingPhoto
+                      ? <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+                      : <Camera className="h-5 w-5" aria-hidden="true" />}
+                  </span>
+                </button>
+                <span className="absolute -bottom-2 -right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-sky-700 text-white" aria-hidden="true">
+                  <Crown className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone="info">Super Admin</StatusBadge>
+                  <StatusBadge tone={user?.isActive === false ? 'warning' : 'success'}>
+                    {user?.isActive === false ? 'Compte désactivé' : 'Compte actif'}
+                  </StatusBadge>
+                </div>
+                <h2 className="mt-3 break-words text-2xl font-semibold tracking-tight text-slate-900">
+                  {user?.name || 'Opérateur plateforme'}
+                </h2>
+                <p className="mt-1 break-all text-sm text-slate-600">{user?.email || 'Adresse e-mail non renseignée'}</p>
+                <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                  Compte d’administration global. Ses paramètres de profil sont distincts des comptes et des identités des boutiques.
+                </p>
+              </div>
+              <Button onClick={() => navigate('/security')} variant="primary" className="shrink-0">
+                <LockKeyhole className="h-4 w-4" />
+                Paramètres de sécurité
+              </Button>
+            </div>
+          </div>
+        </Surface>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
+          <Surface>
+            <div className="p-5 sm:p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700" aria-hidden="true">
+                  <UserRound className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Informations du compte</h2>
+                  <p className="mt-0.5 text-xs text-slate-600">Coordonnées et dates associées à votre accès plateforme.</p>
+                </div>
+              </div>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <Field label="Nom complet" value={user?.name || 'Non renseigné'} />
+                <Field label="Adresse e-mail" value={user?.email || 'Non renseignée'} isLink={user?.email ? `mailto:${user.email}` : null} />
+                <Field
+                  label="Téléphone"
+                  value={user?.phone || 'Non renseigné'}
+                  isLink={user?.phone ? `tel:${String(user.phone).replace(/[^+\d]/g, '')}` : null}
+                />
+                <Field label="Identifiant opérateur" value={user?._id || 'Non disponible'} mono />
+              </dl>
+            </div>
+          </Surface>
+
+          <div className="space-y-4">
+            <Surface>
+              <div className="p-5 sm:p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800" aria-hidden="true">
+                    <ShieldCheck className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">Sécurité du compte</h2>
+                    <p className="mt-0.5 text-xs text-slate-600">Vérifiez votre authentification et vos sessions.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                  <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Double authentification</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {user?.mfaEnabled ? 'Activée : un code supplémentaire protège votre compte.' : 'Non activée : ajoutez une vérification par application d’authentification.'}
+                    </p>
+                  </div>
+                  <StatusBadge tone={user?.mfaEnabled ? 'success' : 'warning'}>
+                    {user?.mfaEnabled ? 'Activée' : 'À activer'}
+                  </StatusBadge>
+                </div>
+                <div className="mt-3 space-y-2.5">
+                  <Fact icon={CalendarDays} label="Compte créé" value={accountCreatedAt} />
+                  <Fact icon={Clock3} label="Dernière connexion" value={lastLoginDisplay} />
+                </div>
+                <Button onClick={() => navigate('/security')} variant="secondary" className="mt-4 w-full justify-center">
+                  Gérer les sessions et la MFA
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </Surface>
+
+            <Surface>
+              <form onSubmit={handlePasswordChange} className="p-5 sm:p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-800" aria-hidden="true">
+                    <KeyRound className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">Changer le mot de passe</h2>
+                    <p className="mt-0.5 text-xs text-slate-600">Confirmez votre identité avant toute modification.</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <PasswordField
+                    id="operator-current-password"
+                    label="Mot de passe actuel"
+                    autoComplete="current-password"
+                    value={passwordForm.currentPassword}
+                    onChange={(value) => setPasswordForm((form) => ({ ...form, currentPassword: value }))}
+                  />
+                  <PasswordField
+                    id="operator-new-password"
+                    label="Nouveau mot de passe"
+                    autoComplete="new-password"
+                    value={passwordForm.newPassword}
+                    onChange={(value) => setPasswordForm((form) => ({ ...form, newPassword: value }))}
+                    maxLength={72}
+                    hint="10 caractères minimum, avec une minuscule, une majuscule et un chiffre (72 octets maximum)."
+                  />
+                  <PasswordField
+                    id="operator-confirm-password"
+                    label="Confirmer le nouveau mot de passe"
+                    autoComplete="new-password"
+                    value={passwordForm.newPasswordConfirmation}
+                    onChange={(value) => setPasswordForm((form) => ({ ...form, newPasswordConfirmation: value }))}
+                    maxLength={72}
+                  />
+                  {user?.mfaEnabled && (
+                    <div>
+                      <label htmlFor="operator-mfa-code" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Code de double authentification
+                      </label>
+                      <input
+                        id="operator-mfa-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        value={passwordForm.mfaCode}
+                        onChange={(event) => setPasswordForm((form) => ({
+                          ...form,
+                          mfaCode: event.target.value.replace(/\D/g, '').slice(0, 6),
+                        }))}
+                        required
+                        className="form-control w-full"
+                        placeholder="000000"
+                      />
+                    </div>
+                  )}
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
+                    Après le changement, toutes les sessions seront déconnectées. Vous devrez vous reconnecter avec le nouveau mot de passe.
+                  </p>
+                  <Button type="submit" disabled={changingPassword} variant="primary" className="w-full justify-center">
+                    {changingPassword ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                    {changingPassword ? 'Modification…' : 'Vérifier et changer le mot de passe'}
+                  </Button>
+                </div>
+              </form>
+            </Surface>
+
+            <Surface>
+              <div className="p-5 sm:p-6">
+                <h2 className="text-sm font-semibold text-slate-900">Raccourcis plateforme</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  Ouvrez les paramètres globaux ou revenez à la console d’administration.
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <Button onClick={() => navigate('/settings')} variant="secondary" className="w-full justify-center">
+                    <Shield className="h-4 w-4" />
+                    Paramètres plateforme
+                  </Button>
+                  <Button onClick={() => navigate('/super-admin')} variant="secondary" className="w-full justify-center">
+                    <Home className="h-4 w-4" />
+                    Console Super Admin
+                  </Button>
+                </div>
+              </div>
+            </Surface>
+          </div>
+        </div>
+      </Workspace>
+    );
+  }
 
   return (
     <Workspace>
@@ -400,6 +674,23 @@ const Field = ({ label, value, isLink, mono }) => (
         value
       )}
     </dd>
+  </div>
+);
+
+const PasswordField = ({ id, label, value, onChange, autoComplete, hint, maxLength }) => (
+  <div>
+    <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">{label}</label>
+    <input
+      id={id}
+      type="password"
+      autoComplete={autoComplete}
+      value={value}
+      maxLength={maxLength}
+      onChange={(event) => onChange(event.target.value)}
+      required
+      className="form-control w-full"
+    />
+    {hint && <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{hint}</p>}
   </div>
 );
 

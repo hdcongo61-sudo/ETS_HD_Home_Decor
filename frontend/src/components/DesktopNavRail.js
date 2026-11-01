@@ -118,9 +118,10 @@ const DesktopNavRail = () => {
   });
   const { auth, setAuth } = useContext(AuthContext);
   const location = useLocation();
-  const { appSettings } = useAppSettings();
+  const { appSettings, platformBranding } = useAppSettings();
   const branding = appSettings?.branding || {};
-  const logoUrl = resolveAppLogo(branding.logoUrl);
+  const platformAppName = platformBranding?.appName || branding.appName || 'HD Gestion';
+  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
   const [tooltip, setTooltip] = useState(null);
 
@@ -217,7 +218,7 @@ const DesktopNavRail = () => {
       <div className="fluent-nav-rail__brand">
         <img
           src={logoUrl}
-          alt={branding.shortName || branding.appName || 'Logo'}
+          alt={platformAppName}
           className="fluent-nav-rail__brand-logo"
           onError={(e) => {
             const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
@@ -234,7 +235,7 @@ const DesktopNavRail = () => {
             transition={{ duration: 0.12 }}
             className="fluent-nav-rail__brand-name"
           >
-            {branding.appName || 'HD Gestion'}
+            {platformAppName}
           </motion.span>
         )}
       </div>

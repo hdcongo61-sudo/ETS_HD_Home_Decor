@@ -9,9 +9,9 @@ import { resolveAppLogo } from '../utils/appBranding';
  * @param {string} textClassName - Optional class for the text (e.g. "text-white" for overlays).
  */
 export default function AppLoader({ fullScreen = true, text = 'Chargement...', textClassName = 'text-gray-500' }) {
-  const { appSettings } = useAppSettings();
-  const logoUrl = resolveAppLogo(appSettings.branding.logoUrl);
-  const appName = appSettings.branding.appName || 'HD Gestion';
+  const { appSettings, platformBranding } = useAppSettings();
+  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
+  const appName = platformBranding?.appName || appSettings.branding.appName || 'HD Gestion';
 
   const content = (
     <div className="flex flex-col items-center justify-center gap-5">
@@ -19,7 +19,7 @@ export default function AppLoader({ fullScreen = true, text = 'Chargement...', t
         <span className="app-loader-ring absolute -inset-3 rounded-[22px]" aria-hidden="true" />
         <img
           src={logoUrl}
-          alt={appSettings.branding.shortName || appName}
+          alt={appName}
           className="app-loader-logo relative h-16 w-16 rounded-2xl border border-gray-200 bg-white object-contain shadow-md"
         />
       </div>

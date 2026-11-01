@@ -216,10 +216,13 @@ const getUserProfile = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone || '',
       isAdmin: user.isAdmin,
+      isSuperAdmin: Boolean(user.isSuperAdmin),
+      isActive: user.isActive !== false,
+      mfaEnabled: Boolean(user.mfaEnabled),
       permissions: Array.isArray(user.permissions) ? user.permissions : [],
       photo: user.photo || '',
       lastLogin: user.lastLogin || null,
-      createdAt: user.createdAt
+      createdAt: user.createdAt || null,
     });
   } else {
     res.status(404);
@@ -272,6 +275,56 @@ const updateMyProfile = asyncHandler(async (req, res) => {
     isSuperAdmin: user.isSuperAdmin || false,
     permissions: Array.isArray(user.permissions) ? user.permissions : [],
     photo: user.photo || '',
+  });
+});
+
+// @desc    Change the current user's password after re-authentication
+// @route   PUT /api/users/password
+// @access  Private
+const changeMyPassword = asyncHandler(async (req, res) => {
+  const currentPassword = typeof req.body.currentPassword === 'string' ? req.body.currentPassword : '';
+  const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
+  const newPasswordConfirmation = typeof req.body.newPasswordConfirmation === 'string'
+    ? req.body.newPasswordConfirmation
+    : '';
+  const mfaCode = typeof req.body.mfaCode === 'string' ? req.body.mfaCode.trim() : '';
+
+  if (!currentPassword || !newPassword || !newPasswordConfirmation) {
+    return res.status(400).json({ message: 'Tous les champs du formulaire sont obligatoires.' });
+  }
+  if (newPassword.length < 10 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+    return res.status(400).json({
+      message: 'Le nouveau mot de passe doit contenir au moins 10 caractères, une minuscule, une majuscule et un chiffre.',
+    });
+  }
+  if (Buffer.byteLength(newPassword, 'utf8') > 72) {
+    return res.status(400).json({ message: 'Le nouveau mot de passe ne peut pas dépasser 72 octets.' });
+  }
+  if (newPassword !== newPasswordConfirmation) {
+    return res.status(400).json({ message: 'La confirmation du nouveau mot de passe ne correspond pas.' });
+  }
+
+  const user = await User.findById(req.user._id).select('+mfaSecret');
+  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' });
+  if (!(await user.matchPassword(currentPassword))) {
+    return res.status(401).json({ message: 'Le mot de passe actuel est incorrect.' });
+  }
+  if (await user.matchPassword(newPassword)) {
+    return res.status(400).json({ message: 'Le nouveau mot de passe doit être différent de l’actuel.' });
+  }
+  if (user.mfaEnabled && (!mfaCode || !mfaService.verifyCode(user.mfaSecret, mfaCode))) {
+    return res.status(401).json({ message: 'Code de double authentification invalide.' });
+  }
+
+  user.password = newPassword;
+  user.passwordModifiedBy = user._id;
+  user.passwordModifiedAt = new Date();
+  await user.save();
+
+  await sessionService.revokeAllForUser({ kind: 'user', userId: user._id });
+  res.json({
+    message: 'Mot de passe modifié. Toutes les sessions ont été déconnectées.',
+    mustReLogin: true,
   });
 });
 
@@ -1177,6 +1230,7 @@ module.exports = {
   getUsers,
   getUserProfile,
   updateMyProfile,
+  changeMyPassword,
   getCurrentUser,
   getUserStats,
   createUserByAdmin,

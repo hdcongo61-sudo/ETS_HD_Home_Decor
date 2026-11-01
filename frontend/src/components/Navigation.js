@@ -53,7 +53,7 @@ import MobileRefreshButton from "./MobileRefreshButton";
 
 const Navigation = () => {
   const { auth } = useContext(AuthContext);
-  const { appSettings } = useAppSettings();
+  const { appSettings, platformBranding } = useAppSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
@@ -68,7 +68,8 @@ const Navigation = () => {
     return window.matchMedia("(min-width: 768px)").matches;
   });
   const branding = appSettings.branding;
-  const logoUrl = resolveAppLogo(branding.logoUrl);
+  const platformAppName = platformBranding?.appName || branding.appName;
+  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
   const location = useLocation();
@@ -217,7 +218,7 @@ const Navigation = () => {
           >
             <img
               src={logoUrl}
-              alt={branding.shortName || branding.appName}
+              alt={platformAppName}
               onError={(e) => {
                 const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
                 if (e.currentTarget.src !== window.location.origin + fallback && !e.currentTarget.dataset.fallback) {
@@ -229,7 +230,7 @@ const Navigation = () => {
             />
             <div className="hidden min-w-0 lg:block">
               <span className="block truncate text-[14px] font-semibold text-[var(--ms-text-strong)] leading-tight">
-                {branding.appName}
+                {platformAppName}
               </span>
             </div>
           </Link>

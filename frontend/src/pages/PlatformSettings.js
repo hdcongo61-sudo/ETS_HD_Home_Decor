@@ -1,11 +1,220 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, Bell, Database, FileText, History, Layers, RefreshCw, Server, ShieldCheck,
+  ArrowRight, Bell, Check, Database, FileImage, FileText, History, Layers, RefreshCw, Server, ShieldCheck, Trash2, Upload, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader, Workspace } from '../components/business';
 import { platformApi } from '../features/platform/api';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { resolveAppLogo } from '../utils/appBranding';
+
+const PLATFORM_CONTACT_FIELDS = [
+  { name: 'supportEmail', label: 'E-mail de support', type: 'email', maxLength: 254, placeholder: 'support@exemple.com' },
+  { name: 'supportPhone', label: 'Téléphone de support', type: 'tel', maxLength: 40, placeholder: '+243 …' },
+  { name: 'whatsappUrl', label: 'Lien WhatsApp', type: 'url', maxLength: 500, placeholder: 'https://wa.me/243…' },
+  { name: 'websiteUrl', label: 'Site web', type: 'url', maxLength: 500, placeholder: 'https://www.exemple.com' },
+  { name: 'address', label: 'Adresse de la plateforme', type: 'text', maxLength: 200, placeholder: 'Ville, pays' },
+];
+
+const getPlatformContactInfo = (branding = {}) => ({
+  supportEmail: branding.supportEmail || '',
+  supportPhone: branding.supportPhone || '',
+  whatsappUrl: branding.whatsappUrl || '',
+  websiteUrl: branding.websiteUrl || '',
+  address: branding.address || '',
+});
+
+const PlatformLogoSettings = () => {
+  const { platformBranding, setPlatformBranding } = useAppSettings();
+  const {
+    appName: platformAppName,
+    supportEmail: platformSupportEmail,
+    supportPhone: platformSupportPhone,
+    whatsappUrl: platformWhatsappUrl,
+    websiteUrl: platformWebsiteUrl,
+    address: platformAddress,
+  } = platformBranding || {};
+  const [appName, setAppName] = useState(platformAppName || 'ETS HD Gestion');
+  const [contactInfo, setContactInfo] = useState(() => getPlatformContactInfo(platformBranding));
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const logoUrl = resolveAppLogo(removeLogo ? '' : previewUrl || platformBranding?.logoUrl);
+  const savedAppName = platformAppName || 'ETS HD Gestion';
+  const savedContactInfo = {
+    supportEmail: platformSupportEmail || '',
+    supportPhone: platformSupportPhone || '',
+    whatsappUrl: platformWhatsappUrl || '',
+    websiteUrl: platformWebsiteUrl || '',
+    address: platformAddress || '',
+  };
+  const hasContactChanges = PLATFORM_CONTACT_FIELDS.some(({ name }) => (
+    (contactInfo[name] || '').trim() !== savedContactInfo[name]
+  ));
+  const hasChanges = appName.trim() !== savedAppName || hasContactChanges || Boolean(file) || removeLogo;
+
+  useEffect(() => {
+    setAppName(platformAppName || 'ETS HD Gestion');
+    setContactInfo({
+      supportEmail: platformSupportEmail || '',
+      supportPhone: platformSupportPhone || '',
+      whatsappUrl: platformWhatsappUrl || '',
+      websiteUrl: platformWebsiteUrl || '',
+      address: platformAddress || '',
+    });
+  }, [
+    platformAppName,
+    platformSupportEmail,
+    platformSupportPhone,
+    platformWhatsappUrl,
+    platformWebsiteUrl,
+    platformAddress,
+  ]);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl('');
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  const selectLogo = (event) => {
+    const nextFile = event.target.files?.[0] || null;
+    event.target.value = '';
+    if (!nextFile) return;
+    const supportedFormats = /\.(jpe?g|png|webp|gif|avif)$/i;
+    if (!nextFile.type.startsWith('image/') || !supportedFormats.test(nextFile.name)) {
+      toast.error('Le fichier sélectionné doit être une image.');
+      return;
+    }
+    if (nextFile.size > 5 * 1024 * 1024) {
+      toast.error('Le logo ne doit pas dépasser 5 Mo.');
+      return;
+    }
+    setFile(nextFile);
+    setRemoveLogo(false);
+  };
+
+  const savePlatformBranding = async () => {
+    if (!hasChanges) return;
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('appName', appName.trim());
+      PLATFORM_CONTACT_FIELDS.forEach(({ name }) => formData.append(name, (contactInfo[name] || '').trim()));
+      if (file) formData.append('logoFile', file);
+      if (removeLogo) formData.append('removeLogo', 'true');
+      const { data } = await platformApi.updatePlatformBranding(formData);
+      setPlatformBranding(data);
+      setFile(null);
+      setRemoveLogo(false);
+      toast.success('Informations de la plateforme mises à jour.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de mettre à jour les informations de la plateforme.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelChanges = () => {
+    setAppName(savedAppName);
+    setContactInfo(savedContactInfo);
+    setFile(null);
+    setRemoveLogo(false);
+  };
+
+  return (
+    <section className="fluent-card-filled overflow-hidden">
+      <div className="flex flex-wrap items-start gap-4 p-4 sm:p-5">
+        <img
+          src={logoUrl}
+          alt="Aperçu du logo de l’application"
+          className="h-16 w-16 shrink-0 rounded-xl border bg-white object-contain p-1"
+          style={{ borderColor: 'var(--colorNeutralStroke2)' }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <FileImage size={18} aria-hidden="true" style={{ color: 'var(--colorBrandForeground1)' }} />
+            <h2 className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Logo de l’application</h2>
+          </div>
+          <p className="mt-1 max-w-3xl fui-caption1 leading-relaxed" style={{ color: 'var(--colorNeutralForeground2)' }}>
+            Ce nom et ce logo représentent la plateforme dans la connexion, la navigation et les écrans de chargement pour toutes les boutiques.
+            Les noms et logos commerciaux des boutiques sur leurs factures et documents restent inchangés.
+          </p>
+          <div className="mt-4 max-w-xl">
+            <label htmlFor="platform-app-name" className="mb-1.5 block fui-caption1 font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+              Nom global de l’application
+            </label>
+            <input
+              id="platform-app-name"
+              type="text"
+              value={appName}
+              onChange={(event) => setAppName(event.target.value)}
+              maxLength={80}
+              required
+              className="form-control w-full"
+              placeholder="Nom de l’application"
+            />
+          </div>
+          <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-2">
+            <h3 className="sm:col-span-2 fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
+              Coordonnées de la plateforme
+            </h3>
+            {PLATFORM_CONTACT_FIELDS.map(({ name, label, type, maxLength, placeholder }) => (
+              <div key={name} className={name === 'address' ? 'sm:col-span-2' : ''}>
+                <label htmlFor={`platform-${name}`} className="mb-1.5 block fui-caption1 font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                  {label}
+                </label>
+                <input
+                  id={`platform-${name}`}
+                  type={type}
+                  value={contactInfo[name]}
+                  onChange={(event) => setContactInfo((current) => ({ ...current, [name]: event.target.value }))}
+                  maxLength={maxLength}
+                  className="form-control w-full"
+                  placeholder={placeholder}
+                  autoComplete={name === 'supportEmail' ? 'email' : name === 'supportPhone' ? 'tel' : 'off'}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <label htmlFor="platform-app-logo" className="ms-button ms-button-secondary ms-button-sm cursor-pointer">
+              <Upload size={15} aria-hidden="true" /> Choisir une image
+            </label>
+            <input id="platform-app-logo" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" onChange={selectLogo} className="sr-only" />
+            {platformBranding?.logoUrl && !removeLogo && (
+              <button
+                type="button"
+                onClick={() => { setFile(null); setRemoveLogo(true); }}
+                className="ms-button ms-button-ghost ms-button-sm"
+              >
+                <Trash2 size={15} aria-hidden="true" /> Réinitialiser le logo
+              </button>
+            )}
+            {hasChanges && (
+              <>
+                <button type="button" onClick={savePlatformBranding} disabled={saving || !appName.trim()} className="ms-button ms-button-primary ms-button-sm">
+                  {saving ? <RefreshCw size={15} className="animate-spin" aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+                  {saving ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+                <button type="button" onClick={cancelChanges} disabled={saving} className="ms-button ms-button-ghost ms-button-sm">
+                  <X size={15} aria-hidden="true" /> Annuler
+                </button>
+              </>
+            )}
+          </div>
+          {file && <p className="mt-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{file.name} · {(file.size / (1024 * 1024)).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} Mo</p>}
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const formatBytes = (bytes = 0) => {
   if (bytes < 1024) return `${bytes} octets`;
@@ -171,6 +380,8 @@ const PlatformSettings = () => (
       title="Paramètres plateforme"
       description="Accédez aux réglages qui concernent l’ensemble du service, séparément des préférences propres à chaque boutique."
     />
+
+    <PlatformLogoSettings />
 
     <section
       aria-label="Réglages de la plateforme"

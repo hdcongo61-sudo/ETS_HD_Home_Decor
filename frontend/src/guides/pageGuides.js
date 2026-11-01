@@ -526,9 +526,9 @@ export const PAGE_GUIDES = [
     ['Les documents sont classés par date automatiquement.']),
 
   // ── Paramètres ──
-  GUIDE('/settings', 'Paramètres', 'Configuration de la boutique : marque, dates et modules.',
-    ['Personnalisez le nom et le logo de la boutique.', 'Réglez les formats de dates et la devise.', 'Gérez votre abonnement et le catalogue de plans.', 'Configurez les lookups (catégories, fournisseurs, boutiques).'],
-    ['Certains réglages nécessitent le rôle administrateur.']),
+  GUIDE('/settings', 'Paramètres', 'Réglages propres à une boutique ou réglages de la plateforme selon votre rôle.',
+    ['Dans les paramètres de boutique, personnalisez son nom, son logo et ses coordonnées pour les factures, puis gérez devise, préférences et listes.', 'Dans les paramètres plateforme du Super Admin, configurez le nom et le logo globaux, l’e-mail, le téléphone, le lien WhatsApp, le site web et l’adresse de support.', 'L’identité globale de l’application ne remplace jamais l’identité commerciale propre à chaque boutique sur ses documents.'],
+    ['Les paramètres plateforme sont réservés au Super Admin ; chaque boutique conserve sa propre identité commerciale.']),
 
   // ── Sécurité ──
   GUIDE('/security', 'Sécurité', 'Sécurité du compte : sessions et authentification à deux facteurs.',

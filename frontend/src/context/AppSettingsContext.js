@@ -1,14 +1,27 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import { platformApi } from '../features/platform/api';
 import { DEFAULT_APP_SETTINGS, normalizeAppSettings, applyBrandTheme } from '../utils/appBranding';
 import { setActiveCurrency, DEFAULT_CURRENCY } from '../utils/format';
 import i18n from '../i18n';
 
 const AppSettingsContext = createContext({
   appSettings: DEFAULT_APP_SETTINGS,
+  platformBranding: {
+    appName: DEFAULT_APP_SETTINGS.branding.appName,
+    logoUrl: '',
+    supportEmail: '',
+    supportPhone: '',
+    whatsappUrl: '',
+    websiteUrl: '',
+    address: '',
+    updatedAt: null,
+  },
   isLoading: true,
   refreshAppSettings: async () => {},
   setAppSettings: () => {},
+  refreshPlatformBranding: async () => {},
+  setPlatformBranding: () => {},
 });
 
 // Cache court (sessionStorage) : évite de re-frapper /app-settings/public à
@@ -42,6 +55,16 @@ const writeSettingsCache = (settings) => {
 
 export const AppSettingsProvider = ({ children }) => {
   const [appSettings, setAppSettingsState] = useState(DEFAULT_APP_SETTINGS);
+  const [platformBranding, setPlatformBrandingState] = useState({
+    appName: DEFAULT_APP_SETTINGS.branding.appName,
+    logoUrl: '',
+    supportEmail: '',
+    supportPhone: '',
+    whatsappUrl: '',
+    websiteUrl: '',
+    address: '',
+    updatedAt: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAppSettings = async (force = false) => {
@@ -83,11 +106,35 @@ export const AppSettingsProvider = ({ children }) => {
     loadAppSettings();
   }, []);
 
+  const loadPlatformBranding = async () => {
+    try {
+      const { data } = await platformApi.platformBranding();
+      setPlatformBrandingState({
+        appName: typeof data?.appName === 'string' && data.appName.trim()
+          ? data.appName.trim()
+          : DEFAULT_APP_SETTINGS.branding.appName,
+        logoUrl: typeof data?.logoUrl === 'string' ? data.logoUrl : '',
+        supportEmail: typeof data?.supportEmail === 'string' ? data.supportEmail : '',
+        supportPhone: typeof data?.supportPhone === 'string' ? data.supportPhone : '',
+        whatsappUrl: typeof data?.whatsappUrl === 'string' ? data.whatsappUrl : '',
+        websiteUrl: typeof data?.websiteUrl === 'string' ? data.websiteUrl : '',
+        address: typeof data?.address === 'string' ? data.address : '',
+        updatedAt: data?.updatedAt || null,
+      });
+    } catch (error) {
+      console.error('Unable to load platform branding', error);
+    }
+  };
+
+  useEffect(() => {
+    loadPlatformBranding();
+  }, []);
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = appSettings.branding.appName || DEFAULT_APP_SETTINGS.branding.appName;
+      document.title = platformBranding.appName || DEFAULT_APP_SETTINGS.branding.appName;
     }
-  }, [appSettings.branding.appName]);
+  }, [platformBranding.appName]);
 
   // Apply the tenant brand colour to the design tokens (accent everywhere).
   useEffect(() => {
@@ -111,11 +158,25 @@ export const AppSettingsProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       appSettings,
+      platformBranding,
       isLoading,
       refreshAppSettings: () => loadAppSettings(true),
       setAppSettings: (nextSettings) => setAppSettingsState(normalizeAppSettings(nextSettings)),
+      refreshPlatformBranding: loadPlatformBranding,
+      setPlatformBranding: (nextBranding) => setPlatformBrandingState({
+        appName: typeof nextBranding?.appName === 'string' && nextBranding.appName.trim()
+          ? nextBranding.appName.trim()
+          : DEFAULT_APP_SETTINGS.branding.appName,
+        logoUrl: typeof nextBranding?.logoUrl === 'string' ? nextBranding.logoUrl : '',
+        supportEmail: typeof nextBranding?.supportEmail === 'string' ? nextBranding.supportEmail : '',
+        supportPhone: typeof nextBranding?.supportPhone === 'string' ? nextBranding.supportPhone : '',
+        whatsappUrl: typeof nextBranding?.whatsappUrl === 'string' ? nextBranding.whatsappUrl : '',
+        websiteUrl: typeof nextBranding?.websiteUrl === 'string' ? nextBranding.websiteUrl : '',
+        address: typeof nextBranding?.address === 'string' ? nextBranding.address : '',
+        updatedAt: nextBranding?.updatedAt || null,
+      }),
     }),
-    [appSettings, isLoading]
+    [appSettings, platformBranding, isLoading]
   );
 
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;

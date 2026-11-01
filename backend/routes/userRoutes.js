@@ -6,6 +6,7 @@ const {
   getUsers,
   getUserProfile,
   updateMyProfile,
+  changeMyPassword,
   getCurrentUser,
   getUserStats,
   createUserByAdmin,
@@ -35,6 +36,7 @@ router.post('/admin', protect, requireTenant, admin, imageUpload.single('photoFi
 router.route('/profile')
   .get(protect, getUserProfile)
   .put(protect, imageUpload.single('photoFile'), updateMyProfile);
+router.put('/password', protect, changeMyPassword);
 
 // Add this new route for login statistics
 router.get('/login-stats', protect, requireTenant, admin, getLoginStats);

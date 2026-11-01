@@ -11,6 +11,7 @@ export const authApi = {
   login: (payload) => api.post('/users/login', payload),
   me: () => api.get('/users/me'),
   passwordUpdateRequest: (data) => api.post('/users/password-update-request', data),
+  changePassword: (data) => api.put('/users/password', data),
 
   // Sessions (Phase 0.8)
   listSessions: () => api.get('/users/sessions'),

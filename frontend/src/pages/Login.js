@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Globe2, Mail, MessageCircle, Phone } from 'lucide-react';
 import { authApi } from '../features/auth/api';
 import AuthContext from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -25,12 +26,12 @@ const Login = () => {
   const [passwordRequestMessage, setPasswordRequestMessage] = useState('');
   const [passwordRequestError, setPasswordRequestError] = useState('');
   const { auth, setAuth } = useContext(AuthContext);
-  const { appSettings, refreshAppSettings } = useAppSettings();
+  const { appSettings, platformBranding, refreshAppSettings } = useAppSettings();
   const navigate = useNavigate();
   const branding = appSettings.branding;
-  const logoUrl = resolveAppLogo(branding.logoUrl);
+  const platformAppName = platformBranding?.appName || branding.appName;
+  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
   const brandSoft = mixHexColors(branding.primaryColor, 0.88);
-  const brandDark = mixHexColors(branding.primaryColor, 0.14, '#000000');
 
   const isEmail = (value) => typeof value === 'string' && value.includes('@');
   const loginPayload = () => {
@@ -218,19 +219,38 @@ const Login = () => {
           >
             <img
               src={logoUrl}
-              alt={branding.shortName || branding.appName}
+              alt={platformAppName}
               className="h-12 w-12 rounded-2xl object-contain bg-white p-1.5 shadow-sm"
             />
           </div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: branding.primaryColor }}>
-            {branding.appName}
+            {platformAppName}
           </p>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">{branding.loginTitle}</h1>
           <p className="text-gray-600">{branding.loginSubtitle}</p>
-          {branding.supportPhone && (
-            <p className="mt-3 text-xs text-gray-500">
-              Assistance : <span style={{ color: brandDark }}>{branding.supportPhone}</span>
-            </p>
+          {(platformBranding?.supportPhone || platformBranding?.supportEmail || platformBranding?.whatsappUrl || platformBranding?.websiteUrl) && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {platformBranding?.supportPhone && (
+                <a href={`tel:${platformBranding.supportPhone}`} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-gray-200 px-3 text-xs text-gray-700 transition-colors hover:bg-gray-50">
+                  <Phone size={14} aria-hidden="true" /> {platformBranding.supportPhone}
+                </a>
+              )}
+              {platformBranding?.supportEmail && (
+                <a href={`mailto:${platformBranding.supportEmail}`} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-gray-200 px-3 text-xs text-gray-700 transition-colors hover:bg-gray-50">
+                  <Mail size={14} aria-hidden="true" /> E-mail
+                </a>
+              )}
+              {platformBranding?.whatsappUrl && (
+                <a href={platformBranding.whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-gray-200 px-3 text-xs text-gray-700 transition-colors hover:bg-gray-50">
+                  <MessageCircle size={14} aria-hidden="true" /> WhatsApp
+                </a>
+              )}
+              {platformBranding?.websiteUrl && (
+                <a href={platformBranding.websiteUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-gray-200 px-3 text-xs text-gray-700 transition-colors hover:bg-gray-50">
+                  <Globe2 size={14} aria-hidden="true" /> Site web
+                </a>
+              )}
+            </div>
           )}
         </div>
 
