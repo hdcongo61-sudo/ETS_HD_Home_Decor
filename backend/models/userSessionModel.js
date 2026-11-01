@@ -22,6 +22,7 @@ const userSessionSchema = new mongoose.Schema(
     },
     tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
     device: { type: String, trim: true, default: '' },
+    location: { type: String, trim: true, default: '', maxlength: 300 },
     ip: { type: String, trim: true, default: '' },
     userAgent: { type: String, trim: true, default: '' },
     tokenVersion: { type: Number, default: 0 },

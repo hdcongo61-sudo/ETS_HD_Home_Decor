@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Shield, Smartphone, Monitor, Trash2, LogOut, Key, QrCode, Check, X } from 'lucide-react';
+import { Shield, Smartphone, Tablet, Monitor, Trash2, LogOut, Key, QrCode, Check, X, MapPin } from 'lucide-react';
 import { PageHeader, Workspace, LoadingSkeleton } from '../components/business';
 import { confirmDialog } from '../components/ConfirmProvider';
 import { useSessions, useMfa } from '../features/auth/hooks';
@@ -119,11 +119,9 @@ const Security = () => {
     });
   };
 
-  const getDeviceIcon = (device) => {
-    const d = String(device || '').toLowerCase();
-    if (d.includes('mobile') || d.includes('android') || d.includes('iphone')) {
-      return Smartphone;
-    }
+  const getDeviceIcon = (deviceType) => {
+    if (deviceType === 'Mobile') return Smartphone;
+    if (deviceType === 'Tablette') return Tablet;
     return Monitor;
   };
 
@@ -284,7 +282,7 @@ const Security = () => {
             <div>
               <h2 className="fui-subtitle1" style={{ color: 'var(--colorNeutralForeground1)' }}>Sessions actives</h2>
               <p className="fui-caption1 mt-0.5" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                Les appareils où vous êtes actuellement connecté(e).
+                Appareils, navigateur et localisation approximative fournie par le proxy réseau.
               </p>
             </div>
           </div>
@@ -315,7 +313,7 @@ const Security = () => {
         {!loadingSessions && sessions.length > 0 && (
           <div className="space-y-3">
             {sessions.map((session) => {
-              const DeviceIcon = getDeviceIcon(session.device);
+              const DeviceIcon = getDeviceIcon(session.deviceType);
               // L'identifiant de session courante n'est pas exposé par /me :
               // on ne surligne pas de session « courante ».
               const isCurrent = false;
@@ -331,23 +329,25 @@ const Security = () => {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                          {session.device || 'Appareil inconnu'}
+                          {session.deviceType || 'Appareil inconnu'} · {session.operatingSystem || 'Système inconnu'}
                         </p>
                         {isCurrent && (
                           <span className="ms-status-badge ms-status-success text-xs">Session actuelle</span>
                         )}
                       </div>
+                      <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                        Navigateur : {session.browser || 'Inconnu'}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>
+                        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        Localisation : {session.location || 'Indisponible — proxy non configuré ou session antérieure'}
+                      </p>
                       <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
-                        {session.ip || 'IP inconnue'}
+                        Adresse IP : {session.ip || 'Inconnue'}
                       </p>
                       <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
                         Dernière activité : {formatDate(session.lastSeenAt)}
                       </p>
-                      {session.userAgent && (
-                        <p className="fui-caption1 mt-1 truncate" style={{ color: 'var(--colorNeutralForeground4)' }}>
-                          {session.userAgent}
-                        </p>
-                      )}
                     </div>
                     {!isCurrent && (
                       <button

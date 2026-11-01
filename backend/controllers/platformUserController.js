@@ -2,6 +2,7 @@ const PlatformUser = require('../models/platformUserModel');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const sessionService = require('../services/sessionService');
+const { readTrustedLocation } = require('../utils/sessionMetadata');
 const mfaService = require('../services/mfaService');
 
 // Create email transporter (configure with your SMTP settings)
@@ -49,6 +50,7 @@ exports.loginPlatformUser = async (req, res) => {
       device: req.headers['user-agent'] || 'Unknown device',
       ip: req.ip || req.headers['x-forwarded-for'] || '',
       userAgent: req.headers['user-agent'] || '',
+      location: readTrustedLocation(req.headers),
       tokenVersion: user.tokenVersion ?? 0,
     });
 

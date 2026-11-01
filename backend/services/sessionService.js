@@ -15,7 +15,7 @@ const notFound = (message) => {
 };
 
 async function recordSession({
-  kind = 'user', userId, tenantId = null, device = '', ip = '', userAgent = '', tokenVersion = 0,
+  kind = 'user', userId, tenantId = null, device = '', ip = '', userAgent = '', location = '', tokenVersion = 0,
   ttlMs = DEFAULT_TTL_MS,
 }) {
   return UserSession.create({
@@ -25,6 +25,7 @@ async function recordSession({
     device: String(device || '').slice(0, 300),
     ip: String(ip || '').slice(0, 64),
     userAgent: String(userAgent || '').slice(0, 500),
+    location: String(location || '').slice(0, 300),
     tokenVersion,
     status: 'active',
     lastSeenAt: new Date(),

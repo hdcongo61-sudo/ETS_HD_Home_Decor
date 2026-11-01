@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../utils/generateToken');
 const sessionService = require('../services/sessionService');
+const { describeUserAgent, readTrustedLocation } = require('../utils/sessionMetadata');
 const mfaService = require('../services/mfaService');
 const { ensureMembershipForUser } = require('../services/authorization');
 const LoginHistory = require('../models/loginHistoryModel');
@@ -467,6 +468,7 @@ const loginUser = asyncHandler(async (req, res) => {
       device,
       ip: ipAddress,
       userAgent: device,
+      location: readTrustedLocation(req.headers),
       tokenVersion: user.tokenVersion ?? 0,
     });
 
@@ -1123,7 +1125,10 @@ const revokeAllSessions = asyncHandler(async (req, res) => {
 // @route   GET /api/users/sessions
 const listMySessions = asyncHandler(async (req, res) => {
   const sessions = await sessionService.listSessions({ kind: 'user', userId: req.user._id });
-  res.json(sessions);
+  res.json(sessions.map((session) => ({
+    ...session,
+    ...describeUserAgent(session.userAgent || session.device),
+  })));
 });
 
 // @route   POST /api/users/sessions/:id/revoke
