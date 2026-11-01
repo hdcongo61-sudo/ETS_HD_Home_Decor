@@ -1639,6 +1639,10 @@ video {
   min-height: 66px;
 }
 
+.min-h-\[70px\] {
+  min-height: 70px;
+}
+
 .min-h-\[70vh\] {
   min-height: 70vh;
 }
@@ -7803,6 +7807,10 @@ form input[type="radio"],
 
   .sm\:grid-cols-\[120px_1fr\] {
     grid-template-columns: 120px 1fr;
+  }
+
+  .sm\:grid-cols-\[1fr_100px_120px_auto\] {
+    grid-template-columns: 1fr 100px 120px auto;
   }
 
   .sm\:grid-cols-\[1fr_110px_140px_auto\] {
