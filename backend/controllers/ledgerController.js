@@ -25,6 +25,8 @@ const STANDARD_CHART = [
   { code: '611', name: 'Services extérieurs', type: 'expense' },
   { code: '641', name: 'Charges de personnel', type: 'expense' },
   { code: '661', name: 'Charges financières', type: 'expense' },
+  { code: '681', name: 'Dotations aux amortissements', type: 'expense' },
+  { code: '281', name: 'Amortissements des immobilisations', type: 'asset' },
   { code: '701', name: 'Ventes de marchandises', type: 'revenue' },
   { code: '707', name: 'Services vendus', type: 'revenue' },
 ];

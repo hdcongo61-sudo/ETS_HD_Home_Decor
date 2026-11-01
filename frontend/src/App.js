@@ -59,6 +59,7 @@ const Bank = lazy(() => import('./pages/Bank'));
 const Comptabilite = lazy(() => import('./pages/Comptabilite'));
 const Ledger = lazy(() => import('./pages/Ledger'));
 const Devis = lazy(() => import('./pages/Devis'));
+const FixedAssets = lazy(() => import('./pages/FixedAssets'));
 const Promotions = lazy(() => import('./pages/Promotions'));
 const ExpiringProducts = lazy(() => import('./pages/ExpiringProducts'));
 const Services = lazy(() => import('./pages/Services'));
@@ -396,6 +397,14 @@ function ApplicationRoutes() {
                   element={
                     <ProtectedRoute adminOnly feature={FEATURE_KEYS.COMPTABILITE}>
                       <Ledger />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/comptabilite/assets"
+                  element={
+                    <ProtectedRoute adminOnly feature={FEATURE_KEYS.COMPTABILITE}>
+                      <FixedAssets />
                     </ProtectedRoute>
                   }
                 />

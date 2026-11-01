@@ -76,6 +76,7 @@ const webhookRoutes = require('./routes/webhookRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const ledgerRoutes = require('./routes/ledgerRoutes');
 const devisRoutes = require('./routes/devisRoutes');
+const fixedAssetRoutes = require('./routes/fixedAssetRoutes');
 
 const app = express();
 
@@ -256,6 +257,7 @@ app.use('/api/public', apiKeyAuth, publicRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/ledger', ledgerRoutes);
 app.use('/api/devis', devisRoutes);
+app.use('/api/assets', fixedAssetRoutes);
 
 // 10. Serve frontend build (production)
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');

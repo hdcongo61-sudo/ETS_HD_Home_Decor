@@ -60,7 +60,7 @@ const journalEntrySchema = mongoose.Schema(
     // immuable une fois équilibrée.
     sourceType: {
       type: String,
-      enum: ['manual', 'sale', 'expense', 'payment', 'payroll', 'opening'],
+      enum: ['manual', 'sale', 'expense', 'payment', 'payroll', 'opening', 'depreciation'],
       default: 'manual',
     },
     sourceId: {
