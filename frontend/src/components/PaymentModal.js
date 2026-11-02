@@ -4,6 +4,7 @@ import { Banknote, CreditCard, Smartphone } from 'lucide-react';
 import Modal from './Modal';
 import AuthContext from '../context/AuthContext';
 import { getErrorMessage } from '../utils/errorModel';
+import { createClientRequestId } from '../utils/offlineQueue';
 
 const noop = () => {};
 const formatAmount = (value) => formatCfa(value);
@@ -14,6 +15,7 @@ export const PaymentForm = ({
   formId = 'sale-payment-form',
   onSubmittingChange = noop,
   onSuccess = noop,
+  onDirtyChange = noop,
 }) => {
   const { auth } = useContext(AuthContext);
   const manualPaymentDateEnabled =
@@ -26,6 +28,7 @@ export const PaymentForm = ({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionLock = useRef(false);
+  const paymentRequestId = useRef(null);
   const amountRef = useRef(null);
 
   const totalPaid = sale?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
@@ -41,6 +44,7 @@ export const PaymentForm = ({
 
   useEffect(() => {
     submissionLock.current = false;
+    paymentRequestId.current = createClientRequestId();
     setAmount('');
     setMethod('cash');
     setPaymentDate('');
@@ -86,6 +90,7 @@ export const PaymentForm = ({
         method,
         paymentDate: manualPaymentDateEnabled && paymentDate ? paymentDate : undefined,
         markAsDelivered,
+        clientRequestId: paymentRequestId.current,
       });
       window.dispatchEvent(new CustomEvent('paymentCreated'));
       onSuccess({ amount: paymentAmount, balance: Math.max(0, balance - paymentAmount) });
@@ -153,10 +158,20 @@ export const PaymentForm = ({
                           : 'bg-purple-100 text-purple-600'
                       }`}
                     >
-                      💳
+                      {p.method === 'MobileMoney'
+                        ? <Smartphone className="h-4 w-4" aria-hidden="true" />
+                        : p.method === 'cash'
+                          ? <Banknote className="h-4 w-4" aria-hidden="true" />
+                          : <CreditCard className="h-4 w-4" aria-hidden="true" />}
                     </div>
                     <span className="capitalize">
-                      {p.method === 'MobileMoney' ? 'Mobile Money' : p.method}
+                      {p.method === 'MobileMoney'
+                        ? 'Mobile Money'
+                        : p.method === 'cash'
+                          ? 'Espèces'
+                          : p.method === 'credit'
+                            ? 'Crédit'
+                            : p.method}
                     </span>
                     <span className="text-xs text-[var(--ms-text-muted)]">
                       {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('fr-FR') : ''}
@@ -186,6 +201,7 @@ export const PaymentForm = ({
               onChange={(e) => {
                 setPaymentDate(e.target.value);
                 setError('');
+                onDirtyChange(true);
               }}
               className="form-control"
             />
@@ -206,6 +222,7 @@ export const PaymentForm = ({
                 onClick={() => {
                   setAmount(String(balance));
                   setError('');
+                  onDirtyChange(true);
                 }}
                 className="text-xs font-semibold text-[var(--ms-blue)] hover:underline"
               >
@@ -226,6 +243,7 @@ export const PaymentForm = ({
               onChange={(e) => {
                 setAmount(e.target.value);
                 setError('');
+                onDirtyChange(true);
               }}
               placeholder="0"
               required
@@ -244,7 +262,10 @@ export const PaymentForm = ({
         {canMarkAsDelivered && (
           <button
             type="button"
-            onClick={() => setMarkAsDelivered((current) => !current)}
+            onClick={() => {
+              setMarkAsDelivered((current) => !current);
+              onDirtyChange(true);
+            }}
             className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
               markAsDelivered
                 ? 'border-green-300 bg-[var(--ms-success)]/10'
@@ -276,12 +297,18 @@ export const PaymentForm = ({
           <label className="block text-sm font-medium text-[var(--ms-text)] mb-3">
             Méthode de paiement
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <p className="mb-3 text-xs text-[var(--ms-text-muted)]">
+            Choisissez le mode à enregistrer pour ce règlement.
+          </p>
+          <div className="grid grid-cols-3 gap-3" role="group" aria-label="Mode de règlement">
             {['cash', 'MobileMoney', 'credit'].map((opt) => (
               <button
                 key={opt}
                 type="button"
-                onClick={() => setMethod(opt)}
+                onClick={() => {
+                  setMethod(opt);
+                  onDirtyChange(true);
+                }}
                 aria-pressed={method === opt}
                 className={`min-h-[44px] p-3 rounded-md border-2 text-sm font-medium transition-all touch-manipulation ${
                   method === opt

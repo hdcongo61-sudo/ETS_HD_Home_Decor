@@ -68,8 +68,12 @@ const Navigation = () => {
     return window.matchMedia("(min-width: 768px)").matches;
   });
   const branding = appSettings.branding;
-  const platformAppName = platformBranding?.appName || branding.appName;
-  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
+  const isImpersonating = typeof sessionStorage !== "undefined" && Boolean(sessionStorage.getItem("impersonating"));
+  const showPlatformBranding = Boolean(auth.isSuperAdmin && !isImpersonating);
+  const navigationAppName = showPlatformBranding
+    ? platformBranding?.appName || branding.appName
+    : branding.appName || auth.tenant?.name || "Ma Boutique";
+  const logoUrl = resolveAppLogo(showPlatformBranding ? platformBranding?.logoUrl : branding.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || "U";
   const navigate = useNavigate();
   const location = useLocation();
@@ -218,7 +222,7 @@ const Navigation = () => {
           >
             <img
               src={logoUrl}
-              alt={platformAppName}
+              alt={navigationAppName}
               onError={(e) => {
                 const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
                 if (e.currentTarget.src !== window.location.origin + fallback && !e.currentTarget.dataset.fallback) {
@@ -230,7 +234,7 @@ const Navigation = () => {
             />
             <div className="hidden min-w-0 lg:block">
               <span className="block truncate text-[14px] font-semibold text-[var(--ms-text-strong)] leading-tight">
-                {platformAppName}
+                {navigationAppName}
               </span>
             </div>
           </Link>

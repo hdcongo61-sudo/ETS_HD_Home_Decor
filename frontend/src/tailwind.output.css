@@ -1487,8 +1487,8 @@ video {
   max-height: 34vh;
 }
 
-.max-h-\[42dvh\] {
-  max-height: 42dvh;
+.max-h-\[52dvh\] {
+  max-height: 52dvh;
 }
 
 .max-h-\[55vh\] {
@@ -8497,10 +8497,6 @@ form input[type="radio"],
     height: 4rem;
   }
 
-  .lg\:max-h-\[min\(62dvh\2c 620px\)\] {
-    max-height: min(62dvh,620px);
-  }
-
   .lg\:w-16 {
     width: 4rem;
   }
@@ -8569,8 +8565,8 @@ form input[type="radio"],
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr auto;
   }
 
-  .lg\:grid-cols-\[minmax\(0\2c 0\.92fr\)_minmax\(0\2c 1\.08fr\)\] {
-    grid-template-columns: minmax(0,0.92fr) minmax(0,1.08fr);
+  .lg\:grid-cols-\[minmax\(0\2c 0\.9fr\)_minmax\(0\2c 1\.1fr\)\] {
+    grid-template-columns: minmax(0,0.9fr) minmax(0,1.1fr);
   }
 
   .lg\:grid-cols-\[minmax\(0\2c 1\.1fr\)_minmax\(0\2c 0\.9fr\)\] {

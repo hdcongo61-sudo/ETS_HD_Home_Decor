@@ -120,8 +120,12 @@ const DesktopNavRail = () => {
   const location = useLocation();
   const { appSettings, platformBranding } = useAppSettings();
   const branding = appSettings?.branding || {};
-  const platformAppName = platformBranding?.appName || branding.appName || 'HD Gestion';
-  const logoUrl = resolveAppLogo(platformBranding?.logoUrl);
+  const isImpersonating = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('impersonating');
+  const isPlatformOperator = auth.isSuperAdmin && !isImpersonating;
+  const navigationAppName = isPlatformOperator
+    ? platformBranding?.appName || branding.appName || 'HD Gestion'
+    : branding.appName || auth.tenant?.name || 'Ma Boutique';
+  const logoUrl = resolveAppLogo(isPlatformOperator ? platformBranding?.logoUrl : branding.logoUrl);
   const userInitial = auth.user?.name?.charAt(0)?.toUpperCase() || 'U';
   const [tooltip, setTooltip] = useState(null);
 
@@ -192,9 +196,6 @@ const DesktopNavRail = () => {
 
   // A super-admin who is NOT impersonating is a pure platform operator:
   // they only see the platform console, never the shop navigation.
-  const isImpersonating = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('impersonating');
-  const isPlatformOperator = auth.isSuperAdmin && !isImpersonating;
-
   const primaryNavItems = isPlatformOperator ? [] : PRIMARY_NAV;
   const adminNavItems = (!isPlatformOperator && auth.isAdmin)
     ? ADMIN_NAV.filter((item) => {
@@ -218,7 +219,7 @@ const DesktopNavRail = () => {
       <div className="fluent-nav-rail__brand">
         <img
           src={logoUrl}
-          alt={platformAppName}
+          alt={navigationAppName}
           className="fluent-nav-rail__brand-logo"
           onError={(e) => {
             const fallback = `${process.env.PUBLIC_URL || ''}/logo.png`;
@@ -235,7 +236,7 @@ const DesktopNavRail = () => {
             transition={{ duration: 0.12 }}
             className="fluent-nav-rail__brand-name"
           >
-            {platformAppName}
+            {navigationAppName}
           </motion.span>
         )}
       </div>

@@ -55,6 +55,8 @@ test('retains failed payment input and allows retry', async () => {
   expect(onSuccess).not.toHaveBeenCalled();
   await act(async () => { submit(); });
   expect(onAddPayment).toHaveBeenCalledTimes(2);
+  expect(onAddPayment.mock.calls[0][0].clientRequestId).toBeTruthy();
+  expect(onAddPayment.mock.calls[1][0].clientRequestId).toBe(onAddPayment.mock.calls[0][0].clientRequestId);
 });
 
 test('rejects overpayment without sending a request', async () => {
