@@ -10,7 +10,7 @@ import { Loader2, Smartphone } from 'lucide-react';
  * page (suspended/expired shops paying to reactivate).
  *
  * Props:
- *   suggestedAmount — prefill the amount (e.g. tenant.monthlyPrice)
+ *   suggestedAmount — prefill the amount (e.g. the discounted monthly price)
  *   onPaid          — called once a payment is confirmed COMPLETED
  */
 const PawaPaySubscriptionForm = ({ suggestedAmount = null, onPaid = null }) => {
@@ -186,15 +186,24 @@ const PawaPaySubscriptionForm = ({ suggestedAmount = null, onPaid = null }) => {
           <label className="form-label mb-1 block">Montant (F CFA)</label>
           <input
             type="number"
-            min="1"
-            step="1"
             value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            className="form-control"
-            placeholder="Ex: 15000"
+            readOnly
+            aria-describedby="subscription-payment-amount-help"
+            className="form-control bg-[var(--colorNeutralBackground2)]"
+            placeholder="Montant calculé selon le forfait"
           />
         </div>
       </div>
+
+      <p id="subscription-payment-amount-help" className="mt-2 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+        Le montant est calculé à partir du tarif du forfait après remise et du nombre de mois choisi.
+        {config.billingDiscount && (
+          <> Tarif normal : {Number(config.monthlyPrice || 0).toLocaleString('fr-FR')} CFA/mois · remise {config.billingDiscount.type === 'percent'
+            ? `${Number(config.billingDiscount.value).toLocaleString('fr-FR')} %`
+            : `${Number(config.billingDiscount.value).toLocaleString('fr-FR')} CFA`}.
+          </>
+        )}
+      </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button

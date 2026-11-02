@@ -85,6 +85,18 @@ const tenantSchema = new mongoose.Schema(
     // ── Billing ──
     // Monthly price in CFA. Defaults from the plan but overridable per shop.
     monthlyPrice: { type: Number, default: 0, min: 0 },
+    // Recurring per-shop discount applied to the monthly subscription price.
+    // It remains active until a super-admin removes or changes it.
+    billingDiscount: {
+      type: new mongoose.Schema({
+        type: { type: String, enum: ['percent', 'amount'], required: true },
+        value: { type: Number, required: true, min: 0 },
+        note: { type: String, default: '', trim: true, maxlength: 200 },
+        appliedAt: { type: Date, default: Date.now },
+        appliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      }, { _id: false }),
+      default: null,
+    },
     nextPaymentDue: { type: Date, default: null },
     lastPaymentAt: { type: Date, default: null },
     // Tracks the last payment the shop's users have already been congratulated

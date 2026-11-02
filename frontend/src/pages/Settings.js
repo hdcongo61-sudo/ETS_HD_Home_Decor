@@ -1451,7 +1451,7 @@ const Settings = () => {
                 Payez par mobile money : le paiement active automatiquement votre abonnement. Pour payer en espèces, contactez le support.
               </p>
               <PawaPaySubscriptionForm
-                suggestedAmount={Number(myTenant.monthlyPrice) || null}
+                suggestedAmount={Number(myTenant.effectiveMonthlyPrice ?? myTenant.monthlyPrice) || null}
                 onPaid={refreshTenantAfterPayment}
               />
 

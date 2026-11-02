@@ -24,6 +24,13 @@ const PLAN_COLORS = { trial: '#F59E0B', basic: '#0EA5E9', pro: '#0F6CBD', enterp
 /* ─── Helpers ─────────────────────────────────────────── */
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR');
 const money = (n) => `${formatCfa(Math.round(n || 0))}`;
+const effectivePrice = (tenant) => Number(tenant?.effectiveMonthlyPrice ?? tenant?.monthlyPrice) || 0;
+const discountLabel = (discount) => {
+  if (!discount) return '';
+  return discount.type === 'percent'
+    ? `${fmt(discount.value)} %`
+    : money(discount.value);
+};
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('fr-FR') : '—');
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
 const daysLeft = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 86400000) : null);
@@ -50,6 +57,7 @@ const AUDIT_META = {
   'tenant.suspend':     { label: 'Suspendue',          tone: 'danger',  icon: XCircle },
   'tenant.reactivate':  { label: 'Réactivée',          tone: 'success', icon: CheckCircle2 },
   'tenant.plan_change': { label: 'Changement de plan', tone: 'warning', icon: BadgeDollarSign },
+  'tenant.discount_change': { label: 'Remise forfait modifiée', tone: 'info', icon: BadgeDollarSign },
   'tenant.update':      { label: 'Mise à jour',        tone: 'neutral', icon: Activity },
   'tenant.delete':      { label: 'Supprimée',          tone: 'danger',  icon: Trash2 },
   'tenant.impersonate': { label: 'Accès supervision',  tone: 'warning', icon: LogIn },
@@ -626,7 +634,7 @@ const CreateTenantModal = ({ open, onClose, onCreated }) => {
 
 /* ─── Payment Modal ───────────────────────────────────── */
 const PaymentModal = ({ tenant, onClose, onRecorded }) => {
-  const [form, setForm] = useState({ amount: tenant?.monthlyPrice || '', method: 'cash', note: '', nextPaymentDue: '' });
+  const [form, setForm] = useState({ amount: effectivePrice(tenant) || '', method: 'cash', note: '', nextPaymentDue: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   if (!tenant) return null;
@@ -649,6 +657,15 @@ const PaymentModal = ({ tenant, onClose, onRecorded }) => {
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && <div className="rounded-[var(--radiusLarge)] px-3 py-2 fui-caption1" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)', border: '1px solid var(--colorStatusDangerStroke1)' }}>{error}</div>}
+          <div className="rounded-[var(--radiusLarge)] p-3" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+            <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Tarif mensuel du forfait</p>
+            <p className="fui-body1-strong mt-1" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(effectivePrice(tenant))}</p>
+            {tenant.billingDiscount && (
+              <p className="fui-caption1 mt-1" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                Remise {discountLabel(tenant.billingDiscount)} appliquée au tarif de {money(tenant.monthlyPrice)}.
+              </p>
+            )}
+          </div>
           <label className="block"><span className="form-label block mb-1">Montant (CFA) *</span><input type="number" min="0" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} className="form-control" required autoFocus /></label>
           <div className="grid grid-cols-2 gap-4">
             <label className="block"><span className="form-label block mb-1">Méthode</span>
@@ -728,7 +745,7 @@ const SuperAdmin = () => {
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); } finally { setUpdating(null); }
   };
   const handlePlanChange = async (id, plan) => {
-    try { setUpdating(id); const { data } = await platformApi.updateTenant(id, { plan }); patchTenant(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts }); }
+    try { setUpdating(id); const { data } = await platformApi.updateTenant(id, { plan }); patchTenant(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, effectiveMonthlyPrice: data.effectiveMonthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts }); }
     catch (err) { alert(err.response?.data?.message || 'Erreur.'); } finally { setUpdating(null); }
   };
 
@@ -1176,9 +1193,19 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
   const [savingLimits, setSavingLimits] = useState(false);
   const [dial, setDial] = useState('');
   const [savingDial, setSavingDial] = useState(false);
+  const [discount, setDiscount] = useState({ type: 'percent', value: '', note: '' });
+  const [savingDiscount, setSavingDiscount] = useState(false);
 
   const tenantId = tenant?._id;
-  useEffect(() => { setEdit(null); setDial(tenant?.dialCode || ''); }, [tenantId, tenant?.dialCode]);
+  useEffect(() => {
+    setEdit(null);
+    setDial(tenant?.dialCode || '');
+    setDiscount({
+      type: tenant?.billingDiscount?.type || 'percent',
+      value: tenant?.billingDiscount?.value == null ? '' : String(tenant.billingDiscount.value),
+      note: tenant?.billingDiscount?.note || '',
+    });
+  }, [tenantId, tenant?.dialCode, tenant?.billingDiscount]);
 
   if (!tenant) return null;
   const t = tenant;
@@ -1189,7 +1216,7 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
     try {
       setSavingLimits(true);
       const { data } = await platformApi.updateTenant(t._id, edit);
-      onPatch(t._id, { maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice });
+      onPatch(t._id, { maxUsers: data.maxUsers, maxProducts: data.maxProducts, monthlyPrice: data.monthlyPrice, effectiveMonthlyPrice: data.effectiveMonthlyPrice });
       setEdit(null);
     } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
     finally { setSavingLimits(false); }
@@ -1203,6 +1230,55 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
       setDial(data.dialCode || '');
     } catch (err) { alert(err.response?.data?.message || 'Erreur.'); }
     finally { setSavingDial(false); }
+  };
+
+  const saveDiscount = async (e) => {
+    e.preventDefault();
+    const value = Number(discount.value);
+    if (!Number.isFinite(value) || value <= 0 || (discount.type === 'percent' && value > 100)) {
+      toast.error(discount.type === 'percent'
+        ? 'Saisissez un pourcentage entre 0 et 100.'
+        : 'Saisissez un montant de remise supérieur à zéro.');
+      return;
+    }
+    try {
+      setSavingDiscount(true);
+      const { data } = await platformApi.updateTenant(t._id, {
+        billingDiscount: { type: discount.type, value, note: discount.note.trim() },
+      });
+      onPatch(t._id, {
+        billingDiscount: data.billingDiscount,
+        effectiveMonthlyPrice: data.effectiveMonthlyPrice,
+      });
+      setDiscount({
+        type: data.billingDiscount.type,
+        value: String(data.billingDiscount.value),
+        note: data.billingDiscount.note || '',
+      });
+      toast.success(`Remise appliquée : ${money(data.effectiveMonthlyPrice)}/mois à payer.`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible d’appliquer la remise.');
+    } finally {
+      setSavingDiscount(false);
+    }
+  };
+
+  const removeDiscount = async () => {
+    if (!window.confirm(`Supprimer la remise de ${t.name} ? Le tarif mensuel repassera à ${money(t.monthlyPrice)}.`)) return;
+    try {
+      setSavingDiscount(true);
+      const { data } = await platformApi.updateTenant(t._id, { billingDiscount: null });
+      onPatch(t._id, {
+        billingDiscount: data.billingDiscount,
+        effectiveMonthlyPrice: data.effectiveMonthlyPrice,
+      });
+      setDiscount({ type: 'percent', value: '', note: '' });
+      toast.success('Remise supprimée. Le tarif catalogue est rétabli.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Impossible de supprimer la remise.');
+    } finally {
+      setSavingDiscount(false);
+    }
   };
 
   return (
@@ -1253,9 +1329,86 @@ const TenantDetailDrawer = ({ tenant, onClose, onPatch, onStatus, onRequestDelet
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <LimitField label="Max utilisateurs" used={t.stats?.userCount} editing={Boolean(edit)} value={edit ? edit.maxUsers : t.maxUsers} onChange={(v) => setEdit((p) => ({ ...p, maxUsers: v }))} />
             <LimitField label="Max produits" used={t.stats?.productCount} editing={Boolean(edit)} value={edit ? edit.maxProducts : t.maxProducts} onChange={(v) => setEdit((p) => ({ ...p, maxProducts: v }))} />
-            <LimitField label="Prix mensuel (CFA)" editing={Boolean(edit)} value={edit ? edit.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdit((p) => ({ ...p, monthlyPrice: v }))} />
+            <LimitField label="Tarif forfait avant remise (CFA)" editing={Boolean(edit)} value={edit ? edit.monthlyPrice : t.monthlyPrice} onChange={(v) => setEdit((p) => ({ ...p, monthlyPrice: v }))} />
           </div>
         </div>
+
+        <form onSubmit={saveDiscount} className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="fui-subtitle2" style={{ color: 'var(--colorNeutralForeground1)' }}>Remise sur le forfait</p>
+              <p className="fui-caption1 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>
+                Remise récurrente, jusqu’à sa suppression par un super-admin.
+              </p>
+            </div>
+            {t.billingDiscount && (
+              <span className="ms-status-badge ms-status-success">Active · {discountLabel(t.billingDiscount)}</span>
+            )}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="form-label mb-1 block">Type de remise</span>
+              <select
+                value={discount.type}
+                onChange={(e) => setDiscount((current) => ({ ...current, type: e.target.value }))}
+                className="form-control"
+              >
+                <option value="percent">Pourcentage (%)</option>
+                <option value="amount">Montant fixe (CFA)</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="form-label mb-1 block">Valeur</span>
+              <input
+                type="number"
+                min="0.01"
+                max={discount.type === 'percent' ? 100 : undefined}
+                step="0.01"
+                value={discount.value}
+                onChange={(e) => setDiscount((current) => ({ ...current, value: e.target.value }))}
+                className="form-control"
+                placeholder={discount.type === 'percent' ? 'Ex. 20' : 'Ex. 3000'}
+                required
+              />
+            </label>
+          </div>
+          <label className="mt-3 block">
+            <span className="form-label mb-1 block">Motif ou note (facultatif)</span>
+            <input
+              type="text"
+              maxLength={200}
+              value={discount.note}
+              onChange={(e) => setDiscount((current) => ({ ...current, note: e.target.value }))}
+              className="form-control"
+              placeholder="Ex. Offre de lancement"
+            />
+          </label>
+          <div className="mt-3 rounded-[var(--radiusMedium)] px-3 py-2" style={{ background: 'var(--colorNeutralBackground1)' }}>
+            <div className="flex items-center justify-between gap-3 fui-caption1">
+              <span style={{ color: 'var(--colorNeutralForeground3)' }}>Tarif avant remise</span>
+              <span className="tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}/mois</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <span className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>Tarif actuel à payer</span>
+              <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                {money(effectivePrice(t))}/mois
+              </span>
+            </div>
+            {t.billingDiscount?.note && (
+              <p className="fui-caption2 mt-1" style={{ color: 'var(--colorNeutralForeground3)' }}>{t.billingDiscount.note}</p>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            {t.billingDiscount && (
+              <button type="button" onClick={removeDiscount} disabled={savingDiscount} className="ms-button ms-button-secondary ms-button-sm disabled:opacity-60">
+                Supprimer la remise
+              </button>
+            )}
+            <button type="submit" disabled={savingDiscount || !discount.value} className="ms-button ms-button-primary ms-button-sm flex items-center gap-1 disabled:opacity-60">
+              <Save size={13} /> {savingDiscount ? 'Enregistrement…' : t.billingDiscount ? 'Mettre à jour la remise' : 'Appliquer la remise'}
+            </button>
+          </div>
+        </form>
 
         {/* WhatsApp dial code */}
         <div className="rounded-[var(--radiusLarge)] p-4" style={{ background: 'var(--colorNeutralBackground2)', border: '1px solid var(--colorNeutralStroke2)' }}>
@@ -1340,7 +1493,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     try {
       setBulkBusy(true);
       await Promise.all(ids.map((id) => platformApi.updateTenant(id, { plan: bulkPlan }).then(({ data }) =>
-        patch(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts })
+        patch(id, { plan: data.plan, monthlyPrice: data.monthlyPrice, effectiveMonthlyPrice: data.effectiveMonthlyPrice, maxUsers: data.maxUsers, maxProducts: data.maxProducts })
       )));
       setSelected(new Set());
       setBulkPlan('');
@@ -1353,7 +1506,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
     active: tenants.filter((t) => t.status === 'active').length,
     trials: tenants.filter((t) => t.status === 'trial').length,
     suspended: tenants.filter((t) => t.status === 'suspended' || t.status === 'expired').length,
-    mrr: tenants.filter((t) => t.status === 'active').reduce((s, t) => s + (Number(t.monthlyPrice) || 0), 0),
+    mrr: tenants.filter((t) => t.status === 'active').reduce((s, t) => s + effectivePrice(t), 0),
   }), [tenants]);
 
   const handleDelete = async () => {
@@ -1516,7 +1669,7 @@ const TenantsTab = ({ tenants, loading, updating, onStatus, onPlan, onImpersonat
                       </div>
                       <div className="rounded-[var(--radiusMedium)] py-1.5" style={{ background: 'var(--colorNeutralBackground2)' }}>
                         <p className="fui-caption2" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix</p>
-                        <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(t.monthlyPrice)}</p>
+                        <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{fmt(effectivePrice(t))}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1586,21 +1739,21 @@ const BillingTab = ({ tenants, loading, onReload }) => {
   // Metrics
   const activeTenants = tenants.filter((t) => t.status === 'active');
   const trialTenants = tenants.filter((t) => t.plan === 'trial');
-  const totalMRR = activeTenants.reduce((s, t) => s + (t.monthlyPrice || 0), 0);
-  const overdue = tenants.filter((t) => t.status === 'active' && t.nextPaymentDue && new Date(t.nextPaymentDue) < now);
+  const totalMRR = activeTenants.reduce((s, t) => s + effectivePrice(t), 0);
+  const overdue = tenants.filter((t) => t.status === 'active' && effectivePrice(t) > 0 && t.nextPaymentDue && new Date(t.nextPaymentDue) < now);
   const upcoming = tenants.filter((t) => {
-    if (!t.nextPaymentDue || t.status !== 'active') return false;
+    if (!t.nextPaymentDue || t.status !== 'active' || effectivePrice(t) <= 0) return false;
     const due = new Date(t.nextPaymentDue);
     const daysUntil = Math.ceil((due - now) / 86400000);
     return daysUntil > 0 && daysUntil <= 7;
   });
-  const neverPaid = tenants.filter((t) => !t.lastPaymentAt && t.monthlyPrice > 0);
+  const neverPaid = tenants.filter((t) => !t.lastPaymentAt && effectivePrice(t) > 0);
 
   // Aging of overdue receivables
   const aging = { d30: { count: 0, amount: 0 }, d60: { count: 0, amount: 0 }, d60plus: { count: 0, amount: 0 } };
   overdue.forEach((t) => {
     const days = Math.floor((now - new Date(t.nextPaymentDue)) / 86400000);
-    const amt = Number(t.monthlyPrice) || 0;
+    const amt = effectivePrice(t);
     const bucket = days <= 30 ? aging.d30 : days <= 60 ? aging.d60 : aging.d60plus;
     bucket.count += 1;
     bucket.amount += amt;
@@ -1726,10 +1879,10 @@ const BillingTab = ({ tenants, loading, onReload }) => {
             <div className="px-4 py-10 text-center fui-body1" style={{ color: 'var(--colorNeutralForeground3)' }}>Aucune boutique trouvee.</div>
           ) : (
             filtered.map((t) => {
-              const hasNeverPaid = !t.lastPaymentAt && t.monthlyPrice > 0;
+              const hasNeverPaid = !t.lastPaymentAt && effectivePrice(t) > 0;
               const daysUntilDue = getDaysRemaining(t.nextPaymentDue);
-              const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
-              const isExpiringSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
+              const isOverdue = effectivePrice(t) > 0 && daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
+              const isExpiringSoon = effectivePrice(t) > 0 && daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
 
               return (
                 <div key={t._id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center hover:bg-[var(--colorNeutralBackground2)]">
@@ -1743,7 +1896,14 @@ const BillingTab = ({ tenants, loading, onReload }) => {
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded w-fit" style={{ background: `${PLAN_COLORS[t.plan] || '#6B7280'}20`, color: PLAN_COLORS[t.plan] || '#6B7280' }}>
                     {PLAN_LABELS[t.plan] || t.plan}
                   </span>
-                  <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</span>
+                  <span className="fui-body1-strong tabular-nums" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                    {money(effectivePrice(t))}
+                    {t.billingDiscount && (
+                      <span className="mt-0.5 block fui-caption2" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>
+                        Remise {discountLabel(t.billingDiscount)}
+                      </span>
+                    )}
+                  </span>
                   <span className="fui-body1 tabular-nums" style={{ color: getStatusColor(t) }}>
                     {t.nextPaymentDue ? fmtDate(t.nextPaymentDue) : '—'}
                   </span>
@@ -1788,10 +1948,10 @@ const BillingTab = ({ tenants, loading, onReload }) => {
           </div>
         ) : (
           filtered.map((t) => {
-            const hasNeverPaid = !t.lastPaymentAt && t.monthlyPrice > 0;
+            const hasNeverPaid = !t.lastPaymentAt && effectivePrice(t) > 0;
             const daysUntilDue = getDaysRemaining(t.nextPaymentDue);
-            const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
-            const isExpiringSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
+            const isOverdue = effectivePrice(t) > 0 && daysUntilDue !== null && daysUntilDue < 0 && t.status === 'active';
+            const isExpiringSoon = effectivePrice(t) > 0 && daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 7;
 
             return (
               <div key={t._id} className="fluent-card-filled p-4 space-y-3">
@@ -1828,7 +1988,10 @@ const BillingTab = ({ tenants, loading, onReload }) => {
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'var(--colorNeutralStroke2)' }}>
                   <div>
                     <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Prix mensuel</p>
-                    <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(t.monthlyPrice)}</p>
+                    <p className="fui-body1-strong" style={{ color: 'var(--colorNeutralForeground1)' }}>{money(effectivePrice(t))}</p>
+                    {t.billingDiscount && (
+                      <p className="fui-caption2" style={{ color: 'var(--colorStatusSuccessForeground1)' }}>Remise {discountLabel(t.billingDiscount)}</p>
+                    )}
                   </div>
                   <div>
                     <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Dernier paiement</p>
@@ -2645,15 +2808,15 @@ const NotificationsTab = ({ tenants }) => {
 
     if (form.targetType === 'payment') {
       if (form.paymentStatus === 'overdue') {
-        const isOverdue = t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
+        const isOverdue = effectivePrice(t) > 0 && t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active';
         if (!isOverdue) return false;
       }
       if (form.paymentStatus === 'upcoming') {
         const daysUntil = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
-        if (!daysUntil || daysUntil <= 0 || daysUntil > 7) return false;
+        if (effectivePrice(t) <= 0 || !daysUntil || daysUntil <= 0 || daysUntil > 7) return false;
       }
       if (form.paymentStatus === 'never-paid') {
-        if (t.lastPaymentAt || t.monthlyPrice <= 0) return false;
+        if (t.lastPaymentAt || effectivePrice(t) <= 0) return false;
       }
     }
 
@@ -2891,7 +3054,7 @@ const NotificationsTab = ({ tenants }) => {
                     className="form-radio"
                   />
                   <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                    Paiements en retard ({tenants.filter(t => t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active').length})
+                    Paiements en retard ({tenants.filter(t => effectivePrice(t) > 0 && t.nextPaymentDue && new Date(t.nextPaymentDue) < now && t.status === 'active').length})
                   </span>
                 </label>
                 <label className="flex items-center gap-2 p-2 rounded hover:bg-[var(--colorNeutralBackground2)] cursor-pointer">
@@ -2905,7 +3068,7 @@ const NotificationsTab = ({ tenants }) => {
                   <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
                     Echeances 7 jours ({tenants.filter(t => {
                       const daysUntil = t.nextPaymentDue ? Math.ceil((new Date(t.nextPaymentDue) - now) / 86400000) : null;
-                      return daysUntil && daysUntil > 0 && daysUntil <= 7;
+                      return effectivePrice(t) > 0 && daysUntil && daysUntil > 0 && daysUntil <= 7;
                     }).length})
                   </span>
                 </label>
@@ -2918,7 +3081,7 @@ const NotificationsTab = ({ tenants }) => {
                     className="form-radio"
                   />
                   <span className="fui-body1" style={{ color: 'var(--colorNeutralForeground1)' }}>
-                    Jamais paye ({tenants.filter(t => !t.lastPaymentAt && t.monthlyPrice > 0).length})
+                    Jamais paye ({tenants.filter(t => !t.lastPaymentAt && effectivePrice(t) > 0).length})
                   </span>
                 </label>
               </div>

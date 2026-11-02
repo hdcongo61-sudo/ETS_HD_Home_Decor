@@ -5,6 +5,7 @@ const pawapayConfig = require('../config/pawapay');
 const SubscriptionPayment = require('../models/subscriptionPaymentModel');
 const Tenant = require('../models/tenantModel');
 const PlatformAudit = require('../models/platformAuditModel');
+const { getEffectiveMonthlyPrice } = require('../utils/subscriptionPricing');
 
 // Shared by the webhook and the status-polling endpoint: apply a final
 // PawaPay deposit status to the local payment + tenant subscription.
@@ -89,10 +90,14 @@ const applyFinalDepositStatus = async (payment, deposit) => {
 // ── Authenticated: payment options for the current shop ──
 // GET /api/tenants/payment/pawapay/config
 const getPawaPayConfig = asyncHandler(async (req, res) => {
+  const effectiveMonthlyPrice = getEffectiveMonthlyPrice(req.tenant);
   res.json({
     enabled: pawapayConfig.isConfigured,
     providers: pawapayConfig.isConfigured ? pawapayConfig.providers : [],
-    suggestedAmount: Number(req.tenant?.monthlyPrice) || 0,
+    monthlyPrice: Number(req.tenant?.monthlyPrice) || 0,
+    effectiveMonthlyPrice,
+    suggestedAmount: effectiveMonthlyPrice,
+    billingDiscount: req.tenant?.billingDiscount || null,
     nextPaymentDue: req.tenant?.nextPaymentDue || null,
   });
 });
@@ -136,6 +141,13 @@ const initiatePawaPayPayment = asyncHandler(async (req, res) => {
   if (!Number.isInteger(numericMonths) || numericMonths < 1 || numericMonths > 12) {
     res.status(400);
     throw new Error('Nombre de mois invalide (1-12).');
+  }
+
+  const monthlyPrice = getEffectiveMonthlyPrice(req.tenant);
+  const expectedAmount = Math.round(monthlyPrice * numericMonths * 100) / 100;
+  if (Math.round(numericAmount * 100) / 100 !== expectedAmount) {
+    res.status(400);
+    throw new Error(`Le montant doit correspondre au tarif mensuel après remise (${monthlyPrice} CFA × ${numericMonths} mois = ${expectedAmount} CFA).`);
   }
 
   const depositId = crypto.randomUUID();

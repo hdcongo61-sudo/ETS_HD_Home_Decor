@@ -21,6 +21,7 @@ require('../models/supportTicketModel');
 require('../models/subscriptionPaymentModel');
 const { effectivePlanFeatures, invalidateFeatureCache, ALL_FEATURES } = require('../config/features');
 const generateToken = require('../utils/generateToken');
+const { getEffectiveMonthlyPrice } = require('../utils/subscriptionPricing');
 const { seedTenantSettings } = require('./appSettingsController');
 
 // Resolve a single plan's {label, price, maxUsers, maxProducts} from the
@@ -182,6 +183,7 @@ const getTenants = asyncHandler(async (req, res) => {
       const live = statsMap[t._id.toString()] || {};
       return {
         ...t,
+        effectiveMonthlyPrice: getEffectiveMonthlyPrice(t),
         stats: { ...t.stats, ...live },
         isActive: t.status !== 'suspended' && !isExpired(t),
       };
@@ -208,6 +210,7 @@ const getTenantById = asyncHandler(async (req, res) => {
   const live = statsMap[tenant._id.toString()] || {};
   res.json({
     ...tenant,
+    effectiveMonthlyPrice: getEffectiveMonthlyPrice(tenant),
     stats: { ...tenant.stats, ...live },
     isActive: tenant.status !== 'suspended' && !isExpired(tenant),
     users,
@@ -225,7 +228,11 @@ const updateTenant = asyncHandler(async (req, res) => {
     throw new Error('Boutique introuvable.');
   }
 
-  const before = { status: tenant.status, plan: tenant.plan };
+  const before = {
+    status: tenant.status,
+    plan: tenant.plan,
+    billingDiscount: tenant.billingDiscount?.toObject?.() || tenant.billingDiscount || null,
+  };
 
   if (status) tenant.status = status;
 
@@ -243,6 +250,33 @@ const updateTenant = asyncHandler(async (req, res) => {
   if (maxUsers !== undefined) tenant.maxUsers = Number(maxUsers);
   if (maxProducts !== undefined) tenant.maxProducts = Number(maxProducts);
   if (req.body.monthlyPrice !== undefined) tenant.monthlyPrice = Number(req.body.monthlyPrice) || 0;
+  if (Object.prototype.hasOwnProperty.call(req.body, 'billingDiscount')) {
+    if (req.body.billingDiscount === null) {
+      tenant.billingDiscount = null;
+    } else {
+      const { type, value, note = '' } = req.body.billingDiscount || {};
+      const numericValue = Number(value);
+      if (!['percent', 'amount'].includes(type) || !Number.isFinite(numericValue) || numericValue <= 0) {
+        res.status(400);
+        throw new Error('Remise invalide. Choisissez un pourcentage ou un montant supérieur à zéro.');
+      }
+      if (type === 'percent' && numericValue > 100) {
+        res.status(400);
+        throw new Error('Une remise en pourcentage ne peut pas dépasser 100 %.');
+      }
+      if (typeof note !== 'string' || note.trim().length > 200) {
+        res.status(400);
+        throw new Error('La note de remise ne peut pas dépasser 200 caractères.');
+      }
+      tenant.billingDiscount = {
+        type,
+        value: numericValue,
+        note: note.trim(),
+        appliedAt: new Date(),
+        appliedBy: req.user._id,
+      };
+    }
+  }
   if (subscriptionEndsAt) tenant.subscriptionEndsAt = new Date(subscriptionEndsAt);
   if (req.body.nextPaymentDue) tenant.nextPaymentDue = new Date(req.body.nextPaymentDue);
   if (req.body.trialEndsAt) tenant.trialEndsAt = new Date(req.body.trialEndsAt);
@@ -276,8 +310,26 @@ const updateTenant = asyncHandler(async (req, res) => {
   if (plan && plan !== before.plan) {
     PlatformAudit.record({ req, action: 'tenant.plan_change', tenant, meta: { from: before.plan, to: plan } });
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'billingDiscount')) {
+    PlatformAudit.record({
+      req,
+      action: 'tenant.discount_change',
+      tenant,
+      meta: {
+        from: before.billingDiscount
+          ? { type: before.billingDiscount.type, value: before.billingDiscount.value }
+          : null,
+        to: tenant.billingDiscount
+          ? { type: tenant.billingDiscount.type, value: tenant.billingDiscount.value }
+          : null,
+      },
+    });
+  }
 
-  res.json(tenant);
+  res.json({
+    ...tenant.toObject(),
+    effectiveMonthlyPrice: getEffectiveMonthlyPrice(tenant),
+  });
 });
 
 // ── Super-admin: delete a tenant and all its data ──
@@ -319,14 +371,17 @@ const getMyTenant = asyncHandler(async (req, res) => {
     return res.json(null);
   }
   const tenant = await Tenant.findById(req.tenantId)
-    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts planRequest dialCode monthlyPrice nextPaymentDue lastPaymentAt payments')
+    .select('name slug code plan status trialEndsAt subscriptionEndsAt branding maxUsers maxProducts planRequest dialCode monthlyPrice billingDiscount nextPaymentDue lastPaymentAt payments')
     .slice('payments', -20)
     .lean();
   if (!tenant) {
     res.status(404);
     throw new Error('Boutique introuvable.');
   }
-  res.json(tenant);
+  res.json({
+    ...tenant,
+    effectiveMonthlyPrice: getEffectiveMonthlyPrice(tenant),
+  });
 });
 
 // ── Super-admin: impersonate a tenant's admin user ──
@@ -504,7 +559,7 @@ const getOverviewStats = asyncHandler(async (req, res) => {
   const churned = tenants.filter((t) => t.status === 'expired' || (t.status === 'trial' && isExpired(t)));
 
   // MRR = sum of monthlyPrice for active (paying) tenants
-  const mrr = paying.reduce((sum, t) => sum + (t.monthlyPrice || 0), 0);
+  const mrr = paying.reduce((sum, t) => sum + getEffectiveMonthlyPrice(t), 0);
 
   // Revenue collected this month (from payment records)
   let revenueThisMonth = 0;
@@ -532,7 +587,7 @@ const getOverviewStats = asyncHandler(async (req, res) => {
   tenants.forEach((t) => {
     planDist[t.plan] = (planDist[t.plan] || 0) + 1;
     if (t.status === 'active') {
-      planRevenue[t.plan] = (planRevenue[t.plan] || 0) + (Number(t.monthlyPrice) || 0);
+      planRevenue[t.plan] = (planRevenue[t.plan] || 0) + getEffectiveMonthlyPrice(t);
     }
   });
 
@@ -575,8 +630,8 @@ const getOverviewStats = asyncHandler(async (req, res) => {
     .map((t) => ({ _id: t._id, name: t.name, trialEndsAt: t.trialEndsAt }));
 
   const paymentsOverdue = tenants
-    .filter((t) => t.status === 'active' && t.nextPaymentDue && new Date(t.nextPaymentDue) < now)
-    .map((t) => ({ _id: t._id, name: t.name, nextPaymentDue: t.nextPaymentDue, amount: t.monthlyPrice }));
+    .filter((t) => t.status === 'active' && getEffectiveMonthlyPrice(t) > 0 && t.nextPaymentDue && new Date(t.nextPaymentDue) < now)
+    .map((t) => ({ _id: t._id, name: t.name, nextPaymentDue: t.nextPaymentDue, amount: getEffectiveMonthlyPrice(t) }));
 
   const dormant = tenants
     .filter((t) => t.status !== 'suspended' && (!t.stats?.lastActiveAt || new Date(t.stats.lastActiveAt) < inactiveCutoff))
@@ -788,7 +843,10 @@ const recordPayment = asyncHandler(async (req, res) => {
 
   PlatformAudit.record({ req, action: 'tenant.payment', tenant, meta: { amount: numericAmount, method: method || 'cash', period } });
 
-  res.status(201).json(tenant);
+  res.status(201).json({
+    ...tenant.toObject(),
+    effectiveMonthlyPrice: getEffectiveMonthlyPrice(tenant),
+  });
 });
 
 // ── Super-admin: PDF invoice for a single recorded payment ──
