@@ -104,7 +104,8 @@ const productSchema = mongoose.Schema(
     barcode: {
       type: String,
       sparse: true,
-      trim: true
+      trim: true,
+      set: value => (typeof value === 'string' && value.trim() === '' ? undefined : value)
     },
     batchNumber: {
       type: String,

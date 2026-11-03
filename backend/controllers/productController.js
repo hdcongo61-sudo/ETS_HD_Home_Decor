@@ -781,6 +781,9 @@ const updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé' });
     }
+    if (product.barcode === '') {
+      product.barcode = undefined;
+    }
 
     // 🔍 Détection des changements
     const incomingContainer = typeof container === 'string' ? container.trim() : undefined;
@@ -796,7 +799,7 @@ const updateProduct = async (req, res) => {
     const resolvedName = buildProductNameWithContainer(baseName, containerForName);
     const incomingSupplierName = typeof supplierName === 'string' ? supplierName.trim() : undefined;
     const incomingSupplierPhone = typeof supplierPhone === 'string' ? supplierPhone.trim() : undefined;
-    const incomingBarcode = typeof barcode === 'string' ? barcode.trim() : undefined;
+    const incomingBarcode = typeof barcode === 'string' ? barcode.trim() || undefined : undefined;
     const incomingBatchNumber = typeof batchNumber === 'string' ? batchNumber.trim() : undefined;
     const incomingExpiryDate = expiryDate !== undefined
       ? (expiryDate && !Number.isNaN(new Date(expiryDate).getTime()) ? new Date(expiryDate) : null)

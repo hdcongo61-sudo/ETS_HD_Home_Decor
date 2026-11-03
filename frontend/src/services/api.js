@@ -62,6 +62,7 @@ const api = axios.create({
   transformResponse: [(data, headers) => {
     if (data == null || typeof data === 'object') return data;
     const str = String(data);
+    if (!str.trim()) return null;
     const contentType = (headers && headers['content-type']) || '';
     if (data.trimStart().startsWith('<') || contentType.includes('text/html')) {
       const err = new Error('Le serveur a renvoyé du HTML au lieu de JSON. Vérifiez REACT_APP_API_URL et que l’API backend est démarrée.');
