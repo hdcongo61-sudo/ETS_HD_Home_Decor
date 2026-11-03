@@ -2,7 +2,7 @@ import { formatCfa } from '../utils/format';
 import React, { useState, useEffect, useContext, useMemo, useRef, lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
 import toast from 'react-hot-toast';
-import { ArrowRight as ArrowRightIcon, CheckCircle2 as CheckCircle2Icon, ScanLine, X } from 'lucide-react';
+import { ArrowRight as ArrowRightIcon, CheckCircle2 as CheckCircle2Icon, Info, Plus, ScanLine, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import AuthContext from '../context/AuthContext';
@@ -75,8 +75,9 @@ const SaleFormFields = ({
   const [products, setProducts] = useState(normalizedInitialProducts);
   const [selectedProducts, setSelectedProducts] = useState([{ product: '', quantity: '', price: 0 }]);
   const [services, setServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([{ service: '', quantity: 1, price: 0 }]);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [serviceErrors, setServiceErrors] = useState([]);
+  const [serviceCatalogError, setServiceCatalogError] = useState('');
   const [selectedClient, setSelectedClient] = useState('');
   const [saleType, setSaleType] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -136,7 +137,7 @@ const SaleFormFields = ({
     }
     setSelectedClient(missingClient ? '' : draft.selectedClient);
     setSelectedProducts(draft.selectedProducts.length ? draft.selectedProducts.map(line => ({ ...line, product: products.some(product => product._id === line.product) ? line.product : '' })) : [{ product: '', quantity: '', price: 0 }]);
-    setSelectedServices(Array.isArray(draft.selectedServices) && draft.selectedServices.length ? draft.selectedServices.map(line => ({ ...line, service: services.some(service => service._id === line.service) ? line.service : '' })) : [{ service: '', quantity: 1, price: 0 }]);
+    setSelectedServices(Array.isArray(draft.selectedServices) ? draft.selectedServices.map(line => ({ ...line, service: services.some(service => service._id === line.service) ? line.service : '' })) : []);
     setSaleType(draft.saleType || 'normal');
     setPaymentMethod(draft.paymentMethod || 'cash');
     setPaymentAmount(draft.paymentAmount ?? '');
@@ -205,8 +206,10 @@ const SaleFormFields = ({
         const list = Array.isArray(res?.data) ? res.data : [];
         if (active) setServices(list.filter((s) => s.active));
       })
-      .catch(() => {
-        // Service catalogue optional — a failure must not block product sales.
+      .catch((error) => {
+        if (active) {
+          setServiceCatalogError(error.response?.data?.message || 'Le catalogue des services est indisponible.');
+        }
       });
     return () => { active = false; };
   }, []);
@@ -374,10 +377,8 @@ const SaleFormFields = ({
   };
 
   const removeService = (index) => {
-    if (selectedServices.length > 1) {
-      setSelectedServices(selectedServices.filter((_, i) => i !== index));
-      setServiceErrors(serviceErrors.filter((_, i) => i !== index));
-    }
+    setSelectedServices(selectedServices.filter((_, i) => i !== index));
+    setServiceErrors(serviceErrors.filter((_, i) => i !== index));
   };
 
   // Add (or increment) a scanned/looked-up product on the sale lines.
@@ -457,7 +458,7 @@ const SaleFormFields = ({
   const resetForm = () => {
     setSelectedClient('');
     setSelectedProducts([{ product: '', quantity: '', price: 0 }]);
-    setSelectedServices([{ service: '', quantity: 1, price: 0 }]);
+    setSelectedServices([]);
     setServiceErrors([]);
     setSaleType('normal');
     setPaymentMethod('cash');
@@ -1014,10 +1015,44 @@ const SaleFormFields = ({
             <div className="space-y-3 border-t border-dashed border-[var(--ms-border)] pt-4">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="text-sm font-semibold text-[var(--ms-text)] uppercase tracking-[0.12em]">
-                  Services
+                  Prestations complémentaires
                 </h4>
-                <span className="text-xs text-[var(--ms-text-muted)]">{selectedServices.length} ligne(s)</span>
+                <span className="rounded-full px-2 py-1 text-xs font-medium" style={{ background: 'var(--colorNeutralBackground3)', color: 'var(--colorNeutralForeground2)' }}>
+                  Facultatif
+                </span>
               </div>
+
+              <div className="flex items-start gap-2 rounded-[var(--radiusLarge)] border p-3" style={{ borderColor: 'var(--ms-border)', background: 'var(--ms-bg-subtle)' }}>
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ms-blue)]" aria-hidden="true" />
+                <p className="text-sm leading-6 text-[var(--ms-text-muted)]">
+                  Ajoutez ici une prestation facturée en plus des produits, par exemple la livraison, le montage ou l’installation.
+                  Une prestation ne déduit aucun stock.
+                </p>
+              </div>
+
+              {serviceCatalogError ? (
+                <p role="status" className="rounded-[var(--radiusMedium)] border p-3 text-sm" style={{ borderColor: 'var(--colorStatusWarningStroke1)', background: 'var(--colorStatusWarningBackground1)', color: 'var(--colorStatusWarningForeground1)' }}>
+                  {serviceCatalogError} Les ventes de produits restent disponibles.
+                </p>
+              ) : services.length === 0 ? (
+                <div className="rounded-[var(--radiusLarge)] border border-dashed p-4" style={{ borderColor: 'var(--ms-border-strong)', background: 'var(--ms-white)' }}>
+                  <p className="text-sm font-medium text-[var(--ms-text-strong)]">Aucune prestation disponible dans le catalogue.</p>
+                  {isAdmin ? (
+                    <Link to="/services" className="mt-1 inline-flex min-h-[44px] items-center font-medium text-[var(--ms-blue)] underline underline-offset-2">
+                      Créer ou gérer les prestations
+                    </Link>
+                  ) : (
+                    <p className="mt-1 text-sm text-[var(--ms-text-muted)]">Demandez à un administrateur d’ajouter les prestations du magasin.</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {selectedServices.length > 0 && (
+                    <p className="text-xs text-[var(--ms-text-muted)]">
+                      Choisissez une prestation : son prix catalogue est prérempli et peut être ajusté pour cette vente.
+                      Le montant de chaque ligne correspond au nombre de prestations multiplié par son prix.
+                    </p>
+                  )}
 
               {selectedServices.map((item, index) => (
                 <div
@@ -1030,38 +1065,40 @@ const SaleFormFields = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ms-text-muted)]">
-                      Service {index + 1}
+                      Prestation {index + 1}
                     </span>
-                    {selectedServices.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeService(index)}
-                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
-                        aria-label={`Supprimer le service ${index + 1}`}
-                      >
-                        Retirer
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeService(index)}
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[var(--ms-danger)] transition-colors hover:bg-[#FDF3F4]"
+                      aria-label={`Retirer la prestation ${index + 1}`}
+                    >
+                      Retirer
+                    </button>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-${index}`}>Service</label>
+                    <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-${index}`}>Prestation à facturer</label>
                     <select
                       id={`service-${index}`}
                       className={inputBase}
                       value={item.service}
                       onChange={(e) => handleServiceChange(index, e.target.value)}
+                      aria-describedby={`service-help-${index}`}
                     >
-                      <option value="">Sélectionner un service…</option>
+                      <option value="">Sélectionner une prestation…</option>
                       {services.map((s) => (
                         <option key={s._id} value={s._id}>{s.name} ({formatCfa((s.price || 0))})</option>
                       ))}
                     </select>
+                    <p id={`service-help-${index}`} className="mt-1 text-xs text-[var(--ms-text-muted)]">
+                      Cette prestation est ajoutée au total de la vente, sans mouvement de stock.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-qty-${index}`}>Quantité</label>
+                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-qty-${index}`}>Nombre de prestations</label>
                       <input
                         id={`service-qty-${index}`}
                         type="number"
@@ -1070,11 +1107,11 @@ const SaleFormFields = ({
                         className={inputBase}
                         value={item.quantity}
                         onChange={(e) => handleServiceQuantityChange(index, e.target.value)}
-                        placeholder="Qté"
+                        placeholder="Ex. 1"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-price-${index}`}>Prix unitaire (CFA)</label>
+                      <label className="mb-1 block text-xs font-medium text-[var(--ms-text-muted)]" htmlFor={`service-price-${index}`}>Prix par prestation (CFA)</label>
                       <input
                         id={`service-price-${index}`}
                         type="number"
@@ -1082,10 +1119,14 @@ const SaleFormFields = ({
                         className={inputBase}
                         value={item.price}
                         onChange={(e) => handleServicePriceChange(index, e.target.value)}
-                        placeholder="Prix"
+                        placeholder="Prix catalogue"
                       />
                     </div>
                   </div>
+
+                  <p className="text-right text-sm font-semibold tabular-nums text-[var(--ms-text-strong)]">
+                    Total de la ligne : {formatCfa(Number(item.quantity || 0) * Number(item.price || 0))}
+                  </p>
 
                   {serviceErrors[index] && (
                     <p id={`service-error-${index}`} className="text-sm text-[var(--ms-danger)]" role="alert">
@@ -1098,11 +1139,13 @@ const SaleFormFields = ({
               <button
                 type="button"
                 onClick={addService}
-                className="form-button-secondary flex w-full items-center justify-center gap-2 text-sm"
+                className="form-button-secondary flex min-h-[44px] w-full items-center justify-center gap-2 text-sm"
               >
-                <span className="text-lg leading-none" aria-hidden>+</span>
-                Ajouter un service
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Ajouter une prestation à cette vente
               </button>
+                </>
+              )}
             </div>
           )}
         </section>

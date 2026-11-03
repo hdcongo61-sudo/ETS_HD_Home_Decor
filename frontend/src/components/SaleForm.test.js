@@ -94,6 +94,17 @@ test('sale and proforma have separate draft states', async () => {
   await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent.trim() === 'Vente').click());
   expect(container.textContent).toContain('Reprendre le brouillon');
 });
+test('makes sale services optional and explains that they are non-stock charges', async () => {
+  localStorage.setItem(key('shop1'), JSON.stringify(draft));
+  await render();
+  await click('Reprendre le brouillon');
+  await click('Continuer vers les produits');
+  expect(container.textContent).toContain('Prestations complémentaires');
+  expect(container.textContent).toContain('Facultatif');
+  expect(container.textContent).toContain('Une prestation ne déduit aucun stock.');
+  expect(container.textContent).toContain('Demandez à un administrateur d’ajouter les prestations du magasin.');
+  expect(container.querySelector('select[id^="service-"]')).toBeNull();
+});
 test('blocked storage explains drafts are unavailable and leaves the form usable', async () => {
   const spy = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
   try {

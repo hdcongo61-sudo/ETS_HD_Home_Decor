@@ -1475,6 +1475,10 @@ video {
   max-height: 14rem;
 }
 
+.max-h-64 {
+  max-height: 16rem;
+}
+
 .max-h-72 {
   max-height: 18rem;
 }
@@ -1643,8 +1647,8 @@ video {
   min-height: 66px;
 }
 
-.min-h-\[70px\] {
-  min-height: 70px;
+.min-h-\[68px\] {
+  min-height: 68px;
 }
 
 .min-h-\[70vh\] {
@@ -7863,10 +7867,6 @@ form input[type="radio"],
 
   .sm\:grid-cols-\[120px_1fr\] {
     grid-template-columns: 120px 1fr;
-  }
-
-  .sm\:grid-cols-\[1fr_100px_120px_auto\] {
-    grid-template-columns: 1fr 100px 120px auto;
   }
 
   .sm\:grid-cols-\[1fr_110px_140px_auto\] {
