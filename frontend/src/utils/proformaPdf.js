@@ -1,7 +1,8 @@
 import { formatCfa } from './format';
 import { getLogoDataUrl } from './appBranding';
 
-const formatAmount = (value) => formatCfa(value);
+export const formatProformaAmount = (value) =>
+  formatCfa(value).replace(/(\d)[\u00a0\u202f ](?=\d{3}(?:\D|$))/g, '$1.');
 
 const formatDate = (value) => {
   const date = value ? new Date(value) : new Date();
@@ -121,9 +122,9 @@ export const generateProformaPdf = async ({
     head: [['Produit', 'Prix unitaire', 'Quantité', 'Total']],
     body: items.map((item) => [
       item.name,
-      formatAmount(item.price),
+      formatProformaAmount(item.price),
       item.quantity,
-      formatAmount((Number(item.price) || 0) * (Number(item.quantity) || 0)),
+      formatProformaAmount((Number(item.price) || 0) * (Number(item.quantity) || 0)),
     ]),
     theme: 'plain',
     margin: { left: margin, right: margin },
@@ -159,7 +160,7 @@ export const generateProformaPdf = async ({
   doc.setTextColor(17, 24, 39);
   doc.text('TOTAL PROFORMA', totalX + 6, finalY + 8);
   doc.setFontSize(13);
-  doc.text(formatAmount(total), totalX + 66, finalY + 15, { align: 'right' });
+  doc.text(formatProformaAmount(total), totalX + 66, finalY + 15, { align: 'right' });
 
   if (note) {
     const noteY = Math.min(finalY + 32, pageHeight - 55);

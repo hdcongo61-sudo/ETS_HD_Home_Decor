@@ -55,10 +55,11 @@ const sales = [
 ];
 
 const OpenPaymentModal = () => {
-  const { openModal } = useModal();
+  const { openModal, closeModal } = useModal();
   return (
     <>
       <button type="button" onClick={() => openModal('payment')}>Ouvrir les encaissements</button>
+      <button type="button" onClick={() => closeModal('payment')}>Fermer les encaissements</button>
       <GlobalPaymentModal />
     </>
   );
@@ -133,6 +134,24 @@ test('lists only collectible sales and searches by client phone', async () => {
     search.dispatchEvent(new Event('change', { bubbles: true }));
   });
   expect(container.textContent).toContain('Aucun résultat');
+});
+
+test('reopens immediately with cached sales while refreshing them in the background', async () => {
+  await renderModal();
+  expect(container.textContent).toContain('Aminata');
+
+  clickButton('Fermer les encaissements');
+  let resolveRefresh;
+  api.get.mockImplementationOnce(() => new Promise((resolve) => {
+    resolveRefresh = resolve;
+  }));
+  clickButton('Ouvrir les encaissements');
+
+  expect(container.textContent).toContain('Aminata');
+  expect(container.textContent).toContain('Actualisation des ventes à encaisser');
+  expect(container.querySelector('.animate-pulse')).toBeNull();
+
+  await act(async () => resolveRefresh({ data: sales }));
 });
 
 test('guides the operator to payment and guards returning with an edited draft', async () => {

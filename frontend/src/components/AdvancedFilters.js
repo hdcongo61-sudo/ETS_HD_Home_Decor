@@ -103,6 +103,90 @@ const AdvancedFilters = ({
           </div>
         );
 
+      case 'comparison': {
+        const dimensions = config.dimensions || [];
+        const comparison = value && typeof value === 'object'
+          ? value
+          : { field: dimensions[0]?.value || '', first: '', second: '' };
+        const dimension = dimensions.find(item => item.value === comparison.field) || dimensions[0];
+        const choices = dimension?.options || [];
+        const isPeriodComparison = dimension?.comparisonType === 'period';
+        const comparisonId = key.replace(/[^a-zA-Z0-9_-]/g, '-');
+        const updateComparison = next => handleFilterChange(key, { ...comparison, ...next });
+
+        return (
+          <section key={key} className="sm:col-span-2 xl:col-span-4 rounded-[var(--radiusLarge)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground2)] p-4">
+            <div className="mb-3">
+              <h4 className="text-sm font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>{label}</h4>
+              <p className="mt-1 text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>Comparez deux périodes ou valeurs avec les mêmes filtres de vente et de produit.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="flex flex-col gap-2">
+                <label htmlFor={`${comparisonId}-field`} className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>Attribut</label>
+                <select
+                  id={`${comparisonId}-field`}
+                  value={dimension?.value || ''}
+                  onChange={event => handleFilterChange(key, {
+                    field: event.target.value,
+                    first: '',
+                    second: '',
+                  })}
+                  className="min-h-[44px] w-full rounded-[var(--radiusMedium)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground1)] px-3 py-2 text-sm focus:border-[var(--ms-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue-soft)]"
+                >
+                  {dimensions.length === 0 && <option value="">Aucun attribut disponible</option>}
+                  {dimensions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </div>
+              {[['first', 'Première valeur'], ['second', 'Deuxième valeur']].map(([side, sideLabel]) => (
+                <div key={side} className="flex flex-col gap-2">
+                  <span className="fui-caption1-strong" style={{ color: 'var(--colorNeutralForeground2)' }}>{sideLabel}</span>
+                  {isPeriodComparison ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {['start', 'end'].map((edge) => (
+                        <label key={edge} className="flex min-w-0 flex-col gap-1">
+                          <span className="text-xs" style={{ color: 'var(--colorNeutralForeground3)' }}>{edge === 'start' ? 'Du' : 'Au'}</span>
+                          <input
+                            type="date"
+                            aria-label={`${sideLabel} ${edge === 'start' ? 'du' : 'au'}`}
+                            value={comparison[side]?.[edge] || ''}
+                            onChange={event => updateComparison({
+                              [side]: { ...(comparison[side] || {}), [edge]: event.target.value },
+                            })}
+                            className="min-h-[44px] w-full min-w-0 rounded-[var(--radiusMedium)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground1)] px-2 py-2 text-sm focus:border-[var(--ms-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue-soft)]"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <select
+                      id={`${comparisonId}-${side}`}
+                      value={comparison[side] || ''}
+                      disabled={!dimension || choices.length < 2}
+                      onChange={event => {
+                        const nextValue = event.target.value;
+                        const otherSide = side === 'first' ? 'second' : 'first';
+                        updateComparison({
+                          [side]: nextValue,
+                          ...(nextValue && comparison[otherSide] === nextValue ? { [otherSide]: '' } : {}),
+                        });
+                      }}
+                      className="min-h-[44px] w-full rounded-[var(--radiusMedium)] border border-[var(--colorNeutralStroke2)] bg-[var(--colorNeutralBackground1)] px-3 py-2 text-sm focus:border-[var(--ms-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--ms-blue-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">Choisir…</option>
+                      {choices.map(option => (
+                        <option key={option.value} value={option.value} disabled={option.value === comparison[side === 'first' ? 'second' : 'first']}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      }
+
       case 'multiselect':
         return (
           <div key={key} className="flex flex-col gap-2">

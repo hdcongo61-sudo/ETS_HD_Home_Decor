@@ -1,5 +1,5 @@
 // components/GlobalSaleModal.js
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Loader2, ReceiptText, RefreshCw, Users, Boxes } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -63,10 +63,12 @@ const GlobalSaleModal = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [hasFormData, setHasFormData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saleStage, setSaleStage] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
-
+  const dataRequestRef = useRef(null);
+  const hasFormDataRef = useRef(false);
 
   const requestClose = useCallback(async () => {
     if (isSubmitting) return;
@@ -82,31 +84,57 @@ const GlobalSaleModal = () => {
   }, [closeModal, isDirty, isSubmitting]);
 
   const fetchSaleFormData = useCallback(async () => {
+    if (dataRequestRef.current) return dataRequestRef.current;
     setLoading(true);
     setLoadError('');
 
-    try {
-      const [clientsRes, productsRes] = await Promise.all([
-        api.get('/clients'),
-        api.get('/products', { params: { summary: 'list' } }),
-      ]);
+    dataRequestRef.current = (async () => {
+      try {
+        const [clientsRes, productsRes] = await Promise.all([
+          api.get('/clients'),
+          api.get('/products', { params: { summary: 'list' } }),
+        ]);
 
-      setClients(normalizeCollection(clientsRes.data, ['clients', 'data']));
-      setProducts(normalizeCollection(productsRes.data, ['products', 'data']));
-    } catch (error) {
-      console.error('Error loading sale modal data:', error);
-      setClients([]);
-      setProducts([]);
-      setLoadError(getErrorMessage(error, 'Impossible de charger les clients et les produits.'));
-    } finally {
-      setLoading(false);
-    }
+        const nextClients = normalizeCollection(clientsRes.data, ['clients', 'data']);
+        const nextProducts = normalizeCollection(productsRes.data, ['products', 'data']);
+        hasFormDataRef.current = true;
+        setHasFormData(true);
+        setClients(nextClients);
+        setProducts(nextProducts);
+      } catch (error) {
+        console.error('Error loading sale modal data:', error);
+        setLoadError(getErrorMessage(error, 'Impossible de charger les clients et les produits.'));
+      } finally {
+        setLoading(false);
+        dataRequestRef.current = null;
+      }
+    })();
+
+    return dataRequestRef.current;
   }, []);
 
   useEffect(() => {
     if (!isOpen) return;
     setSaleStage(0);
     fetchSaleFormData();
+  }, [fetchSaleFormData, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) return undefined;
+    let timeoutId;
+    let idleId;
+    const prefetch = () => {
+      if (!hasFormDataRef.current) fetchSaleFormData();
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(prefetch, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(prefetch, 250);
+    }
+    return () => {
+      if (idleId !== undefined) window.cancelIdleCallback?.(idleId);
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
   }, [fetchSaleFormData, isOpen]);
 
   const handleSubmit = async (payload) => {
@@ -151,7 +179,7 @@ const GlobalSaleModal = () => {
           <button
             type="submit"
             form="global-sale-form"
-            disabled={isSubmitting || loading}
+            disabled={isSubmitting || (loading && !hasFormData)}
             className="ms-button ms-button-primary ms-button-md w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isSubmitting ? (
@@ -168,9 +196,9 @@ const GlobalSaleModal = () => {
         </>
       }
     >
-      {loading ? (
+      {loading && !hasFormData ? (
         <GlobalModalSkeleton />
-      ) : loadError ? (
+      ) : loadError && !hasFormData ? (
         <div className="fluent-card-filled p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
             <AlertCircle size={22} />
@@ -188,6 +216,13 @@ const GlobalSaleModal = () => {
         </div>
       ) : (
         <div className="space-y-5">
+          {loading && <p role="status" className="text-xs text-[var(--ms-text-muted)]">Actualisation des clients et produits…</p>}
+          {loadError && (
+            <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radiusMedium)] bg-[var(--colorStatusWarningBackground1)] px-3 py-2 text-xs text-[var(--colorStatusWarningForeground1)]">
+              <span>Les données affichées n’ont pas pu être actualisées.</span>
+              <button type="button" onClick={fetchSaleFormData} className="font-semibold underline underline-offset-2">Réessayer</button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <MetricPill icon={<Users size={16} />} label="Clients" value={clients.length} tone="brand" />
             <MetricPill icon={<Boxes size={16} />} label="Produits" value={products.length} tone="success" />

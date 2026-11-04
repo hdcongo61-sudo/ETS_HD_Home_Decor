@@ -1,5 +1,5 @@
 // components/GlobalPaymentModal.js
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCfa } from '../utils/format';
 import {
   AlertCircle,
@@ -208,8 +208,11 @@ const GlobalPaymentModal = () => {
   const [saleSearch, setSaleSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [hasSalesData, setHasSalesData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const dataRequestRef = useRef(null);
+  const hasSalesDataRef = useRef(false);
 
   const requestClose = useCallback(async () => {
     if (isSubmitting) return;
@@ -226,19 +229,26 @@ const GlobalPaymentModal = () => {
   }, [closeModal, isDirty, isSubmitting]);
 
   const fetchOpenSales = useCallback(async () => {
+    if (dataRequestRef.current) return dataRequestRef.current;
     setLoading(true);
     setLoadError('');
 
-    try {
-      const { data } = await api.get('/sales', { params: { summary: 'list' } });
-      setSales(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching open sales:', error);
-      setSales([]);
-      setLoadError(error.response?.data?.message || 'Impossible de charger les ventes à payer.');
-    } finally {
-      setLoading(false);
-    }
+    dataRequestRef.current = (async () => {
+      try {
+        const { data } = await api.get('/sales', { params: { summary: 'list' } });
+        hasSalesDataRef.current = true;
+        setHasSalesData(true);
+        setSales(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error fetching open sales:', error);
+        setLoadError(error.response?.data?.message || 'Impossible de charger les ventes à payer.');
+      } finally {
+        setLoading(false);
+        dataRequestRef.current = null;
+      }
+    })();
+
+    return dataRequestRef.current;
   }, []);
 
   useEffect(() => {
@@ -249,6 +259,24 @@ const GlobalPaymentModal = () => {
     setSaleSearch('');
     setStep(1);
     setIsSubmitting(false);
+  }, [fetchOpenSales, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) return undefined;
+    let timeoutId;
+    let idleId;
+    const prefetch = () => {
+      if (!hasSalesDataRef.current) fetchOpenSales();
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(prefetch, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(prefetch, 250);
+    }
+    return () => {
+      if (idleId !== undefined) window.cancelIdleCallback?.(idleId);
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
   }, [fetchOpenSales, isOpen]);
 
   const payableSales = useMemo(
@@ -358,7 +386,9 @@ const GlobalPaymentModal = () => {
             type={step === 1 ? 'button' : 'submit'}
             form={step === 2 ? 'global-payment-form' : undefined}
             onClick={step === 1 ? continueToPayment : undefined}
-            disabled={step === 1 ? loading || !selectedSaleData : isSubmitting || loading || !selectedSaleData}
+            disabled={step === 1
+              ? (loading && !hasSalesData) || !selectedSaleData
+              : isSubmitting || (loading && !hasSalesData) || !selectedSaleData}
             className="ms-button ms-button-primary ms-button-md w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {step === 1 ? (
@@ -381,9 +411,9 @@ const GlobalPaymentModal = () => {
         </>
       }
     >
-      {loading ? (
+      {loading && !hasSalesData ? (
         <PaymentModalSkeleton />
-      ) : loadError ? (
+      ) : loadError && !hasSalesData ? (
         <div className="fluent-card-filled p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radiusLarge)]" style={{ background: 'var(--colorStatusDangerBackground1)', color: 'var(--colorStatusDangerForeground1)' }}>
             <AlertCircle size={22} />
@@ -401,6 +431,13 @@ const GlobalPaymentModal = () => {
         </div>
       ) : (
         <div className="space-y-5">
+          {loading && <p role="status" className="text-xs text-[var(--ms-text-muted)]">Actualisation des ventes à encaisser…</p>}
+          {loadError && (
+            <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radiusMedium)] bg-[var(--colorStatusWarningBackground1)] px-3 py-2 text-xs text-[var(--colorStatusWarningForeground1)]">
+              <span>Les ventes affichées n’ont pas pu être actualisées.</span>
+              <button type="button" onClick={fetchOpenSales} className="font-semibold underline underline-offset-2">Réessayer</button>
+            </div>
+          )}
           <ol aria-label="Étapes de l’encaissement" className="grid grid-cols-2 gap-3">
             {[
               { number: 1, title: 'Vente', description: 'Choisir la créance' },

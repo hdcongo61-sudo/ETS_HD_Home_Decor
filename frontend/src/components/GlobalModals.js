@@ -16,6 +16,7 @@ const GlobalModals = () => {
   const permissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : [];
   const hasPermission = (permission) => isAdmin || permissions.includes(permission);
   const { areGlobalModalsSuppressed, modalStack, closeAllModals } = useModal();
+  const modalScope = `${auth?.tenantId || 'platform'}:${auth?.user?._id || 'user'}`;
   const wasSuppressedRef = useRef(areGlobalModalsSuppressed);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ const GlobalModals = () => {
         if (definition.permission && !hasPermission(definition.permission)) return null;
         const Component = definition.component;
         const entry = modalStack.find((stackEntry) => stackEntry.id === modalId);
-        return <Component key={modalId} {...(entry?.props || {})} />;
+        return <Component key={`${modalId}:${modalScope}`} {...(entry?.props || {})} />;
       })}
     </>
   );

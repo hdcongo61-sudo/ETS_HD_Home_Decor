@@ -82,6 +82,7 @@ const COMBINED_FILTERS = [
   { key: 'category', type: 'select', label: 'Catégorie produit', quick: true, options: [] },
   { key: 'supplierName', type: 'select', label: 'Fournisseur', quick: false, options: [] },
   { key: 'container', type: 'select', label: 'Conteneur', quick: false, options: [] },
+  { key: 'comparison', type: 'comparison', label: 'Comparer deux valeurs', quick: false },
   { key: 'warehouse', type: 'select', label: 'Entrepôt', quick: false, options: [] },
   { key: 'isActive', type: 'select', label: 'État du produit', quick: false, options: [
     { value: 'true', label: 'Actif' }, { value: 'false', label: 'Inactif' },
@@ -184,7 +185,8 @@ const UltimateFiltersPage = () => {
   const [filtersByTab, setFiltersByTab] = useState({ [initialState?.tab || 'sales']: initialState?.filters || {} });
   const [viewRevision, setViewRevision] = useState(0); const [data, setData] = useState([]); const [meta, setMeta] = useState({}); const [loading, setLoading] = useState(false); const [loadError, setLoadError] = useState(null); const [lastUpdated, setLastUpdated] = useState(null); const [pageNumber, setPageNumber] = useState(1);
   const [users, setUsers] = useState([]); const [categories, setCategories] = useState([]); const [suppliers, setSuppliers] = useState([]); const [containers, setContainers] = useState([]); const [warehouses, setWarehouses] = useState([]); const [locations, setLocations] = useState([]); const [variantAttributes, setVariantAttributes] = useState([]); const [optionsLoadError, setOptionsLoadError] = useState(false); const [showSavedViews, setShowSavedViews] = useState(false);
-  const [savedViews, setSavedViews] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }); const requestId = useRef(0);
+  const [comparisonResult, setComparisonResult] = useState(null);
+  const [savedViews, setSavedViews] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }); const requestId = useRef(0); const comparisonRequestId = useRef(0);
   const activeConfig = FILTER_PAGES.find(page => page.id === activeTab) || FILTER_PAGES[0]; const activeFilters = useMemo(() => filtersByTab[activeTab] || {}, [filtersByTab, activeTab]); const presets = PRESETS[activeTab] || [];
   useEffect(() => {
     let cancelled = false;
@@ -224,6 +226,37 @@ const UltimateFiltersPage = () => {
       position: [{ value: 'manager', label: 'Manager' }, { value: 'vendeur', label: 'Vendeur' }, { value: 'caissier', label: 'Caissier' }, { value: 'magasinier', label: 'Magasinier' }],
     });
     if (activeTab !== 'combined') return config;
+    const comparisonDimensions = [
+      ...config
+        .filter(filter => ['status', 'paymentMethod', 'saleType', 'deliveryStatus', 'locationId', 'sellerId', 'hasProforma', 'taxInclusive'].includes(filter.key))
+        .filter(filter => Array.isArray(filter.options) && filter.options.length > 1)
+        .map(filter => ({
+          value: filter.key,
+          label: filter.label,
+          options: filter.options,
+        })),
+      { value: 'container', label: 'Conteneur', options: containers },
+      { value: 'warehouse', label: 'Dépôt / entrepôt', options: warehouses },
+      { value: 'category', label: 'Catégorie', options: categories },
+      { value: 'supplierName', label: 'Fournisseur', options: suppliers },
+      ...variantAttributes.map(attribute => ({
+        value: `variant_${attribute.key}`,
+        label: `Variante · ${attribute.label}`,
+        options: [
+          ...(attribute.options || []).map(value => ({ value, label: value })),
+          ...(attribute.dataType === 'boolean' ? [{ value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' }] : []),
+        ],
+      })),
+    ].filter(dimension => dimension.options.length > 1);
+    comparisonDimensions.unshift({
+      value: 'dateRange',
+      label: 'Période de vente',
+      comparisonType: 'period',
+      options: [],
+    });
+    const configWithComparison = config.map(filter => (
+      filter.key === 'comparison' ? { ...filter, dimensions: comparisonDimensions } : filter
+    ));
     const variantFilters = variantAttributes.map(attribute => {
       const options = (attribute.options || []).map(value => ({ value, label: value }));
       if (attribute.dataType === 'boolean') options.push({ value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' });
@@ -236,10 +269,86 @@ const UltimateFiltersPage = () => {
         quick: false,
       };
     });
-    return [...config, ...variantFilters];
+    return [...configWithComparison, ...variantFilters];
   }, [activeConfig, activeTab, users, categories, suppliers, containers, warehouses, locations, variantAttributes]);
   const loadData = useCallback(async (tab, filters, selectedPage = pageNumber) => { const pageConfig = FILTER_PAGES.find(item => item.id === tab); if (!pageConfig) return; const currentRequest = ++requestId.current; setLoading(true); setLoadError(null); setMeta({}); try { const params = buildQueryParams(filters); if (tab === 'combined') { params.page = selectedPage; params.limit = 30; } const response = await api.get(pageConfig.endpoint, { params }); if (currentRequest !== requestId.current) return; const rows = readRows(response); setData(tab === 'combined' ? rows.map(item => ({ ...item, name: `${item.product?.name || 'Produit'}${item.reference ? ` · ${item.reference}` : ''}`, category: [item.product?.category, item.quantity ? `Qté ${item.quantity}` : '', item.client?.name, item.seller?.name, item.saleDate ? new Date(item.saleDate).toLocaleDateString('fr-FR') : '', item.status, item.paymentMethod].filter(Boolean).join(' · '), totalAmount: item.lineAmount })) : rows); setMeta(readMeta(response)); setLastUpdated(new Date()); } catch (error) { if (currentRequest === requestId.current) setLoadError(error); } finally { if (currentRequest === requestId.current) setLoading(false); } }, [pageNumber]);
   useEffect(() => { const timeout = window.setTimeout(() => loadData(activeTab, activeFilters, pageNumber), 300); return () => window.clearTimeout(timeout); }, [activeTab, activeFilters, loadData, pageNumber]);
+  useEffect(() => {
+    const comparison = activeFilters.comparison;
+    const isPeriodComparison = comparison?.field === 'dateRange';
+    const hasFirst = isPeriodComparison
+      ? Boolean(comparison.first?.start && comparison.first?.end)
+      : Boolean(comparison?.first);
+    const hasSecond = isPeriodComparison
+      ? Boolean(comparison.second?.start && comparison.second?.end)
+      : Boolean(comparison?.second);
+    const samePeriod = isPeriodComparison
+      && comparison.first?.start === comparison.second?.start
+      && comparison.first?.end === comparison.second?.end;
+    if (
+      activeTab !== 'combined'
+      || !comparison?.field
+      || !hasFirst
+      || !hasSecond
+      || (isPeriodComparison ? samePeriod : comparison.first === comparison.second)
+    ) {
+      comparisonRequestId.current += 1;
+      setComparisonResult(null);
+      return undefined;
+    }
+
+    const currentRequest = ++comparisonRequestId.current;
+    setComparisonResult(previous => ({
+      ...previous,
+      loading: true,
+      error: null,
+      field: comparison.field,
+      firstValue: comparison.first,
+      secondValue: comparison.second,
+    }));
+    const timeout = window.setTimeout(async () => {
+      const baseFilters = { ...activeFilters };
+      delete baseFilters.comparison;
+      delete baseFilters[comparison.field];
+      const requestForValue = value => {
+        const filters = comparison.field === 'dateRange'
+          ? { ...baseFilters, dateRange: value }
+          : { ...baseFilters, [comparison.field]: value };
+        const params = buildQueryParams(filters);
+        return api.get('/sales/product-analysis', {
+          params: { ...params, page: 1, limit: 1 },
+        });
+      };
+
+      try {
+        const [firstResponse, secondResponse] = await Promise.all([
+          requestForValue(comparison.first),
+          requestForValue(comparison.second),
+        ]);
+        if (currentRequest !== comparisonRequestId.current) return;
+        setComparisonResult({
+          loading: false,
+          error: null,
+          field: comparison.field,
+          firstValue: comparison.first,
+          secondValue: comparison.second,
+          first: firstResponse.data?.summary || {},
+          second: secondResponse.data?.summary || {},
+        });
+      } catch (error) {
+        if (currentRequest !== comparisonRequestId.current) return;
+        setComparisonResult(previous => ({
+          ...previous,
+          loading: false,
+          error: error.response?.data?.message || 'Impossible de charger la comparaison.',
+        }));
+      }
+    }, 300);
+    return () => {
+      window.clearTimeout(timeout);
+      if (currentRequest === comparisonRequestId.current) comparisonRequestId.current += 1;
+    };
+  }, [activeTab, activeFilters]);
   const updateFilters = nextFilters => { setPageNumber(1); setFiltersByTab(current => ({ ...current, [activeTab]: nextFilters })); window.history.replaceState({}, '', `${location.pathname}?state=${encodeState(activeTab, nextFilters)}`); };
   const switchTab = tab => { setPageNumber(1); setActiveTab(tab); const nextFilters = filtersByTab[tab] || {}; window.history.replaceState({}, '', `${location.pathname}?state=${encodeState(tab, nextFilters)}`); };
   const applyPreset = preset => { updateFilters({ ...preset.filters }); setViewRevision(value => value + 1); toast.success(`Vue « ${preset.label} » appliquée`); }; const resetFilters = () => { updateFilters({}); setViewRevision(value => value + 1); };
@@ -313,6 +422,24 @@ const UltimateFiltersPage = () => {
     { label: 'Panier moyen', value: formatCfa(meta.summary?.averageSaleAmount), icon: TrendingUp, detail: 'sur les ventes concernées' },
     { label: 'Produits trouvés au catalogue', value: Number(meta.summary?.matchedProducts || 0).toLocaleString('fr-FR'), icon: BarChart3, detail: 'selon les filtres produit' },
   ];
+  const comparisonFieldLabel = filterConfig.find(filter => filter.key === 'comparison')
+    ?.dimensions?.find(dimension => dimension.value === comparisonResult?.field)?.label || 'Attribut';
+  const comparisonOptions = filterConfig.find(filter => filter.key === 'comparison')
+    ?.dimensions?.find(dimension => dimension.value === comparisonResult?.field)?.options || [];
+  const getComparisonLabel = (value, side) => {
+    if (comparisonResult?.field === 'dateRange') {
+      const start = value?.start ? new Date(`${value.start}T00:00:00`).toLocaleDateString('fr-FR') : '';
+      const end = value?.end ? new Date(`${value.end}T00:00:00`).toLocaleDateString('fr-FR') : '';
+      return `${side === 'first' ? 'Période 1' : 'Période 2'} · ${start} – ${end}`;
+    }
+    return comparisonOptions.find(option => option.value === value)?.label || value;
+  };
+  const comparisonMetrics = [
+    { label: 'Produits correspondants', key: 'matchedProducts' },
+    { label: 'Ventes concernées', key: 'sales' },
+    { label: 'Articles vendus', key: 'quantity' },
+    { label: 'Montant vendu', key: 'lineAmount', currency: true },
+  ];
   return <Workspace><div className="space-y-5 pb-8">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex items-start gap-3"><button onClick={() => navigate('/')} className="ms-button ms-button-secondary ms-button-sm shrink-0"><ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Retour</span></button><div><div className="flex items-center gap-2"><Sparkles className="h-5 w-5" style={{ color: 'var(--ms-blue)' }} /><h1 className="fui-title3">Espace d’analyse</h1></div><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Filtrez, enregistrez et partagez une vue exploitable de vos données.</p></div></div><div className="flex flex-wrap gap-2"><button onClick={copyLink} className="ms-button ms-button-secondary ms-button-sm"><Copy className="h-4 w-4" />Partager la vue</button><button onClick={saveCurrentView} className="ms-button ms-button-primary ms-button-sm"><Save className="h-4 w-4" />Enregistrer</button></div></div>
     {activeTab === 'combined' && <section aria-labelledby="combined-overview-title" className="space-y-3"><div className="flex items-center justify-between gap-3"><div><h2 id="combined-overview-title" className="fui-subtitle2">Aperçu des résultats</h2><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Statistiques globales des résultats filtrés, toutes pages confondues.</p></div>{loading && <RefreshCw aria-label="Actualisation des statistiques" className="h-4 w-4 animate-spin" style={{ color: 'var(--ms-blue)' }} />}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{combinedOverview.map(({ label, value, icon: Icon, detail }) => <article key={label} className="fluent-card-filled min-w-0 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{label}</p><p className="mt-2 break-words text-xl font-bold tabular-nums" aria-live="polite">{loading ? '—' : value}</p><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{detail}</p></div><span className="rounded-lg p-2" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}><Icon className="h-5 w-5" aria-hidden="true" /></span></div></article>)}</div></section>}
@@ -322,6 +449,36 @@ const UltimateFiltersPage = () => {
     <div className="flex flex-wrap items-center gap-2">{presets.map(preset => <button key={preset.id} onClick={() => applyPreset(preset)} className="ms-button ms-button-secondary ms-button-sm"><Check className="h-4 w-4" />{preset.label}</button>)}{filterCount(activeFilters) > 0 && <button onClick={resetFilters} className="ms-button ms-button-ghost ms-button-sm"><X className="h-4 w-4" />Effacer les filtres</button>}</div>
     {activeTab === 'combined' && <div className="flex items-start gap-2 rounded-[var(--radiusMedium)] border p-3" style={{ background: 'var(--colorNeutralBackground2)', borderColor: 'var(--colorNeutralStroke2)' }}><Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--colorBrandForeground1)' }} /><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground2)' }}>Chaque résultat correspond à une ligne produit d’une vente. Les attributs de variante filtrent les variantes actuellement actives du produit : l’historique des ventes ne conserve pas l’identifiant de la variante vendue. L’export concerne la page affichée.</p></div>}
     <AdvancedFilters key={`${activeTab}-${viewRevision}`} filterConfig={filterConfig} initialFilters={activeFilters} onFilterChange={updateFilters} onExport={handleExport} showExport exportFormats={['excel', 'pdf', 'csv']} loading={loading} resultCount={activeTab === 'combined' ? Number(meta.total || data.length) : data.length} />
+    {activeTab === 'combined' && comparisonResult && <section aria-labelledby="comparison-results-title" className="fluent-card-filled space-y-4 p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="comparison-results-title" className="fui-subtitle2">Comparaison · {comparisonFieldLabel}</h2>
+          <p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Les autres filtres actifs s’appliquent aux deux côtés de la comparaison. Les périodes comparent les ventes entre deux plages de dates.</p>
+        </div>
+        {comparisonResult.loading && <RefreshCw aria-label="Comparaison en cours" className="h-4 w-4 animate-spin" style={{ color: 'var(--ms-blue)' }} />}
+      </div>
+      {comparisonResult.error ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radiusMedium)] border border-[var(--colorStatusDangerStroke1)] px-3 py-2">
+          <span className="text-sm" style={{ color: 'var(--colorStatusDangerForeground1)' }}>{comparisonResult.error}</span>
+          <button type="button" className="ms-button ms-button-secondary ms-button-sm" onClick={() => setFiltersByTab(current => ({ ...current, combined: { ...(current.combined || {}) } }))}>Réessayer</button>
+        </div>
+      ) : <div className="grid gap-3 md:grid-cols-2">
+        {[
+          { label: getComparisonLabel(comparisonResult.firstValue, 'first'), summary: comparisonResult.first },
+          { label: getComparisonLabel(comparisonResult.secondValue, 'second'), summary: comparisonResult.second },
+        ].map((side, index) => <article key={`${index}-${side.label}`} className="min-w-0 rounded-[var(--radiusLarge)] border p-4" style={{ borderColor: 'var(--ms-border)' }}>
+          <h3 className="truncate text-base font-semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>{side.label}</h3>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {comparisonMetrics.map(metric => <div key={metric.key} className="min-w-0 rounded-[var(--radiusMedium)] p-3" style={{ background: 'var(--colorNeutralBackground2)' }}>
+              <p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{metric.label}</p>
+              <p className="mt-1 truncate text-lg font-bold tabular-nums" aria-live="polite">
+                {comparisonResult.loading ? '—' : metric.currency ? formatCfa(side.summary?.[metric.key]) : Number(side.summary?.[metric.key] || 0).toLocaleString('fr-FR')}
+              </p>
+            </div>)}
+          </div>
+        </article>)}
+      </div>}
+    </section>}
     <div className="fluent-card-filled p-3 sm:p-4"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><h2 className="fui-subtitle2">Résultats</h2>{loading && <RefreshCw className="h-4 w-4 animate-spin" style={{ color: 'var(--ms-blue)' }} />}<span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: 'var(--ms-blue-soft)', color: 'var(--colorBrandForeground1)' }}>{summary.count.toLocaleString('fr-FR')}</span></div><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>{lastUpdated ? `Actualisé à ${lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'En attente de chargement'}{meta.total ? ` · ${Number(meta.total).toLocaleString('fr-FR')} au total` : ''}</p></div>{summary.total !== null && <div className="text-left sm:text-right"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Valeur filtrée</p><p className="fui-body1-strong">{formatCfa(summary.total)}</p></div>}</div>{loadError && <SectionError title="Données non actualisées" error={loadError} onRetry={() => loadData(activeTab, activeFilters)} />}{!loadError && loading && data.length === 0 && <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin" style={{ color: 'var(--ms-blue)' }} /><span className="ml-3 fui-caption1">Chargement de {activeConfig.title.toLowerCase()}…</span></div>}{!loading && !loadError && data.length === 0 && <div className="flex flex-col items-center justify-center py-12 text-center"><AlertCircle className="h-10 w-10" style={{ color: 'var(--colorNeutralForeground3)' }} /><p className="mt-3 fui-body1-strong">Aucun résultat dans ce périmètre</p><p className="mt-1 fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Essayez un modèle rapide ou retirez un filtre.</p></div>}{data.length > 0 && <div className="space-y-2">{data.slice(0, 30).map((item, index) => <div key={item._id || index} className="flex flex-col gap-2 rounded-[var(--radiusMedium)] border p-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--colorNeutralStroke2)' }}><div className="min-w-0"><p className="fui-body1-strong truncate">{item.name || item.reference || item.description || item.title || item._id || `Élément ${index + 1}`}</p><p className="fui-caption1 truncate" style={{ color: 'var(--colorNeutralForeground3)' }}>{item.category || item.client?.name || item.status || item.type || ''}</p></div>{(item.totalAmount || item.price || item.amount) !== undefined && <p className="fui-body1-strong tabular-nums sm:text-right">{formatCfa(Number(item.totalAmount || item.price || item.amount || 0))}</p>}</div>)}</div>}{data.length > 30 && <p className="mt-3 text-center fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>30 résultats affichés sur {data.length}. Utilisez l’export pour récupérer l’ensemble.</p>}</div>
     {activeTab === 'combined' && Number(meta.pages) > 1 && <div className="flex items-center justify-between gap-3"><p className="fui-caption1" style={{ color: 'var(--colorNeutralForeground3)' }}>Page {pageNumber.toLocaleString('fr-FR')} sur {Number(meta.pages).toLocaleString('fr-FR')}</p><div className="flex gap-2"><button type="button" className="ms-button ms-button-secondary ms-button-sm" disabled={loading || pageNumber <= 1} onClick={() => setPageNumber(current => Math.max(1, current - 1))}><ChevronLeft className="h-4 w-4" />Précédent</button><button type="button" className="ms-button ms-button-secondary ms-button-sm" disabled={loading || pageNumber >= Number(meta.pages)} onClick={() => setPageNumber(current => current + 1)}>Suivant<ChevronRight className="h-4 w-4" /></button></div></div>}
   </div></Workspace>;
